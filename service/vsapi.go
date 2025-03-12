@@ -50,8 +50,7 @@ func (v *VsApiV1) GetOnlinePlayersCount(ctx context.Context, req *emptypb.Empty)
 
 	eventType := event.PlayerCount
 
-	cache := v.cache
-	cached, err := cache.Get(string(eventType))
+	cached, err := v.cache.Get(string(eventType))
 
 	if err != nil {
 		return nil, nil
@@ -76,8 +75,104 @@ func (v *VsApiV1) GetOnlinePlayersCount(ctx context.Context, req *emptypb.Empty)
 }
 
 func (v *VsApiV1) GetGameTime(ctx context.Context, e *emptypb.Empty) (*v1.TimeResponse, error) {
-	//TODO implement me
-	panic("implement me")
+	var worldTime event.WorldTimeEvent
+
+	eventType := event.WorldTime
+
+	cached, err := v.cache.Get(string(eventType))
+
+	if err != nil {
+		return nil, nil
+	}
+
+	body, ok := cached.(json.RawMessage)
+	if !ok {
+		return nil, status.Error(
+			codes.Internal,
+			"failed to cast cached value",
+		)
+	}
+
+	err = json.Unmarshal(body, &worldTime)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1.TimeResponse{
+		FormattedTime: worldTime.FormattedTime,
+	}, nil
+}
+
+func (v *VsApiV1) StreamGameTime(empty *emptypb.Empty, stream grpc.ServerStreamingServer[v1.TimeResponse]) error {
+	var worldTime event.WorldTimeEvent
+
+	eventType := event.WorldTime
+
+	sub, id := v.bus.Subscribe(eventType)
+	defer v.bus.Unsubscribe(eventType, id)
+
+	// need to process data inside of subscription loop
+	fn := func(ev event.Event) error {
+		err := json.Unmarshal(ev.Data, &worldTime)
+		if err != nil {
+			return err
+		}
+
+		err = stream.Send(&v1.TimeResponse{
+			FormattedTime: worldTime.FormattedTime,
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	cached, err := v.cache.Get(string(eventType))
+
+	if err != nil {
+		err = stream.Send(nil)
+		err = v.streamLoop(
+			stream.Context(),
+			sub,
+			fn,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	body, ok := cached.(json.RawMessage)
+	if !ok {
+		return status.Error(
+			codes.Internal,
+			"failed to cast cached value",
+		)
+	}
+
+	err = json.Unmarshal(body, &worldTime)
+	if err != nil {
+		return err
+	}
+
+	err = stream.Send(&v1.TimeResponse{
+		FormattedTime: worldTime.FormattedTime,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = v.streamLoop(
+		stream.Context(),
+		sub,
+		fn,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (v *VsApiV1) StreamOnlinePlayersCount(e *emptypb.Empty, stream grpc.ServerStreamingServer[v1.PlayersCountResponse]) error {

@@ -4,6 +4,7 @@
 openapi: 3.0.3
 info:
     title: VintageService API
+    description: Api with a basic in game data
     version: 0.0.1
 paths:
     /v1/players/count:
@@ -82,7 +83,26 @@ paths:
         get:
             tags:
                 - VintageService
+            description: Gets in game date time, and returns it in formatted string
             operationId: VintageService_GetGameTime
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/TimeResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/time/ws:
+        get:
+            tags:
+                - VintageService
+            operationId: VintageService_StreamGameTime
             responses:
                 "200":
                     description: OK
@@ -140,8 +160,5 @@ components:
             properties:
                 formattedTime:
                     type: string
-                totalDays:
-                    type: number
-                    format: double
 tags:
     - name: VintageService

@@ -7,10 +7,18 @@ option go_package = "github.com/ripls56/vsservice/v1";
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 
+// Api with a basic in game data
 service VintageService {
+  // Gets in game date time, and returns it in formatted string
   rpc GetGameTime(google.protobuf.Empty) returns (TimeResponse) {
     option (google.api.http) = {
       get: "/v1/time"
+    };
+  }
+
+  rpc StreamGameTime(google.protobuf.Empty) returns (stream TimeResponse) {
+    option (google.api.http) = {
+      get: "/v1/time/ws"
     };
   }
 
@@ -19,7 +27,6 @@ service VintageService {
       get: "/v1/players/count"
     };
   }
-
 
   rpc StreamOnlinePlayersCount(google.protobuf.Empty) returns (stream PlayersCountResponse) {
     option (google.api.http) = {
@@ -33,7 +40,6 @@ service VintageService {
     };
   }
 
-
   rpc StreamOnlinePlayersList(google.protobuf.Empty) returns (stream PlayersListResponse) {
     option (google.api.http) = {
       get: "/v1/players/list/ws"
@@ -43,7 +49,6 @@ service VintageService {
 
 message TimeResponse {
   string formatted_time = 1;
-  double total_days = 2;
 }
 
 message PlayersCountResponse {

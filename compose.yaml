@@ -17,7 +17,7 @@
     environment:
       GRPC_PORT: 50051
       GATEAWAY_PORT: 6969
-      RABBITMQ_URL_FILE: /run/secrets/rabbitmq/url.txt
+      RABBITMQ_URL_FILE: /run/secrets/rmq_url
     depends_on:
       - rabbitmq
     ports:

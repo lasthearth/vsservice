@@ -54,6 +54,23 @@ func local_request_VintageService_GetGameTime_0(ctx context.Context, marshaler r
 	return msg, metadata, err
 }
 
+func request_VintageService_StreamGameTime_0(ctx context.Context, marshaler runtime.Marshaler, client VintageServiceClient, req *http.Request, pathParams map[string]string) (VintageService_StreamGameTimeClient, runtime.ServerMetadata, error) {
+	var (
+		protoReq emptypb.Empty
+		metadata runtime.ServerMetadata
+	)
+	stream, err := client.StreamGameTime(ctx, &protoReq)
+	if err != nil {
+		return nil, metadata, err
+	}
+	header, err := stream.Header()
+	if err != nil {
+		return nil, metadata, err
+	}
+	metadata.HeaderMD = header
+	return stream, metadata, nil
+}
+
 func request_VintageService_GetOnlinePlayersCount_0(ctx context.Context, marshaler runtime.Marshaler, client VintageServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq emptypb.Empty
@@ -149,6 +166,13 @@ func RegisterVintageServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 		forward_VintageService_GetGameTime_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+
+	mux.Handle(http.MethodGet, pattern_VintageService_StreamGameTime_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		err := status.Error(codes.Unimplemented, "streaming calls are not yet supported in the in-process transport")
+		_, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+		return
 	})
 	mux.Handle(http.MethodGet, pattern_VintageService_GetOnlinePlayersCount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -261,6 +285,23 @@ func RegisterVintageServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 		forward_VintageService_GetGameTime_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_VintageService_StreamGameTime_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/vintage.v1.VintageService/StreamGameTime", runtime.WithHTTPPathPattern("/v1/time/ws"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_VintageService_StreamGameTime_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_VintageService_StreamGameTime_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodGet, pattern_VintageService_GetOnlinePlayersCount_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -334,6 +375,7 @@ func RegisterVintageServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 
 var (
 	pattern_VintageService_GetGameTime_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "time"}, ""))
+	pattern_VintageService_StreamGameTime_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "time", "ws"}, ""))
 	pattern_VintageService_GetOnlinePlayersCount_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "players", "count"}, ""))
 	pattern_VintageService_StreamOnlinePlayersCount_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "players", "count", "ws"}, ""))
 	pattern_VintageService_GetOnlinePlayersList_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "players", "list"}, ""))
@@ -342,6 +384,7 @@ var (
 
 var (
 	forward_VintageService_GetGameTime_0              = runtime.ForwardResponseMessage
+	forward_VintageService_StreamGameTime_0           = runtime.ForwardResponseStream
 	forward_VintageService_GetOnlinePlayersCount_0    = runtime.ForwardResponseMessage
 	forward_VintageService_StreamOnlinePlayersCount_0 = runtime.ForwardResponseStream
 	forward_VintageService_GetOnlinePlayersList_0     = runtime.ForwardResponseMessage

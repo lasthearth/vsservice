@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	VintageService_GetGameTime_FullMethodName              = "/vintage.v1.VintageService/GetGameTime"
+	VintageService_StreamGameTime_FullMethodName           = "/vintage.v1.VintageService/StreamGameTime"
 	VintageService_GetOnlinePlayersCount_FullMethodName    = "/vintage.v1.VintageService/GetOnlinePlayersCount"
 	VintageService_StreamOnlinePlayersCount_FullMethodName = "/vintage.v1.VintageService/StreamOnlinePlayersCount"
 	VintageService_GetOnlinePlayersList_FullMethodName     = "/vintage.v1.VintageService/GetOnlinePlayersList"
@@ -30,8 +31,12 @@ const (
 // VintageServiceClient is the client API for VintageService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// Api with a basic in game data
 type VintageServiceClient interface {
+	// Gets in game date time, and returns it in formatted string
 	GetGameTime(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TimeResponse, error)
+	StreamGameTime(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[TimeResponse], error)
 	GetOnlinePlayersCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PlayersCountResponse, error)
 	StreamOnlinePlayersCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PlayersCountResponse], error)
 	GetOnlinePlayersList(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PlayersListResponse, error)
@@ -56,6 +61,25 @@ func (c *vintageServiceClient) GetGameTime(ctx context.Context, in *emptypb.Empt
 	return out, nil
 }
 
+func (c *vintageServiceClient) StreamGameTime(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[TimeResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &VintageService_ServiceDesc.Streams[0], VintageService_StreamGameTime_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[emptypb.Empty, TimeResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type VintageService_StreamGameTimeClient = grpc.ServerStreamingClient[TimeResponse]
+
 func (c *vintageServiceClient) GetOnlinePlayersCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PlayersCountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PlayersCountResponse)
@@ -68,7 +92,7 @@ func (c *vintageServiceClient) GetOnlinePlayersCount(ctx context.Context, in *em
 
 func (c *vintageServiceClient) StreamOnlinePlayersCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PlayersCountResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &VintageService_ServiceDesc.Streams[0], VintageService_StreamOnlinePlayersCount_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &VintageService_ServiceDesc.Streams[1], VintageService_StreamOnlinePlayersCount_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +121,7 @@ func (c *vintageServiceClient) GetOnlinePlayersList(ctx context.Context, in *emp
 
 func (c *vintageServiceClient) StreamOnlinePlayersList(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PlayersListResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &VintageService_ServiceDesc.Streams[1], VintageService_StreamOnlinePlayersList_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &VintageService_ServiceDesc.Streams[2], VintageService_StreamOnlinePlayersList_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +141,12 @@ type VintageService_StreamOnlinePlayersListClient = grpc.ServerStreamingClient[P
 // VintageServiceServer is the server API for VintageService service.
 // All implementations should embed UnimplementedVintageServiceServer
 // for forward compatibility.
+//
+// Api with a basic in game data
 type VintageServiceServer interface {
+	// Gets in game date time, and returns it in formatted string
 	GetGameTime(context.Context, *emptypb.Empty) (*TimeResponse, error)
+	StreamGameTime(*emptypb.Empty, grpc.ServerStreamingServer[TimeResponse]) error
 	GetOnlinePlayersCount(context.Context, *emptypb.Empty) (*PlayersCountResponse, error)
 	StreamOnlinePlayersCount(*emptypb.Empty, grpc.ServerStreamingServer[PlayersCountResponse]) error
 	GetOnlinePlayersList(context.Context, *emptypb.Empty) (*PlayersListResponse, error)
@@ -134,6 +162,9 @@ type UnimplementedVintageServiceServer struct{}
 
 func (UnimplementedVintageServiceServer) GetGameTime(context.Context, *emptypb.Empty) (*TimeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGameTime not implemented")
+}
+func (UnimplementedVintageServiceServer) StreamGameTime(*emptypb.Empty, grpc.ServerStreamingServer[TimeResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamGameTime not implemented")
 }
 func (UnimplementedVintageServiceServer) GetOnlinePlayersCount(context.Context, *emptypb.Empty) (*PlayersCountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOnlinePlayersCount not implemented")
@@ -184,6 +215,17 @@ func _VintageService_GetGameTime_Handler(srv interface{}, ctx context.Context, d
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _VintageService_StreamGameTime_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(emptypb.Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(VintageServiceServer).StreamGameTime(m, &grpc.GenericServerStream[emptypb.Empty, TimeResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type VintageService_StreamGameTimeServer = grpc.ServerStreamingServer[TimeResponse]
 
 func _VintageService_GetOnlinePlayersCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
@@ -264,6 +306,11 @@ var VintageService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamGameTime",
+			Handler:       _VintageService_StreamGameTime_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "StreamOnlinePlayersCount",
 			Handler:       _VintageService_StreamOnlinePlayersCount_Handler,

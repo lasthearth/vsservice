@@ -9,7 +9,11 @@ type Event struct {
 }
 
 type PlayerCountEvent struct {
-	Count int `json:"Count"`
+	Count int `json:"count"`
+}
+
+type WorldTimeEvent struct {
+	FormattedTime string `json:"time"`
 }
 
 type PlayerListEvent struct {
