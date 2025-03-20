@@ -1,29 +1,11 @@
 ﻿services:
-  rabbitmq:
-    image: rabbitmq:4-management
-    volumes:
-      - "./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf"
-      - "./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json"
-    ports:
-      - "56721:5672"
-      - "8080:15672"
-
   vsservice:
     build:
       context: .
       target: final
-    secrets:
-      - rmq_url
     environment:
       GRPC_PORT: 50051
       GATEAWAY_PORT: 6969
-      RABBITMQ_URL_FILE: /run/secrets/rmq_url
-    depends_on:
-      - rabbitmq
     ports:
       - "50051:50051"
       - "6969:6969"
-
-secrets:
-  rmq_url:
-    file: ./rabbitmq/url.txt

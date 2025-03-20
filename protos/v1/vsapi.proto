@@ -7,6 +7,8 @@ option go_package = "github.com/ripls56/vsservice/v1";
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 
+//TODO: imprv doc, change json case
+
 // Api with a basic in game data
 service VintageService {
   // Gets in game date time, and returns it in formatted string

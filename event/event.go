@@ -1,26 +1,27 @@
 ﻿package event
 
-import "encoding/json"
-
-// Event represents a message with type and payload
 type Event struct {
-	Type Type            `json:"event_type"`
-	Data json.RawMessage `json:"data"`
+	Id string `json:"id"`
 }
 
 type PlayerCountEvent struct {
+	Event
 	Count int `json:"count"`
+	Max   int `json:"max"`
 }
 
 type WorldTimeEvent struct {
+	Event
 	FormattedTime string `json:"time"`
 }
 
 type PlayerListEvent struct {
+	Event
 	Players []Player `json:"players"`
 }
 
 type Player struct {
+	Event
 	Name       string `json:"name"`
 	TimePlayed int64  `json:"time_played"`
 }

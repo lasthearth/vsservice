@@ -93,7 +93,6 @@ func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 		},
 		UnmarshalOptions: protojson.UnmarshalOptions{},
 	}))
-	//mux := runtime.NewServeMux()
 
 	group.Go(func() error {
 		return v1.RegisterVintageServiceHandlerFromEndpoint(ctx, mux, port, opts)
