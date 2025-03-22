@@ -69,7 +69,7 @@ func New(opts Opts) *GrpcServer {
 
 func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 	port := fmt.Sprintf(":%d", c.GrpcPort)
-	httpPort := fmt.Sprintf(":%d", 6969)
+	httpPort := fmt.Sprintf(":%d", c.GateAwayPort)
 
 	l, err := net.Listen("tcp", port)
 	if err != nil {
