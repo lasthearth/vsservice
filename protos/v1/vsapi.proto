@@ -1,51 +1,41 @@
-﻿syntax = "proto3";
+syntax = "proto3";
 
 package vintage.v1;
 
-option go_package = "github.com/ripls56/vsservice/v1";
-
 import "google/api/annotations.proto";
+import "google/api/client.proto";
 import "google/protobuf/empty.proto";
+
+option go_package = "github.com/ripls56/vsservice/v1";
 
 //TODO: imprv doc, change json case
 
 // Api with a basic in game data
 service VintageService {
+  option (google.api.default_host) = "api.lasthearth.ru";
   // Gets in game date time, and returns it in formatted string
   rpc GetGameTime(google.protobuf.Empty) returns (TimeResponse) {
-    option (google.api.http) = {
-      get: "/v1/time"
-    };
+    option (google.api.http) = {get: "/v1/time"};
   }
 
   rpc StreamGameTime(google.protobuf.Empty) returns (stream TimeResponse) {
-    option (google.api.http) = {
-      get: "/v1/time/ws"
-    };
+    option (google.api.http) = {get: "/v1/time/ws"};
   }
 
   rpc GetOnlinePlayersCount(google.protobuf.Empty) returns (PlayersCountResponse) {
-    option (google.api.http) = {
-      get: "/v1/players/count"
-    };
+    option (google.api.http) = {get: "/v1/players/count"};
   }
 
   rpc StreamOnlinePlayersCount(google.protobuf.Empty) returns (stream PlayersCountResponse) {
-    option (google.api.http) = {
-      get: "/v1/players/count/ws"
-    };
+    option (google.api.http) = {get: "/v1/players/count/ws"};
   }
 
   rpc GetOnlinePlayersList(google.protobuf.Empty) returns (PlayersListResponse) {
-    option (google.api.http) = {
-      get: "/v1/players/list"
-    };
+    option (google.api.http) = {get: "/v1/players/list"};
   }
 
   rpc StreamOnlinePlayersList(google.protobuf.Empty) returns (stream PlayersListResponse) {
-    option (google.api.http) = {
-      get: "/v1/players/list/ws"
-    };
+    option (google.api.http) = {get: "/v1/players/list/ws"};
   }
 }
 

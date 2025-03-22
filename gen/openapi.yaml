@@ -5,7 +5,9 @@ openapi: 3.0.3
 info:
     title: VintageService API
     description: Api with a basic in game data
-    version: 0.0.1
+    version: 1.2.0
+servers:
+    - url: https://api.lasthearth.ru
 paths:
     /v1/players/count:
         get:
