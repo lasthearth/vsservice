@@ -10,4 +10,5 @@ plugins:
     out: gen
     opt: paths=source_relative
   - remote: buf.build/community/google-gnostic-openapi:v0.7.0
-    out: gen
+    out: docs/v1
+    opt: version=1,naming=proto

@@ -13,8 +13,6 @@ type Config struct {
 
 	GrpcPort     int `envconfig:"GPRC_PORT" default:"50051"`
 	GateAwayPort int `envconfig:"GATEAWAY_PORT" default:"6969"`
-
-	RabbitMqUrlFile string `envconfig:"RABBITMQ_URL_FILE"`
 }
 
 func New() (Config, error) {

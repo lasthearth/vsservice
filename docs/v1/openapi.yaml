@@ -5,7 +5,7 @@ openapi: 3.0.3
 info:
     title: VintageService API
     description: Api with a basic in game data
-    version: 1.2.0
+    version: "1"
 servers:
     - url: https://api.lasthearth.ru
 paths:
@@ -137,7 +137,7 @@ components:
         PlayersListResponse:
             type: object
             properties:
-                playerNames:
+                player_names:
                     type: array
                     items:
                         type: string
@@ -160,7 +160,7 @@ components:
         TimeResponse:
             type: object
             properties:
-                formattedTime:
+                formatted_time:
                     type: string
 tags:
     - name: VintageService
