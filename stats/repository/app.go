@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"github.com/ripls56/vsservice/config"

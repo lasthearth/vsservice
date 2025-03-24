@@ -1,4 +1,4 @@
-﻿package worldtime
+package worldtime
 
 type Time struct {
 	Id            string `json:"id"`

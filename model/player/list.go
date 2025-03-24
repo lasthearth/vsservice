@@ -1,4 +1,4 @@
-﻿package player
+package player
 
 type List struct {
 	Id      string   `json:"id"`

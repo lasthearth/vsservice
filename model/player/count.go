@@ -1,4 +1,4 @@
-﻿package player
+package player
 
 type Count struct {
 	Id    string `json:"id"`

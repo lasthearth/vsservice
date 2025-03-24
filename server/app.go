@@ -1,4 +1,4 @@
-﻿package server
+package server
 
 import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"

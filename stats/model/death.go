@@ -1,4 +1,4 @@
-﻿package model
+package model
 
 type Death struct {
 	Cause      string `json:"Cause"`

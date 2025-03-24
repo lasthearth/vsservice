@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"github.com/ripls56/vsservice/config"

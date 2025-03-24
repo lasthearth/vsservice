@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"context"
@@ -34,5 +34,4 @@ func (s *Service) GetPlayerStats(ctx context.Context, req *v1.PlayerStatsRequest
 		LastOnline:    stats.LastOnline,
 		PlayersKilled: int32(stats.PlayersKilled),
 	}, nil
-
 }
