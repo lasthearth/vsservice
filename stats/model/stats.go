@@ -1,4 +1,4 @@
-﻿package playerstats
+﻿package model
 
 type Stats struct {
 	DeathCount    int     `json:"death_count"`

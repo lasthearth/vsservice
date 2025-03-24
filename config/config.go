@@ -13,6 +13,8 @@ type Config struct {
 
 	GrpcPort     int `envconfig:"GPRC_PORT" default:"50051"`
 	GateAwayPort int `envconfig:"GATEAWAY_PORT" default:"6969"`
+
+	VsAPIUrl string `envconfig:"VSAPI_URL"`
 }
 
 func New() (Config, error) {

@@ -6,15 +6,13 @@ import (
 	"fmt"
 	v1 "github.com/ripls56/vsservice/gen/proto/v1"
 	"github.com/ripls56/vsservice/model/player"
-	"github.com/ripls56/vsservice/model/playerstats"
 	"github.com/ripls56/vsservice/model/worldtime"
-	"github.com/samber/lo"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"io"
 	"net/http"
-	"strings"
 )
 
 var _ v1.VintageServiceServer = (*VsApiV1)(nil)
@@ -91,50 +89,25 @@ func (v *VsApiV1) GetGameTime(ctx context.Context, e *emptypb.Empty) (*v1.TimeRe
 	}, nil
 }
 
-func (v *VsApiV1) GetPlayerStats(ctx context.Context, req *v1.PlayerStatsRequest) (*v1.PlayerStatsResponse, error) {
-	var stats playerstats.Stats
-
-	reqUrl := "stats"
-	url := fmt.Sprintf("%s/%s/%s", vsserverUrl, reqUrl, req.Name)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, status.Error(codes.Internal, ErrHTTPRequestFailed.Error())
-	}
-
-	err = v.checkStatusCode(resp)
-	if err != nil {
-		return nil, err
-	}
-
-	buf, err := v.readBody(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(buf, &stats)
-	if err != nil {
-		return nil, status.Error(codes.Internal, ErrUnmarshalJSON.Error())
-	}
-
-	deaths := lo.Map(stats.Deaths, func(item playerstats.Death, index int) *v1.PlayerStatsResponse_Death {
-		return &v1.PlayerStatsResponse_Death{
-			Cause:      strings.ToLower(item.Cause),
-			EntityName: item.EntityName,
-		}
-	})
-
-	return &v1.PlayerStatsResponse{
-		Id:            stats.ID,
-		Name:          stats.Name,
-		DeathCount:    int32(stats.DeathCount),
-		Deaths:        deaths,
-		HoursPlayed:   stats.HoursPlayed,
-		LastOnline:    stats.LastOnline,
-		PlayersKilled: int32(stats.PlayersKilled),
-	}, nil
+func (v *VsApiV1) StreamGameTime(empty *emptypb.Empty, g grpc.ServerStreamingServer[v1.TimeResponse]) error {
+	//TODO implement me
+	panic("implement me")
 }
 
+func (v *VsApiV1) StreamOnlinePlayersCount(empty *emptypb.Empty, g grpc.ServerStreamingServer[v1.PlayersCountResponse]) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (v *VsApiV1) GetOnlinePlayersList(ctx context.Context, empty *emptypb.Empty) (*v1.PlayersListResponse, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (v *VsApiV1) StreamOnlinePlayersList(empty *emptypb.Empty, g grpc.ServerStreamingServer[v1.PlayersListResponse]) error {
+	//TODO implement me
+	panic("implement me")
+}
 func (v *VsApiV1) checkStatusCode(resp *http.Response) error {
 	if resp.StatusCode >= 400 {
 		return status.Error(codes.Internal, ErrHTTPStatusNotOK.Error())

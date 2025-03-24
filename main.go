@@ -5,8 +5,12 @@ import (
 	"github.com/ripls56/vsservice/config"
 	"github.com/ripls56/vsservice/logger"
 	"github.com/ripls56/vsservice/server"
+	vsservice "github.com/ripls56/vsservice/service"
+	"github.com/ripls56/vsservice/stats/repository"
+	"github.com/ripls56/vsservice/stats/service"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"net/http"
 )
 
 const (
@@ -18,7 +22,14 @@ func main() {
 	a := fx.New(
 		fx.Provide(
 			config.New,
+			func() http.Client {
+				return http.Client{
+					Timeout: 5,
+				}
+			},
 			setupLogger,
+			fx.Annotate(repository.New, fx.As(new(service.Repository))),
+			fx.Annotate(service.New, fx.As(new(vsservice.StatsService))),
 		),
 
 		server.App,
