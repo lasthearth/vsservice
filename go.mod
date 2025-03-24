@@ -20,6 +20,7 @@ require (
 
 require (
 	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/samber/lo v1.49.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	go.uber.org/dig v1.18.0 // indirect

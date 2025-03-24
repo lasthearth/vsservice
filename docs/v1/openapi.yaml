@@ -118,6 +118,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/{name}/stats:
+        get:
+            tags:
+                - VintageService
+            operationId: VintageService_GetPlayerStats
+            parameters:
+                - name: name
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PlayerStatsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
 components:
     schemas:
         GoogleProtobufAny:
@@ -128,6 +152,35 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        PlayerStatsResponse:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                death_count:
+                    type: integer
+                    format: int32
+                deaths:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PlayerStatsResponse_Death'
+                hoursPlayed:
+                    type: number
+                    format: float
+                last_online:
+                    type: string
+                players_killed:
+                    type: integer
+                    format: int32
+        PlayerStatsResponse_Death:
+            type: object
+            properties:
+                cause:
+                    type: string
+                entity_name:
+                    type: string
         PlayersCountResponse:
             type: object
             properties:
