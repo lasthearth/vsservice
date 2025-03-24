@@ -8,7 +8,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/ripls56/vsservice/config"
-	v1 "github.com/ripls56/vsservice/gen/protos/v1"
+	v1 "github.com/ripls56/vsservice/gen/proto/v1"
 	"github.com/ripls56/vsservice/logger"
 	"github.com/rs/cors"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"

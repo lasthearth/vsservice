@@ -1,7 +1,7 @@
 ﻿package service
 
 import (
-	v1 "github.com/ripls56/vsservice/gen/protos/v1"
+	v1 "github.com/ripls56/vsservice/gen/proto/v1"
 	"github.com/ripls56/vsservice/logger"
 	"go.uber.org/fx"
 )

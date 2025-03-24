@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: protos/v1/vsapi.proto
+// source: proto/v1/vsapi.proto
 
 package v1
 
@@ -26,6 +26,7 @@ const (
 	VintageService_StreamOnlinePlayersCount_FullMethodName = "/vintage.v1.VintageService/StreamOnlinePlayersCount"
 	VintageService_GetOnlinePlayersList_FullMethodName     = "/vintage.v1.VintageService/GetOnlinePlayersList"
 	VintageService_StreamOnlinePlayersList_FullMethodName  = "/vintage.v1.VintageService/StreamOnlinePlayersList"
+	VintageService_GetPlayerStats_FullMethodName           = "/vintage.v1.VintageService/GetPlayerStats"
 )
 
 // VintageServiceClient is the client API for VintageService service.
@@ -41,6 +42,7 @@ type VintageServiceClient interface {
 	StreamOnlinePlayersCount(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PlayersCountResponse], error)
 	GetOnlinePlayersList(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PlayersListResponse, error)
 	StreamOnlinePlayersList(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PlayersListResponse], error)
+	GetPlayerStats(ctx context.Context, in *PlayerStatsRequest, opts ...grpc.CallOption) (*PlayerStatsResponse, error)
 }
 
 type vintageServiceClient struct {
@@ -138,6 +140,16 @@ func (c *vintageServiceClient) StreamOnlinePlayersList(ctx context.Context, in *
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type VintageService_StreamOnlinePlayersListClient = grpc.ServerStreamingClient[PlayersListResponse]
 
+func (c *vintageServiceClient) GetPlayerStats(ctx context.Context, in *PlayerStatsRequest, opts ...grpc.CallOption) (*PlayerStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PlayerStatsResponse)
+	err := c.cc.Invoke(ctx, VintageService_GetPlayerStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VintageServiceServer is the server API for VintageService service.
 // All implementations should embed UnimplementedVintageServiceServer
 // for forward compatibility.
@@ -151,6 +163,7 @@ type VintageServiceServer interface {
 	StreamOnlinePlayersCount(*emptypb.Empty, grpc.ServerStreamingServer[PlayersCountResponse]) error
 	GetOnlinePlayersList(context.Context, *emptypb.Empty) (*PlayersListResponse, error)
 	StreamOnlinePlayersList(*emptypb.Empty, grpc.ServerStreamingServer[PlayersListResponse]) error
+	GetPlayerStats(context.Context, *PlayerStatsRequest) (*PlayerStatsResponse, error)
 }
 
 // UnimplementedVintageServiceServer should be embedded to have
@@ -177,6 +190,9 @@ func (UnimplementedVintageServiceServer) GetOnlinePlayersList(context.Context, *
 }
 func (UnimplementedVintageServiceServer) StreamOnlinePlayersList(*emptypb.Empty, grpc.ServerStreamingServer[PlayersListResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method StreamOnlinePlayersList not implemented")
+}
+func (UnimplementedVintageServiceServer) GetPlayerStats(context.Context, *PlayerStatsRequest) (*PlayerStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPlayerStats not implemented")
 }
 func (UnimplementedVintageServiceServer) testEmbeddedByValue() {}
 
@@ -285,6 +301,24 @@ func _VintageService_StreamOnlinePlayersList_Handler(srv interface{}, stream grp
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type VintageService_StreamOnlinePlayersListServer = grpc.ServerStreamingServer[PlayersListResponse]
 
+func _VintageService_GetPlayerStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PlayerStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VintageServiceServer).GetPlayerStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VintageService_GetPlayerStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VintageServiceServer).GetPlayerStats(ctx, req.(*PlayerStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VintageService_ServiceDesc is the grpc.ServiceDesc for VintageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +338,10 @@ var VintageService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetOnlinePlayersList",
 			Handler:    _VintageService_GetOnlinePlayersList_Handler,
 		},
+		{
+			MethodName: "GetPlayerStats",
+			Handler:    _VintageService_GetPlayerStats_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -322,5 +360,5 @@ var VintageService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "protos/v1/vsapi.proto",
+	Metadata: "proto/v1/vsapi.proto",
 }
