@@ -1,4 +1,4 @@
-﻿package mongodto
+package mongodto
 
 import (
 	"github.com/ripls56/vsservice/internal/pkg/mongo"

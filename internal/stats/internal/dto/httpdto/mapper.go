@@ -1,4 +1,4 @@
-﻿package httpdto
+package httpdto
 
 import (
 	"github.com/ripls56/vsservice/internal/pkg/mongo"
