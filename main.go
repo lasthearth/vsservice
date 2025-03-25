@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/ripls56/vsservice/config"
-	"github.com/ripls56/vsservice/logger"
-	"github.com/ripls56/vsservice/server"
-	vsservice "github.com/ripls56/vsservice/service"
-	"github.com/ripls56/vsservice/stats/repository"
-	"github.com/ripls56/vsservice/stats/service"
+	"github.com/ripls56/vsservice/internal/pkg/config"
+	"github.com/ripls56/vsservice/internal/pkg/logger"
+	"github.com/ripls56/vsservice/internal/pkg/mongo"
+	"github.com/ripls56/vsservice/internal/server"
+	vsservice "github.com/ripls56/vsservice/internal/service"
+	"github.com/ripls56/vsservice/internal/stats/repository"
+	service "github.com/ripls56/vsservice/internal/stats/service"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"net/http"
@@ -28,10 +29,12 @@ func main() {
 				}
 			},
 			setupLogger,
+			mongo.New,
+			mongo.NewDatabase,
 			fx.Annotate(repository.New, fx.As(new(service.Repository))),
 			fx.Annotate(service.New, fx.As(new(vsservice.StatsService))),
 		),
-
+		service.App,
 		server.App,
 	)
 

@@ -48,18 +48,16 @@ message PlayerStatsRequest {
 }
 
 message PlayerStatsResponse {
-  int64 id = 1;
   string name = 2;
   int32 death_count = 3;
-  repeated Death deaths = 4;
   float hoursPlayed = 5;
   int64 last_online = 6;
   int32 players_killed = 7;
 
-  message Death {
-    string cause = 1;
-    string entity_name = 2;
-  }
+//  message Death {
+//    string cause = 1;
+//    string entity_name = 2;
+//  }
 }
 
 message TimeResponse {

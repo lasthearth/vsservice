@@ -1,4 +1,4 @@
-package repository
+﻿package fetcher
 
 import "github.com/go-faster/errors"
 

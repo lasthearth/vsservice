@@ -2,10 +2,10 @@ package server
 
 import (
 	"context"
-	"github.com/ripls56/vsservice/config"
 	v1 "github.com/ripls56/vsservice/gen/proto/v1"
-	"github.com/ripls56/vsservice/logger"
-	"github.com/ripls56/vsservice/service"
+	"github.com/ripls56/vsservice/internal/pkg/config"
+	"github.com/ripls56/vsservice/internal/pkg/logger"
+	"github.com/ripls56/vsservice/internal/service"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"strconv"

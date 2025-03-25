@@ -155,17 +155,11 @@ components:
         PlayerStatsResponse:
             type: object
             properties:
-                id:
-                    type: string
                 name:
                     type: string
                 death_count:
                     type: integer
                     format: int32
-                deaths:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/PlayerStatsResponse_Death'
                 hoursPlayed:
                     type: number
                     format: float
@@ -174,13 +168,6 @@ components:
                 players_killed:
                     type: integer
                     format: int32
-        PlayerStatsResponse_Death:
-            type: object
-            properties:
-                cause:
-                    type: string
-                entity_name:
-                    type: string
         PlayersCountResponse:
             type: object
             properties:

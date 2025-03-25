@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	v1 "github.com/ripls56/vsservice/gen/proto/v1"
-	"github.com/ripls56/vsservice/logger"
+	"github.com/ripls56/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 )
 
