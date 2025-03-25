@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"os"
@@ -36,8 +35,6 @@ func New() (Config, error) {
 	if err := envconfig.Process("", &cfg); err != nil {
 		return cfg, err
 	}
-
-	fmt.Println(cfg)
 
 	return cfg, nil
 }
