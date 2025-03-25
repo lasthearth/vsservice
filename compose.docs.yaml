@@ -1,0 +1,13 @@
+﻿services:
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    container_name: "swagger-ui-container"
+    ports:
+      - "8080"
+    volumes:
+      - ./docs/v1/openapi.yaml:/v1.openapi.yaml
+    environment:
+      SWAGGER_JSON: /v1.openapi.yaml
+      URLS: "[
+        { url: 'v1.openapi.yaml', name: 'API Version 1.0'},
+      ]"
