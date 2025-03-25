@@ -53,7 +53,12 @@ func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 
 	group.Go(func() error {
 		handler := cors.New(cors.Options{
-			AllowedOrigins:   []string{"https://lasthearth.ru", "http://localhost*", "http://0.0.0.0*"},
+			AllowedOrigins: []string{
+				"https://lasthearth.ru",
+				"http://localhost*",
+				"http://0.0.0.0*",
+				"https://*.lasthearth.ru",
+			},
 			AllowCredentials: true,
 			Debug:            true,
 		}).Handler(mux)
