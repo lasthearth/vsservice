@@ -14,7 +14,7 @@ WORKDIR /src
 
 ARG PROJECT_PATH=./
 
-LABEL org.opencontainers.image.source="https://github.com/ripls56/vsservice"
+LABEL org.opencontainers.image.source="https://github.com/lasthearth/vsservice"
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
 # Leverage a cache mount to /go/pkg/mod/ to speed up subsequent builds.
