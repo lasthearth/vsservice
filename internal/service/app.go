@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	v1 "github.com/ripls56/vsservice/gen/proto/v1"
+	"github.com/ripls56/vsservice/internal/pkg/config"
 	"github.com/ripls56/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 )
@@ -10,6 +11,7 @@ import (
 type VsApiV1Opts struct {
 	fx.In
 	Log     logger.Logger
+	Cfg     config.Config
 	Service StatsService
 }
 
@@ -19,6 +21,7 @@ type StatsService interface {
 
 type VsApiV1 struct {
 	service StatsService
+	cfg     config.Config
 	log     logger.Logger
 }
 
@@ -30,5 +33,6 @@ func NewVsApiV1(opts VsApiV1Opts) *VsApiV1 {
 	return &VsApiV1{
 		log:     opts.Log,
 		service: opts.Service,
+		cfg:     opts.Cfg,
 	}
 }

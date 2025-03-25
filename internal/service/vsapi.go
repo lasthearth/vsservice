@@ -17,11 +17,6 @@ import (
 
 var _ v1.VintageServiceServer = (*VsApiV1)(nil)
 
-const (
-	//vsserverUrl = "http://vsserver:5000"
-	vsserverUrl = "http://localhost:5000"
-)
-
 type CacheManager interface {
 	Get(key string) (any, error)
 	Set(key string, value any) error
@@ -31,7 +26,7 @@ func (v *VsApiV1) GetOnlinePlayersCount(ctx context.Context, req *emptypb.Empty)
 	var playerCount player.Count
 
 	reqUrl := "players/count"
-	url := fmt.Sprintf("%s/%s", vsserverUrl, reqUrl)
+	url := fmt.Sprintf("%s/%s", v.cfg.VsAPIUrl, reqUrl)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -62,7 +57,7 @@ func (v *VsApiV1) GetGameTime(ctx context.Context, e *emptypb.Empty) (*v1.TimeRe
 	var time worldtime.Time
 
 	reqUrl := "time"
-	url := fmt.Sprintf("%s/%s", vsserverUrl, reqUrl)
+	url := fmt.Sprintf("%s/%s", v.cfg.VsAPIUrl, reqUrl)
 
 	resp, err := http.Get(url)
 	if err != nil {
