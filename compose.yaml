@@ -4,10 +4,11 @@
       context: .
       target: final
     environment:
-      GRPC_PORT: 50051
-      GATEAWAY_PORT: 6969
-      VSAPI_URL: http://vsservice:5000
-      MONGO_URL_FILE: /etc/vsservice/mongo/url.txt
+      GRPC_PORT: ${GRPC_PORT}
+      GATEAWAY_PORT: ${GATEAWAY_PORT}
+      VSAPI_URL: ${VSAPI_URL}
+      MONGO_URL_FILE: ${MONGO_URL_FILE}
+      STATS_FETCHING_INTERVAL_SECS: ${STATS_FETCHING_INTERVAL_SECS}
     volumes:
       - ./mongo/url.txt:/etc/vsservice/mongo/url.txt
     ports:
