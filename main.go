@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/eapache/go-resiliency/retrier"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/ripls56/vsservice/internal/leaderboard"
 	"github.com/ripls56/vsservice/internal/pkg/config"
 	"github.com/ripls56/vsservice/internal/pkg/logger"
 	"github.com/ripls56/vsservice/internal/pkg/mongo"
@@ -46,6 +47,8 @@ func main() {
 			fx.Annotate(repository.New, fx.As(new(service.Repository))),
 			fx.Annotate(service.New, fx.As(new(vsservice.StatsService))),
 		),
+
+		leaderboard.App,
 		service.App,
 		server.App,
 	)

@@ -3,12 +3,43 @@
 
 openapi: 3.0.3
 info:
-    title: VintageService API
-    description: Api with a basic in game data
+    title: ""
     version: "1"
 servers:
     - url: https://api.lasthearth.ru
 paths:
+    /v1/leaderboard:
+        get:
+            tags:
+                - LeaderboardService
+            description: List of leaderboard entries.
+            operationId: LeaderboardService_ListEntries
+            parameters:
+                - name: filter
+                  in: query
+                  description: Leaderboard filter. Service will return entries sorted by provided filter.
+                  schema:
+                    type: integer
+                    format: enum
+                - name: limit
+                  in: query
+                  description: "The maximum number of entries to return.\r\n If unspecified, 25 entry will be returned."
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LeaderboardResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/players/count:
         get:
             tags:
@@ -152,6 +183,27 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        LeaderboardEntry:
+            type: object
+            properties:
+                name:
+                    type: string
+                deaths:
+                    type: integer
+                    format: int32
+                kills:
+                    type: integer
+                    format: int32
+                hours_played:
+                    type: number
+                    format: float
+        LeaderboardResponse:
+            type: object
+            properties:
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/LeaderboardEntry'
         PlayerStatsResponse:
             type: object
             properties:
@@ -203,4 +255,7 @@ components:
                 formatted_time:
                     type: string
 tags:
+    - name: LeaderboardService
+      description: Represent basic leaderboard
     - name: VintageService
+      description: Api with a basic in game data

@@ -23,7 +23,6 @@ var App = fx.Options(
 		),
 
 		fx.Provide(
-			fx.Private,
 			fx.Annotate(service.NewVsApiV1, fx.As(new(v1.VintageServiceServer))),
 			New,
 		),

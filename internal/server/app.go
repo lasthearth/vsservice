@@ -15,8 +15,9 @@ import (
 
 type Opts struct {
 	fx.In
-	Log     logger.Logger
-	VsApiV1 v1.VintageServiceServer
+	Log           logger.Logger
+	VsApiV1       v1.VintageServiceServer
+	LeaderboardV1 v1.LeaderboardServiceServer
 }
 
 type GrpcServer struct {
@@ -50,6 +51,7 @@ func New(opts Opts) *GrpcServer {
 	)
 
 	v1.RegisterVintageServiceServer(srv, opts.VsApiV1)
+	v1.RegisterLeaderboardServiceServer(srv, opts.LeaderboardV1)
 	reflection.Register(srv)
 
 	return &GrpcServer{Srv: srv}

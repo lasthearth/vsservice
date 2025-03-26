@@ -51,6 +51,10 @@ func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 	})
 
 	group.Go(func() error {
+		return v1.RegisterLeaderboardServiceHandlerFromEndpoint(ctx, mux, port, opts)
+	})
+
+	group.Go(func() error {
 		handler := cors.New(cors.Options{
 			AllowedOrigins: []string{
 				"https://lasthearth.ru",
