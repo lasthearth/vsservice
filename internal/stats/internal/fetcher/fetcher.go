@@ -11,7 +11,6 @@ import (
 	"go.uber.org/zap"
 	"io"
 	"net/http"
-	"time"
 )
 
 // Fetcher fetch player stats
@@ -32,7 +31,7 @@ func New(log logger.Logger, cfg config.Config, client *http.Client) *Fetcher {
 }
 
 // Fetch player stats by provided names from in game api
-func (f *Fetcher) Fetch(ctx context.Context, ch chan<- *httpdto.Stats) {
+func (f *Fetcher) Fetch(ctx context.Context, ch chan<- httpdto.Stats) {
 	l := f.log.WithMethod("fetch")
 	select {
 	case <-ctx.Done():
@@ -45,17 +44,17 @@ func (f *Fetcher) Fetch(ctx context.Context, ch chan<- *httpdto.Stats) {
 		names, err := f.getAllPlayersNames()
 		if err != nil {
 			l.Error("failed to get players names", zap.Error(err))
+			return
 		}
 		for _, name := range names {
+			l.Info("start fetch for this player", zap.String("name", name))
 			stats, err := f.getPlayerStats(name)
 			if err != nil {
 				l.With(zap.String("name", name)).Error("failed to get player stats", zap.Error(err))
 				continue
 			}
 
-			l.With(zap.String("name", name)).Info("successfully get player stats")
-			ch <- stats
-			time.Sleep(50 * time.Millisecond)
+			ch <- *stats
 		}
 	}
 }
@@ -99,17 +98,18 @@ func (f *Fetcher) getPlayerStats(name string) (*httpdto.Stats, error) {
 	var stats httpdto.Stats
 
 	reqUrl := "stats"
-	url := fmt.Sprintf("%s/%s/%s", f.cfg.VsAPIUrl, reqUrl, name)
 
+	url := fmt.Sprintf("%s/%s/%s", f.cfg.VsAPIUrl, reqUrl, name)
 	resp, err := f.client.Get(url)
 	if err != nil {
 		l.Error("failed http request", zap.Error(err))
 		return nil, ErrHTTPRequestFailed
 	}
+	defer resp.Body.Close()
 
 	err = f.checkStatusCode(resp)
 	if err != nil {
-		l.Error("http status code not ok", zap.Error(err))
+		l.Error("http status code not ok", zap.Error(err), zap.Int("status", resp.StatusCode))
 		return nil, err
 	}
 
@@ -121,10 +121,9 @@ func (f *Fetcher) getPlayerStats(name string) (*httpdto.Stats, error) {
 
 	err = json.Unmarshal(buf, &stats)
 	if err != nil {
-		l.Error("serialize failed", zap.Error(err))
+		l.Error("serialize failed", zap.Error(err), zap.String("body", string(buf)))
 		return nil, ErrUnmarshalJSON
 	}
-
 	return &stats, nil
 }
 

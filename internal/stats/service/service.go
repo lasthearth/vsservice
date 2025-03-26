@@ -16,56 +16,77 @@ type Repository interface {
 	Update(ctx context.Context, httpStats *httpdto.Stats) (*model.Stats, error)
 }
 
-func (s *Service) statsLoop(ctx context.Context, errCh chan error, ch chan *httpdto.Stats) {
-	for stats := range ch {
-		go func(stats *httpdto.Stats) {
-			s.log.Info("fetching stats", zap.String("name", stats.Name))
+func (s *Service) getAndSaveStats(ctx context.Context, stats *httpdto.Stats) error {
+	s.log.Info("fetching stats", zap.String("name", stats.Name))
 
-			err := s.retrier.Run(func() error {
-				ctxTimeout, cancelTimeout := context.WithTimeout(ctx, time.Second*5)
-				defer cancelTimeout()
-				exists, err := s.repo.Exists(ctxTimeout, stats.Name)
+	err := s.retrier.Run(func() error {
+		ctxTimeout, cancelTimeout := context.WithTimeout(ctx, time.Second*5)
+		defer cancelTimeout()
+		exists, err := s.repo.Exists(ctxTimeout, stats.Name)
 
-				if err != nil {
-					s.log.Error("exists", zap.Error(err))
-				}
+		if err != nil {
+			return err
+		}
 
-				if !exists {
-					ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-					defer cancel()
-					_, err = s.repo.Create(ctx, stats)
-					if err != nil {
-						s.log.Error("create stats", zap.Error(err))
-						return err
-					}
-				} else {
-					ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-					defer cancel()
-					_, err = s.repo.Update(ctx, stats)
-					if err != nil {
-						s.log.WithComponent(stats.Name).Error("update stats", zap.Error(err))
-						return err
-					}
-				}
+		if !exists {
+			ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+			defer cancel()
 
-				return nil
-			})
-
+			_, err = s.repo.Create(ctx, stats)
 			if err != nil {
-				errCh <- err
+				s.log.Error("create stats", zap.Error(err))
+				return err
 			}
-		}(stats)
+		} else {
+			ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+			defer cancel()
 
-		err := <-errCh
-		s.log.Error("failed to add person skip to next", zap.Error(err))
-		continue
+			_, err = s.repo.Update(ctx, stats)
+			if err != nil {
+				s.log.WithComponent(stats.Name).Error("update stats", zap.Error(err))
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) statsLoop(ctx context.Context, errCh chan error, ch <-chan httpdto.Stats) {
+	for {
+		select {
+		case <-ctx.Done():
+			s.log.Info("context canceled")
+			return
+
+		case stats, ok := <-ch:
+			if !ok {
+				s.log.Info("channel closed")
+				return
+			}
+			s.log.Info("get stats from channel", zap.String("name", stats.Name))
+			err := s.getAndSaveStats(ctx, &stats)
+			if err != nil {
+				s.log.Error("failed to add person skip to next", zap.Error(err))
+				errCh <- err
+				continue
+			}
+
+			s.log.Info("stats saved channel", zap.String("name", stats.Name))
+		}
 	}
 }
 
 func (s *Service) startFetching(ctx context.Context) error {
 	ticker := time.NewTicker(time.Duration(s.cfg.StatsFetchingIntervalSecs) * time.Second)
 
-	statsCh := make(chan *httpdto.Stats)
+	statsCh := make(chan httpdto.Stats, 1)
 	defer close(statsCh)
 
 	errCh := make(chan error)
@@ -78,6 +99,7 @@ func (s *Service) startFetching(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			s.log.Info("context canceled")
 			ticker.Stop()
 			return nil
 		case err := <-errCh:

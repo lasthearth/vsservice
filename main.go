@@ -28,11 +28,10 @@ func main() {
 			config.New,
 			func(l logger.Logger) *http.Client {
 				retryClient := retryablehttp.NewClient()
-				retryClient.RetryMax = 10
+				retryClient.RetryMax = 5
+				retryClient.HTTPClient.Timeout = time.Second * 3
 
 				standardClient := retryClient.StandardClient()
-				standardClient.Timeout = time.Second * 5
-
 				return standardClient
 			},
 			func() *retrier.Retrier {
