@@ -21,8 +21,6 @@ func (s *Service) startFetching(ctx context.Context) error {
 	ch := make(chan *httpdto.Stats)
 	defer close(ch)
 
-	names := []string{"Mimabo", "ripls"}
-
 	go func() {
 		for stats := range ch {
 			s.log.Info("fetching stats", zap.String("name", stats.Name))
@@ -44,14 +42,14 @@ func (s *Service) startFetching(ctx context.Context) error {
 		}
 	}()
 
-	s.fetcher.Fetch(ctx, names, ch)
+	s.fetcher.Fetch(ctx, ch)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			s.fetcher.Fetch(ctx, names, ch)
+			s.fetcher.Fetch(ctx, ch)
 		}
 	}
 }
