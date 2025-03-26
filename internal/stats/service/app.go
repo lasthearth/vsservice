@@ -10,14 +10,14 @@ import (
 
 type Opts struct {
 	fx.In
-	Client http.Client
+	Client *http.Client
 	Log    logger.Logger
 	Cfg    config.Config
 	Repo   Repository
 }
 
 type Service struct {
-	client  http.Client
+	client  *http.Client
 	log     logger.Logger
 	cfg     config.Config
 	repo    Repository
@@ -30,6 +30,6 @@ func New(opts Opts) *Service {
 		log:     opts.Log,
 		cfg:     opts.Cfg,
 		repo:    opts.Repo,
-		fetcher: fetcher.New(opts.Log, opts.Cfg),
+		fetcher: fetcher.New(opts.Log, opts.Cfg, opts.Client),
 	}
 }

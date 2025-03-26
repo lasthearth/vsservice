@@ -24,6 +24,7 @@ func (s *Service) startFetching(ctx context.Context) error {
 	go func() {
 		for stats := range ch {
 			s.log.Info("fetching stats", zap.String("name", stats.Name))
+			ctx, cancel := context.WithTimeout(ctx, time.Millisecond*5)
 			exists, err := s.repo.Exists(ctx, stats.Name)
 			if err != nil {
 				s.log.Error("exists", zap.Error(err))
@@ -39,6 +40,8 @@ func (s *Service) startFetching(ctx context.Context) error {
 					s.log.WithComponent(stats.Name).Error("update stats", zap.Error(err))
 				}
 			}
+
+			cancel()
 		}
 	}()
 

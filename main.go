@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/ripls56/vsservice/internal/pkg/config"
 	"github.com/ripls56/vsservice/internal/pkg/logger"
 	"github.com/ripls56/vsservice/internal/pkg/mongo"
@@ -23,10 +24,12 @@ func main() {
 	a := fx.New(
 		fx.Provide(
 			config.New,
-			func() http.Client {
-				return http.Client{
-					Timeout: 5,
-				}
+			func(l logger.Logger) *http.Client {
+				retryClient := retryablehttp.NewClient()
+				retryClient.RetryMax = 10
+
+				standardClient := retryClient.StandardClient()
+				return standardClient
 			},
 			setupLogger,
 			mongo.New,

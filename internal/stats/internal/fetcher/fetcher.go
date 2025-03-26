@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-faster/errors"
 	"github.com/ripls56/vsservice/internal/pkg/config"
 	"github.com/ripls56/vsservice/internal/pkg/logger"
 	"github.com/ripls56/vsservice/internal/stats/internal/dto/httpdto"
@@ -17,37 +18,42 @@ import (
 type Fetcher struct {
 	log    logger.Logger
 	cfg    config.Config
+	client *http.Client
 	doneCh chan struct{}
 }
 
-func New(log logger.Logger, cfg config.Config) *Fetcher {
+func New(log logger.Logger, cfg config.Config, client *http.Client) *Fetcher {
 	return &Fetcher{
-		log:    log,
+		log:    log.WithComponent("fetcher"),
 		cfg:    cfg,
+		client: client,
 		doneCh: make(chan struct{}),
 	}
 }
 
 // Fetch player stats by provided names from in game api
 func (f *Fetcher) Fetch(ctx context.Context, ch chan<- *httpdto.Stats) {
+	l := f.log.WithMethod("fetch")
 	select {
 	case <-ctx.Done():
-		f.log.Info("fetcher stopped")
+		l.Info("fetcher stopped")
 		return
 	case <-f.doneCh:
-		f.log.Info("fetcher stopped")
+		l.Info("fetcher stopped")
 		return
 	default:
 		names, err := f.getAllPlayersNames()
 		if err != nil {
-			f.log.Error("failed to get players names", zap.Error(err))
+			l.Error("failed to get players names", zap.Error(err))
 		}
 		for _, name := range names {
 			stats, err := f.getPlayerStats(name)
 			if err != nil {
-				f.log.Error("failed to get player stats", zap.Error(err))
+				l.With(zap.String("name", name)).Error("failed to get player stats", zap.Error(err))
 				continue
 			}
+
+			l.With(zap.String("name", name)).Info("successfully get player stats")
 			ch <- stats
 			time.Sleep(50 * time.Millisecond)
 		}
@@ -65,7 +71,7 @@ func (f *Fetcher) getAllPlayersNames() ([]string, error) {
 	reqUrl := "players"
 	url := fmt.Sprintf("%s/%s", f.cfg.VsAPIUrl, reqUrl)
 
-	resp, err := http.Get(url)
+	resp, err := f.client.Get(url)
 	if err != nil {
 		return nil, ErrHTTPRequestFailed
 	}
@@ -89,28 +95,33 @@ func (f *Fetcher) getAllPlayersNames() ([]string, error) {
 }
 
 func (f *Fetcher) getPlayerStats(name string) (*httpdto.Stats, error) {
+	l := f.log.WithMethod("getPlayerStats")
 	var stats httpdto.Stats
 
 	reqUrl := "stats"
 	url := fmt.Sprintf("%s/%s/%s", f.cfg.VsAPIUrl, reqUrl, name)
 
-	resp, err := http.Get(url)
+	resp, err := f.client.Get(url)
 	if err != nil {
+		l.Error("failed http request", zap.Error(err))
 		return nil, ErrHTTPRequestFailed
 	}
 
 	err = f.checkStatusCode(resp)
 	if err != nil {
+		l.Error("http status code not ok", zap.Error(err))
 		return nil, err
 	}
 
 	buf, err := f.readBody(resp.Body)
 	if err != nil {
+		l.Error("read body failed", zap.Error(err))
 		return nil, err
 	}
 
 	err = json.Unmarshal(buf, &stats)
 	if err != nil {
+		l.Error("serialize failed", zap.Error(err))
 		return nil, ErrUnmarshalJSON
 	}
 
@@ -119,7 +130,7 @@ func (f *Fetcher) getPlayerStats(name string) (*httpdto.Stats, error) {
 
 func (f *Fetcher) checkStatusCode(resp *http.Response) error {
 	if resp.StatusCode >= 400 {
-		return ErrHTTPStatusNotOK
+		return errors.Wrap(ErrHTTPStatusNotOK, resp.Status)
 	}
 	return nil
 }

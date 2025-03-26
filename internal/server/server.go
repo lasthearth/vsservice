@@ -11,7 +11,6 @@ import (
 	"github.com/ripls56/vsservice/internal/pkg/logger"
 	"github.com/rs/cors"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -75,38 +74,5 @@ func (a GrpcServer) GracefulStop() {
 // interceptorLogger Retrieved from
 // https://github.com/grpc-ecosystem/go-grpc-middleware/blob/62b7de50cda5a5d633f1013bfbe50e0f38db34ef/interceptors/logging/examples/zap/example_test.go#L17
 func interceptorLogger(l logger.Logger) logging.Logger {
-	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
-		f := make([]zap.Field, 0, len(fields)/2)
-
-		for i := 0; i < len(fields); i += 2 {
-			key := fields[i]
-			value := fields[i+1]
-
-			switch v := value.(type) {
-			case string:
-				f = append(f, zap.String(key.(string), v))
-			case int:
-				f = append(f, zap.Int(key.(string), v))
-			case bool:
-				f = append(f, zap.Bool(key.(string), v))
-			default:
-				f = append(f, zap.Any(key.(string), v))
-			}
-		}
-
-		log := l.WithOptions(zap.AddCallerSkip(1)).With(f...)
-
-		switch lvl {
-		case logging.LevelDebug:
-			log.Debug(msg)
-		case logging.LevelInfo:
-			log.Info(msg)
-		case logging.LevelWarn:
-			log.Warn(msg)
-		case logging.LevelError:
-			log.Error(msg)
-		default:
-			panic(fmt.Sprintf("unknown level %v", lvl))
-		}
-	})
+	return l.ToLoggingLogger()
 }

@@ -14,6 +14,19 @@ var App = fx.Options(
 			lc.Append(
 				fx.Hook{
 					OnStart: func(ctx context.Context) error {
+						//defer func() {
+						//	if r := recover(); r != nil {
+						//		log.Info("Service recovered from panic")
+						//		go func() {
+						//			err := service.startFetching(context.Background())
+						//			if err != nil {
+						//				log.Error("fetching failed", zap.Error(err))
+						//			}
+						//
+						//			log.Info("fetching started")
+						//		}()
+						//	}
+						//}()
 						go func() {
 							err := service.startFetching(context.Background())
 							if err != nil {
