@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"github.com/eapache/go-resiliency/retrier"
 	"github.com/ripls56/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -10,30 +11,25 @@ import (
 var App = fx.Options(
 	fx.Provide(New, fx.Private),
 	fx.Invoke(
-		func(lc fx.Lifecycle, log logger.Logger, service *Service) {
+		func(lc fx.Lifecycle, log logger.Logger, service *Service, retrier *retrier.Retrier) {
 			lc.Append(
 				fx.Hook{
 					OnStart: func(ctx context.Context) error {
-						//defer func() {
-						//	if r := recover(); r != nil {
-						//		log.Info("Service recovered from panic")
-						//		go func() {
-						//			err := service.startFetching(context.Background())
-						//			if err != nil {
-						//				log.Error("fetching failed", zap.Error(err))
-						//			}
-						//
-						//			log.Info("fetching started")
-						//		}()
-						//	}
-						//}()
 						go func() {
-							err := service.startFetching(context.Background())
-							if err != nil {
-								log.Error("fetching failed", zap.Error(err))
-							}
+							err := retrier.Run(func() error {
+								err := service.startFetching(context.Background())
+								if err != nil {
+									log.Error("fetching failed", zap.Error(err))
+									return err
+								}
 
-							log.Info("fetching started")
+								log.Info("fetching started")
+								return nil
+							})
+
+							if err != nil {
+								panic(err)
+							}
 						}()
 						return nil
 					},

@@ -16,43 +16,74 @@ type Repository interface {
 	Update(ctx context.Context, httpStats *httpdto.Stats) (*model.Stats, error)
 }
 
+func (s *Service) statsLoop(ctx context.Context, errCh chan error, ch chan *httpdto.Stats) {
+	for stats := range ch {
+		go func(stats *httpdto.Stats) {
+			s.log.Info("fetching stats", zap.String("name", stats.Name))
+
+			err := s.retrier.Run(func() error {
+				ctxTimeout, cancelTimeout := context.WithTimeout(ctx, time.Second*5)
+				defer cancelTimeout()
+				exists, err := s.repo.Exists(ctxTimeout, stats.Name)
+
+				if err != nil {
+					s.log.Error("exists", zap.Error(err))
+				}
+
+				if !exists {
+					ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+					defer cancel()
+					_, err = s.repo.Create(ctx, stats)
+					if err != nil {
+						s.log.Error("create stats", zap.Error(err))
+						return err
+					}
+				} else {
+					ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+					defer cancel()
+					_, err = s.repo.Update(ctx, stats)
+					if err != nil {
+						s.log.WithComponent(stats.Name).Error("update stats", zap.Error(err))
+						return err
+					}
+				}
+
+				return nil
+			})
+
+			if err != nil {
+				errCh <- err
+			}
+		}(stats)
+
+		err := <-errCh
+		s.log.Error("failed to add person skip to next", zap.Error(err))
+		continue
+	}
+}
+
 func (s *Service) startFetching(ctx context.Context) error {
 	ticker := time.NewTicker(time.Duration(s.cfg.StatsFetchingIntervalSecs) * time.Second)
-	ch := make(chan *httpdto.Stats)
-	defer close(ch)
 
-	go func() {
-		for stats := range ch {
-			s.log.Info("fetching stats", zap.String("name", stats.Name))
-			ctx, cancel := context.WithTimeout(ctx, time.Millisecond*5)
-			exists, err := s.repo.Exists(ctx, stats.Name)
-			if err != nil {
-				s.log.Error("exists", zap.Error(err))
-			}
-			if !exists {
-				_, err = s.repo.Create(ctx, stats)
-				if err != nil {
-					s.log.Error("create stats", zap.Error(err))
-				}
-			} else {
-				_, err = s.repo.Update(ctx, stats)
-				if err != nil {
-					s.log.WithComponent(stats.Name).Error("update stats", zap.Error(err))
-				}
-			}
+	statsCh := make(chan *httpdto.Stats)
+	defer close(statsCh)
 
-			cancel()
-		}
-	}()
+	errCh := make(chan error)
+	defer close(errCh)
 
-	s.fetcher.Fetch(ctx, ch)
+	go s.statsLoop(ctx, errCh, statsCh)
+
+	s.fetcher.Fetch(ctx, statsCh)
 
 	for {
 		select {
 		case <-ctx.Done():
+			ticker.Stop()
 			return nil
+		case err := <-errCh:
+			return err
 		case <-ticker.C:
-			s.fetcher.Fetch(ctx, ch)
+			s.fetcher.Fetch(ctx, statsCh)
 		}
 	}
 }

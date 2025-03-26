@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/eapache/go-resiliency/retrier"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/ripls56/vsservice/internal/pkg/config"
 	"github.com/ripls56/vsservice/internal/pkg/logger"
@@ -13,6 +14,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"net/http"
+	"time"
 )
 
 const (
@@ -29,7 +31,15 @@ func main() {
 				retryClient.RetryMax = 10
 
 				standardClient := retryClient.StandardClient()
+				standardClient.Timeout = time.Second * 5
+
 				return standardClient
+			},
+			func() *retrier.Retrier {
+				return retrier.New(
+					retrier.ConstantBackoff(5, 300*time.Millisecond),
+					nil,
+				)
 			},
 			setupLogger,
 			mongo.New,

@@ -22,6 +22,7 @@ require (
 )
 
 require (
+	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect

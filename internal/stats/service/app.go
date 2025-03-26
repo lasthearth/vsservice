@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/eapache/go-resiliency/retrier"
 	"github.com/ripls56/vsservice/internal/pkg/config"
 	"github.com/ripls56/vsservice/internal/pkg/logger"
 	"github.com/ripls56/vsservice/internal/stats/internal/fetcher"
@@ -10,10 +11,11 @@ import (
 
 type Opts struct {
 	fx.In
-	Client *http.Client
-	Log    logger.Logger
-	Cfg    config.Config
-	Repo   Repository
+	Client  *http.Client
+	Log     logger.Logger
+	Cfg     config.Config
+	Retrier *retrier.Retrier
+	Repo    Repository
 }
 
 type Service struct {
@@ -21,6 +23,7 @@ type Service struct {
 	log     logger.Logger
 	cfg     config.Config
 	repo    Repository
+	retrier *retrier.Retrier
 	fetcher *fetcher.Fetcher
 }
 
@@ -30,6 +33,7 @@ func New(opts Opts) *Service {
 		log:     opts.Log,
 		cfg:     opts.Cfg,
 		repo:    opts.Repo,
+		retrier: opts.Retrier,
 		fetcher: fetcher.New(opts.Log, opts.Cfg, opts.Client),
 	}
 }
