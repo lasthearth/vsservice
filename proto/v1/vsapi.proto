@@ -50,7 +50,7 @@ message PlayerStatsRequest {
 message PlayerStatsResponse {
   string name = 2;
   int32 death_count = 3;
-  float hoursPlayed = 5;
+  float hours_played = 5;
   int64 last_online = 6;
   int32 players_killed = 7;
 
