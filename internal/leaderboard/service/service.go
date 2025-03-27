@@ -23,11 +23,11 @@ func (s *Service) ListEntries(ctx context.Context, req *v1.LeaderboardRequest) (
 	)
 
 	switch req.Filter {
-	case v1.LeaderboardFilter_LEADERBOARD_FILTER_DEATHS:
+	case v1.LeaderboardRequest_LEADERBOARD_FILTER_DEATHS:
 		entries, err = s.repo.ListEntriesSortByDeath(ctx, int(req.Limit))
-	case v1.LeaderboardFilter_LEADERBOARD_FILTER_KILLS:
+	case v1.LeaderboardRequest_LEADERBOARD_FILTER_KILLS:
 		entries, err = s.repo.ListEntriesSortByKills(ctx, int(req.Limit))
-	case v1.LeaderboardFilter_LEADERBOARD_FILTER_ONLINE:
+	case v1.LeaderboardRequest_LEADERBOARD_FILTER_ONLINE:
 		entries, err = s.repo.ListEntriesSortByOnline(ctx, int(req.Limit))
 	default:
 		return nil, errors.New("unknown filter")

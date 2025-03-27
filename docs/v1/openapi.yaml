@@ -226,6 +226,9 @@ components:
                 count:
                     type: integer
                     format: int32
+                max:
+                    type: integer
+                    format: int32
         PlayersListResponse:
             type: object
             properties:

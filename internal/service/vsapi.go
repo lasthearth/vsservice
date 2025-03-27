@@ -50,6 +50,7 @@ func (v *VsApiV1) GetOnlinePlayersCount(ctx context.Context, req *emptypb.Empty)
 
 	return &v1.PlayersCountResponse{
 		Count: int32(playerCount.Count),
+		Max:   int32(playerCount.Max),
 	}, nil
 }
 

@@ -66,6 +66,7 @@ message TimeResponse {
 
 message PlayersCountResponse {
   int32 count = 1;
+  int32 max = 2;
 }
 
 message PlayersListResponse {
