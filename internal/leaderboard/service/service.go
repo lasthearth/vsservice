@@ -8,6 +8,8 @@ import (
 	"github.com/samber/lo"
 )
 
+const entriesLimit = 25
+
 var _ v1.LeaderboardServiceServer = (*Service)(nil)
 
 type Repository interface {
@@ -21,6 +23,10 @@ func (s *Service) ListEntries(ctx context.Context, req *v1.LeaderboardRequest) (
 		entries []*model.Entry
 		err     error
 	)
+
+	if req.Limit <= 0 {
+		req.Limit = entriesLimit
+	}
 
 	switch req.Filter {
 	case v1.LeaderboardRequest_LEADERBOARD_FILTER_DEATHS:
