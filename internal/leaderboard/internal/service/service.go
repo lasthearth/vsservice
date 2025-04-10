@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/go-faster/errors"
 	v1 "github.com/ripls56/vsservice/gen/proto/v1"
-	"github.com/ripls56/vsservice/internal/leaderboard/model"
+	"github.com/ripls56/vsservice/internal/leaderboard/internal/model"
 	"github.com/samber/lo"
 )
 

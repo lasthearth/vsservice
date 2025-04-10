@@ -9,9 +9,7 @@ import (
 	"github.com/ripls56/vsservice/internal/pkg/logger"
 	"github.com/ripls56/vsservice/internal/pkg/mongo"
 	"github.com/ripls56/vsservice/internal/server"
-	vsservice "github.com/ripls56/vsservice/internal/service"
-	"github.com/ripls56/vsservice/internal/stats/repository"
-	service "github.com/ripls56/vsservice/internal/stats/service"
+	"github.com/ripls56/vsservice/internal/stats"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"net/http"
@@ -44,12 +42,11 @@ func main() {
 			setupLogger,
 			mongo.New,
 			mongo.NewDatabase,
-			fx.Annotate(repository.New, fx.As(new(service.Repository))),
-			fx.Annotate(service.New, fx.As(new(vsservice.StatsService))),
+			//fx.Annotate(service.New, fx.As(new(vsservice.StatsService))),
 		),
 
 		leaderboard.App,
-		service.App,
+		stats.App,
 		server.App,
 	)
 

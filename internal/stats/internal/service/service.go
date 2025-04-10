@@ -4,7 +4,7 @@ import (
 	"context"
 	v1 "github.com/ripls56/vsservice/gen/proto/v1"
 	"github.com/ripls56/vsservice/internal/stats/internal/dto/httpdto"
-	"github.com/ripls56/vsservice/internal/stats/model"
+	"github.com/ripls56/vsservice/internal/stats/internal/model"
 	"go.uber.org/zap"
 	"time"
 )
@@ -83,7 +83,7 @@ func (s *Service) statsLoop(ctx context.Context, errCh chan error, ch <-chan htt
 	}
 }
 
-func (s *Service) startFetching(ctx context.Context) error {
+func (s *Service) StartFetching(ctx context.Context) error {
 	ticker := time.NewTicker(time.Duration(s.cfg.StatsFetchingIntervalSecs) * time.Second)
 
 	statsCh := make(chan httpdto.Stats, 1)
@@ -110,7 +110,7 @@ func (s *Service) startFetching(ctx context.Context) error {
 	}
 }
 
-func (s *Service) stopFetching() {
+func (s *Service) StopFetching() {
 	s.fetcher.Stop()
 }
 

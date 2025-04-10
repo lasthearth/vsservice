@@ -2,8 +2,8 @@
 
 import (
 	"context"
-	"github.com/ripls56/vsservice/internal/leaderboard/dto/mongodto"
-	"github.com/ripls56/vsservice/internal/leaderboard/model"
+	"github.com/ripls56/vsservice/internal/leaderboard/internal/dto/mongodto"
+	"github.com/ripls56/vsservice/internal/leaderboard/internal/model"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.uber.org/zap"

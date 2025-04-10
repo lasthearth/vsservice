@@ -2,8 +2,8 @@
 
 import (
 	v1 "github.com/ripls56/vsservice/gen/proto/v1"
-	"github.com/ripls56/vsservice/internal/leaderboard/repository"
-	"github.com/ripls56/vsservice/internal/leaderboard/service"
+	"github.com/ripls56/vsservice/internal/leaderboard/internal/repository"
+	service2 "github.com/ripls56/vsservice/internal/leaderboard/internal/service"
 	"github.com/ripls56/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 )
@@ -23,12 +23,12 @@ var App = fx.Options(
 			fx.Private,
 			fx.Annotate(
 				repository.New,
-				fx.As(new(service.Repository)),
+				fx.As(new(service2.Repository)),
 			),
 		),
 
 		fx.Provide(
-			fx.Annotate(service.New, fx.As(new(v1.LeaderboardServiceServer))),
+			fx.Annotate(service2.New, fx.As(new(v1.LeaderboardServiceServer))),
 		),
 	),
 )

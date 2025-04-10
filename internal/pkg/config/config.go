@@ -17,7 +17,8 @@ type Config struct {
 
 	VsAPIUrl string `envconfig:"VSAPI_URL"`
 
-	StatsFetchingIntervalSecs int `envconfig:"STATS_FETCHING_INTERVAL_SECS"`
+	StatsFetchingIntervalSecs int  `envconfig:"STATS_FETCHING_INTERVAL_SECS"`
+	StatsFetchingEnable       bool `envconfig:"STATS_FETCHING_ENABLE"`
 }
 
 func New() (Config, error) {
