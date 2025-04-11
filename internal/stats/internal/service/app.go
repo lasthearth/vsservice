@@ -2,9 +2,9 @@ package service
 
 import (
 	"github.com/eapache/go-resiliency/retrier"
-	"github.com/ripls56/vsservice/internal/pkg/config"
-	"github.com/ripls56/vsservice/internal/pkg/logger"
-	"github.com/ripls56/vsservice/internal/stats/internal/fetcher"
+	"github.com/lasthearth/vsservice/internal/pkg/config"
+	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/stats/internal/fetcher"
 	"go.uber.org/fx"
 	"net/http"
 )

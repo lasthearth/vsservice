@@ -3,8 +3,8 @@ package server
 import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
-	v1 "github.com/ripls56/vsservice/gen/proto/v1"
-	"github.com/ripls56/vsservice/internal/pkg/logger"
+	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
+	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"

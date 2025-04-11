@@ -2,7 +2,7 @@ package mongo
 
 import (
 	"context"
-	"github.com/ripls56/vsservice/internal/pkg/config"
+	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"os"

@@ -1,10 +1,10 @@
 ﻿package leaderboard
 
 import (
-	v1 "github.com/ripls56/vsservice/gen/proto/v1"
-	"github.com/ripls56/vsservice/internal/leaderboard/internal/repository"
-	service2 "github.com/ripls56/vsservice/internal/leaderboard/internal/service"
-	"github.com/ripls56/vsservice/internal/pkg/logger"
+	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
+	"github.com/lasthearth/vsservice/internal/leaderboard/internal/repository"
+	service2 "github.com/lasthearth/vsservice/internal/leaderboard/internal/service"
+	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 )
 

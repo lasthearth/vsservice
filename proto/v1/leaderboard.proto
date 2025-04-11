@@ -1,4 +1,4 @@
-﻿syntax = "proto3";
+syntax = "proto3";
 
 package leaderboard.v1;
 
@@ -22,7 +22,7 @@ service LeaderboardService {
 message LeaderboardRequest {
   // Leaderboard filter. Service will return entries sorted by provided filter.
   LeaderboardFilter filter = 1 [(google.api.field_behavior) = REQUIRED];
-  
+
   // The maximum number of entries to return.
   // If unspecified, 25 entry will be returned.
   int32 limit = 2;

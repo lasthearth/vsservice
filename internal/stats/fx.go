@@ -3,11 +3,11 @@
 import (
 	"context"
 	"github.com/eapache/go-resiliency/retrier"
-	"github.com/ripls56/vsservice/internal/pkg/config"
-	"github.com/ripls56/vsservice/internal/pkg/logger"
-	vsservice "github.com/ripls56/vsservice/internal/service"
-	"github.com/ripls56/vsservice/internal/stats/internal/repository"
-	"github.com/ripls56/vsservice/internal/stats/internal/service"
+	"github.com/lasthearth/vsservice/internal/pkg/config"
+	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	vsservice "github.com/lasthearth/vsservice/internal/service"
+	"github.com/lasthearth/vsservice/internal/stats/internal/repository"
+	"github.com/lasthearth/vsservice/internal/stats/internal/service"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )

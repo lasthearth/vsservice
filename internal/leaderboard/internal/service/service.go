@@ -3,8 +3,8 @@
 import (
 	"context"
 	"github.com/go-faster/errors"
-	v1 "github.com/ripls56/vsservice/gen/proto/v1"
-	"github.com/ripls56/vsservice/internal/leaderboard/internal/model"
+	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
+	"github.com/lasthearth/vsservice/internal/leaderboard/internal/model"
 	"github.com/samber/lo"
 )
 

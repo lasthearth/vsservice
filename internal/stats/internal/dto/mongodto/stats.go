@@ -1,7 +1,7 @@
 package mongodto
 
 import (
-	"github.com/ripls56/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/pkg/mongo"
 	"time"
 )
 

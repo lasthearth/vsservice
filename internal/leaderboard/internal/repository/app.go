@@ -1,7 +1,7 @@
 ﻿package repository
 
 import (
-	"github.com/ripls56/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/fx"
 )

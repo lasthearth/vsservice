@@ -3,20 +3,21 @@ package server
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+
 	"github.com/go-faster/errors"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	v1 "github.com/ripls56/vsservice/gen/proto/v1"
-	"github.com/ripls56/vsservice/internal/pkg/config"
-	"github.com/ripls56/vsservice/internal/pkg/logger"
+	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
+	"github.com/lasthearth/vsservice/internal/pkg/config"
+	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/rs/cors"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
-	"net"
-	"net/http"
 )
 
 func (a GrpcServer) Run(ctx context.Context, c config.Config) error {

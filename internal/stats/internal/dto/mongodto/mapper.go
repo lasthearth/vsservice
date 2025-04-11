@@ -1,8 +1,8 @@
 package mongodto
 
 import (
-	"github.com/ripls56/vsservice/internal/pkg/mongo"
-	"github.com/ripls56/vsservice/internal/stats/internal/model"
+	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/stats/internal/model"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )

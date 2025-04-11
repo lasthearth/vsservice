@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 	"github.com/go-faster/errors"
-	"github.com/ripls56/vsservice/internal/stats/internal/dto/httpdto"
-	"github.com/ripls56/vsservice/internal/stats/internal/dto/mongodto"
-	"github.com/ripls56/vsservice/internal/stats/internal/model"
+	"github.com/lasthearth/vsservice/internal/stats/internal/dto/httpdto"
+	"github.com/lasthearth/vsservice/internal/stats/internal/dto/mongodto"
+	"github.com/lasthearth/vsservice/internal/stats/internal/model"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"

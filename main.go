@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
-	"github.com/eapache/go-resiliency/retrier"
-	"github.com/hashicorp/go-retryablehttp"
-	"github.com/ripls56/vsservice/internal/leaderboard"
-	"github.com/ripls56/vsservice/internal/pkg/config"
-	"github.com/ripls56/vsservice/internal/pkg/logger"
-	"github.com/ripls56/vsservice/internal/pkg/mongo"
-	"github.com/ripls56/vsservice/internal/server"
-	"github.com/ripls56/vsservice/internal/stats"
-	"go.uber.org/fx"
-	"go.uber.org/zap"
 	"net/http"
 	"time"
+
+	"github.com/eapache/go-resiliency/retrier"
+	"github.com/hashicorp/go-retryablehttp"
+	"github.com/lasthearth/vsservice/internal/leaderboard"
+	"github.com/lasthearth/vsservice/internal/pkg/config"
+	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/server"
+	"github.com/lasthearth/vsservice/internal/stats"
+	"github.com/lasthearth/vsservice/internal/trademarket"
+	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
 const (
@@ -47,6 +49,7 @@ func main() {
 
 		leaderboard.App,
 		stats.App,
+		trademarket.App,
 		server.App,
 	)
 

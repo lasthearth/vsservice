@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	v1 "github.com/ripls56/vsservice/gen/proto/v1"
-	"github.com/ripls56/vsservice/internal/stats/internal/dto/httpdto"
-	"github.com/ripls56/vsservice/internal/stats/internal/model"
+	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
+	"github.com/lasthearth/vsservice/internal/stats/internal/dto/httpdto"
+	"github.com/lasthearth/vsservice/internal/stats/internal/model"
 	"go.uber.org/zap"
 	"time"
 )

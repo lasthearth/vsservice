@@ -1,8 +1,8 @@
 package httpdto
 
 import (
-	"github.com/ripls56/vsservice/internal/pkg/mongo"
-	"github.com/ripls56/vsservice/internal/stats/internal/dto/mongodto"
+	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/stats/internal/dto/mongodto"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
