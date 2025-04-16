@@ -3,170 +3,28 @@
 
 openapi: 3.0.3
 info:
-    title: ""
+    title: TrademarketService API
+    description: Represent trademarket
     version: "1"
-servers:
-    - url: https://api.lasthearth.ru
 paths:
-    /v1/leaderboard:
-        get:
+    /v1/items:
+        post:
             tags:
-                - LeaderboardService
-            description: List of leaderboard entries.
-            operationId: LeaderboardService_ListEntries
-            parameters:
-                - name: filter
-                  in: query
-                  description: Leaderboard filter. Service will return entries sorted by provided filter.
-                  schema:
-                    type: integer
-                    format: enum
-                - name: limit
-                  in: query
-                  description: "The maximum number of entries to return.\r\n If unspecified, 25 entry will be returned."
-                  schema:
-                    type: integer
-                    format: int32
+                - TrademarketService
+            operationId: TrademarketService_Create
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateRequest'
+                required: true
             responses:
                 "200":
                     description: OK
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/LeaderboardResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/players/count:
-        get:
-            tags:
-                - VintageService
-            operationId: VintageService_GetOnlinePlayersCount
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PlayersCountResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/players/count/ws:
-        get:
-            tags:
-                - VintageService
-            operationId: VintageService_StreamOnlinePlayersCount
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PlayersCountResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/players/list:
-        get:
-            tags:
-                - VintageService
-            operationId: VintageService_GetOnlinePlayersList
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PlayersListResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/players/list/ws:
-        get:
-            tags:
-                - VintageService
-            operationId: VintageService_StreamOnlinePlayersList
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PlayersListResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/time:
-        get:
-            tags:
-                - VintageService
-            description: Gets in game date time, and returns it in formatted string
-            operationId: VintageService_GetGameTime
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/TimeResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/time/ws:
-        get:
-            tags:
-                - VintageService
-            operationId: VintageService_StreamGameTime
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/TimeResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/{name}/stats:
-        get:
-            tags:
-                - VintageService
-            operationId: VintageService_GetPlayerStats
-            parameters:
-                - name: name
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PlayerStatsResponse'
+                                $ref: '#/components/schemas/CreateResponse'
                 default:
                     description: Default error response
                     content:
@@ -175,6 +33,18 @@ paths:
                                 $ref: '#/components/schemas/Status'
 components:
     schemas:
+        CreateRequest:
+            required:
+                - name
+            type: object
+            properties:
+                name:
+                    type: string
+        CreateResponse:
+            type: object
+            properties:
+                id:
+                    type: string
         GoogleProtobufAny:
             type: object
             properties:
@@ -183,59 +53,6 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
-        LeaderboardEntry:
-            type: object
-            properties:
-                name:
-                    type: string
-                deaths:
-                    type: integer
-                    format: int32
-                kills:
-                    type: integer
-                    format: int32
-                hours_played:
-                    type: number
-                    format: float
-        LeaderboardResponse:
-            type: object
-            properties:
-                entries:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/LeaderboardEntry'
-        PlayerStatsResponse:
-            type: object
-            properties:
-                name:
-                    type: string
-                death_count:
-                    type: integer
-                    format: int32
-                hoursPlayed:
-                    type: number
-                    format: float
-                last_online:
-                    type: string
-                players_killed:
-                    type: integer
-                    format: int32
-        PlayersCountResponse:
-            type: object
-            properties:
-                count:
-                    type: integer
-                    format: int32
-                max:
-                    type: integer
-                    format: int32
-        PlayersListResponse:
-            type: object
-            properties:
-                player_names:
-                    type: array
-                    items:
-                        type: string
         Status:
             type: object
             properties:
@@ -252,13 +69,5 @@ components:
                         $ref: '#/components/schemas/GoogleProtobufAny'
                     description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
-        TimeResponse:
-            type: object
-            properties:
-                formatted_time:
-                    type: string
 tags:
-    - name: LeaderboardService
-      description: Represent basic leaderboard
-    - name: VintageService
-      description: Api with a basic in game data
+    - name: TrademarketService

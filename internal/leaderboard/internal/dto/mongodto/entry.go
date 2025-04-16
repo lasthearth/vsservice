@@ -1,4 +1,4 @@
-﻿package mongodto
+package mongodto
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 

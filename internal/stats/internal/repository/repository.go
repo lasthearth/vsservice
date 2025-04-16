@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"time"
+
 	"github.com/go-faster/errors"
 	"github.com/lasthearth/vsservice/internal/stats/internal/dto/httpdto"
 	"github.com/lasthearth/vsservice/internal/stats/internal/dto/mongodto"
@@ -11,14 +13,12 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
-	"time"
 )
 
 func (r *Repository) GetByName(ctx context.Context, name string) (*model.Stats, error) {
 	var stats mongodto.Stats
 	find := r.coll.FindOne(ctx, bson.M{"name": name})
 	err := find.Decode(&stats)
-
 	if err != nil {
 		r.log.Error("failed to get by name", zap.Error(err))
 		return nil, ErrNotFound
@@ -34,7 +34,6 @@ func (r *Repository) Exists(ctx context.Context, name string) (bool, error) {
 			"name": name,
 		},
 	)
-
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return false, nil

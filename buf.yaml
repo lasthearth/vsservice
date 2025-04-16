@@ -1,5 +1,5 @@
 version: v2
-name: buf.build/ripls56/vsservice
+name: buf.build/lasthearth/vsservice
 deps:
   - buf.build/googleapis/googleapis
 lint:

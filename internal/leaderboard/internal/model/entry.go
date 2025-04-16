@@ -1,4 +1,4 @@
-﻿package model
+package model
 
 type Entry struct {
 	Name        string

@@ -1,4 +1,4 @@
-﻿package leaderboard
+package leaderboard
 
 import (
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"

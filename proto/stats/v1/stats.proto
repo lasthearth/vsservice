@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package stats.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+
+// Represents various stats
+service StatsService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Returns player stats
+  rpc GetPlayerStats(PlayerStatsRequest) returns (PlayerStatsResponse) {
+    option (google.api.http) = {get: "/v1/{name}/stats"};
+  }
+
+  // Returns online stats
+  rpc GetOnlineStats(OnlineStatsRequest) returns (OnlineStatsResponse) {
+    option (google.api.http) = {get: "/v1/stats"};
+  }
+}
+
+message PlayerStatsRequest {
+  string name = 1;
+}
+
+message PlayerStatsResponse {
+  string name = 2;
+  int32 death_count = 3;
+  float hours_played = 5;
+  int64 last_online = 6;
+  int32 players_killed = 7;
+}
+
+message OnlineStatsRequest {
+    // Stats filter. Service will return count sorted by provided filter.
+    StatsFilter filter = 1 [(google.api.field_behavior) = REQUIRED];
+
+    // Start time for filtering
+    int64 started_at = 2;
+
+    // Different filter for sorting values, if unspecified returns data filter by day
+    enum StatsFilter {
+        UNSPECIFIED = 0;
+        HOURS = 1;
+        DAY = 2;
+    }
+}
+
+message OnlineStatsResponse {
+    int32 count = 1;
+}

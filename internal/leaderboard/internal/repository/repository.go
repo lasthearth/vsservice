@@ -1,7 +1,8 @@
-﻿package repository
+package repository
 
 import (
 	"context"
+
 	"github.com/lasthearth/vsservice/internal/leaderboard/internal/dto/mongodto"
 	"github.com/lasthearth/vsservice/internal/leaderboard/internal/model"
 	"github.com/samber/lo"
@@ -27,23 +28,49 @@ func (r *Repository) listEntries(
 	limit int,
 ) ([]*model.Entry, error) {
 	pipeline := bson.A{
-		bson.D{{"$unwind", bson.D{{"path", "$seed_stats"}}}},
+		bson.D{{
+			Key:   "$unwind",
+			Value: bson.D{{Key: "path", Value: "$seed_stats"}},
+		}},
 		bson.D{
-			{"$group",
-				bson.D{
-					{"_id", "$_id"},
-					{"name", bson.D{{"$first", "$name"}}},
-					{"death_count", bson.D{{"$sum", "$seed_stats.death_count"}}},
-					{"kill_count", bson.D{{"$sum", "$seed_stats.players_killed"}}},
-					{"hours_played", bson.D{{"$sum", "$seed_stats.hours_played"}}},
+			{
+				Key: "$group",
+				Value: bson.D{
+					{Key: "_id", Value: "$_id"},
+					{
+						Key:   "name",
+						Value: bson.D{{Key: "$first", Value: "$name"}},
+					},
+					{
+						Key: "death_count",
+						Value: bson.D{{
+							Key:   "$sum",
+							Value: "$seed_stats.death_count",
+						}},
+					},
+					{
+						Key: "kill_count",
+						Value: bson.D{
+							{
+								Key:   "$sum",
+								Value: "$seed_stats.players_killed",
+							},
+						},
+					},
+					{
+						Key:   "hours_played",
+						Value: bson.D{{Key: "$sum", Value: "$seed_stats.hours_played"}},
+					},
 				},
 			},
 		},
-		bson.D{{"$sort", bson.D{{filter, -1}}}},
-		bson.D{{"$limit", limit}},
+		bson.D{{
+			Key:   "$sort",
+			Value: bson.D{{Key: filter, Value: -1}},
+		}},
+		bson.D{{Key: "$limit", Value: limit}},
 	}
 	cursor, err := r.coll.Aggregate(ctx, pipeline)
-
 	if err != nil {
 		r.log.Error("aggregation error", zap.Error(err))
 		return nil, err
