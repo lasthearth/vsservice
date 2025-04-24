@@ -2,10 +2,11 @@ package mongo
 
 import (
 	"context"
+	"os"
+
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	"os"
 )
 
 func New(cfg config.Config) *mongo.Client {

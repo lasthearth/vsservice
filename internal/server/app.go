@@ -3,8 +3,11 @@ package server
 import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
+	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -15,9 +18,13 @@ import (
 
 type Opts struct {
 	fx.In
+
+	AuthInterceptor *interceptor.Auth
+
 	Log           logger.Logger
 	VsApiV1       v1.VintageServiceServer
 	LeaderboardV1 v1.LeaderboardServiceServer
+	RulesV1       rulesv1.RuleServiceServer
 }
 
 type GrpcServer struct {
@@ -41,10 +48,12 @@ func New(opts Opts) *GrpcServer {
 
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
+			selector.UnaryServerInterceptor(opts.AuthInterceptor.Unary(), selector.MatchFunc(interceptor.AuthMatcher)),
 			recovery.UnaryServerInterceptor(recoveryOpts...),
 			logging.UnaryServerInterceptor(interceptorLogger(opts.Log), logOpts...),
 		),
 		grpc.ChainStreamInterceptor(
+			selector.StreamServerInterceptor(opts.AuthInterceptor.Stream(), selector.MatchFunc(interceptor.AuthMatcher)),
 			recovery.StreamServerInterceptor(recoveryOpts...),
 			logging.StreamServerInterceptor(interceptorLogger(opts.Log), logOpts...),
 		),
@@ -52,6 +61,7 @@ func New(opts Opts) *GrpcServer {
 
 	v1.RegisterVintageServiceServer(srv, opts.VsApiV1)
 	v1.RegisterLeaderboardServiceServer(srv, opts.LeaderboardV1)
+	rulesv1.RegisterRuleServiceServer(srv, opts.RulesV1)
 	reflection.Register(srv)
 
 	return &GrpcServer{Srv: srv}

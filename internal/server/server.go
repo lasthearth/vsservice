@@ -10,6 +10,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
+	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/rs/cors"
@@ -53,6 +54,10 @@ func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 
 	group.Go(func() error {
 		return v1.RegisterLeaderboardServiceHandlerFromEndpoint(ctx, mux, port, opts)
+	})
+
+	group.Go(func() error {
+		return rulesv1.RegisterRuleServiceHandlerFromEndpoint(ctx, mux, port, opts)
 	})
 
 	group.Go(func() error {

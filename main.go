@@ -11,9 +11,11 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/rules"
 	"github.com/lasthearth/vsservice/internal/server"
 	"github.com/lasthearth/vsservice/internal/stats"
-	"github.com/lasthearth/vsservice/internal/trademarket"
+
+	// "github.com/lasthearth/vsservice/internal/trademarket"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -44,12 +46,13 @@ func main() {
 			setupLogger,
 			mongo.New,
 			mongo.NewDatabase,
-			//fx.Annotate(service.New, fx.As(new(vsservice.StatsService))),
+			// fx.Annotate(service.New, fx.As(new(vsservice.StatsService))),
 		),
 
 		leaderboard.App,
 		stats.App,
-		trademarket.App,
+		// trademarket.App,
+		rules.App,
 		server.App,
 	)
 

@@ -3,9 +3,10 @@
 
 openapi: 3.0.3
 info:
-    title: TrademarketService API
-    description: Represent trademarket
+    title: ""
     version: "1"
+servers:
+    - url: https://api.lasthearth.ru
 paths:
     /v1/items:
         post:
@@ -31,8 +32,198 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/rules/question:
+        post:
+            tags:
+                - RuleService
+            description: Creates a new question about rules
+            operationId: RuleService_CreateQuestion
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateQuestionRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateQuestionResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/rules/questions:
+        get:
+            tags:
+                - RuleService
+            description: Returns random questions about rules
+            operationId: RuleService_GetRandomQuestions
+            parameters:
+                - name: count
+                  in: query
+                  description: Count of questions to return, if not specified, returns 5 questions
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetRandomQuestionsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/rules/verification-request:
+        post:
+            tags:
+                - RuleService
+            description: Verifies user answers to questions about rules
+            operationId: RuleService_VerifyRequest
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/VerifyRequestRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/VerifyRequestResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/rules/verification-requests:
+        get:
+            tags:
+                - RuleService
+            description: Returns verification requests from users
+            operationId: RuleService_ListVerificationRequests
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListVerificationRequestsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/stats:
+        get:
+            tags:
+                - StatsService
+            description: Returns online stats
+            operationId: StatsService_GetOnlineStats
+            parameters:
+                - name: filter
+                  in: query
+                  description: Stats filter. Service will return count sorted by provided filter.
+                  schema:
+                    type: integer
+                    format: enum
+                - name: started_at
+                  in: query
+                  description: Start time for filtering
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/OnlineStatsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/user/{user_id}/verify:
+        post:
+            tags:
+                - UserService
+            description: User answers for verification questions.
+            operationId: UserService_Verify
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/VerifyRequest_Answer'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/VerifyResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/{name}/stats:
+        get:
+            tags:
+                - StatsService
+            description: Returns player stats
+            operationId: StatsService_GetPlayerStats
+            parameters:
+                - name: name
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PlayerStatsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
 components:
     schemas:
+        CreateQuestionRequest:
+            type: object
+            properties:
+                question:
+                    type: string
+        CreateQuestionResponse:
+            type: object
+            properties: {}
         CreateRequest:
             required:
                 - name
@@ -45,6 +236,21 @@ components:
             properties:
                 id:
                     type: string
+        GetRandomQuestionsResponse:
+            type: object
+            properties:
+                questions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/GetRandomQuestionsResponse_Question'
+        GetRandomQuestionsResponse_Question:
+            type: object
+            properties:
+                id:
+                    type: string
+                question:
+                    type: string
+            description: Represents a question about rules
         GoogleProtobufAny:
             type: object
             properties:
@@ -53,6 +259,35 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        ListVerificationRequestsResponse:
+            type: object
+            properties:
+                requests:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/VerifyRequest'
+        OnlineStatsResponse:
+            type: object
+            properties:
+                count:
+                    type: integer
+                    format: int32
+        PlayerStatsResponse:
+            type: object
+            properties:
+                name:
+                    type: string
+                death_count:
+                    type: integer
+                    format: int32
+                hours_played:
+                    type: number
+                    format: float
+                last_online:
+                    type: string
+                players_killed:
+                    type: integer
+                    format: int32
         Status:
             type: object
             properties:
@@ -69,5 +304,42 @@ components:
                         $ref: '#/components/schemas/GoogleProtobufAny'
                     description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
+        VerifyRequest:
+            required:
+                - answers
+            type: object
+            properties:
+                user_id:
+                    type: string
+                answers:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/VerifyRequest_Answer'
+            description: Represents a verification request from a user
+        VerifyRequestRequest:
+            type: object
+            properties:
+                user_id:
+                    type: string
+        VerifyRequestResponse:
+            type: object
+            properties: {}
+        VerifyRequest_Answer:
+            type: object
+            properties:
+                question:
+                    type: string
+                answer:
+                    type: string
+        VerifyResponse:
+            type: object
+            properties: {}
 tags:
+    - name: RuleService
+      description: Represents rules
+    - name: StatsService
+      description: Represents various stats
     - name: TrademarketService
+      description: Represent trademarket
+    - name: UserService
+      description: Represents user specific actions
