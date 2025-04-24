@@ -15,7 +15,7 @@ func AuthMatcher(ctx context.Context, c interceptors.CallMeta) bool {
 	case "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo":
 		return false
 	default:
-		return false
+		return true
 	}
 }
 
