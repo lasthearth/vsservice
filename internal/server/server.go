@@ -32,7 +32,6 @@ func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 	}
 
 	var group errgroup.Group
-	group.SetLimit(1)
 
 	group.Go(func() error {
 		return a.Srv.Serve(l)
