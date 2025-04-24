@@ -77,3 +77,15 @@ func (r *Repository) GetVerificationRequests(ctx context.Context) ([]*model.Veri
 
 	return result, nil
 }
+
+func (r *Repository) DeleteVerificationRequest(ctx context.Context, userId string) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if _, err := r.verificationColl.DeleteMany(ctx, bson.D{{Key: "user_id", Value: userId}}); err != nil {
+		r.log.Error("delete error", zap.Error(err))
+		return err
+	}
+
+	return nil
+}

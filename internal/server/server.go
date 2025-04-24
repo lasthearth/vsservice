@@ -68,6 +68,10 @@ func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 				"http://0.0.0.0*",
 				"https://*.lasthearth.ru",
 			},
+			AllowedHeaders: []string{
+				"Authorization",
+				"Content-Type",
+			},
 			AllowCredentials: true,
 			Debug:            true,
 		}).Handler(mux)

@@ -15,22 +15,6 @@ func AuthMatcher(ctx context.Context, c interceptors.CallMeta) bool {
 	case "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo":
 		return false
 	default:
-		return true
+		return false
 	}
-}
-
-func loginSkip(_ context.Context, c interceptors.CallMeta) bool {
-	return c.FullMethod() != "/stats.v1.StatsService/GetOnlinePlayers"
-}
-
-func signUpSkip(_ context.Context, c interceptors.CallMeta) bool {
-	return c.FullMethod() != "/v1.auth.Auth/SignUp"
-}
-
-func refreshSkip(_ context.Context, c interceptors.CallMeta) bool {
-	return c.FullMethod() != "/v1.auth.Auth/RefreshToken"
-}
-
-func reflectionSkip(_ context.Context, c interceptors.CallMeta) bool {
-	return c.FullMethod() != "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo"
 }
