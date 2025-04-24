@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -13,7 +14,7 @@ import (
 
 func (interceptor *Auth) Unary() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		err := interceptor.authorize(ctx, info.FullMethod)
+		ctx, err := interceptor.authorize(ctx, info.FullMethod)
 		if err != nil {
 			return nil, err
 		}
@@ -28,37 +29,40 @@ func (interceptor *Auth) Stream() grpc.StreamServerInterceptor {
 		info *grpc.StreamServerInfo,
 		handler grpc.StreamHandler,
 	) error {
-		err := interceptor.authorize(stream.Context(), info.FullMethod)
+		ctx, err := interceptor.authorize(stream.Context(), info.FullMethod)
 		if err != nil {
 			return err
 		}
-		return handler(srv, stream)
+
+		wrapped := middleware.WrapServerStream(stream)
+		wrapped.WrappedContext = ctx
+		return handler(srv, wrapped)
 	}
 }
 
-func (interceptor *Auth) authorize(ctx context.Context, method string) error {
+func (interceptor *Auth) authorize(ctx context.Context, method string) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return status.Errorf(codes.Unauthenticated, "metadata is not provided")
+		return ctx, status.Errorf(codes.Unauthenticated, "metadata is not provided")
 	}
 
 	values := md["authorization"]
 	if len(values) == 0 {
-		return status.Errorf(codes.Unauthenticated, "authorization token is not provided")
+		return ctx, status.Errorf(codes.Unauthenticated, "authorization token is not provided")
 	}
 
 	accessToken := values[0]
 
 	tokenIdentifier := "Bearer"
 	if !strings.HasPrefix(accessToken, tokenIdentifier) {
-		return status.Errorf(codes.Unauthenticated, "invalid authorization token format")
+		return ctx, status.Errorf(codes.Unauthenticated, "invalid authorization token format")
 	}
 
 	token := accessToken[len(tokenIdentifier)+1:]
 
 	claims, err := interceptor.jwtManager.Verify(token)
 	if err != nil {
-		return status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
+		return ctx, status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
 	}
 
 	for _, scoper := range interceptor.scopers {
@@ -67,10 +71,19 @@ func (interceptor *Auth) authorize(ctx context.Context, method string) error {
 		if requiredScope, ok := reqScopeMap[Method(method)]; ok {
 			claimScopes := strings.Split(claims.Scope, " ")
 			if slices.Contains(claimScopes, string(requiredScope)) {
-				return nil
+				ctx, err := provideReqID(ctx)
+				if err != nil {
+					return ctx, err
+				}
+				ctx, err = provideUserID(ctx, claims.Subject)
+				if err != nil {
+					return ctx, err
+				}
+				ctx, err = provideClaims(ctx, claims)
+				return ctx, nil
 			}
 		}
 	}
 
-	return status.Error(codes.PermissionDenied, "no permission to access this RPC")
+	return ctx, status.Error(codes.PermissionDenied, "no permission to access this RPC")
 }

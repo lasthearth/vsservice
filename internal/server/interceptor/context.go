@@ -13,16 +13,20 @@ type ctxKey struct {
 	key string
 }
 
-func provideUserID(ctx context.Context, payload jwt.Claims) (context.Context, error) {
+func provideUserID(ctx context.Context, uid string) (context.Context, error) {
 	ctx = logging.InjectFields(
 		ctx,
-		logging.Fields{"user_id", payload.Subject},
+		logging.Fields{"user_id", uid},
 	)
 
-	return context.WithValue(ctx, ctxKey{"sub"}, payload.Subject), nil
+	return context.WithValue(ctx, ctxKey{"sub"}, uid), nil
 }
 
-func provideClaims(ctx context.Context, payload jwt.Claims) (context.Context, error) {
+func provideClaims(ctx context.Context, payload *jwt.Claims) (context.Context, error) {
+	if payload == nil {
+		return nil, errors.New("payload is nil")
+	}
+
 	return context.WithValue(ctx, ctxKey{"claims"}, payload), nil
 }
 
