@@ -75,8 +75,7 @@ func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 				"https://*.lasthearth.ru",
 			},
 			AllowedHeaders: []string{
-				"Authorization",
-				"Content-Type",
+				"*",
 			},
 			AllowCredentials: true,
 
