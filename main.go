@@ -14,6 +14,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/rules"
 	"github.com/lasthearth/vsservice/internal/server"
 	"github.com/lasthearth/vsservice/internal/stats"
+	"github.com/lasthearth/vsservice/internal/user"
 
 	// "github.com/lasthearth/vsservice/internal/trademarket"
 	"go.uber.org/fx"
@@ -54,6 +55,7 @@ func main() {
 		// trademarket.App,
 		rules.App,
 		server.App,
+		user.App,
 	)
 
 	a.Run()

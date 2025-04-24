@@ -6,6 +6,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
+	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
@@ -25,6 +26,7 @@ type Opts struct {
 	VsApiV1       v1.VintageServiceServer
 	LeaderboardV1 v1.LeaderboardServiceServer
 	RulesV1       rulesv1.RuleServiceServer
+	UserV1        userv1.UserServiceServer
 }
 
 type GrpcServer struct {
@@ -62,6 +64,7 @@ func New(opts Opts) *GrpcServer {
 	v1.RegisterVintageServiceServer(srv, opts.VsApiV1)
 	v1.RegisterLeaderboardServiceServer(srv, opts.LeaderboardV1)
 	rulesv1.RegisterRuleServiceServer(srv, opts.RulesV1)
+	userv1.RegisterUserServiceServer(srv, opts.UserV1)
 	reflection.Register(srv)
 
 	return &GrpcServer{Srv: srv}

@@ -5,7 +5,7 @@ import (
 )
 
 type Verification struct {
-	mongo.Model
+	mongo.Model `bson:",inline"`
 	// User id from sso
 	UserID  string
 	Answers []Answer

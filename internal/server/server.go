@@ -11,6 +11,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
+	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/rs/cors"
@@ -31,6 +32,7 @@ func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 	}
 
 	var group errgroup.Group
+	group.SetLimit(1)
 
 	group.Go(func() error {
 		return a.Srv.Serve(l)
@@ -61,6 +63,10 @@ func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 	})
 
 	group.Go(func() error {
+		return userv1.RegisterUserServiceHandlerFromEndpoint(ctx, mux, port, opts)
+	})
+
+	group.Go(func() error {
 		handler := cors.New(cors.Options{
 			AllowedOrigins: []string{
 				"https://lasthearth.ru",
@@ -73,7 +79,8 @@ func (a GrpcServer) Run(ctx context.Context, c config.Config) error {
 				"Content-Type",
 			},
 			AllowCredentials: true,
-			Debug:            true,
+
+			Debug: true,
 		}).Handler(mux)
 		return http.ListenAndServe(httpPort, wsproxy.WebsocketProxy(handler))
 	})
