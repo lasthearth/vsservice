@@ -35,20 +35,20 @@ message PlayerStatsResponse {
 }
 
 message OnlineStatsRequest {
-    // Stats filter. Service will return count sorted by provided filter.
-    StatsFilter filter = 1 [(google.api.field_behavior) = REQUIRED];
+  // Stats filter. Service will return count sorted by provided filter.
+  StatsFilter filter = 1 [(google.api.field_behavior) = REQUIRED];
 
-    // Start time for filtering
-    int64 started_at = 2;
+  // Start time for filtering
+  int64 started_at = 2;
 
-    // Different filter for sorting values, if unspecified returns data filter by day
-    enum StatsFilter {
-        UNSPECIFIED = 0;
-        HOURS = 1;
-        DAY = 2;
-    }
+  // Different filter for sorting values, if unspecified returns data filter by day
+  enum StatsFilter {
+    UNSPECIFIED = 0;
+    HOURS = 1;
+    DAY = 2;
+  }
 }
 
 message OnlineStatsResponse {
-    int32 count = 1;
+  int32 count = 1;
 }

@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package rules.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+
+// Represents rules service
+service RuleService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Returns random questions about rules
+  rpc GetRandomQuestions(GetRandomQuestionsRequest) returns (GetRandomQuestionsResponse) {
+    option (google.api.http) = {get: "/v1/rules/questions"};
+  }
+
+  // Creates a new question about rules
+  rpc CreateQuestion(CreateQuestionRequest) returns (CreateQuestionResponse) {
+    option (google.api.http) = {
+      post: "/v1/rules/question"
+      body: "*"
+    };
+  }
+
+  // Returns verification requests from users
+  rpc ListVerificationRequests(ListVerificationRequestsRequest) returns (ListVerificationRequestsResponse) {
+    option (google.api.http) = {get: "/v1/rules/verification-requests"};
+  }
+
+  // Verifies user answers to questions about rules
+  rpc VerifyRequest(VerifyRequestRequest) returns (VerifyRequestResponse) {
+    option (google.api.http) = {
+      post: "/v1/rules/verification-request"
+      body: "*"
+    };
+  }
+}
+
+message GetRandomQuestionsRequest {
+  // Count of questions to return, if not specified, returns 5 questions
+  int32 count = 1;
+}
+
+message GetRandomQuestionsResponse {
+  repeated Question questions = 1;
+
+  // Represents a question about rules
+  message Question {
+    string id = 1;
+    string question = 2;
+  }
+}
+
+message CreateQuestionRequest {
+  string question = 1;
+}
+
+message CreateQuestionResponse {}
+
+message ListVerificationRequestsRequest {}
+
+message ListVerificationRequestsResponse {
+  repeated VerifyRequest requests = 1;
+}
+
+// Represents a verification request from a user
+message VerifyRequest {
+  repeated Answer answers = 2 [(google.api.field_behavior) = REQUIRED];
+
+  message Answer {
+    string question = 1;
+    string answer = 2;
+  }
+}
+
+message VerifyRequestRequest {
+  string user_id = 1;
+}
+
+message VerifyRequestResponse {}

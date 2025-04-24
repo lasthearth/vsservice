@@ -2,13 +2,17 @@ package server
 
 import (
 	"context"
+	"strconv"
+
+	"github.com/MicahParks/keyfunc/v3"
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
+	"github.com/lasthearth/vsservice/internal/pkg/jwt"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/lasthearth/vsservice/internal/service"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-	"strconv"
 )
 
 const module = "grpc"
@@ -23,6 +27,15 @@ var App = fx.Options(
 		),
 
 		fx.Provide(
+			func(c config.Config) (keyfunc.Keyfunc, error) {
+				return keyfunc.NewDefault([]string{c.JWKS_URL})
+			},
+			jwt.NewManager,
+		),
+
+		fx.Provide(
+			interceptor.NewAuth,
+
 			fx.Annotate(service.NewVsApiV1, fx.As(new(v1.VintageServiceServer))),
 			New,
 		),
@@ -39,7 +52,6 @@ var App = fx.Options(
 								}
 
 								log.Info("server started on port", zap.String("addr", strconv.Itoa(c.GrpcPort)))
-
 							}()
 							return nil
 						},

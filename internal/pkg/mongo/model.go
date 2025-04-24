@@ -15,7 +15,7 @@ type Model struct {
 func NewModel() Model {
 	now := time.Now()
 	return Model{
-		ID:        primitive.NewObjectID(),
+		ID:        primitive.NewObjectIDFromTimestamp(now),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}

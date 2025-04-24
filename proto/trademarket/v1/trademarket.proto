@@ -9,18 +9,18 @@ import "google/protobuf/empty.proto";
 
 // Represent trademarket
 service TrademarketService {
-    rpc Create(CreateRequest) returns (CreateResponse) {
-        option (google.api.http) = {
-            post: "/v1/items"
-            body: "*"
-        };
-    }
+  rpc Create(CreateRequest) returns (CreateResponse) {
+    option (google.api.http) = {
+      post: "/v1/items"
+      body: "*"
+    };
+  }
 }
 
 message CreateRequest {
-    string name = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message CreateResponse {
-    string id = 1;
+  string id = 1;
 }

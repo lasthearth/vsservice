@@ -1,14 +1,20 @@
 package config
 
 import (
-	"github.com/joho/godotenv"
-	"github.com/kelseyhightower/envconfig"
 	"os"
 	"path/filepath"
+
+	"github.com/joho/godotenv"
+	"github.com/kelseyhightower/envconfig"
 )
 
+// Config represents the configuration for the application.
 type Config struct {
 	AppEnv string `default:"dev"`
+
+	JWKS_URL string `envconfig:"JWKS_URL"`
+	Issuer   string `envconfig:"ISSUER"`
+	Audience string `envconfig:"AUDIENCE"`
 
 	GrpcPort     int `envconfig:"GPRC_PORT" default:"50051"`
 	GateAwayPort int `envconfig:"GATEAWAY_PORT" default:"6969"`
@@ -17,10 +23,18 @@ type Config struct {
 
 	VsAPIUrl string `envconfig:"VSAPI_URL"`
 
+	SsoUrl       string   `envconfig:"SSO_URL"`
+	ClientID     string   `envconfig:"CLIENT_ID"`
+	ClientSecret string   `envconfig:"CLIENT_SECRET"`
+	TokenUrl     string   `envconfig:"TOKEN_URL"`
+	Resource     string   `envconfig:"RESOURCE"`
+	Scopes       []string `envconfig:"SCOPES"`
+
 	StatsFetchingIntervalSecs int  `envconfig:"STATS_FETCHING_INTERVAL_SECS"`
 	StatsFetchingEnable       bool `envconfig:"STATS_FETCHING_ENABLE"`
 }
 
+// New initializes from .env and returns a new Config instance.
 func New() (Config, error) {
 	cfg := Config{}
 

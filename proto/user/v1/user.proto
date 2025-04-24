@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package user.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "rules/v1/rules.proto";
+
+// Represents user specific actions
+service UserService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // User answers for verification questions.
+  rpc Verify(rules.v1.VerifyRequest) returns (VerifyResponse) {
+    option (google.api.http) = {
+      post: "/v1/user/{user_id}/verify"
+      body: "answers"
+    };
+  }
+}
+
+message VerifyResponse {}
