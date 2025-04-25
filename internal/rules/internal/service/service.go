@@ -74,9 +74,11 @@ func (s *Service) ListVerificationRequests(ctx context.Context, req *rulesv1.Lis
 		})
 
 		return &rulesv1.ListVerificationRequestsResponse_VerifyUserRequest{
-			UserId:   v.UserID,
-			Contacts: v.Contacts,
-			Answers:  answers,
+			UserId:       v.UserID,
+			UserName:     v.UserName,
+			UserGameName: v.UserGameName,
+			Contacts:     v.Contacts,
+			Answers:      answers,
 		}
 	})
 
