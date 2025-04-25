@@ -24,8 +24,9 @@ type Repository struct {
 
 func New(opts Opts) *Repository {
 	coll := opts.Database.Collection(collName)
+	logger := opts.Logger.WithComponent("user-mongo-repository")
 	return &Repository{
-		log:  opts.Logger,
+		log:  logger,
 		coll: coll,
 	}
 }

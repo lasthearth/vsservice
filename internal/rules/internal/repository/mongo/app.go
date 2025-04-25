@@ -32,8 +32,9 @@ type Repository struct {
 func New(opts Opts) *Repository {
 	qColl := opts.Database.Collection(questionsCollName)
 	vColl := opts.Database.Collection(verificationCollName)
+	logger := opts.Log.WithComponent("rules-mongo-repository")
 	return &Repository{
-		log:              opts.Log,
+		log:              logger,
 		cfg:              opts.Cfg,
 		questionColl:     qColl,
 		verificationColl: vColl,

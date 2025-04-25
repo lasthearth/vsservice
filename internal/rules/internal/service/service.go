@@ -8,14 +8,13 @@ import (
 	httpdto "github.com/lasthearth/vsservice/internal/rules/internal/dto/http"
 	"github.com/lasthearth/vsservice/internal/rules/model"
 	"github.com/samber/lo"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type DbRepository interface {
 	GetRandomQuestions(ctx context.Context, count int) ([]*model.Question, error)
 	CreateQuestion(ctx context.Context, question *model.Question) error
 	GetVerificationRequests(ctx context.Context) ([]*model.Verification, error)
+	DeleteVerificationRequest(ctx context.Context, userId string) error
 }
 
 type SsoRepository interface {
@@ -88,11 +87,6 @@ func (s *Service) ListVerificationRequests(ctx context.Context, req *rulesv1.Lis
 
 // VerifyRequest implements rulesv1.RuleServiceServer.
 func (s *Service) VerifyRequest(ctx context.Context, req *rulesv1.VerifyRequestRequest) (*rulesv1.VerifyRequestResponse, error) {
-	// err := s.checkPermissions(ctx, req.UserId)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	err := s.checkUserRoles(ctx, req.UserId)
 	if err != nil {
 		return nil, err
@@ -111,6 +105,11 @@ func (s *Service) VerifyRequest(ctx context.Context, req *rulesv1.VerifyRequestR
 	}
 
 	err = s.ssoRepo.UpdateUserRoles(ctx, req.UserId, []string{playerRoleId})
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.dbRepo.DeleteVerificationRequest(ctx, req.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -134,23 +133,4 @@ func (s *Service) checkUserRoles(ctx context.Context, userId string) error {
 	}
 
 	return nil
-}
-
-// checkPermissions checks if the user has the required roles to verify a request.
-// Returns an error if the user does not have the required roles.
-func (s *Service) checkPermissions(ctx context.Context, userId string) error {
-	requiredSsoRoles := []string{"admin", "verifier"}
-
-	roles, err := s.ssoRepo.GetUserRoles(ctx, userId)
-	if err != nil {
-		return err
-	}
-
-	for _, role := range roles {
-		if slices.Contains(requiredSsoRoles, role.Name) {
-			return nil
-		}
-	}
-
-	return status.Error(codes.PermissionDenied, ErrPermissionDenied.Error())
 }
