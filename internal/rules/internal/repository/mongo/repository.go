@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
+	verificationdto "github.com/lasthearth/vsservice/internal/rules/dto/mongo/verification"
 	questiondto "github.com/lasthearth/vsservice/internal/rules/internal/dto/mongo/question"
-	verificationdto "github.com/lasthearth/vsservice/internal/rules/internal/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/rules/model"
 	"github.com/samber/lo"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
 )
 

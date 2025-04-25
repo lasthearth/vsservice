@@ -84,17 +84,20 @@ func (r *Repository) UpdateUserRoles(ctx context.Context, userId string, roleIds
 	}
 
 	encoded, err := json.Marshal(rBody)
+	if err != nil {
+		return ErrMarshalJSON
+	}
 
 	req, err := http.NewRequest(http.MethodPut, updateRolesUrl, bytes.NewBuffer(encoded))
 	if err != nil {
-		return err
+		return ErrFailedCreateReq
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := r.client.Do(req)
 	if err != nil {
-		return err
+		return ErrHTTPRequestFailed
 	}
 	defer resp.Body.Close()
 

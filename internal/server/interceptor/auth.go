@@ -16,7 +16,7 @@ func (interceptor *Auth) Unary() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		ctx, err := interceptor.authorize(ctx, info.FullMethod)
 		if err != nil {
-			return nil, err
+			return ctx, err
 		}
 		return handler(ctx, req)
 	}
@@ -65,25 +65,31 @@ func (interceptor *Auth) authorize(ctx context.Context, method string) (context.
 		return ctx, status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
 	}
 
+	ctx, err = provideReqID(ctx)
+	if err != nil {
+		return ctx, err
+	}
+	ctx, err = provideUserID(ctx, claims.Subject)
+	if err != nil {
+		return ctx, err
+	}
+	ctx, err = provideClaims(ctx, claims)
+	if err != nil {
+		return ctx, err
+	}
+
 	for _, scoper := range interceptor.scopers {
 		reqScopeMap := scoper.Scope()
 
 		if requiredScope, ok := reqScopeMap[Method(method)]; ok {
 			claimScopes := strings.Split(claims.Scope, " ")
 			if slices.Contains(claimScopes, string(requiredScope)) {
-				ctx, err := provideReqID(ctx)
-				if err != nil {
-					return ctx, err
-				}
-				ctx, err = provideUserID(ctx, claims.Subject)
-				if err != nil {
-					return ctx, err
-				}
-				ctx, err = provideClaims(ctx, claims)
 				return ctx, nil
+			} else {
+				return ctx, status.Errorf(codes.PermissionDenied, "no permission to access this resource")
 			}
 		}
 	}
 
-	return ctx, status.Error(codes.PermissionDenied, "no permission to access this RPC")
+	return ctx, nil
 }

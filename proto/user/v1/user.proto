@@ -15,7 +15,7 @@ service UserService {
   // User answers for verification questions.
   rpc Verify(rules.v1.VerifyRequest) returns (VerifyResponse) {
     option (google.api.http) = {
-      post: "/v1/user/{user_id}/verify"
+      post: "/v1/user/verify"
       body: "answers"
     };
   }

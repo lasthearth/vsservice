@@ -11,6 +11,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
 	"github.com/lasthearth/vsservice/internal/rules"
 	"github.com/lasthearth/vsservice/internal/server"
 	"github.com/lasthearth/vsservice/internal/stats"
@@ -43,6 +44,15 @@ func main() {
 					retrier.ConstantBackoff(5, 300*time.Millisecond),
 					nil,
 				)
+			},
+			func(client *http.Client, c config.Config) *tokenmanager.Manager {
+				return tokenmanager.NewManager(client, tokenmanager.Config{
+					ClientID:     c.ClientID,
+					ClientSecret: c.ClientSecret,
+					TokenUrl:     c.TokenUrl,
+					Resource:     c.Resource,
+					Scopes:       c.Scopes,
+				})
 			},
 			setupLogger,
 			mongo.New,

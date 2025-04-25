@@ -29,7 +29,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// Represents rules
+// Represents rules service
 type RuleServiceClient interface {
 	// Returns random questions about rules
 	GetRandomQuestions(ctx context.Context, in *GetRandomQuestionsRequest, opts ...grpc.CallOption) (*GetRandomQuestionsResponse, error)
@@ -93,7 +93,7 @@ func (c *ruleServiceClient) VerifyRequest(ctx context.Context, in *VerifyRequest
 // All implementations should embed UnimplementedRuleServiceServer
 // for forward compatibility.
 //
-// Represents rules
+// Represents rules service
 type RuleServiceServer interface {
 	// Returns random questions about rules
 	GetRandomQuestions(context.Context, *GetRandomQuestionsRequest) (*GetRandomQuestionsResponse, error)

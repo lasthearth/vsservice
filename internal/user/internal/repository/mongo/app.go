@@ -9,7 +9,7 @@ import (
 
 const collName = "verification_requests"
 
-var _ service.Repository = (*Repository)(nil)
+var _ service.DbRepository = (*Repository)(nil)
 
 type Opts struct {
 	fx.In

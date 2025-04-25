@@ -12,9 +12,12 @@ func FromModel(v *model.Verification) *Verification {
 	})
 
 	return &Verification{
-		Model:   mongo.NewModel(),
-		UserID:  v.UserID,
-		Answers: answers,
+		Model:        mongo.NewModel(),
+		UserID:       v.UserID,
+		UserName:     v.UserName,
+		UserGameName: v.UserGameName,
+		Contacts:     v.Contacts,
+		Answers:      answers,
 	}
 }
 

@@ -6,10 +6,13 @@ import "time"
 type Verification struct {
 	ID string
 	// User id from sso
-	UserID    string
-	Answers   []Answer
-	UpdatedAt time.Time
-	CreatedAt time.Time
+	UserID       string
+	UserName     string
+	UserGameName string
+	Answers      []Answer
+	Contacts     string
+	UpdatedAt    time.Time
+	CreatedAt    time.Time
 }
 
 type Answer struct {

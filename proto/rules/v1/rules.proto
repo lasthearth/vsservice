@@ -62,17 +62,27 @@ message CreateQuestionResponse {}
 message ListVerificationRequestsRequest {}
 
 message ListVerificationRequestsResponse {
-  repeated VerifyRequest requests = 1;
+  repeated VerifyUserRequest requests = 1;
+
+  message VerifyUserRequest {
+    string user_id = 1;
+    string user_name = 2;
+    string user_game_name = 3;
+    string contacts = 4;
+    repeated Answer answers = 5;
+  }
 }
 
 // Represents a verification request from a user
 message VerifyRequest {
-  repeated Answer answers = 2 [(google.api.field_behavior) = REQUIRED];
+  string user_game_name = 1 [(google.api.field_behavior) = REQUIRED];
+  string contacts = 2 [(google.api.field_behavior) = REQUIRED];
+  repeated Answer answers = 3 [(google.api.field_behavior) = REQUIRED];
+}
 
-  message Answer {
-    string question = 1;
-    string answer = 2;
-  }
+message Answer {
+  string question = 1;
+  string answer = 2;
 }
 
 message VerifyRequestRequest {

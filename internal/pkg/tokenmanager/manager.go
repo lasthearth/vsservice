@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Config struct {
@@ -21,9 +22,10 @@ type Config struct {
 }
 
 type Manager struct {
-	client *http.Client
-	config Config
-	token  *token
+	client   *http.Client
+	config   Config
+	token    *token
+	tokenIat time.Time
 
 	rw sync.RWMutex
 }
@@ -87,6 +89,7 @@ func (m *Manager) getToken() error {
 	}
 
 	m.token = &token
+	m.tokenIat = time.Now()
 
 	return nil
 }

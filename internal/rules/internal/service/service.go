@@ -66,17 +66,18 @@ func (s *Service) ListVerificationRequests(ctx context.Context, req *rulesv1.Lis
 		return nil, err
 	}
 
-	resp := lo.Map(reqs, func(v *model.Verification, index int) *rulesv1.VerifyRequest {
-		answers := lo.Map(v.Answers, func(a model.Answer, _ int) *rulesv1.VerifyRequest_Answer {
-			return &rulesv1.VerifyRequest_Answer{
+	resp := lo.Map(reqs, func(v *model.Verification, index int) *rulesv1.ListVerificationRequestsResponse_VerifyUserRequest {
+		answers := lo.Map(v.Answers, func(a model.Answer, _ int) *rulesv1.Answer {
+			return &rulesv1.Answer{
 				Question: a.Question,
 				Answer:   a.Answer,
 			}
 		})
 
-		return &rulesv1.VerifyRequest{
-			UserId:  v.UserID,
-			Answers: answers,
+		return &rulesv1.ListVerificationRequestsResponse_VerifyUserRequest{
+			UserId:   v.UserID,
+			Contacts: v.Contacts,
+			Answers:  answers,
 		}
 	})
 
