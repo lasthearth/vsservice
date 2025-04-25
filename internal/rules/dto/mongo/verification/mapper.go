@@ -35,11 +35,14 @@ func (v *Verification) ToModel() *model.Verification {
 	})
 
 	return &model.Verification{
-		ID:        v.ID.Hex(),
-		UserID:    v.UserID,
-		Answers:   answers,
-		UpdatedAt: v.UpdatedAt,
-		CreatedAt: v.CreatedAt,
+		ID:           v.ID.Hex(),
+		UserID:       v.UserID,
+		UserName:     v.UserName,
+		UserGameName: v.UserGameName,
+		Contacts:     v.Contacts,
+		Answers:      answers,
+		UpdatedAt:    v.UpdatedAt,
+		CreatedAt:    v.CreatedAt,
 	}
 }
 
