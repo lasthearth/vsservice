@@ -15,7 +15,7 @@ func (m *Manager) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	} else {
 		m.rw.RUnlock()
-		expires := time.Now().Add(time.Duration(m.token.ExpiresIn) * time.Second)
+		expires := m.tokenIat.Add(time.Duration(m.token.ExpiresIn) * time.Second)
 		if time.Now().After(expires) {
 			err := m.getToken()
 			if err != nil {
