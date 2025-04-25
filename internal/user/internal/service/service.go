@@ -11,7 +11,7 @@ import (
 )
 
 type DbRepository interface {
-	VerificationRequest(ctx context.Context, userID, userGameName, contacts string, answers []model.Answer) error
+	VerificationRequest(ctx context.Context, opts VerifyOpts) error
 }
 
 type SsoRepository interface {
@@ -36,7 +36,13 @@ func (s *Service) Verify(ctx context.Context, req *rulesv1.VerifyRequest) (*user
 		return nil, err
 	}
 
-	if err := s.dbRepo.VerificationRequest(ctx, userID, req.UserGameName, req.Contacts, answers); err != nil {
+	if err := s.dbRepo.VerificationRequest(ctx, VerifyOpts{
+		UserID:       userID,
+		UserName:     req.UserName,
+		UserGameName: req.UserGameName,
+		Contacts:     req.Contacts,
+		Answers:      answers,
+	}); err != nil {
 		return nil, err
 	}
 

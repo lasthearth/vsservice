@@ -165,6 +165,10 @@ paths:
             description: User answers for verification questions.
             operationId: UserService_Verify
             parameters:
+                - name: user_name
+                  in: query
+                  schema:
+                    type: string
                 - name: user_game_name
                   in: query
                   schema:

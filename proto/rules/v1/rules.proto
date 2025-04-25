@@ -75,9 +75,10 @@ message ListVerificationRequestsResponse {
 
 // Represents a verification request from a user
 message VerifyRequest {
-  string user_game_name = 1 [(google.api.field_behavior) = REQUIRED];
-  string contacts = 2 [(google.api.field_behavior) = REQUIRED];
-  repeated Answer answers = 3 [(google.api.field_behavior) = REQUIRED];
+  string user_name = 1 [(google.api.field_behavior) = REQUIRED];
+  string user_game_name = 2 [(google.api.field_behavior) = REQUIRED];
+  string contacts = 3 [(google.api.field_behavior) = REQUIRED];
+  repeated Answer answers = 4 [(google.api.field_behavior) = REQUIRED];
 }
 
 message Answer {
