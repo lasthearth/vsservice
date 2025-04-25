@@ -8,7 +8,7 @@ import (
 	questiondto "github.com/lasthearth/vsservice/internal/rules/internal/dto/mongo/question"
 	"github.com/lasthearth/vsservice/internal/rules/model"
 	"github.com/samber/lo"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.uber.org/zap"
 )
 
