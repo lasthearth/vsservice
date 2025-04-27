@@ -12,6 +12,8 @@ func AuthMatcher(ctx context.Context, c interceptors.CallMeta) bool {
 		return false
 	case "/vintage.v1.VintageService/GetGameTime":
 		return false
+	case "/leaderboard.v1.LeaderboardService/ListEntries":
+		return false
 	case "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo":
 		return false
 	default:
