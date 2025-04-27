@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: proto/v1/leaderboard.proto
+// source: leaderboard/v1/leaderboard.proto
 
-package v1
+package leaderboardv1
 
 import (
 	context "context"
@@ -121,5 +121,5 @@ var LeaderboardService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/v1/leaderboard.proto",
+	Metadata: "leaderboard/v1/leaderboard.proto",
 }

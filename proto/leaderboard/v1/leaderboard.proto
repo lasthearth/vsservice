@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package leaderboard.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+
+// Represent basic leaderboard
+service LeaderboardService {
+  // List of leaderboard entries.
+  rpc ListEntries(LeaderboardRequest) returns (LeaderboardResponse) {
+    option (google.api.http) = {
+      get: "/v1/leaderboard"
+    };
+  }
+}
+
+message LeaderboardRequest {
+  // Leaderboard filter. Service will return entries sorted by provided filter.
+  LeaderboardFilter filter = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The maximum number of entries to return.
+  // If unspecified, 25 entry will be returned.
+  int32 limit = 2;
+
+  // Different filter for sorting values
+  enum LeaderboardFilter {
+    // Death count
+    LEADERBOARD_FILTER_DEATHS = 0;
+    // Players kills count
+    LEADERBOARD_FILTER_KILLS = 1;
+    // Overall online
+    LEADERBOARD_FILTER_ONLINE = 2;
+  }
+}
+
+message LeaderboardEntry {
+  string name = 1;
+  int32 deaths = 2;
+  int32 kills = 3;
+  float hours_played = 5;
+}
+
+message LeaderboardResponse {
+  repeated LeaderboardEntry entries = 1;
+}

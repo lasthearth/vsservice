@@ -1,7 +1,7 @@
 package leaderboard
 
 import (
-	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
+	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	"github.com/lasthearth/vsservice/internal/leaderboard/internal/repository"
 	service2 "github.com/lasthearth/vsservice/internal/leaderboard/internal/service"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
@@ -28,7 +28,7 @@ var App = fx.Options(
 		),
 
 		fx.Provide(
-			fx.Annotate(service2.New, fx.As(new(v1.LeaderboardServiceServer))),
+			fx.Annotate(service2.New, fx.As(new(leaderboardv1.LeaderboardServiceServer))),
 		),
 	),
 )

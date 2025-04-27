@@ -4,6 +4,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
+	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
@@ -24,7 +25,7 @@ type Opts struct {
 
 	Log           logger.Logger
 	VsApiV1       v1.VintageServiceServer
-	LeaderboardV1 v1.LeaderboardServiceServer
+	LeaderboardV1 leaderboardv1.LeaderboardServiceServer
 	RulesV1       rulesv1.RuleServiceServer
 	UserV1        userv1.UserServiceServer
 }
@@ -62,7 +63,7 @@ func New(opts Opts) *GrpcServer {
 	)
 
 	v1.RegisterVintageServiceServer(srv, opts.VsApiV1)
-	v1.RegisterLeaderboardServiceServer(srv, opts.LeaderboardV1)
+	leaderboardv1.RegisterLeaderboardServiceServer(srv, opts.LeaderboardV1)
 	rulesv1.RegisterRuleServiceServer(srv, opts.RulesV1)
 	userv1.RegisterUserServiceServer(srv, opts.UserV1)
 	reflection.Register(srv)
