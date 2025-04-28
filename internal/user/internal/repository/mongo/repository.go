@@ -3,11 +3,13 @@ package repository
 import (
 	"context"
 
-	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
 	verificationdto "github.com/lasthearth/vsservice/internal/rules/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/rules/model"
 	"github.com/lasthearth/vsservice/internal/user/internal/service"
 	"github.com/samber/lo"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -28,7 +30,7 @@ func (r *Repository) VerificationRequest(ctx context.Context, opts service.Verif
 	r.log.Debug("successfully mapped answers to DTO format")
 
 	dto := verificationdto.Verification{
-		Model:        mongo.NewModel(),
+		Model:        mongomodel.NewModel(),
 		UserID:       opts.UserID,
 		UserName:     opts.UserName,
 		UserGameName: opts.UserGameName,
@@ -53,4 +55,28 @@ func (r *Repository) VerificationRequest(ctx context.Context, opts service.Verif
 		zap.String("user_id", opts.UserID),
 		zap.String("model_id", dto.ID.Hex()))
 	return nil
+}
+
+// VerificationExists implements service.DbRepository
+func (r *Repository) VerificationExists(ctx context.Context, userID string) (bool, error) {
+	r.log.Debug("checking if verification request exists",
+		zap.String("user_id", userID))
+
+	res := r.coll.FindOne(ctx, bson.M{"user_id": userID})
+	if res.Err() != nil {
+
+		if res.Err() == mongo.ErrNoDocuments {
+			return false, nil
+		}
+
+		r.log.Error("failed to find verification request",
+			zap.Error(res.Err()),
+			zap.String("user_id", userID))
+		return false, res.Err()
+	}
+
+	r.log.Debug("verification request exists",
+		zap.String("user_id", userID))
+
+	return true, nil
 }

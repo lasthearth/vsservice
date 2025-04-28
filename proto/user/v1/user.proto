@@ -19,6 +19,16 @@ service UserService {
       body: "*"
     };
   }
+
+  rpc VerifyStatus(VerifyStatusRequest) returns (VerifyStatusResponse) {
+    option (google.api.http) = {get: "/v1/user/verify/status"};
+  }
 }
 
 message VerifyResponse {}
+
+message VerifyStatusRequest {}
+
+message VerifyStatusResponse {
+  bool processed = 1;
+}

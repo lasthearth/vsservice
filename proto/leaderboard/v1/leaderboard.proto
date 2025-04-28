@@ -11,9 +11,7 @@ import "google/protobuf/empty.proto";
 service LeaderboardService {
   // List of leaderboard entries.
   rpc ListEntries(LeaderboardRequest) returns (LeaderboardResponse) {
-    option (google.api.http) = {
-      get: "/v1/leaderboard"
-    };
+    option (google.api.http) = {get: "/v1/leaderboard"};
   }
 }
 

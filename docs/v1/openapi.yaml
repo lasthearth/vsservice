@@ -217,6 +217,24 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/user/verify/status:
+        get:
+            tags:
+                - UserService
+            operationId: UserService_VerifyStatus
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/VerifyStatusResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/{name}/stats:
         get:
             tags:
@@ -405,6 +423,11 @@ components:
         VerifyResponse:
             type: object
             properties: {}
+        VerifyStatusResponse:
+            type: object
+            properties:
+                processed:
+                    type: boolean
 tags:
     - name: LeaderboardService
       description: Represent basic leaderboard

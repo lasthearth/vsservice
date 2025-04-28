@@ -12,13 +12,14 @@ import (
 
 type DbRepository interface {
 	VerificationRequest(ctx context.Context, opts VerifyOpts) error
+	VerificationExists(ctx context.Context, userID string) (bool, error)
 }
 
 type SsoRepository interface {
 	UpdateUserProfileNick(ctx context.Context, userID, nickname string) error
 }
 
-// Verify implements userv1.UserServiceServer userid in this request not provided, userid only for response
+// Verify implements userv1.UserServiceServer
 func (s *Service) Verify(ctx context.Context, req *rulesv1.VerifyRequest) (*userv1.VerifyResponse, error) {
 	answers := lo.Map(req.Answers, func(v *rulesv1.Answer, _ int) model.Answer {
 		return model.Answer{
@@ -47,4 +48,21 @@ func (s *Service) Verify(ctx context.Context, req *rulesv1.VerifyRequest) (*user
 	}
 
 	return &userv1.VerifyResponse{}, nil
+}
+
+// VerifyStatus implements userv1.UserServiceServer
+func (s *Service) VerifyStatus(ctx context.Context, req *userv1.VerifyStatusRequest) (*userv1.VerifyStatusResponse, error) {
+	userID, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	exists, err := s.dbRepo.VerificationExists(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.VerifyStatusResponse{
+		Processed: exists,
+	}, nil
 }
