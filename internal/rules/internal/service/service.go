@@ -131,6 +131,10 @@ func (s *Service) checkUserRoles(ctx context.Context, userId string) error {
 		return role.Name == ssoRoleName
 	})
 	if isVerified {
+		err := s.dbRepo.DeleteVerificationRequest(ctx, userId)
+		if err != nil {
+			return err
+		}
 		return ErrAlreadyVerified
 	}
 
