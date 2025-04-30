@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 
 	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
 	verificationdto "github.com/lasthearth/vsservice/internal/rules/dto/mongo/verification"
@@ -13,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (r *Repository) VerificationRequest(ctx context.Context, opts service.VerifyOpts) error {
+func (r *Repository) CreateVerificationRequest(ctx context.Context, opts service.VerifyOpts) error {
 	r.log.Info("processing verification request",
 		zap.String("user_id", opts.UserID),
 		zap.String("user_name", opts.UserName),
@@ -30,12 +32,14 @@ func (r *Repository) VerificationRequest(ctx context.Context, opts service.Verif
 	r.log.Debug("successfully mapped answers to DTO format")
 
 	dto := verificationdto.Verification{
-		Model:        mongomodel.NewModel(),
-		UserID:       opts.UserID,
-		UserName:     opts.UserName,
-		UserGameName: opts.UserGameName,
-		Contacts:     opts.Contacts,
-		Answers:      dtoAnswers,
+		Model:            mongomodel.NewModel(),
+		UserID:           opts.UserID,
+		UserName:         opts.UserName,
+		UserGameName:     opts.UserGameName,
+		Contacts:         opts.Contacts,
+		Answers:          dtoAnswers,
+		VerificationCode: r.generateVerificationCode(),
+		Status:           string(model.VerificationStatusPending),
 	}
 
 	r.log.Debug("inserting verification request into database",
@@ -57,26 +61,103 @@ func (r *Repository) VerificationRequest(ctx context.Context, opts service.Verif
 	return nil
 }
 
-// VerificationExists implements service.DbRepository
-func (r *Repository) VerificationExists(ctx context.Context, userID string) (bool, error) {
+// GetVerificationStatus implements service.DbRepository
+func (r *Repository) GetVerificationStatus(ctx context.Context, userID string) (model.VerificationStatus, error) {
 	r.log.Debug("checking if verification request exists",
 		zap.String("user_id", userID))
 
 	res := r.coll.FindOne(ctx, bson.M{"user_id": userID})
 	if res.Err() != nil {
-
 		if res.Err() == mongo.ErrNoDocuments {
-			return false, nil
+			return "", nil
 		}
 
 		r.log.Error("failed to find verification request",
 			zap.Error(res.Err()),
 			zap.String("user_id", userID))
-		return false, res.Err()
+		return "", res.Err()
+	}
+
+	var verification verificationdto.Verification
+	if err := res.Decode(&verification); err != nil {
+		r.log.Error("failed to decode verification request",
+			zap.Error(err),
+			zap.String("user_id", userID))
+		return "", err
 	}
 
 	r.log.Debug("verification request exists",
 		zap.String("user_id", userID))
 
-	return true, nil
+	return model.VerificationStatus(verification.Status), nil
+}
+
+func (r *Repository) GetVerificationCode(ctx context.Context, userID string) (string, error) {
+	resp := r.coll.FindOne(ctx, bson.M{
+		"user_id": userID,
+	})
+
+	if resp.Err() != nil {
+		if resp.Err() == mongo.ErrNoDocuments {
+			return "", ErrNotFound
+		}
+
+		r.log.Error("failed to find verification request",
+			zap.Error(resp.Err()),
+			zap.String("user_id", userID))
+		return "", resp.Err()
+	}
+	var verification verificationdto.Verification
+	if err := resp.Decode(&verification); err != nil {
+		r.log.Error("decode error", zap.Error(err))
+		return "", err
+	}
+
+	return verification.VerificationCode, nil
+}
+
+func (r *Repository) generateVerificationCode() string {
+	b := make([]byte, 3)
+	_, err := rand.Read(b)
+	if err != nil {
+		r.log.Error("failed to generate verification code",
+			zap.Error(err))
+		return ""
+	}
+	return hex.EncodeToString(b)
+}
+
+func (r *Repository) VerifyCode(ctx context.Context, userGameName string, code string) error {
+	r.log.Debug("verifying code",
+		zap.String("user_game_name", userGameName),
+		zap.String("code", code))
+
+	resp := r.coll.FindOneAndUpdate(ctx, bson.M{
+		"user_game_name":    userGameName,
+		"verification_code": code,
+		"status":            model.VerificationStatusApproved,
+	}, bson.M{
+		"$set": bson.M{
+			"status": model.VerificationStatusVerified,
+		},
+	})
+
+	if resp.Err() != nil {
+		if resp.Err() == mongo.ErrNoDocuments {
+			return ErrNotFound
+		}
+
+		r.log.Error("failed to find verification request",
+			zap.Error(resp.Err()),
+			zap.String("user_game_name", userGameName))
+		return resp.Err()
+	}
+
+	var verification verificationdto.Verification
+	if err := resp.Decode(&verification); err != nil {
+		r.log.Error("decode error", zap.Error(err))
+		return err
+	}
+
+	return nil
 }

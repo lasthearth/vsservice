@@ -11,8 +11,10 @@ import (
 )
 
 type DbRepository interface {
-	VerificationRequest(ctx context.Context, opts VerifyOpts) error
-	VerificationExists(ctx context.Context, userID string) (bool, error)
+	CreateVerificationRequest(ctx context.Context, opts VerifyOpts) error
+	GetVerificationStatus(ctx context.Context, userID string) (model.VerificationStatus, error)
+	GetVerificationCode(ctx context.Context, userID string) (string, error)
+	VerifyCode(ctx context.Context, userGameName string, code string) error
 }
 
 type SsoRepository interface {
@@ -37,7 +39,7 @@ func (s *Service) Verify(ctx context.Context, req *rulesv1.VerifyRequest) (*user
 		return nil, err
 	}
 
-	if err := s.dbRepo.VerificationRequest(ctx, VerifyOpts{
+	if err := s.dbRepo.CreateVerificationRequest(ctx, VerifyOpts{
 		UserID:       userID,
 		UserName:     req.UserName,
 		UserGameName: req.UserGameName,
@@ -57,12 +59,39 @@ func (s *Service) VerifyStatus(ctx context.Context, req *userv1.VerifyStatusRequ
 		return nil, err
 	}
 
-	exists, err := s.dbRepo.VerificationExists(ctx, userID)
+	status, err := s.dbRepo.GetVerificationStatus(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &userv1.VerifyStatusResponse{
-		Processed: exists,
+		Status: string(status),
 	}, nil
+}
+
+// GetVerifyCode implements userv1.UserServiceServer.
+func (s *Service) GetVerifyCode(ctx context.Context, req *userv1.GetVerifyCodeRequest) (*userv1.GetVerifyCodeResponse, error) {
+	userID, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	code, err := s.dbRepo.GetVerificationCode(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetVerifyCodeResponse{
+		Code: code,
+	}, nil
+}
+
+// VerifyCode implements userv1.UserServiceServer.
+func (s *Service) VerifyCode(ctx context.Context, req *userv1.VerifyCodeRequest) (*userv1.VerifyCodeResponse, error) {
+	err := s.dbRepo.VerifyCode(ctx, req.UserGameName, req.Code)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.VerifyCodeResponse{}, nil
 }
