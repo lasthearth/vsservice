@@ -17,6 +17,7 @@ func FromModel(v *model.Verification) *Verification {
 		UserName:     v.UserName,
 		UserGameName: v.UserGameName,
 		Contacts:     v.Contacts,
+		Status:       string(v.Status),
 		Answers:      answers,
 	}
 }
@@ -39,8 +40,9 @@ func (v *Verification) ToModel() *model.Verification {
 		UserID:       v.UserID,
 		UserName:     v.UserName,
 		UserGameName: v.UserGameName,
-		Contacts:     v.Contacts,
 		Answers:      answers,
+		Contacts:     v.Contacts,
+		Status:       model.VerificationStatus(v.Status),
 		UpdatedAt:    v.UpdatedAt,
 		CreatedAt:    v.CreatedAt,
 	}

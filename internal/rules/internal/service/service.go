@@ -14,7 +14,7 @@ type DbRepository interface {
 	GetRandomQuestions(ctx context.Context, count int) ([]*model.Question, error)
 	CreateQuestion(ctx context.Context, question *model.Question) error
 	GetVerificationRequests(ctx context.Context) ([]*model.Verification, error)
-	DeleteVerificationRequest(ctx context.Context, userId string) error
+	ApproveVerificationRequest(ctx context.Context, userId string) error
 }
 
 type SsoRepository interface {
@@ -111,7 +111,7 @@ func (s *Service) VerifyRequest(ctx context.Context, req *rulesv1.VerifyRequestR
 		return nil, err
 	}
 
-	err = s.dbRepo.DeleteVerificationRequest(ctx, req.UserId)
+	err = s.dbRepo.ApproveVerificationRequest(ctx, req.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (s *Service) checkUserRoles(ctx context.Context, userId string) error {
 		return role.Name == ssoRoleName
 	})
 	if isVerified {
-		err := s.dbRepo.DeleteVerificationRequest(ctx, userId)
+		err := s.dbRepo.ApproveVerificationRequest(ctx, userId)
 		if err != nil {
 			return err
 		}

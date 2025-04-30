@@ -2,6 +2,15 @@ package model
 
 import "time"
 
+type VerificationStatus string
+
+const (
+	VerificationStatusPending  VerificationStatus = "pending"
+	VerificationStatusApproved VerificationStatus = "approved"
+	VerificationStatusVerified VerificationStatus = "verified"
+	VerificationStatusRejected VerificationStatus = "rejected"
+)
+
 // Verification represents a verification record for a user.
 type Verification struct {
 	ID string
@@ -11,6 +20,7 @@ type Verification struct {
 	UserGameName string
 	Answers      []Answer
 	Contacts     string
+	Status       VerificationStatus
 	UpdatedAt    time.Time
 	CreatedAt    time.Time
 }

@@ -23,6 +23,18 @@ service UserService {
   rpc VerifyStatus(VerifyStatusRequest) returns (VerifyStatusResponse) {
     option (google.api.http) = {get: "/v1/user/verify/status"};
   }
+
+  rpc GetVerifyCode(GetVerifyCodeRequest) returns (GetVerifyCodeResponse) {
+    option (google.api.http) = {get: "/v1/user/verify/code"};
+  }
+
+  // Used for in game user verification
+  rpc VerifyCode(VerifyCodeRequest) returns (VerifyCodeResponse) {
+    option (google.api.http) = {
+      post: "/v1/user/verify/code"
+      body: "*"
+    };
+  }
 }
 
 message VerifyResponse {}
@@ -30,5 +42,18 @@ message VerifyResponse {}
 message VerifyStatusRequest {}
 
 message VerifyStatusResponse {
-  bool processed = 1;
+  string status = 1;
 }
+
+message GetVerifyCodeRequest {}
+
+message GetVerifyCodeResponse {
+  string code = 1;
+}
+
+message VerifyCodeRequest {
+  string code = 1 [(google.api.field_behavior) = REQUIRED];
+  string user_game_name = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message VerifyCodeResponse {}

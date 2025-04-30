@@ -80,7 +80,7 @@ func (r *Repository) GetVerificationRequests(ctx context.Context) ([]*model.Veri
 	defer cancel()
 
 	r.log.Debug("executing find query on verification collection")
-	finded, err := r.verificationColl.Find(ctx, bson.D{})
+	finded, err := r.verificationColl.Find(ctx, bson.M{"status": model.VerificationStatusPending})
 	if err != nil {
 		r.log.Error("find error", zap.Error(err))
 		return nil, err
@@ -101,24 +101,33 @@ func (r *Repository) GetVerificationRequests(ctx context.Context) ([]*model.Veri
 	return result, nil
 }
 
-func (r *Repository) DeleteVerificationRequest(ctx context.Context, userId string) error {
-	r.log.Info("deleting verification request", zap.String("user_id", userId))
+func (r *Repository) ApproveVerificationRequest(ctx context.Context, userId string) error {
+	r.log.Info("approving verification request", zap.String("user_id", userId))
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r.log.Debug("executing delete query",
+	r.log.Debug("executing update query",
 		zap.String("user_id", userId),
 		zap.String("collection", "verifications"))
 
-	result, err := r.verificationColl.DeleteMany(ctx, bson.D{{Key: "user_id", Value: userId}})
+	result, err := r.verificationColl.UpdateOne(ctx, bson.M{"user_id": userId},
+		bson.D{
+			{
+				Key: "$set",
+				Value: bson.D{
+					{Key: "status", Value: model.VerificationStatusApproved},
+					{Key: "updated_at", Value: time.Now()},
+				},
+			},
+		})
 	if err != nil {
-		r.log.Error("delete error", zap.Error(err), zap.String("user_id", userId))
+		r.log.Error("update error", zap.Error(err), zap.String("user_id", userId))
 		return err
 	}
 
-	r.log.Info("successfully deleted verification requests",
+	r.log.Info("successfully approved verification request",
 		zap.String("user_id", userId),
-		zap.Int64("deleted_count", result.DeletedCount))
+		zap.Int64("updated_count", result.ModifiedCount))
 	return nil
 }
