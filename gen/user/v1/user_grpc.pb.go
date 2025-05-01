@@ -20,10 +20,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_Verify_FullMethodName        = "/user.v1.UserService/Verify"
-	UserService_VerifyStatus_FullMethodName  = "/user.v1.UserService/VerifyStatus"
-	UserService_GetVerifyCode_FullMethodName = "/user.v1.UserService/GetVerifyCode"
-	UserService_VerifyCode_FullMethodName    = "/user.v1.UserService/VerifyCode"
+	UserService_Verify_FullMethodName             = "/user.v1.UserService/Verify"
+	UserService_VerifyStatus_FullMethodName       = "/user.v1.UserService/VerifyStatus"
+	UserService_VerifyStatusByName_FullMethodName = "/user.v1.UserService/VerifyStatusByName"
+	UserService_GetVerifyCode_FullMethodName      = "/user.v1.UserService/GetVerifyCode"
+	UserService_VerifyCode_FullMethodName         = "/user.v1.UserService/VerifyCode"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -35,6 +36,7 @@ type UserServiceClient interface {
 	// User answers for verification questions.
 	Verify(ctx context.Context, in *v1.VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error)
 	VerifyStatus(ctx context.Context, in *VerifyStatusRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error)
+	VerifyStatusByName(ctx context.Context, in *VerifyStatusByNameRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error)
 	GetVerifyCode(ctx context.Context, in *GetVerifyCodeRequest, opts ...grpc.CallOption) (*GetVerifyCodeResponse, error)
 	// Used for in game user verification
 	VerifyCode(ctx context.Context, in *VerifyCodeRequest, opts ...grpc.CallOption) (*VerifyCodeResponse, error)
@@ -62,6 +64,16 @@ func (c *userServiceClient) VerifyStatus(ctx context.Context, in *VerifyStatusRe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(VerifyStatusResponse)
 	err := c.cc.Invoke(ctx, UserService_VerifyStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) VerifyStatusByName(ctx context.Context, in *VerifyStatusByNameRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyStatusResponse)
+	err := c.cc.Invoke(ctx, UserService_VerifyStatusByName_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -97,6 +109,7 @@ type UserServiceServer interface {
 	// User answers for verification questions.
 	Verify(context.Context, *v1.VerifyRequest) (*VerifyResponse, error)
 	VerifyStatus(context.Context, *VerifyStatusRequest) (*VerifyStatusResponse, error)
+	VerifyStatusByName(context.Context, *VerifyStatusByNameRequest) (*VerifyStatusResponse, error)
 	GetVerifyCode(context.Context, *GetVerifyCodeRequest) (*GetVerifyCodeResponse, error)
 	// Used for in game user verification
 	VerifyCode(context.Context, *VerifyCodeRequest) (*VerifyCodeResponse, error)
@@ -114,6 +127,9 @@ func (UnimplementedUserServiceServer) Verify(context.Context, *v1.VerifyRequest)
 }
 func (UnimplementedUserServiceServer) VerifyStatus(context.Context, *VerifyStatusRequest) (*VerifyStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VerifyStatus not implemented")
+}
+func (UnimplementedUserServiceServer) VerifyStatusByName(context.Context, *VerifyStatusByNameRequest) (*VerifyStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyStatusByName not implemented")
 }
 func (UnimplementedUserServiceServer) GetVerifyCode(context.Context, *GetVerifyCodeRequest) (*GetVerifyCodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVerifyCode not implemented")
@@ -177,6 +193,24 @@ func _UserService_VerifyStatus_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_VerifyStatusByName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyStatusByNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).VerifyStatusByName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_VerifyStatusByName_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).VerifyStatusByName(ctx, req.(*VerifyStatusByNameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetVerifyCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetVerifyCodeRequest)
 	if err := dec(in); err != nil {
@@ -227,6 +261,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VerifyStatus",
 			Handler:    _UserService_VerifyStatus_Handler,
+		},
+		{
+			MethodName: "VerifyStatusByName",
+			Handler:    _UserService_VerifyStatusByName_Handler,
 		},
 		{
 			MethodName: "GetVerifyCode",
