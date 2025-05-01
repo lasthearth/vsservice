@@ -24,6 +24,10 @@ service UserService {
     option (google.api.http) = {get: "/v1/user/verify/status"};
   }
 
+  rpc VerifyStatusByName(VerifyStatusByNameRequest) returns (VerifyStatusResponse) {
+    option (google.api.http) = {get: "/v1/user/verify/{user_game_name}/status"};
+  }
+
   rpc GetVerifyCode(GetVerifyCodeRequest) returns (GetVerifyCodeResponse) {
     option (google.api.http) = {get: "/v1/user/verify/code"};
   }
@@ -43,6 +47,10 @@ message VerifyStatusRequest {}
 
 message VerifyStatusResponse {
   string status = 1;
+}
+
+message VerifyStatusByNameRequest {
+  string user_game_name = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message GetVerifyCodeRequest {}

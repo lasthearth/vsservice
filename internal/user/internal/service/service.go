@@ -8,11 +8,14 @@ import (
 	"github.com/lasthearth/vsservice/internal/rules/model"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/samber/lo"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type DbRepository interface {
 	CreateVerificationRequest(ctx context.Context, opts VerifyOpts) error
 	GetVerificationStatus(ctx context.Context, userID string) (model.VerificationStatus, error)
+	GetVerificationStatusByUserGameName(ctx context.Context, userGameName string) (model.VerificationStatus, error)
 	GetVerificationCode(ctx context.Context, userID string) (string, error)
 	VerifyCode(ctx context.Context, userGameName string, code string) error
 }
@@ -50,6 +53,22 @@ func (s *Service) Verify(ctx context.Context, req *rulesv1.VerifyRequest) (*user
 	}
 
 	return &userv1.VerifyResponse{}, nil
+}
+
+// VerifyStatus implements userv1.UserServiceServer
+func (s *Service) VerifyStatusByName(ctx context.Context, req *userv1.VerifyStatusByNameRequest) (*userv1.VerifyStatusResponse, error) {
+	if req.UserGameName == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "user name is required")
+	}
+
+	status, err := s.dbRepo.GetVerificationStatusByUserGameName(ctx, req.UserGameName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.VerifyStatusResponse{
+		Status: string(status),
+	}, nil
 }
 
 // VerifyStatus implements userv1.UserServiceServer

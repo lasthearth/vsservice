@@ -61,6 +61,37 @@ func (r *Repository) CreateVerificationRequest(ctx context.Context, opts service
 	return nil
 }
 
+// GetVerificationStatusByUserGameName implements service.DbRepository
+func (r *Repository) GetVerificationStatusByUserGameName(ctx context.Context, userGameName string) (model.VerificationStatus, error) {
+	r.log.Debug("checking if verification request exists",
+		zap.String("user_game_name", userGameName))
+
+	res := r.coll.FindOne(ctx, bson.M{"user_game_name": userGameName})
+	if res.Err() != nil {
+		if res.Err() == mongo.ErrNoDocuments {
+			return "", nil
+		}
+
+		r.log.Error("failed to find verification request",
+			zap.Error(res.Err()),
+			zap.String("user_game_name", userGameName))
+		return "", res.Err()
+	}
+
+	var verification verificationdto.Verification
+	if err := res.Decode(&verification); err != nil {
+		r.log.Error("failed to decode verification request",
+			zap.Error(err),
+			zap.String("user_game_name", userGameName))
+		return "", err
+	}
+
+	r.log.Debug("verification request exists",
+		zap.String("user_game_name", userGameName))
+
+	return model.VerificationStatus(verification.Status), nil
+}
+
 // GetVerificationStatus implements service.DbRepository
 func (r *Repository) GetVerificationStatus(ctx context.Context, userID string) (model.VerificationStatus, error) {
 	r.log.Debug("checking if verification request exists",
