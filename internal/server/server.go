@@ -75,24 +75,24 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 }
 
 // RunInProcessGateway starts the invoke in process http gateway.
-func (s *Server) RunInProcessGateway(ctx context.Context, addr string, opts ...runtime.ServeMuxOption) error {
+func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string, opts ...runtime.ServeMuxOption) error {
 	mux := runtime.NewServeMux(opts...)
-
-	if err := v1.RegisterVintageServiceHandlerServer(ctx, mux, s.vsApiV1); err != nil {
-		return errors.Wrap(err, "register vintage service handler")
-	}
 
 	dopts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 
-	if err := leaderboardv1.RegisterLeaderboardServiceHandlerFromEndpoint(ctx, mux, addr, dopts); err != nil {
+	if err := v1.RegisterVintageServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register vintage service handler")
+	}
+
+	if err := leaderboardv1.RegisterLeaderboardServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register leaderboard service handler")
 	}
 
-	if err := rulesv1.RegisterRuleServiceHandlerFromEndpoint(ctx, mux, addr, dopts); err != nil {
+	if err := rulesv1.RegisterRuleServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register rules service handler")
 	}
 
-	if err := userv1.RegisterUserServiceHandlerFromEndpoint(ctx, mux, addr, dopts); err != nil {
+	if err := userv1.RegisterUserServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register user service handler")
 	}
 

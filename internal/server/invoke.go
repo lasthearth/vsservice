@@ -57,9 +57,11 @@ var App = fx.Options(
 							}()
 
 							go func() {
+								grpcaddr := fmt.Sprintf(":%d", c.GrpcPort)
 								addr := fmt.Sprintf(":%d", c.GateAwayPort)
 								err := server.RunInProcessGateway(
 									context.Background(),
+									grpcaddr,
 									addr,
 									runtime.WithMarshalerOption(
 										runtime.MIMEWildcard, &runtime.JSONPb{
