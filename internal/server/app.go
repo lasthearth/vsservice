@@ -1,27 +1,25 @@
 package server
 
 import (
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
+	"net/http"
+
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
+	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 type Opts struct {
 	fx.In
 
 	AuthInterceptor *interceptor.Auth
+
+	Config config.Config
 
 	Log           logger.Logger
 	VsApiV1       v1.VintageServiceServer
@@ -30,43 +28,37 @@ type Opts struct {
 	UserV1        userv1.UserServiceServer
 }
 
-type GrpcServer struct {
-	Srv *grpc.Server
+type Server struct {
+	authInterceptor *interceptor.Auth
+
+	c             config.Config
+	vsApiV1       v1.VintageServiceServer
+	leaderboardV1 leaderboardv1.LeaderboardServiceServer
+	rulesV1       rulesv1.RuleServiceServer
+	userV1        userv1.UserServiceServer
+	log           logger.Logger
+
+	// runtime
+	grpcSrv *grpc.Server
+	gwSrv   *http.Server
 }
 
-func New(opts Opts) *GrpcServer {
-	logOpts := []logging.Option{
-		logging.WithLogOnEvents(
-			logging.StartCall, logging.FinishCall,
-			logging.PayloadSent, logging.PayloadReceived,
-		),
+func New(opts Opts) *Server {
+	// gwmux := runtime.NewServeMux(runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
+	// 	MarshalOptions: protojson.MarshalOptions{
+	// 		UseProtoNames:     true,
+	// 		EmitDefaultValues: true,
+	// 	},
+	// 	UnmarshalOptions: protojson.UnmarshalOptions{},
+	// }))
+
+	return &Server{
+		authInterceptor: opts.AuthInterceptor,
+		c:               opts.Config,
+		vsApiV1:         opts.VsApiV1,
+		leaderboardV1:   opts.LeaderboardV1,
+		rulesV1:         opts.RulesV1,
+		userV1:          opts.UserV1,
+		log:             opts.Log,
 	}
-
-	recoveryOpts := []recovery.Option{
-		recovery.WithRecoveryHandler(func(p any) (err error) {
-			opts.Log.Error("Recovered from panic", zap.Any("panic", p))
-			return status.Error(codes.Internal, "Internal server error")
-		}),
-	}
-
-	srv := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			selector.UnaryServerInterceptor(opts.AuthInterceptor.Unary(), selector.MatchFunc(interceptor.AuthMatcher)),
-			recovery.UnaryServerInterceptor(recoveryOpts...),
-			logging.UnaryServerInterceptor(interceptorLogger(opts.Log), logOpts...),
-		),
-		grpc.ChainStreamInterceptor(
-			selector.StreamServerInterceptor(opts.AuthInterceptor.Stream(), selector.MatchFunc(interceptor.AuthMatcher)),
-			recovery.StreamServerInterceptor(recoveryOpts...),
-			logging.StreamServerInterceptor(interceptorLogger(opts.Log), logOpts...),
-		),
-	)
-
-	v1.RegisterVintageServiceServer(srv, opts.VsApiV1)
-	leaderboardv1.RegisterLeaderboardServiceServer(srv, opts.LeaderboardV1)
-	rulesv1.RegisterRuleServiceServer(srv, opts.RulesV1)
-	userv1.RegisterUserServiceServer(srv, opts.UserV1)
-	reflection.Register(srv)
-
-	return &GrpcServer{Srv: srv}
 }

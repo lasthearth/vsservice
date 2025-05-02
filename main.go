@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"net/http"
 	"time"
 
@@ -69,13 +68,6 @@ func main() {
 	)
 
 	a.Run()
-
-	defer func(app *fx.App, ctx context.Context) {
-		err := app.Stop(ctx)
-		panic(err)
-	}(a, context.Background())
-
-	<-a.Done()
 }
 
 func setupLogger(c config.Config) (logger.Logger, error) {
