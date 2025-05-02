@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
@@ -81,15 +82,17 @@ func (s *Server) RunInProcessGateway(ctx context.Context, addr string, opts ...r
 		return errors.Wrap(err, "register vintage service handler")
 	}
 
-	if err := leaderboardv1.RegisterLeaderboardServiceHandlerServer(ctx, mux, s.leaderboardV1); err != nil {
+	dopts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+
+	if err := leaderboardv1.RegisterLeaderboardServiceHandlerFromEndpoint(ctx, mux, addr, dopts); err != nil {
 		return errors.Wrap(err, "register leaderboard service handler")
 	}
 
-	if err := rulesv1.RegisterRuleServiceHandlerServer(ctx, mux, s.rulesV1); err != nil {
+	if err := rulesv1.RegisterRuleServiceHandlerFromEndpoint(ctx, mux, addr, dopts); err != nil {
 		return errors.Wrap(err, "register rules service handler")
 	}
 
-	if err := userv1.RegisterUserServiceHandlerServer(ctx, mux, s.userV1); err != nil {
+	if err := userv1.RegisterUserServiceHandlerFromEndpoint(ctx, mux, addr, dopts); err != nil {
 		return errors.Wrap(err, "register user service handler")
 	}
 
