@@ -44,14 +44,6 @@ type Server struct {
 }
 
 func New(opts Opts) *Server {
-	// gwmux := runtime.NewServeMux(runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
-	// 	MarshalOptions: protojson.MarshalOptions{
-	// 		UseProtoNames:     true,
-	// 		EmitDefaultValues: true,
-	// 	},
-	// 	UnmarshalOptions: protojson.UnmarshalOptions{},
-	// }))
-
 	return &Server{
 		authInterceptor: opts.AuthInterceptor,
 		c:               opts.Config,
