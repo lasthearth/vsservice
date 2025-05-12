@@ -12,14 +12,6 @@ import "rules/v1/rules.proto";
 service UserService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
-  // User answers for verification questions.
-  rpc Verify(rules.v1.VerifyRequest) returns (VerifyResponse) {
-    option (google.api.http) = {
-      post: "/v1/user/verify"
-      body: "*"
-    };
-  }
-
   rpc VerifyStatus(VerifyStatusRequest) returns (VerifyStatusResponse) {
     option (google.api.http) = {get: "/v1/user/verify/status"};
   }

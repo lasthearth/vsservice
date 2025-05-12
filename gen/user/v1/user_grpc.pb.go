@@ -8,7 +8,6 @@ package userv1
 
 import (
 	context "context"
-	v1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -20,7 +19,6 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_Verify_FullMethodName             = "/user.v1.UserService/Verify"
 	UserService_VerifyStatus_FullMethodName       = "/user.v1.UserService/VerifyStatus"
 	UserService_VerifyStatusByName_FullMethodName = "/user.v1.UserService/VerifyStatusByName"
 	UserService_GetVerifyCode_FullMethodName      = "/user.v1.UserService/GetVerifyCode"
@@ -33,8 +31,6 @@ const (
 //
 // Represents user specific actions
 type UserServiceClient interface {
-	// User answers for verification questions.
-	Verify(ctx context.Context, in *v1.VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error)
 	VerifyStatus(ctx context.Context, in *VerifyStatusRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error)
 	VerifyStatusByName(ctx context.Context, in *VerifyStatusByNameRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error)
 	GetVerifyCode(ctx context.Context, in *GetVerifyCodeRequest, opts ...grpc.CallOption) (*GetVerifyCodeResponse, error)
@@ -48,16 +44,6 @@ type userServiceClient struct {
 
 func NewUserServiceClient(cc grpc.ClientConnInterface) UserServiceClient {
 	return &userServiceClient{cc}
-}
-
-func (c *userServiceClient) Verify(ctx context.Context, in *v1.VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(VerifyResponse)
-	err := c.cc.Invoke(ctx, UserService_Verify_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *userServiceClient) VerifyStatus(ctx context.Context, in *VerifyStatusRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error) {
@@ -106,8 +92,6 @@ func (c *userServiceClient) VerifyCode(ctx context.Context, in *VerifyCodeReques
 //
 // Represents user specific actions
 type UserServiceServer interface {
-	// User answers for verification questions.
-	Verify(context.Context, *v1.VerifyRequest) (*VerifyResponse, error)
 	VerifyStatus(context.Context, *VerifyStatusRequest) (*VerifyStatusResponse, error)
 	VerifyStatusByName(context.Context, *VerifyStatusByNameRequest) (*VerifyStatusResponse, error)
 	GetVerifyCode(context.Context, *GetVerifyCodeRequest) (*GetVerifyCodeResponse, error)
@@ -122,9 +106,6 @@ type UserServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedUserServiceServer struct{}
 
-func (UnimplementedUserServiceServer) Verify(context.Context, *v1.VerifyRequest) (*VerifyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Verify not implemented")
-}
 func (UnimplementedUserServiceServer) VerifyStatus(context.Context, *VerifyStatusRequest) (*VerifyStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VerifyStatus not implemented")
 }
@@ -155,24 +136,6 @@ func RegisterUserServiceServer(s grpc.ServiceRegistrar, srv UserServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&UserService_ServiceDesc, srv)
-}
-
-func _UserService_Verify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1.VerifyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).Verify(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_Verify_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).Verify(ctx, req.(*v1.VerifyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _UserService_VerifyStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -254,10 +217,6 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "user.v1.UserService",
 	HandlerType: (*UserServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Verify",
-			Handler:    _UserService_Verify_Handler,
-		},
 		{
 			MethodName: "VerifyStatus",
 			Handler:    _UserService_VerifyStatus_Handler,

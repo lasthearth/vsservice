@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package verification.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+
+// Represents verification service
+service VerificationService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Returns verification requests from users, need admin privelege
+  rpc List(ListRequest) returns (ListResponse) {
+    option (google.api.http) = {get: "/v1/verifications"};
+  }
+
+  rpc Submit(SubmitRequest) returns (SubmitResponse) {
+    option (google.api.http) = {
+      post: "/v1/verification"
+      body: "*"
+    };
+  }
+
+  // Approve user verification request, need admin privelege
+  rpc Approve(ApproveRequest) returns (ApproveResponse) {
+    option (google.api.http) = {
+      post: "/v1/rules/verification/{id}/approve"
+      body: "*"
+    };
+  }
+
+  // Reject user verification request, need admin privelege
+  rpc Reject(RejectRequest) returns (RejectResponse) {
+    option (google.api.http) = {
+      post: "/v1/rules/verification/{id}/reject"
+      body: "*"
+    };
+  }
+}
+
+message ListRequest {}
+
+message ListResponse {
+  repeated VerifyUserRequest requests = 1;
+
+  message VerifyUserRequest {
+    string id = 1;
+    string user_id = 2;
+    string user_name = 3;
+    string user_game_name = 4;
+    string contacts = 5;
+    repeated Answer answers = 6;
+  }
+}
+
+// Represents a verification request from a user
+message VerifyRequest {
+  string user_name = 1 [(google.api.field_behavior) = REQUIRED];
+  string user_game_name = 2 [(google.api.field_behavior) = REQUIRED];
+  string contacts = 3 [(google.api.field_behavior) = REQUIRED];
+  repeated Answer answers = 4 [(google.api.field_behavior) = REQUIRED];
+}
+
+message Answer {
+  string question = 1;
+  string answer = 2;
+}
+
+message SubmitRequest {
+  // Verification request id
+  string id = 1;
+}
+
+message SubmitResponse {}
+
+message ApproveRequest {
+  // Verification request id
+  string id = 1;
+}
+
+message ApproveResponse {}
+
+message RejectRequest {
+  // Verification request id
+  string id = 1;
+}
+
+message RejectResponse {}
