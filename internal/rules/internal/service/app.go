@@ -16,12 +16,11 @@ type Opts struct {
 	fx.In
 	// Needs to be a client for making HTTP requests to sso
 	// So http client must automatically manage tokens
-	Client        *http.Client
-	Log           logger.Logger
-	Cfg           config.Config
-	Retrier       *retrier.Retrier
-	DbRepo        DbRepository
-	SsoRepository SsoRepository
+	Client  *http.Client
+	Log     logger.Logger
+	Cfg     config.Config
+	Retrier *retrier.Retrier
+	DbRepo  DbRepository
 }
 
 type Service struct {
@@ -31,7 +30,6 @@ type Service struct {
 	log     logger.Logger
 	cfg     config.Config
 	dbRepo  DbRepository
-	ssoRepo SsoRepository
 	retrier *retrier.Retrier
 }
 
@@ -41,7 +39,6 @@ func New(opts Opts) *Service {
 		log:     opts.Log,
 		cfg:     opts.Cfg,
 		dbRepo:  opts.DbRepo,
-		ssoRepo: opts.SsoRepository,
 		retrier: opts.Retrier,
 	}
 }
