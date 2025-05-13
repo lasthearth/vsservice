@@ -16,6 +16,7 @@ service VerificationService {
     option (google.api.http) = {get: "/v1/verifications"};
   }
 
+  // Submit user verification request
   rpc Submit(SubmitRequest) returns (SubmitResponse) {
     option (google.api.http) = {
       post: "/v1/verification"
@@ -39,6 +40,7 @@ service VerificationService {
     };
   }
 
+  // Get user verification details
   rpc Details(DetailsRequest) returns (DetailsResponse) {
     option (google.api.http) = {get: "/v1/verifications/{user_id}/details"};
   }
@@ -86,9 +88,7 @@ message RejectRequest {
 
 message RejectResponse {}
 
-message DetailsRequest {
-  string user_id = 1;
-}
+message DetailsRequest {}
 
 message DetailsResponse {
   string id = 1;
