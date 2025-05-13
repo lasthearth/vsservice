@@ -42,7 +42,7 @@ service VerificationService {
 
   // Get user verification details
   rpc Details(DetailsRequest) returns (DetailsResponse) {
-    option (google.api.http) = {get: "/v1/verifications/{user_id}/details"};
+    option (google.api.http) = {get: "/v1/verification/details"};
   }
 }
 
