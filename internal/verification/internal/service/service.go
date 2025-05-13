@@ -4,32 +4,37 @@ import (
 	"context"
 	"slices"
 
-	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
-	"github.com/lasthearth/vsservice/internal/rules/model"
+	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	httpdto "github.com/lasthearth/vsservice/internal/verification/internal/dto/http"
+	"github.com/lasthearth/vsservice/internal/verification/model"
 	"github.com/samber/lo"
 )
 
-type DbRepository interface {
+type VerificationDbRepository interface {
+	GetVerification(ctx context.Context, userID string) (*model.Verification, error)
 	GetVerificationRequests(ctx context.Context) ([]*model.Verification, error)
-	ApproveVerificationRequest(ctx context.Context, userId string) error
+	Approve(ctx context.Context, userId string) error
+	Reject(ctx context.Context, userId, rejectReason string) error
+	Create(ctx context.Context, opts VerifyOpts) error
+	Update(ctx context.Context, opts VerifyOpts) error
 }
 
 type SsoRepository interface {
 	GetUserRoles(ctx context.Context, userId string) ([]httpdto.Role, error)
 	GetRoles(ctx context.Context) ([]httpdto.Role, error)
 	UpdateUserRoles(ctx context.Context, userId string, roleIds []string) error
+	UpdateUserProfileNick(ctx context.Context, userID, nickname string) error
 }
 
-// ListVerificationRequests implements rulesv1.RuleServiceServer
-func (s *Service) ListVerificationRequests(ctx context.Context, req *verificationv1.ListRequest) (*verificationv1.ListResponse, error) {
+// List implements verificationv1.VerificationService
+func (s *Service) List(ctx context.Context, req *verificationv1.ListRequest) (*verificationv1.ListResponse, error) {
 	reqs, err := s.dbRepo.GetVerificationRequests(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := lo.Map(reqs, func(v *model.Verification, index int) *verificationv1.Answer {
+	resp := lo.Map(reqs, func(v *model.Verification, index int) *verificationv1.ListResponse_VerifyUserRequest {
 		answers := lo.Map(v.Answers, func(a model.Answer, _ int) *verificationv1.Answer {
 			return &verificationv1.Answer{
 				Question: a.Question,
@@ -37,7 +42,7 @@ func (s *Service) ListVerificationRequests(ctx context.Context, req *verificatio
 			}
 		})
 
-		return &rulesv1.ListVerificationRequestsResponse_VerifyUserRequest{
+		return &verificationv1.ListResponse_VerifyUserRequest{
 			UserId:       v.UserID,
 			UserName:     v.UserName,
 			UserGameName: v.UserGameName,
@@ -46,13 +51,13 @@ func (s *Service) ListVerificationRequests(ctx context.Context, req *verificatio
 		}
 	})
 
-	return &rulesv1.ListVerificationRequestsResponse{
+	return &verificationv1.ListResponse{
 		Requests: resp,
 	}, nil
 }
 
-// VerifyRequest implements rulesv1.RuleServiceServer.
-func (s *Service) VerifyRequest(ctx context.Context, req *rulesv1.VerifyRequestRequest) (*rulesv1.VerifyRequestResponse, error) {
+// Approve implements verificationv1.VerificationServiceServer.
+func (s *Service) Approve(ctx context.Context, req *verificationv1.ApproveRequest) (*verificationv1.ApproveResponse, error) {
 	err := s.checkUserRoles(ctx, req.UserId)
 	if err != nil {
 		return nil, err
@@ -75,12 +80,101 @@ func (s *Service) VerifyRequest(ctx context.Context, req *rulesv1.VerifyRequestR
 		return nil, err
 	}
 
-	err = s.dbRepo.ApproveVerificationRequest(ctx, req.UserId)
+	err = s.dbRepo.Approve(ctx, req.UserId)
 	if err != nil {
 		return nil, err
 	}
 
-	return &rulesv1.VerifyRequestResponse{}, nil
+	return &verificationv1.ApproveResponse{}, nil
+}
+
+// Reject implements verificationv1.VerificationServiceServer.
+func (s *Service) Reject(ctx context.Context, req *verificationv1.RejectRequest) (*verificationv1.RejectResponse, error) {
+	err := s.checkUserRoles(ctx, req.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.dbRepo.Reject(ctx, req.UserId, req.RejectionReason)
+	if err != nil {
+		return nil, err
+	}
+
+	return &verificationv1.RejectResponse{}, nil
+}
+
+// Submit implements verificationv1.VerificationServiceServer.
+func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest) (*verificationv1.SubmitResponse, error) {
+	answers := lo.Map(req.Answers, func(v *verificationv1.Answer, _ int) model.Answer {
+		return model.Answer{
+			Question: v.Question,
+			Answer:   v.Answer,
+		}
+	})
+
+	userID, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.ssoRepo.UpdateUserProfileNick(ctx, userID, req.UserGameName); err != nil {
+		return nil, err
+	}
+
+	// Check if verification already exists
+	existingVerification, err := s.dbRepo.GetVerification(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	verifyOpts := VerifyOpts{
+		UserID:       userID,
+		UserName:     req.UserName,
+		UserGameName: req.UserGameName,
+		Contacts:     req.Contacts,
+		Answers:      answers,
+	}
+
+	// If no verification exists, create a new one
+	if existingVerification == nil {
+		if err := s.dbRepo.Create(ctx, verifyOpts); err != nil {
+			return nil, err
+		}
+		return &verificationv1.SubmitResponse{}, nil
+	}
+
+	// Handle based on existing verification status
+	switch existingVerification.Status {
+	case model.VerificationStatusPending:
+		// If pending, return error
+		return nil, ErrVerificationPending
+	case model.VerificationStatusRejected:
+		// If rejected, update existing verification
+		if err := s.dbRepo.Update(ctx, verifyOpts); err != nil {
+			return nil, err
+		}
+	default:
+		// For other statuses (approved, verified), create new verification
+		if err := s.dbRepo.Create(ctx, verifyOpts); err != nil {
+			return nil, err
+		}
+	}
+
+	return &verificationv1.SubmitResponse{}, nil
+}
+
+// Details implements verificationv1.VerificationServiceServer.
+func (s *Service) Details(ctx context.Context, req *verificationv1.DetailsRequest) (*verificationv1.DetailsResponse, error) {
+	verif, err := s.dbRepo.GetVerification(ctx, req.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &verificationv1.DetailsResponse{
+		Id:              verif.ID,
+		Status:          string(verif.Status),
+		RejectionReason: verif.RejectionReason,
+	}, nil
 }
 
 func (s *Service) checkUserRoles(ctx context.Context, userId string) error {
@@ -95,32 +189,8 @@ func (s *Service) checkUserRoles(ctx context.Context, userId string) error {
 		return role.Name == ssoRoleName
 	})
 	if isVerified {
-		err := s.dbRepo.ApproveVerificationRequest(ctx, userId)
-		if err != nil {
-			return err
-		}
 		return ErrAlreadyVerified
 	}
 
 	return nil
-}
-
-// Approve implements verificationv1.VerificationServiceServer.
-func (s *Service) Approve(context.Context, *verificationv1.ApproveRequest) (*verificationv1.ApproveResponse, error) {
-	panic("unimplemented")
-}
-
-// List implements verificationv1.VerificationServiceServer.
-func (s *Service) List(context.Context, *verificationv1.ListRequest) (*verificationv1.ListResponse, error) {
-	panic("unimplemented")
-}
-
-// Reject implements verificationv1.VerificationServiceServer.
-func (s *Service) Reject(context.Context, *verificationv1.RejectRequest) (*verificationv1.RejectResponse, error) {
-	panic("unimplemented")
-}
-
-// Submit implements verificationv1.VerificationServiceServer.
-func (s *Service) Submit(context.Context, *verificationv1.SubmitRequest) (*verificationv1.SubmitResponse, error) {
-	panic("unimplemented")
 }

@@ -20,7 +20,7 @@ type Opts struct {
 	Log           logger.Logger
 	Cfg           config.Config
 	Retrier       *retrier.Retrier
-	DbRepo        DbRepository
+	DbRepo        VerificationDbRepository
 	SsoRepository SsoRepository
 }
 
@@ -30,7 +30,7 @@ type Service struct {
 	client  *http.Client
 	log     logger.Logger
 	cfg     config.Config
-	dbRepo  DbRepository
+	dbRepo  VerificationDbRepository
 	ssoRepo SsoRepository
 	retrier *retrier.Retrier
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	verificationdto "github.com/lasthearth/vsservice/internal/rules/dto/mongo/verification"
 	questiondto "github.com/lasthearth/vsservice/internal/rules/internal/dto/mongo/question"
 	"github.com/lasthearth/vsservice/internal/rules/model"
 	"github.com/samber/lo"
@@ -70,64 +69,4 @@ func (r *Repository) GetRandomQuestions(ctx context.Context, count int) ([]*mode
 		zap.Int("requested_count", count),
 		zap.Int("retrieved_count", len(result)))
 	return result, nil
-}
-
-// GetVerificationRequests implements service.Repository.
-func (r *Repository) GetVerificationRequests(ctx context.Context) ([]*model.Verification, error) {
-	r.log.Info("retrieving all verification requests")
-
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	r.log.Debug("executing find query on verification collection")
-	finded, err := r.verificationColl.Find(ctx, bson.M{"status": model.VerificationStatusPending})
-	if err != nil {
-		r.log.Error("find error", zap.Error(err))
-		return nil, err
-	}
-	defer finded.Close(ctx)
-
-	var verifications []verificationdto.Verification
-	if err := finded.All(ctx, &verifications); err != nil {
-		r.log.Error("cursor error", zap.Error(err))
-		return nil, err
-	}
-
-	result := lo.Map(verifications, func(item verificationdto.Verification, index int) *model.Verification {
-		return item.ToModel()
-	})
-
-	r.log.Info("successfully retrieved verification requests", zap.Int("count", len(result)))
-	return result, nil
-}
-
-func (r *Repository) ApproveVerificationRequest(ctx context.Context, userId string) error {
-	r.log.Info("approving verification request", zap.String("user_id", userId))
-
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	r.log.Debug("executing update query",
-		zap.String("user_id", userId),
-		zap.String("collection", "verifications"))
-
-	result, err := r.verificationColl.UpdateOne(ctx, bson.M{"user_id": userId},
-		bson.D{
-			{
-				Key: "$set",
-				Value: bson.D{
-					{Key: "status", Value: model.VerificationStatusApproved},
-					{Key: "updated_at", Value: time.Now()},
-				},
-			},
-		})
-	if err != nil {
-		r.log.Error("update error", zap.Error(err), zap.String("user_id", userId))
-		return err
-	}
-
-	r.log.Info("successfully approved verification request",
-		zap.String("user_id", userId),
-		zap.Int64("updated_count", result.ModifiedCount))
-	return nil
 }

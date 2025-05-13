@@ -2,7 +2,7 @@ package verificationdto
 
 import (
 	"github.com/lasthearth/vsservice/internal/pkg/mongo"
-	"github.com/lasthearth/vsservice/internal/rules/model"
+	"github.com/lasthearth/vsservice/internal/verification/model"
 	"github.com/samber/lo"
 )
 
@@ -12,13 +12,14 @@ func FromModel(v *model.Verification) *Verification {
 	})
 
 	return &Verification{
-		Model:        mongo.NewModel(),
-		UserID:       v.UserID,
-		UserName:     v.UserName,
-		UserGameName: v.UserGameName,
-		Contacts:     v.Contacts,
-		Status:       string(v.Status),
-		Answers:      answers,
+		Model:           mongo.NewModel(),
+		UserID:          v.UserID,
+		UserName:        v.UserName,
+		UserGameName:    v.UserGameName,
+		Contacts:        v.Contacts,
+		Status:          string(v.Status),
+		RejectionReason: v.RejectionReason,
+		Answers:         answers,
 	}
 }
 
@@ -36,15 +37,16 @@ func (v *Verification) ToModel() *model.Verification {
 	})
 
 	return &model.Verification{
-		ID:           v.ID.Hex(),
-		UserID:       v.UserID,
-		UserName:     v.UserName,
-		UserGameName: v.UserGameName,
-		Answers:      answers,
-		Contacts:     v.Contacts,
-		Status:       model.VerificationStatus(v.Status),
-		UpdatedAt:    v.UpdatedAt,
-		CreatedAt:    v.CreatedAt,
+		ID:              v.ID.Hex(),
+		UserID:          v.UserID,
+		UserName:        v.UserName,
+		UserGameName:    v.UserGameName,
+		Answers:         answers,
+		Contacts:        v.Contacts,
+		Status:          model.VerificationStatus(v.Status),
+		RejectionReason: v.RejectionReason,
+		UpdatedAt:       v.UpdatedAt,
+		CreatedAt:       v.CreatedAt,
 	}
 }
 

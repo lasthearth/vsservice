@@ -117,16 +117,15 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /v1/rules/verification/{id}/approve:
+    /v1/rules/verification/{user_id}/approve:
         post:
             tags:
                 - VerificationService
             description: Approve user verification request, need admin privelege
             operationId: VerificationService_Approve
             parameters:
-                - name: id
+                - name: user_id
                   in: path
-                  description: Verification request id
                   required: true
                   schema:
                     type: string
@@ -149,16 +148,15 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /v1/rules/verification/{id}/reject:
+    /v1/rules/verification/{user_id}/reject:
         post:
             tags:
                 - VerificationService
             description: Reject user verification request, need admin privelege
             operationId: VerificationService_Reject
             parameters:
-                - name: id
+                - name: user_id
                   in: path
-                  description: Verification request id
                   required: true
                   schema:
                     type: string
@@ -339,6 +337,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/verifications/{user_id}/details:
+        get:
+            tags:
+                - VerificationService
+            operationId: VerificationService_Details
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DetailsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/{name}/stats:
         get:
             tags:
@@ -376,9 +398,8 @@ components:
         ApproveRequest:
             type: object
             properties:
-                id:
+                user_id:
                     type: string
-                    description: Verification request id
         ApproveResponse:
             type: object
             properties: {}
@@ -401,6 +422,15 @@ components:
             type: object
             properties:
                 id:
+                    type: string
+        DetailsResponse:
+            type: object
+            properties:
+                id:
+                    type: string
+                status:
+                    type: string
+                rejection_reason:
                     type: string
         GetRandomQuestionsResponse:
             type: object
@@ -500,9 +530,10 @@ components:
         RejectRequest:
             type: object
             properties:
-                id:
+                user_id:
                     type: string
-                    description: Verification request id
+                rejection_reason:
+                    type: string
         RejectResponse:
             type: object
             properties: {}
@@ -523,11 +554,23 @@ components:
                     description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
         SubmitRequest:
+            required:
+                - user_name
+                - user_game_name
+                - contacts
+                - answers
             type: object
             properties:
-                id:
+                user_name:
                     type: string
-                    description: Verification request id
+                user_game_name:
+                    type: string
+                contacts:
+                    type: string
+                answers:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Answer'
         SubmitResponse:
             type: object
             properties: {}

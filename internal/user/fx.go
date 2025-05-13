@@ -4,7 +4,6 @@ import (
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	mongorepo "github.com/lasthearth/vsservice/internal/user/internal/repository/mongo"
-	ssorepo "github.com/lasthearth/vsservice/internal/user/internal/repository/sso"
 	"github.com/lasthearth/vsservice/internal/user/internal/service"
 	"go.uber.org/fx"
 )
@@ -25,10 +24,6 @@ var App = fx.Options(
 			fx.Annotate(
 				mongorepo.New,
 				fx.As(new(service.DbRepository)),
-			),
-			fx.Annotate(
-				ssorepo.New,
-				fx.As(new(service.SsoRepository)),
 			),
 		),
 

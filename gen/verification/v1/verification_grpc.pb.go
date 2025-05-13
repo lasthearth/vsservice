@@ -23,6 +23,7 @@ const (
 	VerificationService_Submit_FullMethodName  = "/verification.v1.VerificationService/Submit"
 	VerificationService_Approve_FullMethodName = "/verification.v1.VerificationService/Approve"
 	VerificationService_Reject_FullMethodName  = "/verification.v1.VerificationService/Reject"
+	VerificationService_Details_FullMethodName = "/verification.v1.VerificationService/Details"
 )
 
 // VerificationServiceClient is the client API for VerificationService service.
@@ -38,6 +39,7 @@ type VerificationServiceClient interface {
 	Approve(ctx context.Context, in *ApproveRequest, opts ...grpc.CallOption) (*ApproveResponse, error)
 	// Reject user verification request, need admin privelege
 	Reject(ctx context.Context, in *RejectRequest, opts ...grpc.CallOption) (*RejectResponse, error)
+	Details(ctx context.Context, in *DetailsRequest, opts ...grpc.CallOption) (*DetailsResponse, error)
 }
 
 type verificationServiceClient struct {
@@ -88,6 +90,16 @@ func (c *verificationServiceClient) Reject(ctx context.Context, in *RejectReques
 	return out, nil
 }
 
+func (c *verificationServiceClient) Details(ctx context.Context, in *DetailsRequest, opts ...grpc.CallOption) (*DetailsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DetailsResponse)
+	err := c.cc.Invoke(ctx, VerificationService_Details_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VerificationServiceServer is the server API for VerificationService service.
 // All implementations should embed UnimplementedVerificationServiceServer
 // for forward compatibility.
@@ -101,6 +113,7 @@ type VerificationServiceServer interface {
 	Approve(context.Context, *ApproveRequest) (*ApproveResponse, error)
 	// Reject user verification request, need admin privelege
 	Reject(context.Context, *RejectRequest) (*RejectResponse, error)
+	Details(context.Context, *DetailsRequest) (*DetailsResponse, error)
 }
 
 // UnimplementedVerificationServiceServer should be embedded to have
@@ -121,6 +134,9 @@ func (UnimplementedVerificationServiceServer) Approve(context.Context, *ApproveR
 }
 func (UnimplementedVerificationServiceServer) Reject(context.Context, *RejectRequest) (*RejectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Reject not implemented")
+}
+func (UnimplementedVerificationServiceServer) Details(context.Context, *DetailsRequest) (*DetailsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Details not implemented")
 }
 func (UnimplementedVerificationServiceServer) testEmbeddedByValue() {}
 
@@ -214,6 +230,24 @@ func _VerificationService_Reject_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VerificationService_Details_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DetailsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VerificationServiceServer).Details(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VerificationService_Details_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VerificationServiceServer).Details(ctx, req.(*DetailsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VerificationService_ServiceDesc is the grpc.ServiceDesc for VerificationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -236,6 +270,10 @@ var VerificationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Reject",
 			Handler:    _VerificationService_Reject_Handler,
+		},
+		{
+			MethodName: "Details",
+			Handler:    _VerificationService_Details_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

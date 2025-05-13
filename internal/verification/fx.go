@@ -1,16 +1,16 @@
 package verification
 
 import (
-	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
+	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
-	ssorepo "github.com/lasthearth/vsservice/internal/verfication/internal/repository/sso"
 	mongorepo "github.com/lasthearth/vsservice/internal/verification/internal/repository/mongo"
+	ssorepo "github.com/lasthearth/vsservice/internal/verification/internal/repository/sso"
 	"github.com/lasthearth/vsservice/internal/verification/internal/service"
 	"go.uber.org/fx"
 )
 
-const module = "rules"
+const module = "verification"
 
 var App = fx.Options(
 	fx.Module(
@@ -25,7 +25,7 @@ var App = fx.Options(
 			fx.Private,
 			fx.Annotate(
 				mongorepo.New,
-				fx.As(new(service.DbRepository)),
+				fx.As(new(service.VerificationDbRepository)),
 			),
 
 			fx.Annotate(
@@ -36,7 +36,7 @@ var App = fx.Options(
 
 		fx.Provide(
 			fx.Annotate(service.New,
-				fx.As(new(rulesv1.RuleServiceServer)),
+				fx.As(new(verificationv1.VerificationServiceServer)),
 			),
 
 			fx.Annotate(service.New,

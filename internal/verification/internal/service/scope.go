@@ -3,9 +3,10 @@ package service
 import "github.com/lasthearth/vsservice/internal/server/interceptor"
 
 func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
-	srvName := "/rules.v1.RuleService/"
+	srvName := "/verification.v1.VerificationService/"
 	return map[interceptor.Method]interceptor.Scope{
-		interceptor.Method(srvName + "CreateQuestion"): interceptor.Scope("question:create"),
-		interceptor.Method(srvName + "VerifyRequest"):  interceptor.Scope("user:verify"),
+		interceptor.Method(srvName + "Approve"): interceptor.Scope("user:verify"),
+		interceptor.Method(srvName + "List"):    interceptor.Scope("user:verify"),
+		interceptor.Method(srvName + "Reject"):  interceptor.Scope("user:verify"),
 	}
 }

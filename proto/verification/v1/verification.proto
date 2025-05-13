@@ -26,7 +26,7 @@ service VerificationService {
   // Approve user verification request, need admin privelege
   rpc Approve(ApproveRequest) returns (ApproveResponse) {
     option (google.api.http) = {
-      post: "/v1/rules/verification/{id}/approve"
+      post: "/v1/rules/verification/{user_id}/approve"
       body: "*"
     };
   }
@@ -34,9 +34,13 @@ service VerificationService {
   // Reject user verification request, need admin privelege
   rpc Reject(RejectRequest) returns (RejectResponse) {
     option (google.api.http) = {
-      post: "/v1/rules/verification/{id}/reject"
+      post: "/v1/rules/verification/{user_id}/reject"
       body: "*"
     };
+  }
+
+  rpc Details(DetailsRequest) returns (DetailsResponse) {
+    option (google.api.http) = {get: "/v1/verifications/{user_id}/details"};
   }
 }
 
@@ -55,36 +59,39 @@ message ListResponse {
   }
 }
 
-// Represents a verification request from a user
-message VerifyRequest {
-  string user_name = 1 [(google.api.field_behavior) = REQUIRED];
-  string user_game_name = 2 [(google.api.field_behavior) = REQUIRED];
-  string contacts = 3 [(google.api.field_behavior) = REQUIRED];
-  repeated Answer answers = 4 [(google.api.field_behavior) = REQUIRED];
-}
-
 message Answer {
   string question = 1;
   string answer = 2;
 }
 
 message SubmitRequest {
-  // Verification request id
-  string id = 1;
+  string user_name = 1 [(google.api.field_behavior) = REQUIRED];
+  string user_game_name = 2 [(google.api.field_behavior) = REQUIRED];
+  string contacts = 3 [(google.api.field_behavior) = REQUIRED];
+  repeated Answer answers = 4 [(google.api.field_behavior) = REQUIRED];
 }
 
 message SubmitResponse {}
 
 message ApproveRequest {
-  // Verification request id
-  string id = 1;
+  string user_id = 1;
 }
 
 message ApproveResponse {}
 
 message RejectRequest {
-  // Verification request id
-  string id = 1;
+  string user_id = 1;
+  string rejection_reason = 2;
 }
 
 message RejectResponse {}
+
+message DetailsRequest {
+  string user_id = 1;
+}
+
+message DetailsResponse {
+  string id = 1;
+  string status = 2;
+  string rejection_reason = 3;
+}

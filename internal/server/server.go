@@ -14,6 +14,7 @@ import (
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
+	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/rs/cors"
@@ -67,6 +68,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	v1.RegisterVintageServiceServer(srv, s.vsApiV1)
 	leaderboardv1.RegisterLeaderboardServiceServer(srv, s.leaderboardV1)
 	rulesv1.RegisterRuleServiceServer(srv, s.rulesV1)
+	verificationv1.RegisterVerificationServiceServer(srv, s.verificationV1)
 	userv1.RegisterUserServiceServer(srv, s.userV1)
 	reflection.Register(srv)
 
@@ -90,6 +92,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := rulesv1.RegisterRuleServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register rules service handler")
+	}
+
+	if err := verificationv1.RegisterVerificationServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register verification service handler")
 	}
 
 	if err := userv1.RegisterUserServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {

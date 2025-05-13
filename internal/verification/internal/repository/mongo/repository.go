@@ -4,72 +4,92 @@ import (
 	"context"
 	"time"
 
-	verificationdto "github.com/lasthearth/vsservice/internal/rules/dto/mongo/verification"
-	"github.com/lasthearth/vsservice/internal/rules/model"
-	questiondto "github.com/lasthearth/vsservice/internal/verification/internal/dto/mongo/question"
+	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
+	verificationdto "github.com/lasthearth/vsservice/internal/verification/dto/mongo/verification"
+	"github.com/lasthearth/vsservice/internal/verification/internal/pkg/code"
+	"github.com/lasthearth/vsservice/internal/verification/internal/service"
+	"github.com/lasthearth/vsservice/internal/verification/model"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
-func (r *Repository) CreateQuestion(ctx context.Context, question *model.Question) error {
-	r.log.Info("creating new question",
-		zap.String("question_id", question.ID),
-		zap.String("text", question.Question))
+func (r *Repository) Create(ctx context.Context, opts service.VerifyOpts) error {
+	r.log.Info("processing verification request",
+		zap.String("user_id", opts.UserID),
+		zap.String("user_name", opts.UserName),
+		zap.String("user_game_name", opts.UserGameName),
+		zap.Int("answers_count", len(opts.Answers)))
 
-	_, err := r.questionColl.InsertOne(ctx, questiondto.FromModel(question))
+	r.log.Debug("mapping answers to DTO format",
+		zap.Int("answers_count", len(opts.Answers)))
+
+	dtoAnswers := lo.Map(opts.Answers, func(answer model.Answer, _ int) verificationdto.Answer {
+		return *verificationdto.AnswerFromModel(&answer)
+	})
+
+	r.log.Debug("successfully mapped answers to DTO format")
+
+	dto := verificationdto.Verification{
+		Model:            mongomodel.NewModel(),
+		UserID:           opts.UserID,
+		UserName:         opts.UserName,
+		UserGameName:     opts.UserGameName,
+		Contacts:         opts.Contacts,
+		Answers:          dtoAnswers,
+		VerificationCode: code.Generate(),
+		Status:           string(model.VerificationStatusPending),
+	}
+
+	r.log.Debug("inserting verification request into database",
+		zap.String("user_id", opts.UserID),
+		zap.String("model_id", dto.ID.Hex()))
+
+	_, err := r.coll.InsertOne(ctx, dto)
 	if err != nil {
-		r.log.Error("failed to insert question",
+		r.log.Error("failed to insert verification request",
 			zap.Error(err),
-			zap.String("question_id", question.ID))
+			zap.String("user_id", opts.UserID),
+			zap.String("model_id", dto.ID.Hex()))
 		return err
 	}
 
-	r.log.Info("successfully created question", zap.String("question_id", question.ID))
+	r.log.Info("successfully created verification request",
+		zap.String("user_id", opts.UserID),
+		zap.String("model_id", dto.ID.Hex()))
 	return nil
 }
 
-func (r *Repository) GetRandomQuestions(ctx context.Context, count int) ([]*model.Question, error) {
-	r.log.Info("getting random questions", zap.Int("count", count))
+// GetVerification implements service.VerificationDbRepository.
+func (r *Repository) GetVerification(ctx context.Context, userID string) (*model.Verification, error) {
+	r.log.Debug("retrieving verification request",
+		zap.String("user_id", userID))
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	res := r.coll.FindOne(ctx, bson.M{"user_id": userID})
+	if res.Err() != nil {
+		if res.Err() == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 
-	pipeline := bson.A{
-		bson.D{{
-			Key: "$sample",
-			Value: bson.D{{
-				Key:   "size",
-				Value: count,
-			}},
-		}},
+		r.log.Error("failed to find verification request",
+			zap.Error(res.Err()),
+			zap.String("user_id", userID))
+		return nil, res.Err()
 	}
 
-	r.log.Debug("executing aggregation query",
-		zap.Any("pipeline", pipeline),
-		zap.Int("requested_count", count))
-
-	cur, err := r.questionColl.Aggregate(ctx, pipeline)
-	if err != nil {
-		r.log.Error("aggregate error", zap.Error(err), zap.Int("requested_count", count))
-		return nil, err
-	}
-	defer cur.Close(ctx)
-
-	var questions []questiondto.Question
-	if err := cur.All(ctx, &questions); err != nil {
-		r.log.Error("cursor error", zap.Error(err))
+	var verification verificationdto.Verification
+	if err := res.Decode(&verification); err != nil {
+		r.log.Error("failed to decode verification request",
+			zap.Error(err),
+			zap.String("user_id", userID))
 		return nil, err
 	}
 
-	result := lo.Map(questions, func(item questiondto.Question, index int) *model.Question {
-		return item.ToModel()
-	})
+	r.log.Debug("verification request retrieved",
+		zap.String("user_id", userID))
 
-	r.log.Info("successfully retrieved random questions",
-		zap.Int("requested_count", count),
-		zap.Int("retrieved_count", len(result)))
-	return result, nil
+	return verification.ToModel(), nil
 }
 
 // GetVerificationRequests implements service.Repository.
@@ -80,7 +100,7 @@ func (r *Repository) GetVerificationRequests(ctx context.Context) ([]*model.Veri
 	defer cancel()
 
 	r.log.Debug("executing find query on verification collection")
-	finded, err := r.verificationColl.Find(ctx, bson.M{"status": model.VerificationStatusPending})
+	finded, err := r.coll.Find(ctx, bson.M{"status": model.VerificationStatusPending})
 	if err != nil {
 		r.log.Error("find error", zap.Error(err))
 		return nil, err
@@ -101,7 +121,7 @@ func (r *Repository) GetVerificationRequests(ctx context.Context) ([]*model.Veri
 	return result, nil
 }
 
-func (r *Repository) ApproveVerificationRequest(ctx context.Context, userId string) error {
+func (r *Repository) Approve(ctx context.Context, userId string) error {
 	r.log.Info("approving verification request", zap.String("user_id", userId))
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -111,7 +131,7 @@ func (r *Repository) ApproveVerificationRequest(ctx context.Context, userId stri
 		zap.String("user_id", userId),
 		zap.String("collection", "verifications"))
 
-	result, err := r.verificationColl.UpdateOne(ctx, bson.M{"user_id": userId},
+	result, err := r.coll.UpdateOne(ctx, bson.M{"user_id": userId},
 		bson.D{
 			{
 				Key: "$set",
@@ -129,5 +149,88 @@ func (r *Repository) ApproveVerificationRequest(ctx context.Context, userId stri
 	r.log.Info("successfully approved verification request",
 		zap.String("user_id", userId),
 		zap.Int64("updated_count", result.ModifiedCount))
+	return nil
+}
+
+// Reject implements service.VerificationDbRepository.
+func (r *Repository) Reject(ctx context.Context, userId, rejectionReason string) error {
+	r.log.Info("rejecting verification request", zap.String("user_id", userId))
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	r.log.Debug("executing update query",
+		zap.String("user_id", userId),
+		zap.String("collection", "verifications"))
+
+	result, err := r.coll.UpdateOne(ctx, bson.M{"user_id": userId},
+		bson.D{
+			{
+				Key: "$set",
+				Value: bson.D{
+					{Key: "status", Value: model.VerificationStatusRejected},
+					{Key: "rejection_reason", Value: rejectionReason},
+					{Key: "updated_at", Value: time.Now()},
+				},
+			},
+		})
+	if err != nil {
+		r.log.Error("update error", zap.Error(err), zap.String("user_id", userId))
+		return err
+	}
+
+	r.log.Info("successfully rejected verification request",
+		zap.String("user_id", userId),
+		zap.Int64("updated_count", result.ModifiedCount))
+	return nil
+}
+
+// Update implements service.VerificationDbRepository.
+func (r *Repository) Update(ctx context.Context, opts service.VerifyOpts) error {
+	r.log.Info("updating verification request",
+		zap.String("user_id", opts.UserID),
+		zap.String("user_name", opts.UserName),
+		zap.String("user_game_name", opts.UserGameName),
+		zap.Int("answers_count", len(opts.Answers)))
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	r.log.Debug("mapping answers to DTO format",
+		zap.Int("answers_count", len(opts.Answers)))
+
+	dtoAnswers := lo.Map(opts.Answers, func(answer model.Answer, _ int) verificationdto.Answer {
+		return *verificationdto.AnswerFromModel(&answer)
+	})
+
+	r.log.Debug("successfully mapped answers to DTO format")
+
+	updateFields := bson.D{
+		{Key: "user_name", Value: opts.UserName},
+		{Key: "user_game_name", Value: opts.UserGameName},
+		{Key: "contacts", Value: opts.Contacts},
+		{Key: "answers", Value: dtoAnswers},
+		{Key: "status", Value: string(model.VerificationStatusPending)},
+		{Key: "rejection_reason", Value: ""},
+		{Key: "updated_at", Value: time.Now()},
+	}
+
+	r.log.Debug("updating verification request in database",
+		zap.String("user_id", opts.UserID))
+
+	result, err := r.coll.UpdateOne(ctx, bson.M{"user_id": opts.UserID},
+		bson.D{
+			{Key: "$set", Value: updateFields},
+		})
+	if err != nil {
+		r.log.Error("failed to update verification request",
+			zap.Error(err),
+			zap.String("user_id", opts.UserID))
+		return err
+	}
+
+	r.log.Info("successfully updated verification request",
+		zap.String("user_id", opts.UserID),
+		zap.Int64("modified_count", result.ModifiedCount))
 	return nil
 }

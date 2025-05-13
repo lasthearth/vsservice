@@ -15,6 +15,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/server"
 	"github.com/lasthearth/vsservice/internal/stats"
 	"github.com/lasthearth/vsservice/internal/user"
+	"github.com/lasthearth/vsservice/internal/verification"
 
 	// "github.com/lasthearth/vsservice/internal/trademarket"
 	"go.uber.org/fx"
@@ -63,6 +64,7 @@ func main() {
 		stats.App,
 		// trademarket.App,
 		rules.App,
+		verification.App,
 		server.App,
 		user.App,
 	)

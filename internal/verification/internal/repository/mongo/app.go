@@ -9,11 +9,10 @@ import (
 )
 
 const (
-	questionsCollName    = "questions"
 	verificationCollName = "verification_requests"
 )
 
-var _ service.DbRepository = (*Repository)(nil)
+var _ service.VerificationDbRepository = (*Repository)(nil)
 
 type Opts struct {
 	fx.In
@@ -23,20 +22,17 @@ type Opts struct {
 }
 
 type Repository struct {
-	log              logger.Logger
-	cfg              config.Config
-	questionColl     *mongo.Collection
-	verificationColl *mongo.Collection
+	log  logger.Logger
+	cfg  config.Config
+	coll *mongo.Collection
 }
 
 func New(opts Opts) *Repository {
-	qColl := opts.Database.Collection(questionsCollName)
 	vColl := opts.Database.Collection(verificationCollName)
 	logger := opts.Log.WithComponent("rules-mongo-repository")
 	return &Repository{
-		log:              logger,
-		cfg:              opts.Cfg,
-		questionColl:     qColl,
-		verificationColl: vColl,
+		log:  logger,
+		cfg:  opts.Cfg,
+		coll: vColl,
 	}
 }

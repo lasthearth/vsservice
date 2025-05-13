@@ -11,7 +11,6 @@ import (
 type DbRepository interface {
 	GetRandomQuestions(ctx context.Context, count int) ([]*model.Question, error)
 	CreateQuestion(ctx context.Context, question *model.Question) error
-	GetVerificationRequests(ctx context.Context) ([]*model.Verification, error)
 }
 
 // CreateQuestion implements rulesv1.RuleServiceServer

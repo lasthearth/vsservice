@@ -15,14 +15,15 @@ const (
 type Verification struct {
 	ID string
 	// User id from sso
-	UserID       string
-	UserName     string
-	UserGameName string
-	Answers      []Answer
-	Contacts     string
-	Status       VerificationStatus
-	UpdatedAt    time.Time
-	CreatedAt    time.Time
+	UserID          string
+	UserName        string
+	UserGameName    string
+	Answers         []Answer
+	Contacts        string
+	Status          VerificationStatus
+	RejectionReason string
+	UpdatedAt       time.Time
+	CreatedAt       time.Time
 }
 
 type Answer struct {

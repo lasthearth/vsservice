@@ -9,18 +9,15 @@ var _ userv1.UserServiceServer = (*Service)(nil)
 
 type Opts struct {
 	fx.In
-	DbRepo  DbRepository
-	SsoRepo SsoRepository
+	DbRepo DbRepository
 }
 
 type Service struct {
-	dbRepo  DbRepository
-	ssoRepo SsoRepository
+	dbRepo DbRepository
 }
 
 func New(opts Opts) *Service {
 	return &Service{
-		dbRepo:  opts.DbRepo,
-		ssoRepo: opts.SsoRepo,
+		dbRepo: opts.DbRepo,
 	}
 }

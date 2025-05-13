@@ -1,6 +1,6 @@
 package service
 
-import "github.com/lasthearth/vsservice/internal/rules/model"
+import "github.com/lasthearth/vsservice/internal/verification/model"
 
 type VerifyOpts struct {
 	UserID       string
