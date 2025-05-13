@@ -3,16 +3,16 @@ package repository
 import (
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
-	"github.com/lasthearth/vsservice/internal/rules/internal/service"
+	"github.com/lasthearth/vsservice/internal/verification/internal/service"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/fx"
 )
 
 const (
-	questionsCollName = "questions"
+	verificationCollName = "verification_requests"
 )
 
-var _ service.DbRepository = (*Repository)(nil)
+var _ service.VerificationDbRepository = (*Repository)(nil)
 
 type Opts struct {
 	fx.In
@@ -22,17 +22,17 @@ type Opts struct {
 }
 
 type Repository struct {
-	log          logger.Logger
-	cfg          config.Config
-	questionColl *mongo.Collection
+	log  logger.Logger
+	cfg  config.Config
+	coll *mongo.Collection
 }
 
 func New(opts Opts) *Repository {
-	qColl := opts.Database.Collection(questionsCollName)
+	vColl := opts.Database.Collection(verificationCollName)
 	logger := opts.Log.WithComponent("rules-mongo-repository")
 	return &Repository{
-		log:          logger,
-		cfg:          opts.Cfg,
-		questionColl: qColl,
+		log:  logger,
+		cfg:  opts.Cfg,
+		coll: vColl,
 	}
 }

@@ -19,10 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RuleService_GetRandomQuestions_FullMethodName       = "/rules.v1.RuleService/GetRandomQuestions"
-	RuleService_CreateQuestion_FullMethodName           = "/rules.v1.RuleService/CreateQuestion"
-	RuleService_ListVerificationRequests_FullMethodName = "/rules.v1.RuleService/ListVerificationRequests"
-	RuleService_VerifyRequest_FullMethodName            = "/rules.v1.RuleService/VerifyRequest"
+	RuleService_GetRandomQuestions_FullMethodName = "/rules.v1.RuleService/GetRandomQuestions"
+	RuleService_CreateQuestion_FullMethodName     = "/rules.v1.RuleService/CreateQuestion"
 )
 
 // RuleServiceClient is the client API for RuleService service.
@@ -35,10 +33,6 @@ type RuleServiceClient interface {
 	GetRandomQuestions(ctx context.Context, in *GetRandomQuestionsRequest, opts ...grpc.CallOption) (*GetRandomQuestionsResponse, error)
 	// Creates a new question about rules
 	CreateQuestion(ctx context.Context, in *CreateQuestionRequest, opts ...grpc.CallOption) (*CreateQuestionResponse, error)
-	// Returns verification requests from users
-	ListVerificationRequests(ctx context.Context, in *ListVerificationRequestsRequest, opts ...grpc.CallOption) (*ListVerificationRequestsResponse, error)
-	// Verifies user answers to questions about rules
-	VerifyRequest(ctx context.Context, in *VerifyRequestRequest, opts ...grpc.CallOption) (*VerifyRequestResponse, error)
 }
 
 type ruleServiceClient struct {
@@ -69,26 +63,6 @@ func (c *ruleServiceClient) CreateQuestion(ctx context.Context, in *CreateQuesti
 	return out, nil
 }
 
-func (c *ruleServiceClient) ListVerificationRequests(ctx context.Context, in *ListVerificationRequestsRequest, opts ...grpc.CallOption) (*ListVerificationRequestsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListVerificationRequestsResponse)
-	err := c.cc.Invoke(ctx, RuleService_ListVerificationRequests_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *ruleServiceClient) VerifyRequest(ctx context.Context, in *VerifyRequestRequest, opts ...grpc.CallOption) (*VerifyRequestResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(VerifyRequestResponse)
-	err := c.cc.Invoke(ctx, RuleService_VerifyRequest_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // RuleServiceServer is the server API for RuleService service.
 // All implementations should embed UnimplementedRuleServiceServer
 // for forward compatibility.
@@ -99,10 +73,6 @@ type RuleServiceServer interface {
 	GetRandomQuestions(context.Context, *GetRandomQuestionsRequest) (*GetRandomQuestionsResponse, error)
 	// Creates a new question about rules
 	CreateQuestion(context.Context, *CreateQuestionRequest) (*CreateQuestionResponse, error)
-	// Returns verification requests from users
-	ListVerificationRequests(context.Context, *ListVerificationRequestsRequest) (*ListVerificationRequestsResponse, error)
-	// Verifies user answers to questions about rules
-	VerifyRequest(context.Context, *VerifyRequestRequest) (*VerifyRequestResponse, error)
 }
 
 // UnimplementedRuleServiceServer should be embedded to have
@@ -117,12 +87,6 @@ func (UnimplementedRuleServiceServer) GetRandomQuestions(context.Context, *GetRa
 }
 func (UnimplementedRuleServiceServer) CreateQuestion(context.Context, *CreateQuestionRequest) (*CreateQuestionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateQuestion not implemented")
-}
-func (UnimplementedRuleServiceServer) ListVerificationRequests(context.Context, *ListVerificationRequestsRequest) (*ListVerificationRequestsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListVerificationRequests not implemented")
-}
-func (UnimplementedRuleServiceServer) VerifyRequest(context.Context, *VerifyRequestRequest) (*VerifyRequestResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VerifyRequest not implemented")
 }
 func (UnimplementedRuleServiceServer) testEmbeddedByValue() {}
 
@@ -180,42 +144,6 @@ func _RuleService_CreateQuestion_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RuleService_ListVerificationRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListVerificationRequestsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RuleServiceServer).ListVerificationRequests(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: RuleService_ListVerificationRequests_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuleServiceServer).ListVerificationRequests(ctx, req.(*ListVerificationRequestsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RuleService_VerifyRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(VerifyRequestRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RuleServiceServer).VerifyRequest(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: RuleService_VerifyRequest_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RuleServiceServer).VerifyRequest(ctx, req.(*VerifyRequestRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // RuleService_ServiceDesc is the grpc.ServiceDesc for RuleService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -230,14 +158,6 @@ var RuleService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateQuestion",
 			Handler:    _RuleService_CreateQuestion_Handler,
-		},
-		{
-			MethodName: "ListVerificationRequests",
-			Handler:    _RuleService_ListVerificationRequests_Handler,
-		},
-		{
-			MethodName: "VerifyRequest",
-			Handler:    _RuleService_VerifyRequest_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

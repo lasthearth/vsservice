@@ -117,17 +117,23 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /v1/rules/verification-request:
+    /v1/rules/verification/{user_id}/approve:
         post:
             tags:
-                - RuleService
-            description: Verifies user answers to questions about rules
-            operationId: RuleService_VerifyRequest
+                - VerificationService
+            description: Approve user verification request, need admin privelege
+            operationId: VerificationService_Approve
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
             requestBody:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/VerifyRequestRequest'
+                            $ref: '#/components/schemas/ApproveRequest'
                 required: true
             responses:
                 "200":
@@ -135,26 +141,38 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/VerifyRequestResponse'
+                                $ref: '#/components/schemas/ApproveResponse'
                 default:
                     description: Default error response
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /v1/rules/verification-requests:
-        get:
+    /v1/rules/verification/{user_id}/reject:
+        post:
             tags:
-                - RuleService
-            description: Returns verification requests from users
-            operationId: RuleService_ListVerificationRequests
+                - VerificationService
+            description: Reject user verification request, need admin privelege
+            operationId: VerificationService_Reject
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RejectRequest'
+                required: true
             responses:
                 "200":
                     description: OK
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/ListVerificationRequestsResponse'
+                                $ref: '#/components/schemas/RejectResponse'
                 default:
                     description: Default error response
                     content:
@@ -186,31 +204,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/OnlineStatsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/user/verify:
-        post:
-            tags:
-                - UserService
-            description: User answers for verification questions.
-            operationId: UserService_Verify
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/VerifyRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/VerifyResponse'
                 default:
                     description: Default error response
                     content:
@@ -301,6 +294,73 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/verification:
+        post:
+            tags:
+                - VerificationService
+            operationId: VerificationService_Submit
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SubmitRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SubmitResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/verifications:
+        get:
+            tags:
+                - VerificationService
+            description: Returns verification requests from users, need admin privelege
+            operationId: VerificationService_List
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/verifications/{user_id}/details:
+        get:
+            tags:
+                - VerificationService
+            operationId: VerificationService_Details
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DetailsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/{name}/stats:
         get:
             tags:
@@ -335,6 +395,14 @@ components:
                     type: string
                 answer:
                     type: string
+        ApproveRequest:
+            type: object
+            properties:
+                user_id:
+                    type: string
+        ApproveResponse:
+            type: object
+            properties: {}
         CreateQuestionRequest:
             type: object
             properties:
@@ -354,6 +422,15 @@ components:
             type: object
             properties:
                 id:
+                    type: string
+        DetailsResponse:
+            type: object
+            properties:
+                id:
+                    type: string
+                status:
+                    type: string
+                rejection_reason:
                     type: string
         GetRandomQuestionsResponse:
             type: object
@@ -404,16 +481,18 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/LeaderboardEntry'
-        ListVerificationRequestsResponse:
+        ListResponse:
             type: object
             properties:
                 requests:
                     type: array
                     items:
-                        $ref: '#/components/schemas/ListVerificationRequestsResponse_VerifyUserRequest'
-        ListVerificationRequestsResponse_VerifyUserRequest:
+                        $ref: '#/components/schemas/ListResponse_VerifyUserRequest'
+        ListResponse_VerifyUserRequest:
             type: object
             properties:
+                id:
+                    type: string
                 user_id:
                     type: string
                 user_name:
@@ -448,6 +527,16 @@ components:
                 players_killed:
                     type: integer
                     format: int32
+        RejectRequest:
+            type: object
+            properties:
+                user_id:
+                    type: string
+                rejection_reason:
+                    type: string
+        RejectResponse:
+            type: object
+            properties: {}
         Status:
             type: object
             properties:
@@ -464,20 +553,7 @@ components:
                         $ref: '#/components/schemas/GoogleProtobufAny'
                     description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
-        VerifyCodeRequest:
-            required:
-                - code
-                - user_game_name
-            type: object
-            properties:
-                code:
-                    type: string
-                user_game_name:
-                    type: string
-        VerifyCodeResponse:
-            type: object
-            properties: {}
-        VerifyRequest:
+        SubmitRequest:
             required:
                 - user_name
                 - user_game_name
@@ -495,16 +571,20 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Answer'
-            description: Represents a verification request from a user
-        VerifyRequestRequest:
-            type: object
-            properties:
-                user_id:
-                    type: string
-        VerifyRequestResponse:
+        SubmitResponse:
             type: object
             properties: {}
-        VerifyResponse:
+        VerifyCodeRequest:
+            required:
+                - code
+                - user_game_name
+            type: object
+            properties:
+                code:
+                    type: string
+                user_game_name:
+                    type: string
+        VerifyCodeResponse:
             type: object
             properties: {}
         VerifyStatusResponse:
@@ -523,3 +603,5 @@ tags:
       description: Represent trademarket
     - name: UserService
       description: Represents user specific actions
+    - name: VerificationService
+      description: Represents verification service

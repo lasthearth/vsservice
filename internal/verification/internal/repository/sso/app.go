@@ -7,7 +7,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
-	"github.com/lasthearth/vsservice/internal/rules/internal/service"
+	"github.com/lasthearth/vsservice/internal/verification/internal/service"
 	"go.uber.org/fx"
 )
 

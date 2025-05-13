@@ -2,10 +2,8 @@ package service
 
 import (
 	"context"
-	"slices"
 
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
-	httpdto "github.com/lasthearth/vsservice/internal/rules/internal/dto/http"
 	"github.com/lasthearth/vsservice/internal/rules/model"
 	"github.com/samber/lo"
 )
@@ -13,14 +11,6 @@ import (
 type DbRepository interface {
 	GetRandomQuestions(ctx context.Context, count int) ([]*model.Question, error)
 	CreateQuestion(ctx context.Context, question *model.Question) error
-	GetVerificationRequests(ctx context.Context) ([]*model.Verification, error)
-	ApproveVerificationRequest(ctx context.Context, userId string) error
-}
-
-type SsoRepository interface {
-	GetUserRoles(ctx context.Context, userId string) ([]httpdto.Role, error)
-	GetRoles(ctx context.Context) ([]httpdto.Role, error)
-	UpdateUserRoles(ctx context.Context, userId string, roleIds []string) error
 }
 
 // CreateQuestion implements rulesv1.RuleServiceServer
@@ -56,87 +46,4 @@ func (s *Service) GetRandomQuestions(ctx context.Context, req *rulesv1.GetRandom
 	return &rulesv1.GetRandomQuestionsResponse{
 		Questions: resp,
 	}, nil
-}
-
-// ListVerificationRequests implements rulesv1.RuleServiceServer
-func (s *Service) ListVerificationRequests(ctx context.Context, req *rulesv1.ListVerificationRequestsRequest) (*rulesv1.ListVerificationRequestsResponse, error) {
-	reqs, err := s.dbRepo.GetVerificationRequests(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	resp := lo.Map(reqs, func(v *model.Verification, index int) *rulesv1.ListVerificationRequestsResponse_VerifyUserRequest {
-		answers := lo.Map(v.Answers, func(a model.Answer, _ int) *rulesv1.Answer {
-			return &rulesv1.Answer{
-				Question: a.Question,
-				Answer:   a.Answer,
-			}
-		})
-
-		return &rulesv1.ListVerificationRequestsResponse_VerifyUserRequest{
-			UserId:       v.UserID,
-			UserName:     v.UserName,
-			UserGameName: v.UserGameName,
-			Contacts:     v.Contacts,
-			Answers:      answers,
-		}
-	})
-
-	return &rulesv1.ListVerificationRequestsResponse{
-		Requests: resp,
-	}, nil
-}
-
-// VerifyRequest implements rulesv1.RuleServiceServer.
-func (s *Service) VerifyRequest(ctx context.Context, req *rulesv1.VerifyRequestRequest) (*rulesv1.VerifyRequestResponse, error) {
-	err := s.checkUserRoles(ctx, req.UserId)
-	if err != nil {
-		return nil, err
-	}
-
-	roles, err := s.ssoRepo.GetRoles(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	playerRoleId := ""
-	for i := range roles {
-		if roles[i].Name == "player" {
-			playerRoleId = roles[i].ID
-		}
-	}
-
-	err = s.ssoRepo.UpdateUserRoles(ctx, req.UserId, []string{playerRoleId})
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.dbRepo.ApproveVerificationRequest(ctx, req.UserId)
-	if err != nil {
-		return nil, err
-	}
-
-	return &rulesv1.VerifyRequestResponse{}, nil
-}
-
-func (s *Service) checkUserRoles(ctx context.Context, userId string) error {
-	ssoRoleName := "player"
-
-	roles, err := s.ssoRepo.GetUserRoles(ctx, userId)
-	if err != nil {
-		return err
-	}
-
-	isVerified := slices.ContainsFunc(roles, func(role httpdto.Role) bool {
-		return role.Name == ssoRoleName
-	})
-	if isVerified {
-		err := s.dbRepo.ApproveVerificationRequest(ctx, userId)
-		if err != nil {
-			return err
-		}
-		return ErrAlreadyVerified
-	}
-
-	return nil
 }

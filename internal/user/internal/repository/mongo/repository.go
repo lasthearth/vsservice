@@ -2,64 +2,13 @@ package repository
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 
-	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
-	verificationdto "github.com/lasthearth/vsservice/internal/rules/dto/mongo/verification"
-	"github.com/lasthearth/vsservice/internal/rules/model"
-	"github.com/lasthearth/vsservice/internal/user/internal/service"
-	"github.com/samber/lo"
+	verificationdto "github.com/lasthearth/vsservice/internal/verification/dto/mongo/verification"
+	"github.com/lasthearth/vsservice/internal/verification/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
-
-func (r *Repository) CreateVerificationRequest(ctx context.Context, opts service.VerifyOpts) error {
-	r.log.Info("processing verification request",
-		zap.String("user_id", opts.UserID),
-		zap.String("user_name", opts.UserName),
-		zap.String("user_game_name", opts.UserGameName),
-		zap.Int("answers_count", len(opts.Answers)))
-
-	r.log.Debug("mapping answers to DTO format",
-		zap.Int("answers_count", len(opts.Answers)))
-
-	dtoAnswers := lo.Map(opts.Answers, func(answer model.Answer, _ int) verificationdto.Answer {
-		return *verificationdto.AnswerFromModel(&answer)
-	})
-
-	r.log.Debug("successfully mapped answers to DTO format")
-
-	dto := verificationdto.Verification{
-		Model:            mongomodel.NewModel(),
-		UserID:           opts.UserID,
-		UserName:         opts.UserName,
-		UserGameName:     opts.UserGameName,
-		Contacts:         opts.Contacts,
-		Answers:          dtoAnswers,
-		VerificationCode: r.generateVerificationCode(),
-		Status:           string(model.VerificationStatusPending),
-	}
-
-	r.log.Debug("inserting verification request into database",
-		zap.String("user_id", opts.UserID),
-		zap.String("model_id", dto.ID.Hex()))
-
-	_, err := r.coll.InsertOne(ctx, dto)
-	if err != nil {
-		r.log.Error("failed to insert verification request",
-			zap.Error(err),
-			zap.String("user_id", opts.UserID),
-			zap.String("model_id", dto.ID.Hex()))
-		return err
-	}
-
-	r.log.Info("successfully created verification request",
-		zap.String("user_id", opts.UserID),
-		zap.String("model_id", dto.ID.Hex()))
-	return nil
-}
 
 // GetVerificationStatusByUserGameName implements service.DbRepository
 func (r *Repository) GetVerificationStatusByUserGameName(ctx context.Context, userGameName string) (model.VerificationStatus, error) {
@@ -145,17 +94,6 @@ func (r *Repository) GetVerificationCode(ctx context.Context, userID string) (st
 	}
 
 	return verification.VerificationCode, nil
-}
-
-func (r *Repository) generateVerificationCode() string {
-	b := make([]byte, 3)
-	_, err := rand.Read(b)
-	if err != nil {
-		r.log.Error("failed to generate verification code",
-			zap.Error(err))
-		return ""
-	}
-	return hex.EncodeToString(b)
 }
 
 func (r *Repository) VerifyCode(ctx context.Context, userGameName string, code string) error {

@@ -13,6 +13,7 @@ type Verification struct {
 	Contacts         string   `bson:"contacts"`
 	Answers          []Answer `bson:"answers"`
 	Status           string   `bson:"status"`
+	RejectionReason  string   `bson:"rejection_reason"`
 	VerificationCode string   `bson:"verification_code"`
 }
 
