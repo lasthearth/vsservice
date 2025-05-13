@@ -165,16 +165,7 @@ func request_VerificationService_Details_0(ctx context.Context, marshaler runtim
 	var (
 		protoReq DetailsRequest
 		metadata runtime.ServerMetadata
-		err      error
 	)
-	val, ok := pathParams["user_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user_id")
-	}
-	protoReq.UserId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
-	}
 	msg, err := client.Details(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
@@ -183,16 +174,7 @@ func local_request_VerificationService_Details_0(ctx context.Context, marshaler 
 	var (
 		protoReq DetailsRequest
 		metadata runtime.ServerMetadata
-		err      error
 	)
-	val, ok := pathParams["user_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user_id")
-	}
-	protoReq.UserId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
-	}
 	msg, err := server.Details(ctx, &protoReq)
 	return msg, metadata, err
 }
@@ -289,7 +271,7 @@ func RegisterVerificationServiceHandlerServer(ctx context.Context, mux *runtime.
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/verification.v1.VerificationService/Details", runtime.WithHTTPPathPattern("/v1/verifications/{user_id}/details"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/verification.v1.VerificationService/Details", runtime.WithHTTPPathPattern("/v1/verification/details"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -415,7 +397,7 @@ func RegisterVerificationServiceHandlerClient(ctx context.Context, mux *runtime.
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/verification.v1.VerificationService/Details", runtime.WithHTTPPathPattern("/v1/verifications/{user_id}/details"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/verification.v1.VerificationService/Details", runtime.WithHTTPPathPattern("/v1/verification/details"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -436,7 +418,7 @@ var (
 	pattern_VerificationService_Submit_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "verification"}, ""))
 	pattern_VerificationService_Approve_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "rules", "verification", "user_id", "approve"}, ""))
 	pattern_VerificationService_Reject_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "rules", "verification", "user_id", "reject"}, ""))
-	pattern_VerificationService_Details_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "verifications", "user_id", "details"}, ""))
+	pattern_VerificationService_Details_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "verification", "details"}, ""))
 )
 
 var (

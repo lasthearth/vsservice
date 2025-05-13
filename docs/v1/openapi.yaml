@@ -298,6 +298,7 @@ paths:
         post:
             tags:
                 - VerificationService
+            description: Submit user verification request
             operationId: VerificationService_Submit
             requestBody:
                 content:
@@ -318,6 +319,25 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/verification/details:
+        get:
+            tags:
+                - VerificationService
+            description: Get user verification details
+            operationId: VerificationService_Details
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DetailsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/verifications:
         get:
             tags:
@@ -331,30 +351,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/verifications/{user_id}/details:
-        get:
-            tags:
-                - VerificationService
-            operationId: VerificationService_Details
-            parameters:
-                - name: user_id
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/DetailsResponse'
                 default:
                     description: Default error response
                     content:

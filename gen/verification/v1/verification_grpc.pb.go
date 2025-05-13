@@ -34,11 +34,13 @@ const (
 type VerificationServiceClient interface {
 	// Returns verification requests from users, need admin privelege
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
+	// Submit user verification request
 	Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*SubmitResponse, error)
 	// Approve user verification request, need admin privelege
 	Approve(ctx context.Context, in *ApproveRequest, opts ...grpc.CallOption) (*ApproveResponse, error)
 	// Reject user verification request, need admin privelege
 	Reject(ctx context.Context, in *RejectRequest, opts ...grpc.CallOption) (*RejectResponse, error)
+	// Get user verification details
 	Details(ctx context.Context, in *DetailsRequest, opts ...grpc.CallOption) (*DetailsResponse, error)
 }
 
@@ -108,11 +110,13 @@ func (c *verificationServiceClient) Details(ctx context.Context, in *DetailsRequ
 type VerificationServiceServer interface {
 	// Returns verification requests from users, need admin privelege
 	List(context.Context, *ListRequest) (*ListResponse, error)
+	// Submit user verification request
 	Submit(context.Context, *SubmitRequest) (*SubmitResponse, error)
 	// Approve user verification request, need admin privelege
 	Approve(context.Context, *ApproveRequest) (*ApproveResponse, error)
 	// Reject user verification request, need admin privelege
 	Reject(context.Context, *RejectRequest) (*RejectResponse, error)
+	// Get user verification details
 	Details(context.Context, *DetailsRequest) (*DetailsResponse, error)
 }
 
