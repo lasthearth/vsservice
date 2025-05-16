@@ -7,6 +7,7 @@ import (
 	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
 	verificationdto "github.com/lasthearth/vsservice/internal/verification/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/verification/internal/pkg/code"
+	"github.com/lasthearth/vsservice/internal/verification/internal/repository/mongo/repoerr"
 	"github.com/lasthearth/vsservice/internal/verification/internal/service"
 	"github.com/lasthearth/vsservice/internal/verification/model"
 	"github.com/samber/lo"
@@ -69,7 +70,7 @@ func (r *Repository) GetVerification(ctx context.Context, userID string) (*model
 	res := r.coll.FindOne(ctx, bson.M{"user_id": userID})
 	if res.Err() != nil {
 		if res.Err() == mongo.ErrNoDocuments {
-			return nil, nil
+			return nil, repoerr.ErrNotFound
 		}
 
 		r.log.Error("failed to find verification request",
