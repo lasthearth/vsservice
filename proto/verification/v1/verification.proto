@@ -38,6 +38,7 @@ service VerificationService {
   }
 
   // Get user verification details
+  // Possible statuses: pending, approved, rejected, verified
   rpc Details(DetailsRequest) returns (DetailsResponse) {
     option (google.api.http) = {get: "/v1/verification/details"};
   }
