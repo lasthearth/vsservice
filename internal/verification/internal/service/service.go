@@ -125,36 +125,36 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 		return nil, err
 	}
 
-	// Check if verification already exists
+	verifyOpts := VerifyOpts{
+		UserID:       userID,
+		UserName:     req.UserName,
+		UserGameName: req.UserGameName,
+		Contacts:     req.Contacts,
+		Answers:      answers,
+	}
+
 	existingVerification, err := s.dbRepo.GetVerification(ctx, userID)
 	if err != nil {
 		if errors.Is(err, repoerr.ErrNotFound) {
-			verifyOpts := VerifyOpts{
-				UserID:       userID,
-				UserName:     req.UserName,
-				UserGameName: req.UserGameName,
-				Contacts:     req.Contacts,
-				Answers:      answers,
-			}
-
 			if err := s.dbRepo.Create(ctx, verifyOpts); err != nil {
 				return nil, err
 			}
-
-			switch existingVerification.Status {
-			case model.VerificationStatusPending:
-				return nil, status.Error(codes.Unknown, ErrVerificationPending.Error())
-			case model.VerificationStatusRejected:
-				if err := s.dbRepo.Update(ctx, verifyOpts); err != nil {
-					return nil, err
-				}
-			default:
-				return nil, status.Error(codes.Aborted, ErrAlreadyVerified.Error())
-			}
-
-			return &verificationv1.SubmitResponse{}, nil
 		}
+
 		return nil, err
+	}
+
+	switch existingVerification.Status {
+	case model.VerificationStatusPending:
+		return nil, status.Error(codes.Unknown, ErrVerificationPending.Error())
+	case model.VerificationStatusRejected:
+		if err := s.dbRepo.Update(ctx, verifyOpts); err != nil {
+			return nil, err
+		}
+	case model.VerificationStatusApproved:
+		return nil, status.Error(codes.Aborted, ErrAlreadyVerified.Error())
+	default:
+		return nil, status.Error(codes.Unknown, "unknown verification request status")
 	}
 
 	return &verificationv1.SubmitResponse{}, nil
