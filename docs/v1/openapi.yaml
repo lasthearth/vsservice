@@ -317,7 +317,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            type: string
+                            $ref: '#/components/schemas/RejectRequest_RejectReason'
                 required: true
             responses:
                 "200":
@@ -512,6 +512,11 @@ components:
                 players_killed:
                     type: integer
                     format: int32
+        RejectRequest_RejectReason:
+            type: object
+            properties:
+                rejection_reason:
+                    type: string
         RejectResponse:
             type: object
             properties: {}

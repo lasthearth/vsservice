@@ -99,7 +99,7 @@ func (s *Service) Reject(ctx context.Context, req *verificationv1.RejectRequest)
 		return nil, err
 	}
 
-	err = s.dbRepo.Reject(ctx, req.UserId, req.RejectionReason)
+	err = s.dbRepo.Reject(ctx, req.UserId, req.RejectionReason.RejectionReason)
 	if err != nil {
 		return nil, err
 	}

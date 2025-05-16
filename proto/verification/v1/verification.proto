@@ -26,9 +26,7 @@ service VerificationService {
 
   // Approve user verification request, need admin privelege
   rpc Approve(ApproveRequest) returns (ApproveResponse) {
-    option (google.api.http) = {
-      post: "/v1/verification/{user_id}/approve"
-    };
+    option (google.api.http) = {post: "/v1/verification/{user_id}/approve"};
   }
 
   // Reject user verification request, need admin privelege
@@ -82,7 +80,10 @@ message ApproveResponse {}
 
 message RejectRequest {
   string user_id = 1;
-  string rejection_reason = 2;
+  RejectReason rejection_reason = 2;
+  message RejectReason {
+    string rejection_reason = 1;
+  }
 }
 
 message RejectResponse {}
