@@ -1,0 +1,41 @@
+package verificationdto
+
+import (
+	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	attachmentdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
+	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
+	vector2dto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
+	"github.com/lasthearth/vsservice/internal/settlement/model"
+	"github.com/samber/lo"
+)
+
+type SettlementVerification struct {
+	mongo.Model `bson:",inline"`
+	Name        string                     `bson:"name"`
+	Type        string                     `bson:"type"`
+	Leader      memberdto.Member           `bson:"leader"`
+	Coordinates vector2dto.Vector2         `bson:"coordinates"`
+	Attachments []attachmentdto.Attachment `bson:"attachments"`
+
+	Status          string `bson:"status"`
+	RejectionReason string `bson:"rejection_reason"`
+}
+
+func (s *SettlementVerification) ToModel() *model.SettlementVerification {
+	attachments := lo.Map(s.Attachments, func(attachment attachmentdto.Attachment, _ int) model.Attachment {
+		return *attachment.ToModel()
+	})
+
+	return &model.SettlementVerification{
+		Id:              s.ID.Hex(),
+		Name:            s.Name,
+		Type:            model.SettlementType(s.Type),
+		Leader:          *s.Leader.ToModel(),
+		Coordinates:     *s.Coordinates.ToModel(),
+		Attachments:     attachments,
+		UpdatedAt:       s.UpdatedAt,
+		CreatedAt:       s.CreatedAt,
+		Status:          model.SettlementStatus(s.Status),
+		RejectionReason: s.RejectionReason,
+	}
+}

@@ -13,6 +13,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
 	"github.com/lasthearth/vsservice/internal/rules"
 	"github.com/lasthearth/vsservice/internal/server"
+	"github.com/lasthearth/vsservice/internal/settlement"
 	"github.com/lasthearth/vsservice/internal/stats"
 	"github.com/lasthearth/vsservice/internal/user"
 	"github.com/lasthearth/vsservice/internal/verification"
@@ -67,6 +68,7 @@ func main() {
 		verification.App,
 		server.App,
 		user.App,
+		settlement.App,
 	)
 
 	a.Run()

@@ -20,3 +20,7 @@ func NewModel() Model {
 		UpdatedAt: now,
 	}
 }
+
+func ParseObjectID(id string) (primitive.ObjectID, error) {
+	return primitive.ObjectIDFromHex(id)
+}
