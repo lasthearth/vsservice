@@ -2,13 +2,17 @@ package service
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	httpdto "github.com/lasthearth/vsservice/internal/verification/internal/dto/http"
+	"github.com/lasthearth/vsservice/internal/verification/internal/repository/mongo/repoerr"
 	"github.com/lasthearth/vsservice/internal/verification/model"
 	"github.com/samber/lo"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type VerificationDbRepository interface {
@@ -95,7 +99,7 @@ func (s *Service) Reject(ctx context.Context, req *verificationv1.RejectRequest)
 		return nil, err
 	}
 
-	err = s.dbRepo.Reject(ctx, req.UserId, req.RejectionReason)
+	err = s.dbRepo.Reject(ctx, req.UserId, req.RejectionReason.RejectionReason)
 	if err != nil {
 		return nil, err
 	}
@@ -121,12 +125,6 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 		return nil, err
 	}
 
-	// Check if verification already exists
-	existingVerification, err := s.dbRepo.GetVerification(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
 	verifyOpts := VerifyOpts{
 		UserID:       userID,
 		UserName:     req.UserName,
@@ -135,29 +133,28 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 		Answers:      answers,
 	}
 
-	// If no verification exists, create a new one
-	if existingVerification == nil {
-		if err := s.dbRepo.Create(ctx, verifyOpts); err != nil {
-			return nil, err
+	existingVerification, err := s.dbRepo.GetVerification(ctx, userID)
+	if err != nil {
+		if errors.Is(err, repoerr.ErrNotFound) {
+			if err := s.dbRepo.Create(ctx, verifyOpts); err != nil {
+				return nil, err
+			}
 		}
-		return &verificationv1.SubmitResponse{}, nil
+
+		return nil, err
 	}
 
-	// Handle based on existing verification status
 	switch existingVerification.Status {
 	case model.VerificationStatusPending:
-		// If pending, return error
-		return nil, ErrVerificationPending
+		return nil, status.Error(codes.Unknown, ErrVerificationPending.Error())
 	case model.VerificationStatusRejected:
-		// If rejected, update existing verification
 		if err := s.dbRepo.Update(ctx, verifyOpts); err != nil {
 			return nil, err
 		}
+	case model.VerificationStatusApproved:
+		return nil, status.Error(codes.Aborted, ErrAlreadyVerified.Error())
 	default:
-		// For other statuses (approved, verified), create new verification
-		if err := s.dbRepo.Create(ctx, verifyOpts); err != nil {
-			return nil, err
-		}
+		return nil, status.Error(codes.Unknown, "unknown verification request status")
 	}
 
 	return &verificationv1.SubmitResponse{}, nil

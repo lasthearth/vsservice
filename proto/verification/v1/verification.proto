@@ -26,21 +26,19 @@ service VerificationService {
 
   // Approve user verification request, need admin privelege
   rpc Approve(ApproveRequest) returns (ApproveResponse) {
-    option (google.api.http) = {
-      post: "/v1/rules/verification/{user_id}/approve"
-      body: "*"
-    };
+    option (google.api.http) = {post: "/v1/verification/{user_id}/approve"};
   }
 
   // Reject user verification request, need admin privelege
   rpc Reject(RejectRequest) returns (RejectResponse) {
     option (google.api.http) = {
-      post: "/v1/rules/verification/{user_id}/reject"
-      body: "*"
+      post: "/v1/verification/{user_id}/reject"
+      body: "rejection_reason"
     };
   }
 
   // Get user verification details
+  // Possible statuses: pending, approved, rejected, verified
   rpc Details(DetailsRequest) returns (DetailsResponse) {
     option (google.api.http) = {get: "/v1/verification/details"};
   }
@@ -83,7 +81,10 @@ message ApproveResponse {}
 
 message RejectRequest {
   string user_id = 1;
-  string rejection_reason = 2;
+  RejectReason rejection_reason = 2;
+  message RejectReason {
+    string rejection_reason = 1;
+  }
 }
 
 message RejectResponse {}
