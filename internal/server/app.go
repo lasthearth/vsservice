@@ -6,6 +6,7 @@ import (
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
+	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
@@ -28,6 +29,7 @@ type Opts struct {
 	RulesV1        rulesv1.RuleServiceServer
 	VerificationV1 verificationv1.VerificationServiceServer
 	UserV1         userv1.UserServiceServer
+	SettlementV1   settlementv1.SettlementServiceServer
 }
 
 type Server struct {
@@ -39,7 +41,9 @@ type Server struct {
 	rulesV1        rulesv1.RuleServiceServer
 	verificationV1 verificationv1.VerificationServiceServer
 	userV1         userv1.UserServiceServer
-	log            logger.Logger
+	settlementV1   settlementv1.SettlementServiceServer
+
+	log logger.Logger
 
 	// runtime
 	grpcSrv *grpc.Server
@@ -55,6 +59,7 @@ func New(opts Opts) *Server {
 		rulesV1:         opts.RulesV1,
 		verificationV1:  opts.VerificationV1,
 		userV1:          opts.UserV1,
+		settlementV1:    opts.SettlementV1,
 		log:             opts.Log,
 	}
 }

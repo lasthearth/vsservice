@@ -1,0 +1,153 @@
+syntax = "proto3";
+
+package settlement.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+
+// Represents settlement management service
+service SettlementService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Submit a new settlement registration request
+  rpc Submit(SubmitRequest) returns (SubmitResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements"
+      body: "*"
+    };
+  }
+
+  // Get settlement by ID
+  rpc Get(GetRequest) returns (GetResponse) {
+    option (google.api.http) = {get: "/v1/settlements/{id}"};
+  }
+
+  // List all settlements
+  rpc List(ListRequest) returns (ListResponse) {
+    option (google.api.http) = {get: "/v1/settlements"};
+  }
+
+  // List pending settlement requests (requires admin privileges)
+  rpc ListPending(ListPendingRequest) returns (ListPendingResponse) {
+    option (google.api.http) = {get: "/v1/settlements/pending"};
+  }
+
+  // Approve a settlement request (requires admin privileges)
+  rpc Approve(ApproveRequest) returns (ApproveResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{id}/approve"
+      body: "*"
+    };
+  }
+
+  // Reject a settlement request (requires admin privileges)
+  rpc Reject(RejectRequest) returns (RejectResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{id}/reject"
+      body: "*"
+    };
+  }
+
+  // Remove a member from a settlement (requires admin privileges)
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse) {
+    option (google.api.http) = {delete: "/v1/settlements/{settlement_id}/members/{user_id}"};
+  }
+
+  // Invite a member to a settlement (requires being the settlement leader)
+  rpc InviteMember(InviteMemberRequest) returns (InviteMemberResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{settlement_id}/members"
+      body: "*"
+    };
+  }
+}
+
+message Settlement {
+  string id = 1;
+  string name = 2;
+  SettlementType type = 3;
+  Member leader = 4;
+  repeated Member members = 5;
+  Vector2 coordinates = 6;
+  int64 created_at = 7;
+  int64 updated_at = 8;
+}
+
+enum SettlementType {
+  SETTLEMENT_TYPE_UNSPECIFIED = 0;
+  SETTLEMENT_TYPE_VILLAGE = 1;
+  SETTLEMENT_TYPE_CITY = 2;
+  SETTLEMENT_TYPE_PROVINCE = 3;
+}
+
+message Member {
+  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message SubmitRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  Vector2 coordinates = 2 [(google.api.field_behavior) = REQUIRED];
+  repeated Attachment attachments = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message Vector2 {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message Attachment {
+  string desc = 1 [(google.api.field_behavior) = REQUIRED];
+  string url = 2 [(google.api.field_behavior) = REQUIRED];
+  string mime_type = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message SubmitResponse {}
+
+message GetRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetResponse {
+  Settlement settlement = 1;
+}
+
+message ListRequest {}
+
+message ListResponse {
+  repeated Settlement settlements = 1;
+}
+
+message ListPendingRequest {}
+
+message ListPendingResponse {
+  repeated Settlement settlements = 1;
+}
+
+message ApproveRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ApproveResponse {}
+
+message RejectRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string rejection_reason = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message RejectResponse {}
+
+message RemoveMemberRequest {
+  string settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string user_id = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message RemoveMemberResponse {}
+
+message InviteMemberRequest {
+  string settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string user_id = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message InviteMemberResponse {}

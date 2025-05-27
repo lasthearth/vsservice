@@ -166,6 +166,10 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 // Details implements verificationv1.VerificationServiceServer.
 func (s *Service) Details(ctx context.Context, req *verificationv1.DetailsRequest) (*verificationv1.DetailsResponse, error) {
 	userID, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	verif, err := s.dbRepo.GetVerification(ctx, userID)
 	if err != nil {
 		return nil, err

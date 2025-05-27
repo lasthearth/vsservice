@@ -179,6 +179,216 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/settlements:
+        get:
+            tags:
+                - SettlementService
+            description: List all settlements
+            operationId: SettlementService_List
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - SettlementService
+            description: Submit a new settlement registration request
+            operationId: SettlementService_Submit
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SubmitRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SubmitResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/settlements/pending:
+        get:
+            tags:
+                - SettlementService
+            description: List pending settlement requests (requires admin privileges)
+            operationId: SettlementService_ListPending
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListPendingResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/settlements/{id}:
+        get:
+            tags:
+                - SettlementService
+            description: Get settlement by ID
+            operationId: SettlementService_Get
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/settlements/{id}/approve:
+        post:
+            tags:
+                - SettlementService
+            description: Approve a settlement request (requires admin privileges)
+            operationId: SettlementService_Approve
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ApproveRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ApproveResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/settlements/{id}/reject:
+        post:
+            tags:
+                - SettlementService
+            description: Reject a settlement request (requires admin privileges)
+            operationId: SettlementService_Reject
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RejectRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RejectResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/settlements/{settlement_id}/members:
+        post:
+            tags:
+                - SettlementService
+            description: Invite a member to a settlement (requires being the settlement leader)
+            operationId: SettlementService_InviteMember
+            parameters:
+                - name: settlement_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/InviteMemberRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/InviteMemberResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/settlements/{settlement_id}/members/{user_id}:
+        delete:
+            tags:
+                - SettlementService
+            description: Remove a member from a settlement (requires admin privileges)
+            operationId: SettlementService_RemoveMember
+            parameters:
+                - name: settlement_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RemoveMemberResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/stats:
         get:
             tags:
@@ -384,21 +594,29 @@ paths:
                                 $ref: '#/components/schemas/Status'
 components:
     schemas:
-        Answer:
-            type: object
-            properties:
-                question:
-                    type: string
-                answer:
-                    type: string
         ApproveRequest:
+            required:
+                - id
             type: object
             properties:
-                user_id:
+                id:
                     type: string
         ApproveResponse:
             type: object
             properties: {}
+        Attachment:
+            required:
+                - desc
+                - url
+                - mime_type
+            type: object
+            properties:
+                desc:
+                    type: string
+                url:
+                    type: string
+                mime_type:
+                    type: string
         CreateQuestionRequest:
             type: object
             properties:
@@ -443,6 +661,11 @@ components:
                 question:
                     type: string
             description: Represents a question about rules
+        GetResponse:
+            type: object
+            properties:
+                settlement:
+                    $ref: '#/components/schemas/Settlement'
         GetVerifyCodeResponse:
             type: object
             properties:
@@ -456,6 +679,19 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        InviteMemberRequest:
+            required:
+                - settlement_id
+                - user_id
+            type: object
+            properties:
+                settlement_id:
+                    type: string
+                user_id:
+                    type: string
+        InviteMemberResponse:
+            type: object
+            properties: {}
         LeaderboardEntry:
             type: object
             properties:
@@ -477,30 +713,27 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/LeaderboardEntry'
+        ListPendingResponse:
+            type: object
+            properties:
+                settlements:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Settlement'
         ListResponse:
             type: object
             properties:
-                requests:
+                settlements:
                     type: array
                     items:
-                        $ref: '#/components/schemas/ListResponse_VerifyUserRequest'
-        ListResponse_VerifyUserRequest:
+                        $ref: '#/components/schemas/Settlement'
+        Member:
+            required:
+                - user_id
             type: object
             properties:
-                id:
-                    type: string
                 user_id:
                     type: string
-                user_name:
-                    type: string
-                user_game_name:
-                    type: string
-                contacts:
-                    type: string
-                answers:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/Answer'
         OnlineStatsResponse:
             type: object
             properties:
@@ -524,15 +757,43 @@ components:
                     type: integer
                     format: int32
         RejectRequest:
+            required:
+                - id
+                - rejection_reason
             type: object
             properties:
-                user_id:
+                id:
                     type: string
                 rejection_reason:
                     type: string
         RejectResponse:
             type: object
             properties: {}
+        RemoveMemberResponse:
+            type: object
+            properties: {}
+        Settlement:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                type:
+                    type: integer
+                    format: enum
+                leader:
+                    $ref: '#/components/schemas/Member'
+                members:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Member'
+                coordinates:
+                    $ref: '#/components/schemas/Vector2'
+                created_at:
+                    type: string
+                updated_at:
+                    type: string
         Status:
             type: object
             properties:
@@ -551,25 +812,31 @@ components:
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
         SubmitRequest:
             required:
-                - user_name
-                - user_game_name
-                - contacts
-                - answers
+                - name
+                - coordinates
+                - attachments
             type: object
             properties:
-                user_name:
+                name:
                     type: string
-                user_game_name:
-                    type: string
-                contacts:
-                    type: string
-                answers:
+                coordinates:
+                    $ref: '#/components/schemas/Vector2'
+                attachments:
                     type: array
                     items:
-                        $ref: '#/components/schemas/Answer'
+                        $ref: '#/components/schemas/Attachment'
         SubmitResponse:
             type: object
             properties: {}
+        Vector2:
+            type: object
+            properties:
+                x:
+                    type: integer
+                    format: int32
+                y:
+                    type: integer
+                    format: int32
         VerifyCodeRequest:
             required:
                 - code
@@ -593,6 +860,8 @@ tags:
       description: Represent basic leaderboard
     - name: RuleService
       description: Represents rules service
+    - name: SettlementService
+      description: Represents settlement management service
     - name: StatsService
       description: Represents various stats
     - name: TrademarketService

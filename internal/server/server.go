@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"go.uber.org/zap"
 	"net"
 	"net/http"
 
@@ -13,13 +14,13 @@ import (
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
+	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/rs/cors"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -55,13 +56,13 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			selector.UnaryServerInterceptor(s.authInterceptor.Unary(), selector.MatchFunc(interceptor.AuthMatcher)),
-			recovery.UnaryServerInterceptor(recoveryOpts...),
 			logging.UnaryServerInterceptor(interceptorLogger(s.log), logOpts...),
+			recovery.UnaryServerInterceptor(recoveryOpts...),
 		),
 		grpc.ChainStreamInterceptor(
 			selector.StreamServerInterceptor(s.authInterceptor.Stream(), selector.MatchFunc(interceptor.AuthMatcher)),
-			recovery.StreamServerInterceptor(recoveryOpts...),
 			logging.StreamServerInterceptor(interceptorLogger(s.log), logOpts...),
+			recovery.StreamServerInterceptor(recoveryOpts...),
 		),
 	)
 
@@ -70,6 +71,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	rulesv1.RegisterRuleServiceServer(srv, s.rulesV1)
 	verificationv1.RegisterVerificationServiceServer(srv, s.verificationV1)
 	userv1.RegisterUserServiceServer(srv, s.userV1)
+	settlementv1.RegisterSettlementServiceServer(srv, s.settlementV1)
 	reflection.Register(srv)
 
 	s.grpcSrv = srv
@@ -100,6 +102,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := userv1.RegisterUserServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register user service handler")
+	}
+
+	if err := settlementv1.RegisterSettlementServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register settlement service handler")
 	}
 
 	handler := cors.New(cors.Options{
