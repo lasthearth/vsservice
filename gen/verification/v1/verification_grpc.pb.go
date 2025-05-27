@@ -41,6 +41,7 @@ type VerificationServiceClient interface {
 	// Reject user verification request, need admin privelege
 	Reject(ctx context.Context, in *RejectRequest, opts ...grpc.CallOption) (*RejectResponse, error)
 	// Get user verification details
+	// Possible statuses: pending, approved, rejected, verified
 	Details(ctx context.Context, in *DetailsRequest, opts ...grpc.CallOption) (*DetailsResponse, error)
 }
 
@@ -117,6 +118,7 @@ type VerificationServiceServer interface {
 	// Reject user verification request, need admin privelege
 	Reject(context.Context, *RejectRequest) (*RejectResponse, error)
 	// Get user verification details
+	// Possible statuses: pending, approved, rejected, verified
 	Details(context.Context, *DetailsRequest) (*DetailsResponse, error)
 }
 
