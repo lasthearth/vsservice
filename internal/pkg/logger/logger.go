@@ -3,6 +3,7 @@ package logger
 import (
 	"context"
 	"fmt"
+
 	"github.com/go-faster/errors"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"go.uber.org/zap"
