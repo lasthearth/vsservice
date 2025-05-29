@@ -66,6 +66,82 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/notifications:
+        get:
+            tags:
+                - NotificationService
+            description: |-
+                Lists notifications for a specific user.
+
+                 This method retrieves a paginated list of notifications for the specified
+                 user. The response includes a list of notifications and a token for the next
+                 page (if applicable).
+            operationId: NotificationService_ListNotifications
+            parameters:
+                - name: page_size
+                  in: query
+                  description: |-
+                    The maximum number of notifications to return. The service may return fewer
+                     than this value. If unspecified, at most 15 notifications will be returned.
+                     The maximum value is 15; values above 15 will be coerced to 15.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page_token
+                  in: query
+                  description: A token identifying a page of results the server should return.
+                  schema:
+                    type: string
+                - name: order_by
+                  in: query
+                  description: |-
+                    The field to sort by, followed by direction (e.g., "created_at desc" or "state asc").
+                     Supported fields: "created_at", "state". If unspecified, defaults to "created_at desc".
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListNotificationsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/notifications/{id}:markAsRead:
+        post:
+            tags:
+                - NotificationService
+            description: |-
+                Marks notification as read.
+
+                 This method updates the state of a specific notification to "READ" for the
+                 specified user. It does not return any data, only confirming the action's
+                 success.
+            operationId: NotificationService_MarkAsRead
+            parameters:
+                - name: id
+                  in: path
+                  description: |-
+                    The identifier of the notification to mark as read.
+                     Required.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/rules/question:
         post:
             tags:
@@ -709,6 +785,18 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/LeaderboardEntry'
+        ListNotificationsResponse:
+            type: object
+            properties:
+                notifications:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Notification'
+                next_page_token:
+                    type: string
+                    description: |-
+                        A token to retrieve the next page of results. Empty if there are no more
+                         results.
         ListPendingResponse:
             type: object
             properties:
@@ -730,6 +818,27 @@ components:
             properties:
                 user_id:
                     type: string
+        Notification:
+            required:
+                - user_id
+                - title
+                - message
+            type: object
+            properties:
+                id:
+                    type: string
+                user_id:
+                    type: string
+                title:
+                    type: string
+                message:
+                    type: string
+                state:
+                    type: integer
+                    format: enum
+                created_at:
+                    type: string
+                    format: date-time
         OnlineStatsResponse:
             type: object
             properties:
@@ -859,6 +968,8 @@ components:
 tags:
     - name: LeaderboardService
       description: Represent basic leaderboard
+    - name: NotificationService
+      description: Provides methods to manage user notifications
     - name: RuleService
       description: Represents rules service
     - name: SettlementService

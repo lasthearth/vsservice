@@ -45,20 +45,20 @@ func (r *Repository) Create(ctx context.Context, opts service.VerifyOpts) error 
 
 	r.log.Debug("inserting verification request into database",
 		zap.String("user_id", opts.UserID),
-		zap.String("model_id", dto.ID.Hex()))
+		zap.String("model_id", dto.Id.Hex()))
 
 	_, err := r.coll.InsertOne(ctx, dto)
 	if err != nil {
 		r.log.Error("failed to insert verification request",
 			zap.Error(err),
 			zap.String("user_id", opts.UserID),
-			zap.String("model_id", dto.ID.Hex()))
+			zap.String("model_id", dto.Id.Hex()))
 		return err
 	}
 
 	r.log.Info("successfully created verification request",
 		zap.String("user_id", opts.UserID),
-		zap.String("model_id", dto.ID.Hex()))
+		zap.String("model_id", dto.Id.Hex()))
 	return nil
 }
 

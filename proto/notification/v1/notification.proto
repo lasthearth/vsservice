@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package notification.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// Provides methods to manage user notifications
+service NotificationService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Lists notifications for a specific user.
+  //
+  // This method retrieves a paginated list of notifications for the specified
+  // user. The response includes a list of notifications and a token for the next
+  // page (if applicable).
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {
+    option (google.api.http) = {get: "/v1/notifications"};
+  }
+
+  // Marks notification as read.
+  //
+  // This method updates the state of a specific notification to "READ" for the
+  // specified user. It does not return any data, only confirming the action's
+  // success.
+  rpc MarkAsRead(MarkAsReadRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {post: "/v1/notifications/{id}:markAsRead"};
+  }
+}
+
+message Notification {
+  string id = 1;
+  string user_id = 2 [(google.api.field_behavior) = REQUIRED];
+  string title = 3 [(google.api.field_behavior) = REQUIRED];
+  string message = 4 [(google.api.field_behavior) = REQUIRED];
+  // The state of the notification (e.g., unread or read).
+  enum State {
+    // The state is unspecified.
+    STATE_UNSPECIFIED = 0;
+    // The notification has not been read.
+    UNREAD = 1;
+    // The notification has been read.
+    READ = 2;
+  }
+  State state = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message ListNotificationsRequest {
+  // The maximum number of notifications to return. The service may return fewer
+  // than this value. If unspecified, at most 15 notifications will be returned.
+  // The maximum value is 15; values above 15 will be coerced to 15.
+  int32 page_size = 1;
+  // A token identifying a page of results the server should return.
+  string page_token = 2;
+  // The field to sort by, followed by direction (e.g., "created_at desc" or "state asc").
+  // Supported fields: "created_at", "state". If unspecified, defaults to "created_at desc".
+  string order_by = 3;
+}
+
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  // A token to retrieve the next page of results. Empty if there are no more
+  // results.
+  string next_page_token = 2;
+}
+
+message MarkAsReadRequest {
+  // The identifier of the notification to mark as read.
+  // Required.
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}

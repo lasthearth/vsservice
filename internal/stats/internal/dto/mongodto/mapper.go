@@ -18,7 +18,7 @@ func (m *Stats) ToModel() *model.Stats {
 	}
 
 	return &model.Stats{
-		ID:            m.ID.String(),
+		ID:            m.Id.String(),
 		Name:          m.Name,
 		DeathCount:    stats.DeathCount,
 		Seeds:         seeds,
@@ -41,7 +41,7 @@ func FromModel(stats *model.Stats) *Stats {
 
 	return &Stats{
 		Model: mongo.Model{
-			ID:        primitive.NewObjectIDFromTimestamp(now),
+			Id:        primitive.NewObjectIDFromTimestamp(now),
 			CreatedAt: now,
 			UpdatedAt: now,
 		},

@@ -29,7 +29,7 @@ func (s *Settlement) ToModel() *model.Settlement {
 	})
 
 	return &model.Settlement{
-		ID:          s.ID.Hex(),
+		ID:          s.Id.Hex(),
 		Name:        s.Name,
 		Type:        model.SettlementType(s.Type),
 		Leader:      *s.Leader.ToModel(),

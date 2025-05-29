@@ -27,7 +27,7 @@ func (s *SettlementVerification) ToModel() *model.SettlementVerification {
 	})
 
 	return &model.SettlementVerification{
-		Id:              s.ID.Hex(),
+		Id:              s.Id.Hex(),
 		Name:            s.Name,
 		Type:            model.SettlementType(s.Type),
 		Leader:          *s.Leader.ToModel(),

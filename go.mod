@@ -4,6 +4,7 @@ go 1.24
 
 tool (
 	github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway
+	github.com/jmattheis/goverter/cmd/goverter
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc
 	google.golang.org/protobuf/cmd/protoc-gen-go
 )
@@ -14,7 +15,7 @@ require (
 	github.com/go-faster/errors v0.7.1
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.2.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.1
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -26,9 +27,9 @@ require (
 	go.uber.org/fx v1.23.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.12.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250212204824-5a70512c5d8b
+	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb
 	google.golang.org/grpc v1.70.0
-	google.golang.org/protobuf v1.36.5
+	google.golang.org/protobuf v1.36.6
 )
 
 require (
@@ -51,7 +52,19 @@ require (
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250204164813-702378808489 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+require (
+	github.com/dave/jennifer v1.6.0 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/go-playground/validator/v10 v10.26.0 // indirect
+	github.com/jmattheis/goverter v1.8.3 // indirect
+	github.com/leodido/go-urn v1.4.0 // indirect
+	golang.org/x/mod v0.21.0 // indirect
+	golang.org/x/tools v0.26.0 // indirect
 )

@@ -37,7 +37,7 @@ func (v *Verification) ToModel() *model.Verification {
 	})
 
 	return &model.Verification{
-		ID:              v.ID.Hex(),
+		ID:              v.Id.Hex(),
 		UserID:          v.UserID,
 		UserName:        v.UserName,
 		UserGameName:    v.UserGameName,
@@ -52,7 +52,7 @@ func (v *Verification) ToModel() *model.Verification {
 
 func AnswerToModel(a *Answer) *model.Answer {
 	return &model.Answer{
-		ID:        a.ID.Hex(),
+		ID:        a.Id.Hex(),
 		Question:  a.Question,
 		Answer:    a.Answer,
 		CreatedAt: a.CreatedAt,
