@@ -35,22 +35,13 @@ var (
 	_ = metadata.Join
 )
 
-var filter_NotificationService_ListNotifications_0 = &utilities.DoubleArray{Encoding: map[string]int{"user_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+var filter_NotificationService_ListNotifications_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 
 func request_NotificationService_ListNotifications_0(ctx context.Context, marshaler runtime.Marshaler, client NotificationServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq ListNotificationsRequest
 		metadata runtime.ServerMetadata
-		err      error
 	)
-	val, ok := pathParams["user_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user_id")
-	}
-	protoReq.UserId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
-	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -65,16 +56,7 @@ func local_request_NotificationService_ListNotifications_0(ctx context.Context, 
 	var (
 		protoReq ListNotificationsRequest
 		metadata runtime.ServerMetadata
-		err      error
 	)
-	val, ok := pathParams["user_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user_id")
-	}
-	protoReq.UserId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
-	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
@@ -91,21 +73,13 @@ func request_NotificationService_MarkAsRead_0(ctx context.Context, marshaler run
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	val, ok := pathParams["user_id"]
+	val, ok := pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-	protoReq.UserId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
-	}
-	val, ok = pathParams["notification_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "notification_id")
-	}
-	protoReq.NotificationId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "notification_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 	msg, err := client.MarkAsRead(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
@@ -117,21 +91,13 @@ func local_request_NotificationService_MarkAsRead_0(ctx context.Context, marshal
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	val, ok := pathParams["user_id"]
+	val, ok := pathParams["id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user_id")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
 	}
-	protoReq.UserId, err = runtime.String(val)
+	protoReq.Id, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
-	}
-	val, ok = pathParams["notification_id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "notification_id")
-	}
-	protoReq.NotificationId, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "notification_id", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
 	}
 	msg, err := server.MarkAsRead(ctx, &protoReq)
 	return msg, metadata, err
@@ -149,7 +115,7 @@ func RegisterNotificationServiceHandlerServer(ctx context.Context, mux *runtime.
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/notification.v1.NotificationService/ListNotifications", runtime.WithHTTPPathPattern("/v1/users/{user_id}/notifications"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/notification.v1.NotificationService/ListNotifications", runtime.WithHTTPPathPattern("/v1/notifications"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -169,7 +135,7 @@ func RegisterNotificationServiceHandlerServer(ctx context.Context, mux *runtime.
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/notification.v1.NotificationService/MarkAsRead", runtime.WithHTTPPathPattern("/v1/users/{user_id}/notifications/{notification_id}:markAsRead"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/notification.v1.NotificationService/MarkAsRead", runtime.WithHTTPPathPattern("/v1/notifications/{id}:markAsRead"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -227,7 +193,7 @@ func RegisterNotificationServiceHandlerClient(ctx context.Context, mux *runtime.
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/notification.v1.NotificationService/ListNotifications", runtime.WithHTTPPathPattern("/v1/users/{user_id}/notifications"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/notification.v1.NotificationService/ListNotifications", runtime.WithHTTPPathPattern("/v1/notifications"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -244,7 +210,7 @@ func RegisterNotificationServiceHandlerClient(ctx context.Context, mux *runtime.
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/notification.v1.NotificationService/MarkAsRead", runtime.WithHTTPPathPattern("/v1/users/{user_id}/notifications/{notification_id}:markAsRead"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/notification.v1.NotificationService/MarkAsRead", runtime.WithHTTPPathPattern("/v1/notifications/{id}:markAsRead"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -261,8 +227,8 @@ func RegisterNotificationServiceHandlerClient(ctx context.Context, mux *runtime.
 }
 
 var (
-	pattern_NotificationService_ListNotifications_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "users", "user_id", "notifications"}, ""))
-	pattern_NotificationService_MarkAsRead_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "users", "user_id", "notifications", "notification_id"}, "markAsRead"))
+	pattern_NotificationService_ListNotifications_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "notifications"}, ""))
+	pattern_NotificationService_MarkAsRead_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "notifications", "id"}, "markAsRead"))
 )
 
 var (

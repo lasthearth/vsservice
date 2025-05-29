@@ -18,7 +18,7 @@ service NotificationService {
   // user. The response includes a list of notifications and a token for the next
   // page (if applicable).
   rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {
-    option (google.api.http) = {get: "/v1/users/{user_id}/notifications"};
+    option (google.api.http) = {get: "/v1/notifications"};
   }
 
   // Marks notification as read.
@@ -27,7 +27,7 @@ service NotificationService {
   // specified user. It does not return any data, only confirming the action's
   // success.
   rpc MarkAsRead(MarkAsReadRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {post: "/v1/users/{user_id}/notifications/{notification_id}:markAsRead"};
+    option (google.api.http) = {post: "/v1/notifications/{id}:markAsRead"};
   }
 }
 
@@ -47,22 +47,18 @@ message Notification {
   }
   State state = 5;
   google.protobuf.Timestamp created_at = 6;
-  google.protobuf.Timestamp read_at = 7;
 }
 
 message ListNotificationsRequest {
-  // The identifier of the user whose notifications are to be listed.
-  // Required.
-  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
   // The maximum number of notifications to return. The service may return fewer
-  // than this value. If unspecified, at most 50 notifications will be returned.
-  // The maximum value is 100; values above 100 will be coerced to 100.
-  int32 page_size = 2;
+  // than this value. If unspecified, at most 15 notifications will be returned.
+  // The maximum value is 15; values above 15 will be coerced to 15.
+  int32 page_size = 1;
   // A token identifying a page of results the server should return.
-  string page_token = 3;
+  string page_token = 2;
   // The field to sort by, followed by direction (e.g., "created_at desc" or "state asc").
   // Supported fields: "created_at", "state". If unspecified, defaults to "created_at desc".
-  string order_by = 4;
+  string order_by = 3;
 }
 
 message ListNotificationsResponse {
@@ -73,10 +69,7 @@ message ListNotificationsResponse {
 }
 
 message MarkAsReadRequest {
-  // The identifier of the user associated with the notification.
-  // Required.
-  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
   // The identifier of the notification to mark as read.
   // Required.
-  string notification_id = 2 [(google.api.field_behavior) = REQUIRED];
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
 }

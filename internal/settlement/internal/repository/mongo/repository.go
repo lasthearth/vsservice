@@ -25,20 +25,20 @@ func (r *Repository) Create(ctx context.Context, dto settlementdto.Settlement) e
 
 	r.log.Debug("inserting settlement into database",
 		zap.String("leader_id", dto.Leader.UserID),
-		zap.String("model_id", dto.ID.Hex()))
+		zap.String("model_id", dto.Id.Hex()))
 
 	_, err := r.setColl.InsertOne(ctx, dto)
 	if err != nil {
 		r.log.Error("failed to insert settlement",
 			zap.Error(err),
 			zap.String("leader_id", dto.Leader.UserID),
-			zap.String("model_id", dto.ID.Hex()))
+			zap.String("model_id", dto.Id.Hex()))
 		return err
 	}
 
 	r.log.Info("successfully created settlement",
 		zap.String("leader_id", dto.Leader.UserID),
-		zap.String("model_id", dto.ID.Hex()))
+		zap.String("model_id", dto.Id.Hex()))
 	return nil
 }
 

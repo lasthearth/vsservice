@@ -20,7 +20,7 @@ func (h *Stats) ToMongoDTO() *mongodto.Stats {
 	now := time.Now()
 	return &mongodto.Stats{
 		Model: mongo.Model{
-			ID:        primitive.NewObjectIDFromTimestamp(now),
+			Id:        primitive.NewObjectIDFromTimestamp(now),
 			CreatedAt: now,
 			UpdatedAt: now,
 		},

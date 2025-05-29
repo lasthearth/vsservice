@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"github.com/lasthearth/vsservice/internal/notification/internal/dto"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/fx"
@@ -10,13 +9,13 @@ import (
 type Opts struct {
 	fx.In
 	Log      logger.Logger
-	Mapper   dto.NotificationMapper
+	Mapper   NotificationMapper
 	Database *mongo.Database
 }
 
 type Repository struct {
 	log    logger.Logger
-	mapper dto.NotificationMapper
+	mapper NotificationMapper
 	coll   *mongo.Collection
 }
 

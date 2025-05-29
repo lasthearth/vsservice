@@ -7,7 +7,7 @@ import (
 
 func (m *Question) ToModel() *model.Question {
 	return &model.Question{
-		ID:        m.ID.Hex(),
+		ID:        m.Id.Hex(),
 		Question:  m.Question,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,

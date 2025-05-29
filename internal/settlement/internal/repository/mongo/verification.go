@@ -43,20 +43,20 @@ func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementO
 
 	r.log.Debug("inserting settlement request into database",
 		zap.String("leader_id", opts.Leader.UserID),
-		zap.String("model_id", dto.ID.Hex()))
+		zap.String("model_id", dto.Id.Hex()))
 
 	_, err := r.setReqColl.InsertOne(ctx, dto)
 	if err != nil {
 		r.log.Error("failed to insert settlement request",
 			zap.Error(err),
 			zap.String("leader_id", opts.Leader.UserID),
-			zap.String("model_id", dto.ID.Hex()))
+			zap.String("model_id", dto.Id.Hex()))
 		return err
 	}
 
 	r.log.Info("successfully created settlement request",
 		zap.String("leader_id", opts.Leader.UserID),
-		zap.String("model_id", dto.ID.Hex()))
+		zap.String("model_id", dto.Id.Hex()))
 	return nil
 }
 
@@ -215,11 +215,11 @@ func (r *Repository) Approve(ctx context.Context, id string) error {
 		l.Info("successfully approved settlement request")
 		l.Debug("leader here", zap.String("leader_id", dto.Leader.UserID))
 		// check existence if exists update instead of create
-		_, err := r.GetSettlement(ctx, dto.ID.Hex())
+		_, err := r.GetSettlement(ctx, dto.Id.Hex())
 		if err != nil {
 			if errors.Is(err, ErrNotFound) {
 				model := mongomodel.NewModel()
-				model.ID = dto.ID
+				model.Id = dto.Id
 
 				return r.Create(ctx, settlementdto.Settlement{
 					Model:       model,
