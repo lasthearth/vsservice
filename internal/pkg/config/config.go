@@ -23,6 +23,8 @@ type Config struct {
 
 	VsAPIUrl string `envconfig:"VSAPI_URL"`
 
+	CdnUrl string `envconfig:"CDN_URL"`
+
 	SsoUrl       string   `envconfig:"SSO_URL"`
 	ClientID     string   `envconfig:"CLIENT_ID"`
 	ClientSecret string   `envconfig:"CLIENT_SECRET"`
@@ -32,6 +34,11 @@ type Config struct {
 
 	StatsFetchingIntervalSecs int  `envconfig:"STATS_FETCHING_INTERVAL_SECS"`
 	StatsFetchingEnable       bool `envconfig:"STATS_FETCHING_ENABLE"`
+
+	MinioEndpoint  string `envconfig:"MINIO_ENDPOINT"`
+	MinioAccessKey string `envconfig:"MINIO_ACCESS_KEY"`
+	MinioSecretKey string `envconfig:"MINIO_SECRET_KEY"`
+	MinioUseSSL    bool   `envconfig:"MINIO_USE_SSL"`
 }
 
 // New initializes from .env and returns a new Config instance.

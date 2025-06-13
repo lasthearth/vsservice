@@ -14,12 +14,12 @@ type Opts struct {
 	fx.In
 	Manager *tokenmanager.Manager
 	Logger  logger.Logger
-	Config  config.Config
+	Cfg     config.Config
 }
 
 type Repository struct {
 	client *http.Client
-	config config.Config
+	cfg    config.Config
 	logger logger.Logger
 }
 
@@ -28,7 +28,7 @@ func New(opts Opts) *Repository {
 
 	return &Repository{
 		client: opts.Manager.Client(context.Background()),
-		config: opts.Config,
+		cfg:    opts.Cfg,
 		logger: logger,
 	}
 }
