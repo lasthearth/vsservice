@@ -31,6 +31,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     pkg-config \
     libglib2.0-dev \
     libjpeg62-turbo-dev \
+    libpng-dev \
     libtiff5-dev \
     meson \
     ninja-build \
