@@ -75,6 +75,8 @@ COPY --from=build /usr/local/lib /usr/local/lib
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update && \
     apt-get install --no-install-recommends -y \
+    ca-certificates \
+    tzdata \
     libglib2.0-0 \
     libjpeg62-turbo \
     libpng16-16 \
@@ -87,7 +89,8 @@ RUN DEBIAN_FRONTEND=noninteractive \
     apt-get autoremove -y && \
     apt-get autoclean && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    update-ca-certificates
 
 ARG UID=10001
 RUN adduser \
