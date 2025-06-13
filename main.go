@@ -18,6 +18,8 @@ import (
 	"github.com/lasthearth/vsservice/internal/stats"
 	"github.com/lasthearth/vsservice/internal/user"
 	"github.com/lasthearth/vsservice/internal/verification"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 
 	// "github.com/lasthearth/vsservice/internal/trademarket"
 	"go.uber.org/fx"
@@ -57,6 +59,7 @@ func main() {
 				})
 			},
 			setupLogger,
+			setupStorage,
 			mongo.New,
 			mongo.NewDatabase,
 			// fx.Annotate(service.New, fx.As(new(vsservice.StatsService))),
@@ -96,4 +99,16 @@ func setupLogger(c config.Config) (logger.Logger, error) {
 		return nil, err
 	}
 	return l, err
+}
+
+func setupStorage(c config.Config) (*minio.Client, error) {
+	client, err := minio.New(c.MinioEndpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(c.MinioAccessKey, c.MinioSecretKey, ""),
+		Secure: c.MinioUseSSL,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

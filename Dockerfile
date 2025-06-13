@@ -12,6 +12,7 @@ ARG GO_VERSION=1.24
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} AS build
 WORKDIR /src
 
+ARG LIBVIPS_VERSION=8.15.5
 ARG PROJECT_PATH=./
 
 LABEL org.opencontainers.image.source="https://github.com/lasthearth/vsservice"
@@ -24,9 +25,29 @@ RUN --mount=type=bind,source=${PROJECT_PATH}/go.sum,target=go.sum \
     --mount=type=bind,source=${PROJECT_PATH}/go.mod,target=go.mod \
     go mod download -x
 
+RUN DEBIAN_FRONTEND=noninteractive \
+    apt-get update && apt-get install -y \
+    build-essential \
+    pkg-config \
+    libglib2.0-dev \
+    libjpeg62-turbo-dev \
+    libtiff5-dev \
+    meson \
+    ninja-build \
+    libwebp-dev \
+    libarchive-dev \
+    libexpat1-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# This is the architecture you're building for, which is passed in by the builder.
-# Placing it here allows the previous steps to be cached across architectures.
+RUN wget https://github.com/libvips/libvips/releases/download/v${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION}.tar.xz && \
+    tar -xf vips-${LIBVIPS_VERSION}.tar.xz && \
+    cd vips-${LIBVIPS_VERSION} && \
+    meson setup build --prefix /usr/local --buildtype=release && \
+    meson compile -C build && \
+    meson install -C build && \
+    ldconfig && \
+    cd .. && rm -rf vips-${LIBVIPS_VERSION}*
+
 ARG TARGETARCH
 
 # Build the application.
@@ -34,7 +55,7 @@ ARG TARGETARCH
 # Leverage a bind mount to the current directory to avoid having to copy the
 # source code into the container.
 RUN --mount=type=bind,source=./${PROJECT_PATH}/,target=. \
-    CGO_ENABLED=0 GOARCH=$TARGETARCH go build -o /bin/vsservice ./main.go
+    CGO_ENABLED=1 GOARCH=$TARGETARCH go build -o /bin/vsservice ./main.go
 
 ################################################################################
 # Create a new stage for running the application that contains the minimal
@@ -47,19 +68,27 @@ RUN --mount=type=bind,source=./${PROJECT_PATH}/,target=. \
 # most recent version of that image when you build your Dockerfile. If
 # reproducability is important, consider using a versioned tag
 # (e.g., alpine:3.17.2) or SHA (e.g., alpine@sha256:c41ab5c992deb4fe7e5da09f67a8804a46bd0592bfdf0b1847dde0e0889d2bff).
-FROM alpine:latest AS final
+FROM debian:bookworm-slim AS final
 
-# Install any runtime dependencies that are needed to run your application.
-# Leverage a cache mount to /var/cache/apk/ to speed up subsequent builds.
-RUN --mount=type=cache,target=/var/cache/apk \
-    apk --update add \
-        ca-certificates \
-        tzdata \
-        && \
-        update-ca-certificates
+COPY --from=build /usr/local/lib /usr/local/lib
 
-# Create a non-privileged user that the app will run under.
-# See https://docs.docker.com/go/dockerfile-user-best-practices/
+RUN DEBIAN_FRONTEND=noninteractive \
+    apt-get update && \
+    apt-get install --no-install-recommends -y \
+    libglib2.0-0 \
+    libjpeg62-turbo \
+    libpng16-16 \
+    libtiff6 \
+    libwebp7 \
+    libwebpmux3 \
+    libwebpdemux2 \
+    libarchive13 \
+    libexpat1 && \
+    apt-get autoremove -y && \
+    apt-get autoclean && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 ARG UID=10001
 RUN adduser \
     --disabled-password \
@@ -71,6 +100,7 @@ RUN adduser \
     appuser
 USER appuser
 
+ENV LD_LIBRARY_PATH="/usr/local/lib"
 # Copy the executable from the "build" stage.
 COPY --from=build /bin/vsservice /bin/
 

@@ -12,6 +12,13 @@ import "rules/v1/rules.proto";
 service UserService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
+  rpc UpdateAvatar(UpdateAvatarRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/user/avatar"
+      body: "*"
+    };
+  }
+
   rpc VerifyStatus(VerifyStatusRequest) returns (VerifyStatusResponse) {
     option (google.api.http) = {get: "/v1/user/verify/status"};
   }
@@ -57,3 +64,7 @@ message VerifyCodeRequest {
 }
 
 message VerifyCodeResponse {}
+
+message UpdateAvatarRequest {
+  bytes avatar = 1 [(google.api.field_behavior) = REQUIRED];
+}
