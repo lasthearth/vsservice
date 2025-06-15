@@ -5,17 +5,17 @@ import (
 )
 
 type Member struct {
-	UserID string `bson:"user_id"`
+	UserId string `bson:"user_id"`
 }
 
 func (m *Member) ToModel() *model.Member {
 	return &model.Member{
-		UserID: m.UserID,
+		UserId: m.UserId,
 	}
 }
 
 func FromModel(model *model.Member) *Member {
 	return &Member{
-		UserID: model.UserID,
+		UserId: model.UserId,
 	}
 }

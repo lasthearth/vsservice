@@ -11,6 +11,7 @@ import (
 	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	vector2dto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
 	verificationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/verification"
+	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repoerr"
 
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
@@ -22,7 +23,7 @@ import (
 
 func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementOpts) error {
 	r.log.Info("creating new settlement request",
-		zap.String("leader_id", opts.Leader.UserID),
+		zap.String("leader_id", opts.Leader.UserId),
 		zap.String("settlement_name", opts.Name),
 		zap.String("settlement_type", string(opts.Type)))
 
@@ -42,27 +43,27 @@ func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementO
 	}
 
 	r.log.Debug("inserting settlement request into database",
-		zap.String("leader_id", opts.Leader.UserID),
+		zap.String("leader_id", opts.Leader.UserId),
 		zap.String("model_id", dto.Id.Hex()))
 
 	_, err := r.setReqColl.InsertOne(ctx, dto)
 	if err != nil {
 		r.log.Error("failed to insert settlement request",
 			zap.Error(err),
-			zap.String("leader_id", opts.Leader.UserID),
+			zap.String("leader_id", opts.Leader.UserId),
 			zap.String("model_id", dto.Id.Hex()))
 		return err
 	}
 
 	r.log.Info("successfully created settlement request",
-		zap.String("leader_id", opts.Leader.UserID),
+		zap.String("leader_id", opts.Leader.UserId),
 		zap.String("model_id", dto.Id.Hex()))
 	return nil
 }
 
 func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementOpts) error {
 	r.log.Info("updating settlement request",
-		zap.String("leader_id", opts.Leader.UserID),
+		zap.String("leader_id", opts.Leader.UserId),
 		zap.String("settlement_name", opts.Name),
 		zap.String("settlement_type", string(opts.Type)))
 
@@ -85,11 +86,11 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 	}
 
 	r.log.Debug("updating verification request in database",
-		zap.String("leader_id", opts.Leader.UserID))
+		zap.String("leader_id", opts.Leader.UserId))
 
 	result, err := r.setReqColl.UpdateOne(
 		ctx,
-		bson.M{"leader.user_id": opts.Leader.UserID},
+		bson.M{"leader.user_id": opts.Leader.UserId},
 		bson.D{
 			{Key: "$set", Value: updateFields},
 		},
@@ -97,12 +98,12 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 	if err != nil {
 		r.log.Error("failed to update verification request",
 			zap.Error(err),
-			zap.String("user_id", opts.Leader.UserID))
+			zap.String("user_id", opts.Leader.UserId))
 		return err
 	}
 
 	r.log.Info("successfully updated verification request",
-		zap.String("user_id", opts.Leader.UserID),
+		zap.String("user_id", opts.Leader.UserId),
 		zap.Int64("modified_count", result.ModifiedCount))
 	return nil
 }
@@ -110,18 +111,18 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 func (r *Repository) Submit(ctx context.Context, opts service.SettlementOpts) error {
 	l := r.log.
 		With(
-			zap.String("leader_id", opts.Leader.UserID),
+			zap.String("leader_id", opts.Leader.UserId),
 			zap.String("settlement_name", opts.Name),
 			zap.String("settlement_type", string(opts.Type)),
 		).
 		WithMethod("submit")
 	l.Info("submitting new settlement request")
 
-	found, err := r.GetSettlementRequestByLeader(ctx, opts.Leader.UserID)
+	found, err := r.GetSettlementRequestByLeader(ctx, opts.Leader.UserId)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
+		if errors.Is(err, repoerr.ErrNotFound) {
 			l.Info("request not found, creating new request")
-			err := r.IsMemberOrLeader(ctx, opts.Leader.UserID, opts.Leader.UserID)
+			err := r.IsMemberOrLeader(ctx, opts.Leader.UserId, opts.Leader.UserId)
 			if err != nil {
 				return err
 			}
@@ -133,7 +134,7 @@ func (r *Repository) Submit(ctx context.Context, opts service.SettlementOpts) er
 	}
 
 	if found.Status == model.SettlementStatusPending {
-		return ErrAlreadySubmitted
+		return repoerr.ErrAlreadySubmitted
 	}
 
 	if found.Status == model.SettlementStatusApproved {
@@ -143,9 +144,9 @@ func (r *Repository) Submit(ctx context.Context, opts service.SettlementOpts) er
 		case model.SettlementTypeCity:
 			opts.Type = model.SettlementTypeProvince
 		case model.SettlementTypeProvince:
-			return ErrMaxTierReached
+			return repoerr.ErrMaxTierReached
 		default:
-			return ErrInvalidSettlementType
+			return repoerr.ErrInvalidSettlementType
 		}
 	}
 
@@ -197,7 +198,7 @@ func (r *Repository) Approve(ctx context.Context, id string) error {
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				l.Warn("settlement not found", zap.Error(err))
-				return ErrNotFound
+				return repoerr.ErrNotFound
 			}
 
 			l.Error("update error", zap.Error(err))
@@ -213,11 +214,11 @@ func (r *Repository) Approve(ctx context.Context, id string) error {
 		}
 
 		l.Info("successfully approved settlement request")
-		l.Debug("leader here", zap.String("leader_id", dto.Leader.UserID))
+		l.Debug("leader here", zap.String("leader_id", dto.Leader.UserId))
 		// check existence if exists update instead of create
 		_, err := r.GetSettlement(ctx, dto.Id.Hex())
 		if err != nil {
-			if errors.Is(err, ErrNotFound) {
+			if errors.Is(err, repoerr.ErrNotFound) {
 				model := mongomodel.NewModel()
 				model.Id = dto.Id
 
@@ -323,7 +324,7 @@ func (r *Repository) GetSettlementRequest(ctx context.Context, id string) (*mode
 	res := r.setReqColl.FindOne(ctx, bson.M{"_id": objectID})
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
-			return nil, ErrNotFound
+			return nil, repoerr.ErrNotFound
 		}
 
 		r.log.Error("failed to find settlement request", zap.Error(res.Err()), zap.String("req_id", id))
@@ -347,7 +348,7 @@ func (r *Repository) GetSettlementRequestByLeader(ctx context.Context, leaderID 
 	res := r.setReqColl.FindOne(ctx, bson.M{"leader.user_id": leaderID})
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
-			return nil, ErrNotFound
+			return nil, repoerr.ErrNotFound
 		}
 
 		r.log.Error("failed to find settlement request", zap.Error(res.Err()), zap.String("leader_id", leaderID))
@@ -365,7 +366,7 @@ func (r *Repository) GetSettlementRequestByLeader(ctx context.Context, leaderID 
 }
 
 // GetPendingSettlements implements service.SettlementDbRepository.
-func (r *Repository) GetPendingSettlements(ctx context.Context) ([]*model.SettlementVerification, error) {
+func (r *Repository) GetPendingSettlements(ctx context.Context) ([]model.SettlementVerification, error) {
 	r.log.Info("retrieving pending settlement requests")
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -385,8 +386,8 @@ func (r *Repository) GetPendingSettlements(ctx context.Context) ([]*model.Settle
 		return nil, err
 	}
 
-	res := lo.Map(settlements, func(item verificationdto.SettlementVerification, index int) *model.SettlementVerification {
-		return item.ToModel()
+	res := lo.Map(settlements, func(item verificationdto.SettlementVerification, index int) model.SettlementVerification {
+		return *item.ToModel()
 	})
 
 	r.log.Info("successfully retrieved pending settlements", zap.Int("count", len(res)))

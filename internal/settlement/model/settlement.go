@@ -12,7 +12,7 @@ const (
 
 // Settlement represents a settlement in the game
 type Settlement struct {
-	ID          string
+	Id          string
 	Name        string
 	Type        SettlementType
 	Leader      Member

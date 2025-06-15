@@ -19,14 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SettlementService_Submit_FullMethodName       = "/settlement.v1.SettlementService/Submit"
-	SettlementService_Get_FullMethodName          = "/settlement.v1.SettlementService/Get"
-	SettlementService_List_FullMethodName         = "/settlement.v1.SettlementService/List"
-	SettlementService_ListPending_FullMethodName  = "/settlement.v1.SettlementService/ListPending"
-	SettlementService_Approve_FullMethodName      = "/settlement.v1.SettlementService/Approve"
-	SettlementService_Reject_FullMethodName       = "/settlement.v1.SettlementService/Reject"
-	SettlementService_RemoveMember_FullMethodName = "/settlement.v1.SettlementService/RemoveMember"
-	SettlementService_InviteMember_FullMethodName = "/settlement.v1.SettlementService/InviteMember"
+	SettlementService_Submit_FullMethodName           = "/settlement.v1.SettlementService/Submit"
+	SettlementService_Get_FullMethodName              = "/settlement.v1.SettlementService/Get"
+	SettlementService_List_FullMethodName             = "/settlement.v1.SettlementService/List"
+	SettlementService_ListPending_FullMethodName      = "/settlement.v1.SettlementService/ListPending"
+	SettlementService_Approve_FullMethodName          = "/settlement.v1.SettlementService/Approve"
+	SettlementService_Reject_FullMethodName           = "/settlement.v1.SettlementService/Reject"
+	SettlementService_RemoveMember_FullMethodName     = "/settlement.v1.SettlementService/RemoveMember"
+	SettlementService_GetInvitations_FullMethodName   = "/settlement.v1.SettlementService/GetInvitations"
+	SettlementService_InviteMember_FullMethodName     = "/settlement.v1.SettlementService/InviteMember"
+	SettlementService_RevokeInvitation_FullMethodName = "/settlement.v1.SettlementService/RevokeInvitation"
 )
 
 // SettlementServiceClient is the client API for SettlementService service.
@@ -49,8 +51,12 @@ type SettlementServiceClient interface {
 	Reject(ctx context.Context, in *RejectRequest, opts ...grpc.CallOption) (*RejectResponse, error)
 	// Remove a member from a settlement (requires admin privileges)
 	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
+	// Get all invitations to a settlement
+	GetInvitations(ctx context.Context, in *GetInvitationsRequest, opts ...grpc.CallOption) (*GetInvitationsResponse, error)
 	// Invite a member to a settlement (requires being the settlement leader)
 	InviteMember(ctx context.Context, in *InviteMemberRequest, opts ...grpc.CallOption) (*InviteMemberResponse, error)
+	// Revoke an invitation to a settlement (requires being the settlement leader)
+	RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error)
 }
 
 type settlementServiceClient struct {
@@ -131,10 +137,30 @@ func (c *settlementServiceClient) RemoveMember(ctx context.Context, in *RemoveMe
 	return out, nil
 }
 
+func (c *settlementServiceClient) GetInvitations(ctx context.Context, in *GetInvitationsRequest, opts ...grpc.CallOption) (*GetInvitationsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetInvitationsResponse)
+	err := c.cc.Invoke(ctx, SettlementService_GetInvitations_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *settlementServiceClient) InviteMember(ctx context.Context, in *InviteMemberRequest, opts ...grpc.CallOption) (*InviteMemberResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(InviteMemberResponse)
 	err := c.cc.Invoke(ctx, SettlementService_InviteMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *settlementServiceClient) RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeInvitationResponse)
+	err := c.cc.Invoke(ctx, SettlementService_RevokeInvitation_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -161,8 +187,12 @@ type SettlementServiceServer interface {
 	Reject(context.Context, *RejectRequest) (*RejectResponse, error)
 	// Remove a member from a settlement (requires admin privileges)
 	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
+	// Get all invitations to a settlement
+	GetInvitations(context.Context, *GetInvitationsRequest) (*GetInvitationsResponse, error)
 	// Invite a member to a settlement (requires being the settlement leader)
 	InviteMember(context.Context, *InviteMemberRequest) (*InviteMemberResponse, error)
+	// Revoke an invitation to a settlement (requires being the settlement leader)
+	RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error)
 }
 
 // UnimplementedSettlementServiceServer should be embedded to have
@@ -193,8 +223,14 @@ func (UnimplementedSettlementServiceServer) Reject(context.Context, *RejectReque
 func (UnimplementedSettlementServiceServer) RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveMember not implemented")
 }
+func (UnimplementedSettlementServiceServer) GetInvitations(context.Context, *GetInvitationsRequest) (*GetInvitationsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetInvitations not implemented")
+}
 func (UnimplementedSettlementServiceServer) InviteMember(context.Context, *InviteMemberRequest) (*InviteMemberResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InviteMember not implemented")
+}
+func (UnimplementedSettlementServiceServer) RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RevokeInvitation not implemented")
 }
 func (UnimplementedSettlementServiceServer) testEmbeddedByValue() {}
 
@@ -342,6 +378,24 @@ func _SettlementService_RemoveMember_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SettlementService_GetInvitations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInvitationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).GetInvitations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_GetInvitations_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).GetInvitations(ctx, req.(*GetInvitationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SettlementService_InviteMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InviteMemberRequest)
 	if err := dec(in); err != nil {
@@ -356,6 +410,24 @@ func _SettlementService_InviteMember_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SettlementServiceServer).InviteMember(ctx, req.(*InviteMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SettlementService_RevokeInvitation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeInvitationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).RevokeInvitation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_RevokeInvitation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).RevokeInvitation(ctx, req.(*RevokeInvitationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -396,8 +468,16 @@ var SettlementService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SettlementService_RemoveMember_Handler,
 		},
 		{
+			MethodName: "GetInvitations",
+			Handler:    _SettlementService_GetInvitations_Handler,
+		},
+		{
 			MethodName: "InviteMember",
 			Handler:    _SettlementService_InviteMember_Handler,
+		},
+		{
+			MethodName: "RevokeInvitation",
+			Handler:    _SettlementService_RevokeInvitation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

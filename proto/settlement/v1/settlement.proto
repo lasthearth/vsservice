@@ -55,10 +55,23 @@ service SettlementService {
     option (google.api.http) = {delete: "/v1/settlements/{settlement_id}/members/{user_id}"};
   }
 
+  // Get all invitations to a settlement
+  rpc GetInvitations(GetInvitationsRequest) returns (GetInvitationsResponse) {
+    option (google.api.http) = {get: "/v1/settlements/{settlement_id}/invitations"};
+  }
+
   // Invite a member to a settlement (requires being the settlement leader)
   rpc InviteMember(InviteMemberRequest) returns (InviteMemberResponse) {
     option (google.api.http) = {
-      post: "/v1/settlements/{settlement_id}/members"
+      post: "/v1/settlements/{settlement_id}/invitations"
+      body: "*"
+    };
+  }
+
+  // Revoke an invitation to a settlement (requires being the settlement leader)
+  rpc RevokeInvitation(RevokeInvitationRequest) returns (RevokeInvitationResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{settlement_id}/invitations/{invitation_id}/revoke"
       body: "*"
     };
   }
@@ -77,9 +90,9 @@ message Settlement {
 
 enum SettlementType {
   SETTLEMENT_TYPE_UNSPECIFIED = 0;
-  SETTLEMENT_TYPE_VILLAGE = 1;
-  SETTLEMENT_TYPE_CITY = 2;
-  SETTLEMENT_TYPE_PROVINCE = 3;
+  VILLAGE = 1;
+  CITY = 2;
+  PROVINCE = 3;
 }
 
 message Member {
@@ -151,3 +164,25 @@ message InviteMemberRequest {
 }
 
 message InviteMemberResponse {}
+
+message GetInvitationsRequest {
+  string settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetInvitationsResponse {
+  repeated Invitation invitations = 1;
+
+  message Invitation {
+    string id = 1;
+    string user_id = 2;
+  }
+}
+
+message RevokeInvitationRequest {
+  string settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string invitation_id = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message RevokeInvitationResponse {
+  repeated string invitation_ids = 1;
+}

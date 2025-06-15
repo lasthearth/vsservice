@@ -1,5 +1,5 @@
 package model
 
 type Member struct {
-	UserID string
+	UserId string
 }

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package invitation.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/protobuf/empty.proto";
+
+// Service for managing invitations
+service InvitationService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Accept an invitation to a settlement
+  rpc AcceptInvitation(AcceptInvitationRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/invitations/{invitation_id}/accept"
+      body: "*"
+    };
+  }
+
+  // Reject an invitation to a settlement
+  rpc RejectInvitation(RejectInvitationRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/invitations/{invitation_id}/reject"
+      body: "*"
+    };
+  }
+}
+
+message AcceptInvitationRequest {
+  string invitation_id = 1;
+}
+
+message RejectInvitationRequest {
+  string invitation_id = 1;
+}

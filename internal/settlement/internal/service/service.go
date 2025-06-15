@@ -39,7 +39,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		Name: req.Name,
 		Type: model.SettlementTypeVillage,
 		Leader: model.Member{
-			UserID: userID,
+			UserId: userID,
 		},
 		Coordinates: model.Vector2{
 			X: int(req.Coordinates.X),
@@ -71,7 +71,7 @@ func (s *Service) Get(ctx context.Context, req *settlementv1.GetRequest) (*settl
 	}
 
 	return &settlementv1.GetResponse{
-		Settlement: convertSettlementToProto(settlement),
+		Settlement: s.mapper.ToSettlementProto(*settlement),
 	}, nil
 }
 
@@ -85,12 +85,8 @@ func (s *Service) List(ctx context.Context, req *settlementv1.ListRequest) (*set
 		return nil, err
 	}
 
-	protoSettlements := lo.Map(settlements, func(s *model.Settlement, _ int) *settlementv1.Settlement {
-		return convertSettlementToProto(s)
-	})
-
 	return &settlementv1.ListResponse{
-		Settlements: protoSettlements,
+		Settlements: s.mapper.ToSettlementProtos(settlements),
 	}, nil
 }
 
@@ -104,12 +100,8 @@ func (s *Service) ListPending(ctx context.Context, req *settlementv1.ListPending
 		return nil, err
 	}
 
-	protoSettlements := lo.Map(settlements, func(s *model.SettlementVerification, _ int) *settlementv1.Settlement {
-		return convertVerificationToProto(s)
-	})
-
 	return &settlementv1.ListPendingResponse{
-		Settlements: protoSettlements,
+		Settlements: s.mapper.VerifsToSettlementProtos(settlements),
 	}, nil
 }
 
@@ -173,31 +165,18 @@ func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemb
 		zap.String("settlement_id", req.SettlementId),
 		zap.String("user_id", req.UserId))
 
-	userID, err := interceptor.GetUserID(ctx)
+	uid, err := interceptor.GetUserID(ctx)
 	if err != nil {
+		s.log.Error("failed to get user id", zap.Error(err))
 		return nil, err
 	}
 
-	// Check if requester is the leader of the settlement
-	settlement, err := s.dbRepo.GetSettlement(ctx, req.SettlementId)
-	if err != nil {
-		s.log.Error("failed to get settlement", zap.Error(err))
+	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.SettlementId, uid); err != nil {
+		s.log.Error("failed to check if user is leader", zap.Error(err))
 		return nil, err
 	}
 
-	if settlement == nil {
-		return nil, ErrSettlementNotFound
-	}
-
-	if settlement.Leader.UserID != userID {
-		return nil, status.Error(codes.Aborted, ErrPermissionDenied.Error())
-	}
-
-	member := model.Member{
-		UserID: req.UserId,
-	}
-
-	if err := s.dbRepo.AddMember(ctx, req.SettlementId, member); err != nil {
+	if err := s.dbRepo.InviteMember(ctx, req.SettlementId, req.UserId); err != nil {
 		s.log.Error("failed to add member", zap.Error(err))
 		return nil, err
 	}
@@ -205,70 +184,35 @@ func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemb
 	return &settlementv1.InviteMemberResponse{}, nil
 }
 
-func convertVerificationToProto(s *model.SettlementVerification) *settlementv1.Settlement {
-	var stype settlementv1.SettlementType
+// GetInvitations implements settlementv1.SettlementServiceServer.
+func (s *Service) GetInvitations(ctx context.Context, req *settlementv1.GetInvitationsRequest) (*settlementv1.GetInvitationsResponse, error) {
+	l := s.log.
+		With(zap.String("settlement_id", req.SettlementId)).
+		WithMethod("get_invitations")
 
-	switch s.Type {
-	case model.SettlementTypeProvince:
-		stype = settlementv1.SettlementType_SETTLEMENT_TYPE_PROVINCE
-	case model.SettlementTypeCity:
-		stype = settlementv1.SettlementType_SETTLEMENT_TYPE_CITY
-	case model.SettlementTypeVillage:
-		stype = settlementv1.SettlementType_SETTLEMENT_TYPE_VILLAGE
-	default:
-		stype = settlementv1.SettlementType_SETTLEMENT_TYPE_UNSPECIFIED
+	uid, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		l.Error("failed to get user id", zap.Error(err))
+		return nil, err
 	}
 
-	return &settlementv1.Settlement{
-		Id:   s.Id,
-		Name: s.Name,
-		Type: stype,
-		Leader: &settlementv1.Member{
-			UserId: s.Leader.UserID,
-		},
-		Members: nil,
-		Coordinates: &settlementv1.Vector2{
-			X: int32(s.Coordinates.X),
-			Y: int32(s.Coordinates.Y),
-		},
-		CreatedAt: s.CreatedAt.Unix(),
-		UpdatedAt: s.UpdatedAt.Unix(),
+	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.SettlementId, uid); err != nil {
+		l.Error("failed to check member or leader", zap.Error(err))
+		return nil, err
 	}
+
+	invitations, err := s.dbRepo.GetInvitations(ctx, req.SettlementId)
+	if err != nil {
+		l.Error("failed to get invitations", zap.Error(err))
+		return nil, err
+	}
+
+	return &settlementv1.GetInvitationsResponse{
+		Invitations: s.mapper.ToInvProtos(invitations),
+	}, nil
 }
 
-func convertSettlementToProto(s *model.Settlement) *settlementv1.Settlement {
-	members := lo.Map(s.Members, func(m model.Member, _ int) *settlementv1.Member {
-		return &settlementv1.Member{
-			UserId: m.UserID,
-		}
-	})
-
-	var stype settlementv1.SettlementType
-
-	switch s.Type {
-	case model.SettlementTypeProvince:
-		stype = settlementv1.SettlementType_SETTLEMENT_TYPE_PROVINCE
-	case model.SettlementTypeCity:
-		stype = settlementv1.SettlementType_SETTLEMENT_TYPE_CITY
-	case model.SettlementTypeVillage:
-		stype = settlementv1.SettlementType_SETTLEMENT_TYPE_VILLAGE
-	default:
-		stype = settlementv1.SettlementType_SETTLEMENT_TYPE_UNSPECIFIED
-	}
-
-	return &settlementv1.Settlement{
-		Id:   s.ID,
-		Name: s.Name,
-		Type: stype,
-		Leader: &settlementv1.Member{
-			UserId: s.Leader.UserID,
-		},
-		Members: members,
-		Coordinates: &settlementv1.Vector2{
-			X: int32(s.Coordinates.X),
-			Y: int32(s.Coordinates.Y),
-		},
-		CreatedAt: s.CreatedAt.Unix(),
-		UpdatedAt: s.UpdatedAt.Unix(),
-	}
+// RevokeInvitation implements settlementv1.SettlementServiceServer.
+func (s *Service) RevokeInvitation(context.Context, *settlementv1.RevokeInvitationRequest) (*settlementv1.RevokeInvitationResponse, error) {
+	panic("unimplemented")
 }

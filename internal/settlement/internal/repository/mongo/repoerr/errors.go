@@ -1,4 +1,4 @@
-package repository
+package repoerr
 
 import "github.com/go-faster/errors"
 
@@ -10,4 +10,5 @@ var (
 	ErrInvalidSettlementType = errors.New("invalid settlement type")
 	ErrAlreadySubmitted      = errors.New("settlement request already submitted")
 	ErrAlreadyMember         = errors.New("user is already a member of the settlement")
+	ErrNotLeader             = errors.New("user is not a leader of this settlement")
 )
