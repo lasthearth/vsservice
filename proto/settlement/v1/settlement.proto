@@ -113,8 +113,6 @@ message SubmitRequest {
   message SubmitAttachment {
     bytes data = 1 [(google.api.field_behavior) = REQUIRED];
     string description = 2 [(google.api.field_behavior) = REQUIRED];
-    // File extension should start with a dot
-    string ext = 3 [(google.api.field_behavior) = REQUIRED];
   }
 
   enum Type {

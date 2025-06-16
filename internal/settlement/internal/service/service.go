@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
+	"github.com/lasthearth/vsservice/internal/pkg/image"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"go.uber.org/zap"
@@ -18,6 +19,7 @@ import (
 // Submit implements settlementv1.SettlementServiceServer
 func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (*settlementv1.SubmitResponse, error) {
 	bucketName := "settlementsreq"
+	fileExt := ".webp"
 	userID, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -39,10 +41,15 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 			return nil, err
 		}
 
-		rd := bytes.NewReader(attachment.Data)
-		mimeType := mime.TypeByExtension(attachment.Ext)
+		webp, err := image.ConvertToWebp(attachment.Data)
+		if err != nil {
+			return nil, err
+		}
 
-		filename := fmt.Sprintf("%s%s", uid.String(), attachment.Ext)
+		mimeType := mime.TypeByExtension(fileExt)
+		rd := bytes.NewReader(webp)
+
+		filename := fmt.Sprintf("%s%s", uid.String(), fileExt)
 		_, err = s.storage.UploadObject(
 			ctx,
 			bucketName,
