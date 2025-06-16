@@ -1,10 +1,12 @@
 package settlement
 
 import (
+	"context"
+
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/storage"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
-	mongorepo "github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo"
 	repository "github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repomapper"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service"
@@ -38,7 +40,11 @@ var App = fx.Options(
 				fx.As(new(service.Mapper)),
 			),
 			fx.Annotate(
-				mongorepo.New,
+				storage.New,
+				fx.As(new(service.Storage)),
+			),
+			fx.Annotate(
+				repository.New,
 				fx.As(new(service.SettlementRepository)),
 			),
 		),
@@ -53,5 +59,32 @@ var App = fx.Options(
 				fx.ResultTags(`group:"scopers"`),
 			),
 		),
+
+		fx.Invoke(func(lc fx.Lifecycle, storage service.Storage) {
+			lc.Append(fx.Hook{
+				OnStart: func(context.Context) error {
+					bucketName := "settlementreq"
+					exists, err := storage.BucketExists(context.Background(), bucketName)
+					if err != nil {
+						return err
+					}
+					if exists {
+						return nil
+					}
+
+					err = storage.CreateBucket(context.Background(), bucketName)
+					if err != nil {
+						return err
+					}
+
+					err = storage.MakeBucketPublic(context.Background(), bucketName)
+					if err != nil {
+						return err
+					}
+					return nil
+				},
+				OnStop: nil,
+			})
+		}),
 	),
 )
