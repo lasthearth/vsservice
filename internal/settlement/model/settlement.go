@@ -1,13 +1,19 @@
 package model
 
-import "time"
+import (
+	"time"
+)
 
 type SettlementType string
 
 const (
-	SettlementTypeVillage  SettlementType = "village"
-	SettlementTypeCity     SettlementType = "city"
-	SettlementTypeProvince SettlementType = "province"
+	SettlementTypeCamp      SettlementType = "camp"
+	SettlementTypeVillage   SettlementType = "village"
+	SettlementTypeCity      SettlementType = "city"
+	SettlementTypeProvince  SettlementType = "province"
+	SettlementTypeOrden     SettlementType = "orden"
+	SettlementTypeGuild     SettlementType = "guild"
+	SettlementTypeGuildLvl2 SettlementType = "guild_lvl2"
 )
 
 // Settlement represents a settlement in the game

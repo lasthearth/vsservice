@@ -818,19 +818,6 @@ components:
         ApproveResponse:
             type: object
             properties: {}
-        Attachment:
-            required:
-                - desc
-                - url
-                - mime_type
-            type: object
-            properties:
-                desc:
-                    type: string
-                url:
-                    type: string
-                mime_type:
-                    type: string
         CreateQuestionRequest:
             type: object
             properties:
@@ -1100,19 +1087,41 @@ components:
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
         SubmitRequest:
             required:
+                - type
                 - name
+                - description
                 - coordinates
                 - attachments
             type: object
             properties:
+                type:
+                    type: integer
+                    format: enum
                 name:
+                    type: string
+                description:
                     type: string
                 coordinates:
                     $ref: '#/components/schemas/Vector2'
                 attachments:
                     type: array
                     items:
-                        $ref: '#/components/schemas/Attachment'
+                        $ref: '#/components/schemas/SubmitRequest_SubmitAttachment'
+        SubmitRequest_SubmitAttachment:
+            required:
+                - data
+                - description
+                - ext
+            type: object
+            properties:
+                data:
+                    type: string
+                    format: bytes
+                description:
+                    type: string
+                ext:
+                    type: string
+                    description: File extension should start with a dot
         SubmitResponse:
             type: object
             properties: {}

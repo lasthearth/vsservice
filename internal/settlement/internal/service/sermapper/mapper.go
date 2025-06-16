@@ -16,7 +16,6 @@ func (c *MapperImpl) ToAttachmentProto(source model.Attachment) *v1.Attachment {
 	var settlementv1Attachment v1.Attachment
 	settlementv1Attachment.Desc = source.Desc
 	settlementv1Attachment.Url = source.Url
-	settlementv1Attachment.MimeType = source.MimeType
 	return &settlementv1Attachment
 }
 func (c *MapperImpl) ToAttachmentsProto(source []model.Attachment) []*v1.Attachment {

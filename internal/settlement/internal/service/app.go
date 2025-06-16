@@ -20,6 +20,7 @@ type Opts struct {
 	Retrier *retrier.Retrier
 	DbRepo  SettlementRepository
 	Mapper  Mapper
+	Storage Storage
 }
 
 type Service struct {
@@ -29,6 +30,7 @@ type Service struct {
 	dbRepo  SettlementRepository
 	retrier *retrier.Retrier
 	mapper  Mapper
+	storage Storage
 }
 
 func New(opts Opts) *Service {
@@ -39,5 +41,6 @@ func New(opts Opts) *Service {
 		dbRepo:  opts.DbRepo,
 		retrier: opts.Retrier,
 		mapper:  opts.Mapper,
+		storage: opts.Storage,
 	}
 }

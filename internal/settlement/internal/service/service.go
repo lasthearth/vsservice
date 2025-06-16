@@ -1,12 +1,15 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"mime"
 
+	"github.com/google/uuid"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
-	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -14,6 +17,7 @@ import (
 
 // Submit implements settlementv1.SettlementServiceServer
 func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (*settlementv1.SubmitResponse, error) {
+	bucketName := "settlementsreq"
 	userID, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -27,17 +31,47 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		zap.String("leader_id", userID),
 		zap.String("settlement_name", req.Name))
 
-	attachments := lo.Map(req.Attachments, func(item *settlementv1.Attachment, index int) model.Attachment {
-		return model.Attachment{
-			Url:      item.Url,
-			Desc:     item.Desc,
-			MimeType: item.MimeType,
+	attahs := make([]model.Attachment, len(req.Attachments))
+
+	for _, attachment := range req.Attachments {
+		uid, err := uuid.NewV7()
+		if err != nil {
+			return nil, err
 		}
-	})
+
+		rd := bytes.NewReader(attachment.Data)
+		mimeType := mime.TypeByExtension(attachment.Ext)
+
+		filename := fmt.Sprintf("%s%s", uid.String(), attachment.Ext)
+		_, err = s.storage.UploadObject(
+			ctx,
+			bucketName,
+			filename,
+			rd,
+			int64(len(attachment.Data)),
+			mimeType,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		url := fmt.Sprintf("%s/%s/%s", s.cfg.CdnUrl, bucketName, filename)
+
+		attahs = append(attahs, model.Attachment{
+			Url:      url,
+			Desc:     attachment.Description,
+			MimeType: mimeType,
+		})
+	}
+
+	stype, err := TypeFromReqProto(req.Type)
+	if err != nil {
+		return nil, err
+	}
 
 	opts := SettlementOpts{
 		Name: req.Name,
-		Type: model.SettlementTypeVillage,
+		Type: *stype,
 		Leader: model.Member{
 			UserId: userID,
 		},
@@ -45,7 +79,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 			X: int(req.Coordinates.X),
 			Y: int(req.Coordinates.Y),
 		},
-		Attachments: attachments,
+		Attachments: attahs,
 	}
 
 	if err := s.dbRepo.Submit(ctx, opts); err != nil {

@@ -5,6 +5,7 @@ import "github.com/go-faster/errors"
 var (
 	ErrCreate                = errors.New("failed to create settlement")
 	ErrNotFound              = errors.New("settlement not found")
+	ErrNotApproved           = errors.New("settlement request not approved")
 	ErrUpdate                = errors.New("failed to update settlement")
 	ErrMaxTierReached        = errors.New("max tier reached")
 	ErrInvalidSettlementType = errors.New("invalid settlement type")

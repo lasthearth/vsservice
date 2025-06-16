@@ -134,21 +134,22 @@ func (r *Repository) Submit(ctx context.Context, opts service.SettlementOpts) er
 	}
 
 	if found.Status == model.SettlementStatusPending {
+		l.Info("request already submitted")
 		return repoerr.ErrAlreadySubmitted
 	}
 
-	if found.Status == model.SettlementStatusApproved {
-		switch found.Type {
-		case model.SettlementTypeVillage:
-			opts.Type = model.SettlementTypeCity
-		case model.SettlementTypeCity:
-			opts.Type = model.SettlementTypeProvince
-		case model.SettlementTypeProvince:
-			return repoerr.ErrMaxTierReached
-		default:
-			return repoerr.ErrInvalidSettlementType
-		}
+	if found.Status != model.SettlementStatusApproved {
+		l.Info("request not approved")
+		return repoerr.ErrNotApproved
 	}
+
+	found.LvlUp()
+	l.Debug(
+		"settlemnt lvl up",
+		zap.String("before", string(opts.Type)),
+		zap.String("after", string(found.Type)),
+	)
+	opts.Type = found.Type
 
 	return r.UpdateRequest(ctx, opts)
 }

@@ -90,9 +90,13 @@ message Settlement {
 
 enum SettlementType {
   SETTLEMENT_TYPE_UNSPECIFIED = 0;
-  VILLAGE = 1;
-  CITY = 2;
-  PROVINCE = 3;
+  CAMP = 1;
+  VILLAGE = 2;
+  CITY = 3;
+  PROVINCE = 4;
+  GUILD = 5;
+  GUILD_LVL2 = 6;
+  ORDEN = 7;
 }
 
 message Member {
@@ -100,9 +104,25 @@ message Member {
 }
 
 message SubmitRequest {
-  string name = 1 [(google.api.field_behavior) = REQUIRED];
-  Vector2 coordinates = 2 [(google.api.field_behavior) = REQUIRED];
-  repeated Attachment attachments = 3 [(google.api.field_behavior) = REQUIRED];
+  Type type = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  string description = 3 [(google.api.field_behavior) = REQUIRED];
+  Vector2 coordinates = 4 [(google.api.field_behavior) = REQUIRED];
+  repeated SubmitAttachment attachments = 5 [(google.api.field_behavior) = REQUIRED];
+
+  message SubmitAttachment {
+    bytes data = 1 [(google.api.field_behavior) = REQUIRED];
+    string description = 2 [(google.api.field_behavior) = REQUIRED];
+    // File extension should start with a dot
+    string ext = 3 [(google.api.field_behavior) = REQUIRED];
+  }
+
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    CAMP = 1;
+    GUILD = 2;
+    ORDEN = 3;
+  }
 }
 
 message Vector2 {
@@ -113,7 +133,6 @@ message Vector2 {
 message Attachment {
   string desc = 1 [(google.api.field_behavior) = REQUIRED];
   string url = 2 [(google.api.field_behavior) = REQUIRED];
-  string mime_type = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message SubmitResponse {}
