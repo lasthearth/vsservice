@@ -19,6 +19,8 @@ type Opts struct {
 	Cfg     config.Config
 	Retrier *retrier.Retrier
 	DbRepo  SettlementRepository
+	Mapper  Mapper
+	Storage Storage
 }
 
 type Service struct {
@@ -27,6 +29,8 @@ type Service struct {
 	cfg     config.Config
 	dbRepo  SettlementRepository
 	retrier *retrier.Retrier
+	mapper  Mapper
+	storage Storage
 }
 
 func New(opts Opts) *Service {
@@ -36,5 +40,7 @@ func New(opts Opts) *Service {
 		cfg:     opts.Cfg,
 		dbRepo:  opts.DbRepo,
 		retrier: opts.Retrier,
+		mapper:  opts.Mapper,
+		storage: opts.Storage,
 	}
 }

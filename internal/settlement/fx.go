@@ -7,13 +7,10 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/storage"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
-<<<<<<< Updated upstream
-	mongorepo "github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo"
-=======
 	repository "github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repomapper"
->>>>>>> Stashed changes
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service"
+	"github.com/lasthearth/vsservice/internal/settlement/internal/service/sermapper"
 	"go.uber.org/fx"
 )
 
@@ -31,9 +28,6 @@ var App = fx.Options(
 		fx.Provide(
 			fx.Private,
 			fx.Annotate(
-<<<<<<< Updated upstream
-				mongorepo.New,
-=======
 				func() *repomapper.MapperImpl {
 					return &repomapper.MapperImpl{}
 				},
@@ -51,7 +45,6 @@ var App = fx.Options(
 			),
 			fx.Annotate(
 				repository.New,
->>>>>>> Stashed changes
 				fx.As(new(service.SettlementRepository)),
 			),
 		),
@@ -63,7 +56,7 @@ var App = fx.Options(
 
 			fx.Annotate(service.New,
 				fx.As(new(interceptor.Scoper)),
-				// fx.ResultTags(`group:"scopers"`),
+				fx.ResultTags(`group:"scopers"`),
 			),
 		),
 

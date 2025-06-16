@@ -9,6 +9,7 @@ import (
 	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
 	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	vector2dto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
+	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repoerr"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"github.com/samber/lo"
@@ -19,25 +20,25 @@ import (
 
 func (r *Repository) Create(ctx context.Context, dto settlementdto.Settlement) error {
 	r.log.Info("creating new settlement",
-		zap.String("leader_id", dto.Leader.UserID),
+		zap.String("leader_id", dto.Leader.UserId),
 		zap.String("settlement_name", dto.Name),
 		zap.String("settlement_type", string(dto.Type)))
 
 	r.log.Debug("inserting settlement into database",
-		zap.String("leader_id", dto.Leader.UserID),
+		zap.String("leader_id", dto.Leader.UserId),
 		zap.String("model_id", dto.Id.Hex()))
 
 	_, err := r.setColl.InsertOne(ctx, dto)
 	if err != nil {
 		r.log.Error("failed to insert settlement",
 			zap.Error(err),
-			zap.String("leader_id", dto.Leader.UserID),
+			zap.String("leader_id", dto.Leader.UserId),
 			zap.String("model_id", dto.Id.Hex()))
 		return err
 	}
 
 	r.log.Info("successfully created settlement",
-		zap.String("leader_id", dto.Leader.UserID),
+		zap.String("leader_id", dto.Leader.UserId),
 		zap.String("model_id", dto.Id.Hex()))
 	return nil
 }
@@ -60,7 +61,7 @@ func (r *Repository) CountByLeaderID(ctx context.Context, id string) (int64, err
 func (r *Repository) Update(ctx context.Context, opts service.UpdateSettlementOpts) error {
 	l := r.log.
 		With(
-			zap.String("leader_id", opts.Leader.UserID),
+			zap.String("leader_id", opts.Leader.UserId),
 			zap.String("settlement_name", opts.Name),
 			zap.String("settlement_type", string(opts.Type)),
 		).
@@ -122,7 +123,7 @@ func (r *Repository) GetSettlement(ctx context.Context, id string) (*model.Settl
 	res := r.setColl.FindOne(ctx, bson.M{"_id": objectID})
 	if res.Err() != nil {
 		if res.Err() == mongo.ErrNoDocuments {
-			return nil, ErrNotFound
+			return nil, repoerr.ErrNotFound
 		}
 
 		r.log.Error("failed to find settlement", zap.Error(res.Err()), zap.String("settlement_id", id))
@@ -140,7 +141,7 @@ func (r *Repository) GetSettlement(ctx context.Context, id string) (*model.Settl
 }
 
 // GetSettlementsByLeader implements service.SettlementDbRepository.
-func (r *Repository) GetSettlementsByLeader(ctx context.Context, leaderID string) ([]*model.Settlement, error) {
+func (r *Repository) GetSettlementsByLeader(ctx context.Context, leaderID string) ([]model.Settlement, error) {
 	r.log.Info("retrieving settlements by leader", zap.String("leader_id", leaderID))
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -160,8 +161,8 @@ func (r *Repository) GetSettlementsByLeader(ctx context.Context, leaderID string
 		return nil, err
 	}
 
-	result := lo.Map(settlements, func(item settlementdto.Settlement, index int) *model.Settlement {
-		return item.ToModel()
+	result := lo.Map(settlements, func(item settlementdto.Settlement, index int) model.Settlement {
+		return *item.ToModel()
 	})
 
 	r.log.Info("successfully retrieved settlements", zap.Int("count", len(result)))
@@ -169,7 +170,7 @@ func (r *Repository) GetSettlementsByLeader(ctx context.Context, leaderID string
 }
 
 // GetAllSettlements implements service.SettlementDbRepository.
-func (r *Repository) GetAllSettlements(ctx context.Context) ([]*model.Settlement, error) {
+func (r *Repository) GetAllSettlements(ctx context.Context) ([]model.Settlement, error) {
 	r.log.Info("retrieving all settlements")
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -189,61 +190,16 @@ func (r *Repository) GetAllSettlements(ctx context.Context) ([]*model.Settlement
 		return nil, err
 	}
 
-	result := lo.Map(settlements, func(item settlementdto.Settlement, index int) *model.Settlement {
-		return item.ToModel()
+	result := lo.Map(settlements, func(item settlementdto.Settlement, index int) model.Settlement {
+		return *item.ToModel()
 	})
 
 	r.log.Info("successfully retrieved all settlements", zap.Int("count", len(result)))
 	return result, nil
 }
 
-// RemoveMember implements service.SettlementDbRepository.
-func (r *Repository) RemoveMember(ctx context.Context, settlementID string, userID string) error {
-	r.log.Info("removing member from settlement",
-		zap.String("settlement_id", settlementID),
-		zap.String("user_id", userID))
-
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	objectID, err := mongomodel.ParseObjectID(settlementID)
-	if err != nil {
-		r.log.Error("invalid settlement ID format", zap.Error(err), zap.String("settlement_id", settlementID))
-		return err
-	}
-
-	r.log.Debug("executing update query to remove member",
-		zap.String("settlement_id", settlementID),
-		zap.String("user_id", userID))
-
-	result, err := r.setColl.UpdateOne(ctx, bson.M{"_id": objectID},
-		bson.D{
-			{
-				Key: "$pull",
-				Value: bson.D{
-					{Key: "members", Value: bson.M{"user_id": userID}},
-				},
-			},
-			{
-				Key: "$set",
-				Value: bson.D{
-					{Key: "updated_at", Value: time.Now()},
-				},
-			},
-		})
-	if err != nil {
-		r.log.Error("update error", zap.Error(err), zap.String("settlement_id", settlementID))
-		return err
-	}
-
-	r.log.Info("successfully removed member from settlement",
-		zap.String("settlement_id", settlementID),
-		zap.String("user_id", userID),
-		zap.Int64("modified_count", result.ModifiedCount))
-	return nil
-}
-
-func (r *Repository) IsMemberOrLeader(ctx context.Context, settlementID string, memberID string) error {
+// IsMemberOrLeader checks if a user is already a member or leader of any settlement. Returns ErrAlreadyMember if the user is already a member or leader.
+func (r *Repository) IsMemberOrLeader(ctx context.Context, settlementID, memberID string) error {
 	l := r.log.
 		With(
 			zap.String("settlement_id", settlementID),
@@ -265,48 +221,38 @@ func (r *Repository) IsMemberOrLeader(ctx context.Context, settlementID string, 
 	}
 	if count > 0 {
 		l.Warn("user already in a settlement, cannot invite")
-		return ErrAlreadyMember
+		return repoerr.ErrAlreadyMember
 	}
 
 	return nil
 }
 
-// AddMember implements service.SettlementDbRepository.
-func (r *Repository) AddMember(ctx context.Context, settlementID string, member model.Member) error {
+// IsLeaderOfSettlement checks if a user is already a leader of any settlement. Returns ErrNotLeader if the user is not a leader.
+func (r *Repository) IsLeaderOfSettlement(ctx context.Context, settlementID, userID string) error {
 	l := r.log.
-		With(zap.String("settlement_id", settlementID), zap.String("user_id", member.UserID)).
-		WithMethod("add_member")
+		With(
+			zap.String("settlement_id", settlementID),
+			zap.String("user_id", userID),
+		).
+		WithMethod("is_leader_of_settlement")
+	l.Info("checking if user is leader of settlement")
 
-	l.Info("adding member to settlement")
-
-	objectID, err := mongomodel.ParseObjectID(settlementID)
+	setId, err := mongomodel.ParseObjectID(settlementID)
 	if err != nil {
+		l.Error("failed to parse settlement ID", zap.Error(err))
 		return err
 	}
 
-	l.Debug("checking existing membership")
-	err = r.IsMemberOrLeader(ctx, settlementID, member.UserID)
+	filter := bson.M{"_id": setId, "leader.user_id": userID}
+	count, err := r.setColl.CountDocuments(ctx, filter)
 	if err != nil {
+		l.Error("failed to check existing leadership", zap.Error(err))
 		return err
 	}
-
-	dtoMember := memberdto.FromModel(&member)
-	update := bson.D{
-		{Key: "$push", Value: bson.D{{Key: "members", Value: dtoMember}}},
-		{Key: "$set", Value: bson.D{{Key: "updated_at", Value: time.Now()}}},
-	}
-	res, err := r.setColl.UpdateOne(ctx,
-		bson.M{"_id": objectID},
-		update,
-	)
-	if err != nil {
-		l.Error("failed to add member", zap.Error(err))
-		return err
-	}
-	if res.MatchedCount == 0 {
-		return ErrNotFound
+	if count <= 0 {
+		l.Warn("user already leader of settlement")
+		return repoerr.ErrNotLeader
 	}
 
-	l.Info("member added successfully")
 	return nil
 }

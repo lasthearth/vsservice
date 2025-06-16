@@ -8,6 +8,62 @@ info:
 servers:
     - url: https://api.lasthearth.ru
 paths:
+    /v1/invitations/{invitation_id}/accept:
+        post:
+            tags:
+                - InvitationService
+            description: Accept an invitation to a settlement
+            operationId: InvitationService_AcceptInvitation
+            parameters:
+                - name: invitation_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AcceptInvitationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/invitations/{invitation_id}/reject:
+        post:
+            tags:
+                - InvitationService
+            description: Reject an invitation to a settlement
+            operationId: InvitationService_RejectInvitation
+            parameters:
+                - name: invitation_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RejectInvitationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/items:
         post:
             tags:
@@ -342,7 +398,31 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /v1/settlements/{settlement_id}/members:
+    /v1/settlements/{settlement_id}/invitations:
+        get:
+            tags:
+                - SettlementService
+            description: Get all invitations to a settlement
+            operationId: SettlementService_GetInvitations
+            parameters:
+                - name: settlement_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetInvitationsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
         post:
             tags:
                 - SettlementService
@@ -367,6 +447,42 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/InviteMemberResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/settlements/{settlement_id}/invitations/{invitation_id}/revoke:
+        post:
+            tags:
+                - SettlementService
+            description: Revoke an invitation to a settlement (requires being the settlement leader)
+            operationId: SettlementService_RevokeInvitation
+            parameters:
+                - name: settlement_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: invitation_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RevokeInvitationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RevokeInvitationResponse'
                 default:
                     description: Default error response
                     content:
@@ -687,6 +803,11 @@ paths:
                                 $ref: '#/components/schemas/Status'
 components:
     schemas:
+        AcceptInvitationRequest:
+            type: object
+            properties:
+                invitation_id:
+                    type: string
         ApproveRequest:
             required:
                 - id
@@ -697,19 +818,6 @@ components:
         ApproveResponse:
             type: object
             properties: {}
-        Attachment:
-            required:
-                - desc
-                - url
-                - mime_type
-            type: object
-            properties:
-                desc:
-                    type: string
-                url:
-                    type: string
-                mime_type:
-                    type: string
         CreateQuestionRequest:
             type: object
             properties:
@@ -738,6 +846,20 @@ components:
                 status:
                     type: string
                 rejection_reason:
+                    type: string
+        GetInvitationsResponse:
+            type: object
+            properties:
+                invitations:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/GetInvitationsResponse_Invitation'
+        GetInvitationsResponse_Invitation:
+            type: object
+            properties:
+                id:
+                    type: string
+                user_id:
                     type: string
         GetRandomQuestionsResponse:
             type: object
@@ -882,6 +1004,11 @@ components:
                 players_killed:
                     type: integer
                     format: int32
+        RejectInvitationRequest:
+            type: object
+            properties:
+                invitation_id:
+                    type: string
         RejectRequest:
             required:
                 - id
@@ -903,6 +1030,23 @@ components:
         RemoveMemberResponse:
             type: object
             properties: {}
+        RevokeInvitationRequest:
+            required:
+                - settlement_id
+                - invitation_id
+            type: object
+            properties:
+                settlement_id:
+                    type: string
+                invitation_id:
+                    type: string
+        RevokeInvitationResponse:
+            type: object
+            properties:
+                invitation_ids:
+                    type: array
+                    items:
+                        type: string
         Settlement:
             type: object
             properties:
@@ -943,19 +1087,37 @@ components:
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
         SubmitRequest:
             required:
+                - type
                 - name
+                - description
                 - coordinates
                 - attachments
             type: object
             properties:
+                type:
+                    type: integer
+                    format: enum
                 name:
+                    type: string
+                description:
                     type: string
                 coordinates:
                     $ref: '#/components/schemas/Vector2'
                 attachments:
                     type: array
                     items:
-                        $ref: '#/components/schemas/Attachment'
+                        $ref: '#/components/schemas/SubmitRequest_SubmitAttachment'
+        SubmitRequest_SubmitAttachment:
+            required:
+                - data
+                - description
+            type: object
+            properties:
+                data:
+                    type: string
+                    format: bytes
+                description:
+                    type: string
         SubmitResponse:
             type: object
             properties: {}
@@ -995,6 +1157,8 @@ components:
                 status:
                     type: string
 tags:
+    - name: InvitationService
+      description: Service for managing invitations
     - name: LeaderboardService
       description: Represent basic leaderboard
     - name: NotificationService
