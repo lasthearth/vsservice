@@ -7,7 +7,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/notification/internal/repository/repomapper"
 	"github.com/lasthearth/vsservice/internal/notification/internal/service"
 	"github.com/lasthearth/vsservice/internal/notification/internal/service/sermapper"
-	"github.com/lasthearth/vsservice/internal/notification/usecase"
+	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 )
@@ -37,7 +37,7 @@ var App = fx.Options(
 			fx.Annotate(
 				repository.New,
 				fx.As(new(service.Repository)),
-				fx.As(new(usecase.NotificationRepo)),
+				fx.As(new(notificationuc.NotificationRepo)),
 			),
 
 			fx.Annotate(
@@ -49,7 +49,7 @@ var App = fx.Options(
 		),
 
 		fx.Provide(
-			usecase.NewCreateNotificationUseCase,
+			notificationuc.NewCreateNotificationUseCase,
 		),
 
 		fx.Provide(

@@ -1,11 +1,11 @@
-package usecase
+package notificationuc
 
 import (
 	"context"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/lasthearth/vsservice/internal/notification/internal/model"
 	"github.com/lasthearth/vsservice/internal/notification/internal/repository"
+	"github.com/lasthearth/vsservice/internal/notification/model"
 	"go.uber.org/fx"
 )
 
@@ -21,19 +21,19 @@ type Opts struct {
 	Validate *validator.Validate
 }
 
-type CreateNotification struct {
+type Create struct {
 	repo     NotificationRepo
 	validate *validator.Validate
 }
 
-func NewCreateNotificationUseCase(opts Opts) *CreateNotification {
-	return &CreateNotification{
+func NewCreateNotificationUseCase(opts Opts) *Create {
+	return &Create{
 		repo:     opts.Repo,
 		validate: opts.Validate,
 	}
 }
 
-func (uc *CreateNotification) CreateNotification(ctx context.Context, notification model.Notification) error {
+func (uc *Create) CreateNotification(ctx context.Context, notification model.Notification) error {
 	if err := uc.validate.Struct(notification); err != nil {
 		return err
 	}

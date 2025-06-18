@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/lasthearth/vsservice/internal/notification/internal/dto"
-	"github.com/lasthearth/vsservice/internal/notification/internal/model"
 	"github.com/lasthearth/vsservice/internal/notification/internal/repository/orderby"
 	"github.com/lasthearth/vsservice/internal/notification/internal/repository/repoerr"
+	"github.com/lasthearth/vsservice/internal/notification/model"
 	"github.com/lasthearth/vsservice/internal/pkg/mongo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
