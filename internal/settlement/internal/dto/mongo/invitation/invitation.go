@@ -1,9 +1,11 @@
 package invitationdto
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/v2/bson"
+)
 
 type Invitation struct {
-	Id           primitive.ObjectID `bson:"_id"`
-	UserId       string             `bson:"user_id"`
-	SettlementId string             `bson:"settlement_id"`
+	Id           bson.ObjectID `bson:"_id"`
+	UserId       string        `bson:"user_id"`
+	SettlementId string        `bson:"settlement_id"`
 }

@@ -7,7 +7,6 @@ import (
 	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
 	invitationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.uber.org/zap"
 )
@@ -96,7 +95,7 @@ func (r *Repository) InviteMember(ctx context.Context, settlementID, userID stri
 	}
 
 	dto := invitationdto.Invitation{
-		Id:           primitive.NewObjectIDFromTimestamp(time.Now()),
+		Id:           bson.NewObjectIDFromTimestamp(time.Now()),
 		UserId:       userID,
 		SettlementId: settlementID,
 	}
