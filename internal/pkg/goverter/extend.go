@@ -3,7 +3,6 @@ package goverter
 import (
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -12,8 +11,8 @@ func ObjectIdToString(id bson.ObjectID) string {
 	return id.Hex()
 }
 
-func StringToObjectID(id string) (primitive.ObjectID, error) {
-	return primitive.ObjectIDFromHex(id)
+func StringToObjectID(id string) (bson.ObjectID, error) {
+	return bson.ObjectIDFromHex(id)
 }
 
 func IntToInt32(i int) int32 {
