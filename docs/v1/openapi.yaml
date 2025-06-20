@@ -169,7 +169,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/News'
+                            $ref: '#/components/schemas/CreateNewsRequest'
                 required: true
             responses:
                 "200":
@@ -880,6 +880,16 @@ components:
         ApproveResponse:
             type: object
             properties: {}
+        CreateNewsRequest:
+            type: object
+            properties:
+                title:
+                    type: string
+                content:
+                    type: string
+                preview:
+                    type: string
+                    format: bytes
         CreateQuestionRequest:
             type: object
             properties:
@@ -1046,7 +1056,6 @@ components:
                     type: string
                 preview:
                     type: string
-                    format: bytes
         Notification:
             required:
                 - user_id

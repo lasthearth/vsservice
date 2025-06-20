@@ -14,7 +14,7 @@ service NewsService {
   rpc CreateNews(CreateNewsRequest) returns (News) {
     option (google.api.http) = {
       post: "/v1/news"
-      body: "news"
+      body: "*"
     };
     option (google.api.method_signature) = "news";
   }
@@ -28,11 +28,13 @@ message News {
   string id = 1;
   string title = 2;
   string content = 3;
-  bytes preview = 4;
+  string preview = 4;
 }
 
 message CreateNewsRequest {
-  News news = 1;
+  string title = 1;
+  string content = 2;
+  bytes preview = 3;
 }
 
 message ListNewsRequest {
