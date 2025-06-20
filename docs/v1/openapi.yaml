@@ -122,6 +122,68 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/news:
+        get:
+            tags:
+                - NewsService
+            operationId: NewsService_ListNews
+            parameters:
+                - name: page_size
+                  in: query
+                  description: |-
+                    The maximum number of news to return. The service may return fewer than
+                     this value.
+                     If unspecified, at most 15 news will be returned.
+                     The maximum value is 50; values above 50 will be coerced to 50.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: page_token
+                  in: query
+                  description: |-
+                    A page token, received from a previous `ListBooks` call.
+                     Provide this to retrieve the subsequent page.
+
+                     When paginating, all other parameters provided to `ListBooks` must match
+                     the call that provided the page token.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListNewsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - NewsService
+            operationId: NewsService_CreateNews
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateNewsRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/News'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/notifications:
         get:
             tags:
@@ -818,6 +880,16 @@ components:
         ApproveResponse:
             type: object
             properties: {}
+        CreateNewsRequest:
+            type: object
+            properties:
+                title:
+                    type: string
+                content:
+                    type: string
+                preview:
+                    type: string
+                    format: bytes
         CreateQuestionRequest:
             type: object
             properties:
@@ -928,6 +1000,18 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/LeaderboardEntry'
+        ListNewsResponse:
+            type: object
+            properties:
+                news:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/News'
+                next_page_token:
+                    type: string
+                    description: |-
+                        A token, which can be sent as `page_token` to retrieve the next page.
+                         If this field is omitted, there are no subsequent pages.
         ListNotificationsResponse:
             type: object
             properties:
@@ -960,6 +1044,17 @@ components:
             type: object
             properties:
                 user_id:
+                    type: string
+        News:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                content:
+                    type: string
+                preview:
                     type: string
         Notification:
             required:
@@ -1161,6 +1256,8 @@ tags:
       description: Service for managing invitations
     - name: LeaderboardService
       description: Represent basic leaderboard
+    - name: NewsService
+      description: Represents news service
     - name: NotificationService
       description: Provides methods to manage user notifications
     - name: RuleService

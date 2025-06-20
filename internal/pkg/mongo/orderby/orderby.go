@@ -3,13 +3,21 @@ package orderby
 import (
 	"fmt"
 	"regexp"
+	"slices"
 
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
+)
+
+type Direction int
+
+const (
+	Asc  Direction = 1
+	Desc Direction = -1
 )
 
 type OrderByInfo struct {
 	Field      string
-	Direction  int
+	Direction  Direction
 	MongoField string
 }
 
@@ -17,20 +25,21 @@ type OrderByInfo struct {
 // Format: "field_name asc|desc" or just "field_name" (default asc)
 var orderByRegex = regexp.MustCompile(`^([a-z_]+)(?:\s+(asc|desc))?$`)
 
-// allowedSortFields = map[string]string{
-// 	"created_at": "created_at",
-// 	"state":      "state",
-// 	"title":      "title",
-// }
-
-func ParseOrderBy(orderBy string, allowedSortFields map[string]string) (*OrderByInfo, error) {
-	// Если order_by пустой, используем значение по умолчанию
+func Parse(
+	orderBy string,
+	allowedSortFields map[string]string,
+	defaultOrder *OrderByInfo,
+) (*OrderByInfo, error) {
 	if orderBy == "" {
-		return &OrderByInfo{
-			Field:      "created_at",
-			Direction:  -1,
-			MongoField: "created_at",
-		}, nil
+		return defaultOrder, nil
+	}
+
+	if allowedSortFields == nil {
+		return nil, fmt.Errorf("allowed sort fields is nil")
+	}
+
+	if len(allowedSortFields) == 0 {
+		return nil, fmt.Errorf("allowed sort fields is empty")
 	}
 
 	matches := orderByRegex.FindStringSubmatch(orderBy)
@@ -46,9 +55,9 @@ func ParseOrderBy(orderBy string, allowedSortFields map[string]string) (*OrderBy
 		return nil, fmt.Errorf("sorting by field '%s' is not allowed", fieldName)
 	}
 
-	sortDirection := 1
+	sortDirection := Asc
 	if direction == "desc" {
-		sortDirection = -1
+		sortDirection = Desc
 	}
 
 	return &OrderByInfo{
@@ -60,9 +69,12 @@ func ParseOrderBy(orderBy string, allowedSortFields map[string]string) (*OrderBy
 
 func BuildSortOptions(orderInfo *OrderByInfo) bson.D {
 	sort := bson.D{}
+	sort = slices.Insert(sort, 0, bson.E{Key: "_id", Value: Desc})
+	if orderInfo == nil {
+		return sort
+	}
 
 	sort = append(sort, bson.E{Key: orderInfo.MongoField, Value: orderInfo.Direction})
-	sort = append(sort, bson.E{Key: "_id", Value: -1})
 
 	return sort
 }

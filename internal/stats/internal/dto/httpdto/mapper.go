@@ -1,11 +1,12 @@
 package httpdto
 
 import (
+	"time"
+
 	"github.com/lasthearth/vsservice/internal/pkg/mongo"
 	"github.com/lasthearth/vsservice/internal/stats/internal/dto/mongodto"
 	"github.com/samber/lo"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"time"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func (h *Stats) ToMongoDTO() *mongodto.Stats {
@@ -20,7 +21,7 @@ func (h *Stats) ToMongoDTO() *mongodto.Stats {
 	now := time.Now()
 	return &mongodto.Stats{
 		Model: mongo.Model{
-			Id:        primitive.NewObjectIDFromTimestamp(now),
+			Id:        bson.NewObjectIDFromTimestamp(now),
 			CreatedAt: now,
 			UpdatedAt: now,
 		},

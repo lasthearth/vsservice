@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
+	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
@@ -32,6 +33,7 @@ type Opts struct {
 	UserV1         userv1.UserServiceServer
 	SettlementV1   settlementv1.SettlementServiceServer
 	NotificationV1 notificationv1.NotificationServiceServer
+	NewsV1         newsv1.NewsServiceServer
 }
 
 type Server struct {
@@ -45,6 +47,7 @@ type Server struct {
 	userV1         userv1.UserServiceServer
 	settlementV1   settlementv1.SettlementServiceServer
 	notificationV1 notificationv1.NotificationServiceServer
+	newsV1         newsv1.NewsServiceServer
 
 	log logger.Logger
 
@@ -64,6 +67,7 @@ func New(opts Opts) *Server {
 		userV1:          opts.UserV1,
 		settlementV1:    opts.SettlementV1,
 		notificationV1:  opts.NotificationV1,
+		newsV1:          opts.NewsV1,
 		log:             opts.Log,
 	}
 }

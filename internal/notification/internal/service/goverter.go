@@ -2,7 +2,7 @@ package service
 
 import (
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
-	"github.com/lasthearth/vsservice/internal/notification/internal/model"
+	"github.com/lasthearth/vsservice/internal/notification/model"
 )
 
 func StateToProto(state model.NotificationState) notificationv1.Notification_State {

@@ -6,12 +6,11 @@ import (
 	"time"
 
 	"github.com/lasthearth/vsservice/internal/notification/internal/dto"
-	"github.com/lasthearth/vsservice/internal/notification/internal/model"
-	"github.com/lasthearth/vsservice/internal/notification/internal/repository/orderby"
-	"github.com/lasthearth/vsservice/internal/notification/internal/repository/repoerr"
+	"github.com/lasthearth/vsservice/internal/notification/model"
 	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/pkg/mongo/orderby"
+	"github.com/lasthearth/vsservice/internal/pkg/mongo/pagination"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -69,7 +68,15 @@ func (r *Repository) ListNotifications(ctx context.Context, limit int, userID, n
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	orderInfo, err := orderby.ParseOrderBy(orderBy, allowedSortFields)
+	orderInfo, err := orderby.Parse(
+		orderBy,
+		allowedSortFields,
+		&orderby.OrderByInfo{
+			Field:      "created_at",
+			Direction:  orderby.Desc,
+			MongoField: "created_at",
+		},
+	)
 	if err != nil {
 		l.Error("failed to parse order_by", zap.Error(err))
 		return nil, "", fmt.Errorf("invalid order_by: %w", err)
@@ -77,63 +84,31 @@ func (r *Repository) ListNotifications(ctx context.Context, limit int, userID, n
 
 	l.Debug("parsed order_by",
 		zap.String("field", orderInfo.Field),
-		zap.Int("direction", orderInfo.Direction),
+		zap.Int("direction", int(orderInfo.Direction)),
 		zap.String("mongo_field", orderInfo.MongoField),
 	)
 
-	filter, err := buildPaginationFilter(userID, nextPageToken)
-	if err != nil {
-		l.Error("failed to build pagination filter", zap.Error(err))
-		return nil, "", fmt.Errorf("failed to build pagination filter: %w", err)
+	filter := bson.M{
+		"$or": bson.A{
+			bson.M{"user_id": userID},
+			bson.M{"user_id": model.BroadcastUserId},
+		},
 	}
-
 	sort := orderby.BuildSortOptions(orderInfo)
 
-	opts := options.Find().SetSort(sort).SetLimit(int64(limit))
-	cursor, err := r.coll.Find(ctx, filter, opts)
+	resp, err := pagination.Find[dto.Notification](
+		ctx,
+		r.coll,
+		pagination.WithFilter(filter),
+		pagination.WithSort(sort),
+		pagination.WithLimit(int64(limit)),
+	)
 	if err != nil {
-		// TODO: error system
-		l.Error("find error", zap.Error(err))
-		return nil, "", err
-	}
-	defer cursor.Close(ctx)
-
-	var notifications []dto.Notification
-	if err := cursor.All(ctx, &notifications); err != nil {
-		l.Error("cursor decode error", zap.Error(err))
-		return nil, "", err
+		l.Error("failed to find notifications", zap.Error(err))
+		return nil, "", fmt.Errorf("failed to find notifications: %w", err)
 	}
 
-	l.Debug("fetched notifications", zap.Int("count", len(notifications)))
-
-	models := r.mapper.ToModels(notifications)
-
-	if len(models) == 0 {
-		return nil, "", repoerr.ErrNotificationsNotFound
-	}
-
-	next := ""
-	if len(models) == limit {
-		next = models[len(models)-1].Id
-	}
-
-	return models, next, nil
-}
-
-func buildPaginationFilter(userID, nextPageToken string) (bson.M, error) {
-	baseFilter := bson.M{"user_id": userID}
-
-	if nextPageToken == "" {
-		return baseFilter, nil
-	}
-
-	oid, err := mongo.ParseObjectID(nextPageToken)
-	if err != nil {
-		return nil, fmt.Errorf("invalid page token: %w", err)
-	}
-
-	baseFilter["_id"] = bson.M{"$lt": oid}
-	return baseFilter, nil
+	return r.mapper.ToModels(resp.Data), resp.Next, nil
 }
 
 func (r *Repository) MarkNotificationRead(ctx context.Context, id string) error {

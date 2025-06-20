@@ -1,10 +1,11 @@
 package mongodto
 
 import (
+	"time"
+
 	"github.com/lasthearth/vsservice/internal/pkg/mongo"
 	"github.com/lasthearth/vsservice/internal/stats/internal/model"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"time"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func (m *Stats) ToModel() *model.Stats {
@@ -41,7 +42,7 @@ func FromModel(stats *model.Stats) *Stats {
 
 	return &Stats{
 		Model: mongo.Model{
-			Id:        primitive.NewObjectIDFromTimestamp(now),
+			Id:        bson.NewObjectIDFromTimestamp(now),
 			CreatedAt: now,
 			UpdatedAt: now,
 		},

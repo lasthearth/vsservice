@@ -7,6 +7,7 @@ import (
 	"github.com/eapache/go-resiliency/retrier"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/lasthearth/vsservice/internal/leaderboard"
+	"github.com/lasthearth/vsservice/internal/news"
 	"github.com/lasthearth/vsservice/internal/notification"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
@@ -74,6 +75,7 @@ func main() {
 		user.App,
 		settlement.App,
 		notification.App,
+		news.App,
 	)
 
 	a.Run()

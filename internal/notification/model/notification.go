@@ -2,6 +2,8 @@ package model
 
 import "time"
 
+const BroadcastUserId = "broadcast"
+
 type Notification struct {
 	Id        string
 	UserId    string `validate:"required"`

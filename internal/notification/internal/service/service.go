@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
-	"github.com/lasthearth/vsservice/internal/notification/internal/model"
 	"github.com/lasthearth/vsservice/internal/notification/internal/repository/repoerr"
+	"github.com/lasthearth/vsservice/internal/notification/model"
 	"github.com/lasthearth/vsservice/internal/pkg/mongo"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/zap"

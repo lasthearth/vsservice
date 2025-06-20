@@ -4,10 +4,11 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func ObjectIdToString(id primitive.ObjectID) string {
+func ObjectIdToString(id bson.ObjectID) string {
 	return id.Hex()
 }
 

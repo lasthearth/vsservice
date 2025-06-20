@@ -5,7 +5,7 @@ package repomapper
 
 import (
 	dto "github.com/lasthearth/vsservice/internal/notification/internal/dto"
-	model "github.com/lasthearth/vsservice/internal/notification/internal/model"
+	model "github.com/lasthearth/vsservice/internal/notification/model"
 	goverter "github.com/lasthearth/vsservice/internal/pkg/goverter"
 )
 
