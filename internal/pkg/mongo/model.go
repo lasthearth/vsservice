@@ -3,7 +3,6 @@ package mongo
 import (
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
@@ -22,6 +21,6 @@ func NewModel() Model {
 	}
 }
 
-func ParseObjectID(id string) (primitive.ObjectID, error) {
-	return primitive.ObjectIDFromHex(id)
+func ParseObjectID(id string) (bson.ObjectID, error) {
+	return bson.ObjectIDFromHex(id)
 }
