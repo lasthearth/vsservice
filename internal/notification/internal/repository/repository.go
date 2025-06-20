@@ -88,7 +88,12 @@ func (r *Repository) ListNotifications(ctx context.Context, limit int, userID, n
 		zap.String("mongo_field", orderInfo.MongoField),
 	)
 
-	filter := bson.M{"user_id": userID}
+	filter := bson.M{
+		"$or": bson.A{
+			bson.M{"user_id": userID},
+			bson.M{"user_id": model.BroadcastUserId},
+		},
+	}
 	sort := orderby.BuildSortOptions(orderInfo)
 
 	resp, err := pagination.Find[dto.Notification](
