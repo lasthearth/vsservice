@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	"github.com/lasthearth/vsservice/internal/news/internal/model"
+	nmodel "github.com/lasthearth/vsservice/internal/notification/model"
 )
 
 // CreateNews implements newsv1.NewsServiceServer.
@@ -44,8 +45,26 @@ func (s *Service) CreateNews(ctx context.Context, req *newsv1.CreateNewsRequest)
 		Content: req.Content,
 		Preview: url,
 	}
+
+	err = s.validator.Struct(news)
+	if err != nil {
+		return nil, err
+	}
+
 	created, err := s.repo.CreateNews(ctx, news)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.cnuc.CreateNotification(
+		ctx,
+		nmodel.Notification{
+			UserId:  nmodel.BroadcastUserId,
+			Title:   "Новая новость",
+			Message: "Новость: " + req.Title,
+			State:   nmodel.NotificationStateUnread,
+		},
+	); err != nil {
 		return nil, err
 	}
 
