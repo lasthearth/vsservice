@@ -81,13 +81,14 @@ message Settlement {
   string id = 1;
   string name = 2;
   SettlementType type = 3;
-  string diplomacy = 4;
-  Member leader = 5;
-  repeated Member members = 6;
-  repeated Attachment attachments = 7;
-  Vector2 coordinates = 8;
-  int64 created_at = 9;
-  int64 updated_at = 10;
+  string description = 4;
+  string diplomacy = 5;
+  Member leader = 6;
+  repeated Member members = 7;
+  repeated Attachment attachments = 8;
+  Vector2 coordinates = 9;
+  int64 created_at = 10;
+  int64 updated_at = 11;
 }
 
 enum SettlementType {

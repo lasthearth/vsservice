@@ -1162,6 +1162,8 @@ components:
                 type:
                     type: integer
                     format: enum
+                description:
+                    type: string
                 diplomacy:
                     type: string
                 leader:
