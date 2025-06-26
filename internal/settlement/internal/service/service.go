@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"mime"
 
@@ -262,5 +263,18 @@ func (s *Service) GetInvitations(ctx context.Context, req *settlementv1.GetInvit
 
 // RevokeInvitation implements settlementv1.SettlementServiceServer.
 func (s *Service) RevokeInvitation(context.Context, *settlementv1.RevokeInvitationRequest) (*settlementv1.RevokeInvitationResponse, error) {
-	panic("unimplemented")
+	return nil, errors.New("unimplemented")
+}
+
+// GetByUserId implements settlementv1.SettlementServiceServer.
+func (s *Service) GetByLeaderId(ctx context.Context, req *settlementv1.GetByLeaderIdRequest) (*settlementv1.GetByLeaderIdResponse, error) {
+	settlement, err := s.dbRepo.GetSettlementByLeader(ctx, req.LeaderId)
+	if err != nil {
+		s.log.Error("failed to get settlements", zap.Error(err))
+		return nil, err
+	}
+
+	return &settlementv1.GetByLeaderIdResponse{
+		Settlement: s.mapper.ToSettlementProto(*settlement),
+	}, nil
 }

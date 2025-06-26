@@ -717,6 +717,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/user/{leader_id}/settlements:
+        get:
+            tags:
+                - SettlementService
+            operationId: SettlementService_GetByLeaderId
+            parameters:
+                - name: leader_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetByLeaderIdResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/verification:
         post:
             tags:
@@ -929,6 +953,11 @@ components:
                     type: string
                 rejection_reason:
                     type: string
+        GetByLeaderIdResponse:
+            type: object
+            properties:
+                settlement:
+                    $ref: '#/components/schemas/Settlement'
         GetInvitationsResponse:
             type: object
             properties:

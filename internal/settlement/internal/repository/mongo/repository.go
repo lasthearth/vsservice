@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
@@ -141,32 +142,32 @@ func (r *Repository) GetSettlement(ctx context.Context, id string) (*model.Settl
 }
 
 // GetSettlementsByLeader implements service.SettlementDbRepository.
-func (r *Repository) GetSettlementsByLeader(ctx context.Context, leaderID string) ([]model.Settlement, error) {
+func (r *Repository) GetSettlementByLeader(ctx context.Context, leaderID string) (*model.Settlement, error) {
 	r.log.Info("retrieving settlements by leader", zap.String("leader_id", leaderID))
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	r.log.Debug("executing find query on settlement collection")
-	found, err := r.setColl.Find(ctx, bson.M{"leader_id": leaderID})
+	found := r.setColl.FindOne(ctx, bson.M{"leader_id": leaderID})
+	err := found.Err()
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, repoerr.ErrNotFound
+		}
 		r.log.Error("find error", zap.Error(err))
 		return nil, err
 	}
-	defer found.Close(ctx)
 
-	var settlements []settlementdto.Settlement
-	if err := found.All(ctx, &settlements); err != nil {
+	var settlement settlementdto.Settlement
+	if err := found.Decode(&settlement); err != nil {
 		r.log.Error("cursor error", zap.Error(err))
 		return nil, err
 	}
 
-	result := lo.Map(settlements, func(item settlementdto.Settlement, index int) model.Settlement {
-		return *item.ToModel()
-	})
-
-	r.log.Info("successfully retrieved settlements", zap.Int("count", len(result)))
-	return result, nil
+	res := settlement.ToModel()
+	r.log.Info("successfully retrieved settlements", zap.String("settlement_id", res.Id))
+	return res, nil
 }
 
 // GetAllSettlements implements service.SettlementDbRepository.
