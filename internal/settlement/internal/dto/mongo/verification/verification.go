@@ -34,6 +34,8 @@ func (s *SettlementVerification) ToModel() *model.SettlementVerification {
 		Type:            model.SettlementType(s.Type),
 		Leader:          *s.Leader.ToModel(),
 		Coordinates:     *s.Coordinates.ToModel(),
+		Description:     s.Description,
+		Diplomacy:       s.Diplomacy,
 		Attachments:     attachments,
 		UpdatedAt:       s.UpdatedAt,
 		CreatedAt:       s.CreatedAt,
