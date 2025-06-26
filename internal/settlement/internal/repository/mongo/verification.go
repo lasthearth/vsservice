@@ -38,6 +38,7 @@ func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementO
 		Coordinates:     *vector2dto.FromModel(&opts.Coordinates),
 		Leader:          memberdto.Member(opts.Leader),
 		Attachments:     attachments,
+		Diplomacy:       opts.Diplomacy,
 		Status:          string(model.SettlementStatusPending),
 		RejectionReason: "",
 	}
@@ -127,7 +128,6 @@ func (r *Repository) Submit(ctx context.Context, opts service.SettlementOpts) er
 				return err
 			}
 
-			opts.Type = model.SettlementTypeVillage
 			return r.CreateRequest(ctx, opts)
 		}
 		return nil

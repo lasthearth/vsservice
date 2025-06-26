@@ -8,6 +8,7 @@ type SettlementOpts struct {
 	Leader      model.Member
 	Coordinates model.Vector2
 	Attachments []model.Attachment
+	Diplomacy   string
 }
 
 type UpdateSettlementOpts struct {

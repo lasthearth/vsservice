@@ -24,6 +24,7 @@ type Settlement struct {
 	Leader      Member
 	Members     []Member
 	Coordinates Vector2
+	Diplomacy   string
 	Attachments []Attachment
 
 	UpdatedAt time.Time
