@@ -21,6 +21,7 @@ type Settlement struct {
 	Id          string
 	Name        string
 	Type        SettlementType
+	Description string
 	Leader      Member
 	Members     []Member
 	Coordinates Vector2
