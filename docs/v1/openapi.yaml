@@ -1152,6 +1152,8 @@ components:
                 type:
                     type: integer
                     format: enum
+                diplomacy:
+                    type: string
                 leader:
                     $ref: '#/components/schemas/Member'
                 members:
@@ -1185,6 +1187,7 @@ components:
                 - type
                 - name
                 - description
+                - diplomacy
                 - coordinates
                 - attachments
             type: object
@@ -1195,6 +1198,8 @@ components:
                 name:
                     type: string
                 description:
+                    type: string
+                diplomacy:
                     type: string
                 coordinates:
                     $ref: '#/components/schemas/Vector2'

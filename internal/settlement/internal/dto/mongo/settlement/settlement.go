@@ -17,6 +17,7 @@ type Settlement struct {
 	Members     []memberdto.Member         `bson:"members"`
 	Coordinates vector2dto.Vector2         `bson:"coordinates"`
 	Attachments []attachmentdto.Attachment `bson:"attachments"`
+	Diplomacy   string                     `bson:"diplomacy"`
 }
 
 func (s *Settlement) ToModel() *model.Settlement {

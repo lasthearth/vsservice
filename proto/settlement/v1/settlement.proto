@@ -81,11 +81,12 @@ message Settlement {
   string id = 1;
   string name = 2;
   SettlementType type = 3;
-  Member leader = 4;
-  repeated Member members = 5;
-  Vector2 coordinates = 6;
-  int64 created_at = 7;
-  int64 updated_at = 8;
+  string diplomacy = 4;
+  Member leader = 5;
+  repeated Member members = 6;
+  Vector2 coordinates = 7;
+  int64 created_at = 8;
+  int64 updated_at = 9;
 }
 
 enum SettlementType {
@@ -107,8 +108,9 @@ message SubmitRequest {
   Type type = 1 [(google.api.field_behavior) = REQUIRED];
   string name = 2 [(google.api.field_behavior) = REQUIRED];
   string description = 3 [(google.api.field_behavior) = REQUIRED];
-  Vector2 coordinates = 4 [(google.api.field_behavior) = REQUIRED];
-  repeated SubmitAttachment attachments = 5 [(google.api.field_behavior) = REQUIRED];
+  string diplomacy = 4 [(google.api.field_behavior) = REQUIRED];
+  Vector2 coordinates = 5 [(google.api.field_behavior) = REQUIRED];
+  repeated SubmitAttachment attachments = 6 [(google.api.field_behavior) = REQUIRED];
 
   message SubmitAttachment {
     bytes data = 1 [(google.api.field_behavior) = REQUIRED];

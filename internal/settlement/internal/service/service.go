@@ -31,11 +31,14 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 	s.log.Info("submitting settlement request",
 		zap.String("leader_id", userID),
-		zap.String("settlement_name", req.Name))
+		zap.String("settlement_name", req.Name),
+		zap.Int("attachments", len(req.Attachments)))
 
 	attahs := make([]model.Attachment, len(req.Attachments))
 
-	for _, attachment := range req.Attachments {
+	s.log.Debug("attach len", zap.Int("attachments", len(attahs)))
+
+	for i, attachment := range req.Attachments {
 		uid, err := uuid.NewV7()
 		if err != nil {
 			return nil, err
@@ -64,11 +67,11 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 		url := fmt.Sprintf("%s/%s/%s", s.cfg.CdnUrl, bucketName, filename)
 
-		attahs = append(attahs, model.Attachment{
+		attahs[i] = model.Attachment{
 			Url:      url,
 			Desc:     attachment.Description,
 			MimeType: mimeType,
-		})
+		}
 	}
 
 	stype, err := TypeFromReqProto(req.Type)
@@ -82,6 +85,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		Leader: model.Member{
 			UserId: userID,
 		},
+		Diplomacy: req.Diplomacy,
 		Coordinates: model.Vector2{
 			X: int(req.Coordinates.X),
 			Y: int(req.Coordinates.Y),
@@ -93,6 +97,8 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		s.log.Error("failed to create settlement", zap.Error(err))
 		return nil, err
 	}
+
+	s.log.Info("settlement req created", zap.Int("attachment", len(attahs)))
 
 	return &settlementv1.SubmitResponse{}, nil
 }

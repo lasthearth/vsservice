@@ -44,8 +44,8 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	}()
 	logOpts := []logging.Option{
 		logging.WithLogOnEvents(
-			logging.StartCall, logging.FinishCall,
-			logging.PayloadSent, logging.PayloadReceived,
+		// logging.StartCall,
+		// logging.FinishCall,
 		),
 	}
 
