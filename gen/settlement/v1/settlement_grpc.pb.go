@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	SettlementService_Submit_FullMethodName           = "/settlement.v1.SettlementService/Submit"
 	SettlementService_Get_FullMethodName              = "/settlement.v1.SettlementService/Get"
+	SettlementService_GetByLeaderId_FullMethodName    = "/settlement.v1.SettlementService/GetByLeaderId"
 	SettlementService_List_FullMethodName             = "/settlement.v1.SettlementService/List"
 	SettlementService_ListPending_FullMethodName      = "/settlement.v1.SettlementService/ListPending"
 	SettlementService_Approve_FullMethodName          = "/settlement.v1.SettlementService/Approve"
@@ -41,6 +42,7 @@ type SettlementServiceClient interface {
 	Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*SubmitResponse, error)
 	// Get settlement by ID
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
+	GetByLeaderId(ctx context.Context, in *GetByLeaderIdRequest, opts ...grpc.CallOption) (*GetByLeaderIdResponse, error)
 	// List all settlements
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
 	// List pending settlement requests (requires admin privileges)
@@ -81,6 +83,16 @@ func (c *settlementServiceClient) Get(ctx context.Context, in *GetRequest, opts 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetResponse)
 	err := c.cc.Invoke(ctx, SettlementService_Get_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *settlementServiceClient) GetByLeaderId(ctx context.Context, in *GetByLeaderIdRequest, opts ...grpc.CallOption) (*GetByLeaderIdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetByLeaderIdResponse)
+	err := c.cc.Invoke(ctx, SettlementService_GetByLeaderId_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +189,7 @@ type SettlementServiceServer interface {
 	Submit(context.Context, *SubmitRequest) (*SubmitResponse, error)
 	// Get settlement by ID
 	Get(context.Context, *GetRequest) (*GetResponse, error)
+	GetByLeaderId(context.Context, *GetByLeaderIdRequest) (*GetByLeaderIdResponse, error)
 	// List all settlements
 	List(context.Context, *ListRequest) (*ListResponse, error)
 	// List pending settlement requests (requires admin privileges)
@@ -207,6 +220,9 @@ func (UnimplementedSettlementServiceServer) Submit(context.Context, *SubmitReque
 }
 func (UnimplementedSettlementServiceServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedSettlementServiceServer) GetByLeaderId(context.Context, *GetByLeaderIdRequest) (*GetByLeaderIdResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetByLeaderId not implemented")
 }
 func (UnimplementedSettlementServiceServer) List(context.Context, *ListRequest) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
@@ -284,6 +300,24 @@ func _SettlementService_Get_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SettlementServiceServer).Get(ctx, req.(*GetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SettlementService_GetByLeaderId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetByLeaderIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).GetByLeaderId(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_GetByLeaderId_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).GetByLeaderId(ctx, req.(*GetByLeaderIdRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -446,6 +480,10 @@ var SettlementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Get",
 			Handler:    _SettlementService_Get_Handler,
+		},
+		{
+			MethodName: "GetByLeaderId",
+			Handler:    _SettlementService_GetByLeaderId_Handler,
 		},
 		{
 			MethodName: "List",
