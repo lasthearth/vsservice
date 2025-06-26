@@ -55,7 +55,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 			bucketName,
 			filename,
 			rd,
-			int64(len(attachment.Data)),
+			int64(len(webp)),
 			mimeType,
 		)
 		if err != nil {
