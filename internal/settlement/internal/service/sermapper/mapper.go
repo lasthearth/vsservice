@@ -64,6 +64,7 @@ func (c *MapperImpl) ToSettlementProto(source model.Settlement) *v1.Settlement {
 	settlementv1Settlement.Id = source.Id
 	settlementv1Settlement.Name = source.Name
 	settlementv1Settlement.Type = service.TypeToProto(source.Type)
+	settlementv1Settlement.Description = source.Description
 	settlementv1Settlement.Diplomacy = source.Diplomacy
 	settlementv1Settlement.Leader = c.ToMemberProto(source.Leader)
 	settlementv1Settlement.Members = c.ToMembersProto(source.Members)
@@ -104,6 +105,7 @@ func (c *MapperImpl) VerifToSettlementProto(source model.SettlementVerification)
 	settlementv1Settlement.Id = source.Id
 	settlementv1Settlement.Name = source.Name
 	settlementv1Settlement.Type = service.TypeToProto(source.Type)
+	settlementv1Settlement.Description = source.Description
 	settlementv1Settlement.Diplomacy = source.Diplomacy
 	settlementv1Settlement.Leader = c.ToMemberProto(source.Leader)
 	settlementv1Settlement.Attachments = c.ToAttachmentsProto(source.Attachments)
