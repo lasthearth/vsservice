@@ -63,7 +63,7 @@ var App = fx.Options(
 		fx.Invoke(func(lc fx.Lifecycle, storage service.Storage) {
 			lc.Append(fx.Hook{
 				OnStart: func(context.Context) error {
-					bucketName := "settlementreq"
+					bucketName := "settlementsreq"
 					exists, err := storage.BucketExists(context.Background(), bucketName)
 					if err != nil {
 						return err
