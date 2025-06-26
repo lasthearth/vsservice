@@ -9,6 +9,7 @@ type SettlementOpts struct {
 	Coordinates model.Vector2
 	Attachments []model.Attachment
 	Diplomacy   string
+	Description string
 }
 
 type UpdateSettlementOpts struct {

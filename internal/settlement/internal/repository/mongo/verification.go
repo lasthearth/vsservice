@@ -35,6 +35,7 @@ func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementO
 		Model:           mongomodel.NewModel(),
 		Name:            opts.Name,
 		Type:            string(opts.Type),
+		Description:     opts.Description,
 		Coordinates:     *vector2dto.FromModel(&opts.Coordinates),
 		Leader:          memberdto.Member(opts.Leader),
 		Attachments:     attachments,

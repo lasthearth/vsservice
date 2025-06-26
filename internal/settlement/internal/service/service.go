@@ -85,7 +85,8 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		Leader: model.Member{
 			UserId: userID,
 		},
-		Diplomacy: req.Diplomacy,
+		Description: req.Description,
+		Diplomacy:   req.Diplomacy,
 		Coordinates: model.Vector2{
 			X: int(req.Coordinates.X),
 			Y: int(req.Coordinates.Y),

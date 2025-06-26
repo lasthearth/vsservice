@@ -17,6 +17,7 @@ type SettlementVerification struct {
 	Coordinates vector2dto.Vector2         `bson:"coordinates"`
 	Attachments []attachmentdto.Attachment `bson:"attachments"`
 	Diplomacy   string                     `bson:"diplomacy"`
+	Description string                     `bson:"description"`
 
 	Status          string `bson:"status"`
 	RejectionReason string `bson:"rejection_reason"`

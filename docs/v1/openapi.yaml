@@ -880,6 +880,16 @@ components:
         ApproveResponse:
             type: object
             properties: {}
+        Attachment:
+            required:
+                - desc
+                - url
+            type: object
+            properties:
+                desc:
+                    type: string
+                url:
+                    type: string
         CreateNewsRequest:
             type: object
             properties:
@@ -1160,6 +1170,10 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Member'
+                attachments:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Attachment'
                 coordinates:
                     $ref: '#/components/schemas/Vector2'
                 created_at:

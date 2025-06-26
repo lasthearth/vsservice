@@ -19,6 +19,7 @@ type SettlementVerification struct {
 	Coordinates Vector2
 	Attachments []Attachment
 	Diplomacy   string
+	Description string
 
 	Status          SettlementStatus
 	RejectionReason string
