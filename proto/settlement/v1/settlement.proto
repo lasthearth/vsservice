@@ -35,13 +35,13 @@ service SettlementService {
 
   // List pending settlement requests (requires admin privileges)
   rpc ListPending(ListPendingRequest) returns (ListPendingResponse) {
-    option (google.api.http) = {get: "/v1/settlements/pending"};
+    option (google.api.http) = {get: "/v1/settlements/verifications"};
   }
 
   // Approve a settlement request (requires admin privileges)
   rpc Approve(ApproveRequest) returns (ApproveResponse) {
     option (google.api.http) = {
-      post: "/v1/settlements/{id}/approve"
+      post: "/v1/settlements/{id}/verification:approve"
       body: "*"
     };
   }
@@ -49,9 +49,14 @@ service SettlementService {
   // Reject a settlement request (requires admin privileges)
   rpc Reject(RejectRequest) returns (RejectResponse) {
     option (google.api.http) = {
-      post: "/v1/settlements/{id}/reject"
+      post: "/v1/settlements/{id}/verification:reject"
       body: "*"
     };
+  }
+
+  // Get the verification status of a settlement request
+  rpc VerificationStatus(VerificationStatusRequest) returns (VerificationStatusResponse) {
+    option (google.api.http) = {get: "/v1/settlements/{id}/verification:status"};
   }
 
   // Remove a member from a settlement (requires admin privileges)
@@ -62,6 +67,16 @@ service SettlementService {
   // Get all invitations to a settlement
   rpc GetInvitations(GetInvitationsRequest) returns (GetInvitationsResponse) {
     option (google.api.http) = {get: "/v1/settlements/{settlement_id}/invitations"};
+  }
+
+  // Get all invitations to a settlement belonging to a user
+  rpc GetUserInvitations(GetUserInvitationsRequest) returns (GetUserInvitationsResponse) {
+    option (google.api.http) = {get: "/v1/users/{user_id}/settlements/invitations"};
+  }
+
+  // Accept an invitation to a settlement
+  rpc AcceptInvitation(AcceptInvitationRequest) returns (AcceptInvitationResponse) {
+    option (google.api.http) = {post: "/v1/settlements/invitations/{invitation_id}:accept"};
   }
 
   // Invite a member to a settlement (requires being the settlement leader)
@@ -75,11 +90,25 @@ service SettlementService {
   // Revoke an invitation to a settlement (requires being the settlement leader)
   rpc RevokeInvitation(RevokeInvitationRequest) returns (RevokeInvitationResponse) {
     option (google.api.http) = {
-      post: "/v1/settlements/{settlement_id}/invitations/{invitation_id}/revoke"
+      post: "/v1/settlements/{settlement_id}/invitations/{invitation_id}:revoke"
       body: "*"
     };
   }
 }
+
+message GetUserInvitationsRequest {
+  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserInvitationsResponse {
+  repeated Invitation invitations = 1;
+}
+
+message AcceptInvitationRequest {
+  string invitation_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message AcceptInvitationResponse {}
 
 message Settlement {
   string id = 1;
@@ -196,11 +225,11 @@ message GetInvitationsRequest {
 
 message GetInvitationsResponse {
   repeated Invitation invitations = 1;
+}
 
-  message Invitation {
-    string id = 1;
-    string user_id = 2;
-  }
+message Invitation {
+  string id = 1;
+  string user_id = 2;
 }
 
 message RevokeInvitationRequest {
@@ -218,4 +247,13 @@ message GetByLeaderIdRequest {
 
 message GetByLeaderIdResponse {
   Settlement settlement = 1;
+}
+
+message VerificationStatusRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message VerificationStatusResponse {
+  string status = 1;
+  string rejection_reason = 2;
 }

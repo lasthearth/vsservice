@@ -3,7 +3,6 @@ package service
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"mime"
 
@@ -262,8 +261,46 @@ func (s *Service) GetInvitations(ctx context.Context, req *settlementv1.GetInvit
 }
 
 // RevokeInvitation implements settlementv1.SettlementServiceServer.
-func (s *Service) RevokeInvitation(context.Context, *settlementv1.RevokeInvitationRequest) (*settlementv1.RevokeInvitationResponse, error) {
-	return nil, errors.New("unimplemented")
+func (s *Service) RevokeInvitation(ctx context.Context, req *settlementv1.RevokeInvitationRequest) (*settlementv1.RevokeInvitationResponse, error) {
+	if err := s.dbRepo.RevokeInvitation(ctx, req.InvitationId); err != nil {
+		s.log.Error("failed to revoke invitation", zap.Error(err))
+		return nil, err
+	}
+
+	return &settlementv1.RevokeInvitationResponse{}, nil
+}
+
+// AcceptInvitation implements settlementv1.SettlementServiceServer.
+func (s *Service) AcceptInvitation(ctx context.Context, req *settlementv1.AcceptInvitationRequest) (*settlementv1.AcceptInvitationResponse, error) {
+	if err := s.dbRepo.AcceptInvitation(ctx, req.InvitationId); err != nil {
+		s.log.Error("failed to accept invitation", zap.Error(err))
+		return nil, err
+	}
+
+	return &settlementv1.AcceptInvitationResponse{}, nil
+}
+
+// GetUserInvitations implements settlementv1.SettlementServiceServer.
+func (s *Service) GetUserInvitations(ctx context.Context, req *settlementv1.GetUserInvitationsRequest) (*settlementv1.GetUserInvitationsResponse, error) {
+	uid, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		s.log.Error("failed to get user id", zap.Error(err))
+		return nil, err
+	}
+
+	if uid != req.UserId {
+		return nil, status.Errorf(codes.PermissionDenied, "user id mismatch")
+	}
+
+	invitations, err := s.dbRepo.GetUserInvitations(ctx, req.UserId)
+	if err != nil {
+		s.log.Error("failed to get user invitations", zap.Error(err))
+		return nil, err
+	}
+
+	return &settlementv1.GetUserInvitationsResponse{
+		Invitations: s.mapper.ToInvProtos(invitations),
+	}, nil
 }
 
 // GetByUserId implements settlementv1.SettlementServiceServer.
@@ -276,5 +313,19 @@ func (s *Service) GetByLeaderId(ctx context.Context, req *settlementv1.GetByLead
 
 	return &settlementv1.GetByLeaderIdResponse{
 		Settlement: s.mapper.ToSettlementProto(*settlement),
+	}, nil
+}
+
+// VerificationStatus implements settlementv1.SettlementServiceServer.
+func (s *Service) VerificationStatus(ctx context.Context, req *settlementv1.VerificationStatusRequest) (*settlementv1.VerificationStatusResponse, error) {
+	sreq, err := s.dbRepo.GetSettlementRequest(ctx, req.Id)
+	if err != nil {
+		s.log.Error("failed to get request status", zap.Error(err))
+		return nil, err
+	}
+
+	return &settlementv1.VerificationStatusResponse{
+		Status:          string(sreq.Status),
+		RejectionReason: sreq.RejectionReason,
 	}, nil
 }

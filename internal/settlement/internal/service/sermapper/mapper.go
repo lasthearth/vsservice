@@ -28,21 +28,21 @@ func (c *MapperImpl) ToAttachmentsProto(source []model.Attachment) []*v1.Attachm
 	}
 	return pSettlementv1AttachmentList
 }
-func (c *MapperImpl) ToInvProto(source model.Invitation) *v1.GetInvitationsResponse_Invitation {
-	var settlementv1GetInvitationsResponse_Invitation v1.GetInvitationsResponse_Invitation
-	settlementv1GetInvitationsResponse_Invitation.Id = source.Id
-	settlementv1GetInvitationsResponse_Invitation.UserId = source.UserId
-	return &settlementv1GetInvitationsResponse_Invitation
+func (c *MapperImpl) ToInvProto(source model.Invitation) *v1.Invitation {
+	var settlementv1Invitation v1.Invitation
+	settlementv1Invitation.Id = source.Id
+	settlementv1Invitation.UserId = source.UserId
+	return &settlementv1Invitation
 }
-func (c *MapperImpl) ToInvProtos(source []model.Invitation) []*v1.GetInvitationsResponse_Invitation {
-	var pSettlementv1GetInvitationsResponse_InvitationList []*v1.GetInvitationsResponse_Invitation
+func (c *MapperImpl) ToInvProtos(source []model.Invitation) []*v1.Invitation {
+	var pSettlementv1InvitationList []*v1.Invitation
 	if source != nil {
-		pSettlementv1GetInvitationsResponse_InvitationList = make([]*v1.GetInvitationsResponse_Invitation, len(source))
+		pSettlementv1InvitationList = make([]*v1.Invitation, len(source))
 		for i := 0; i < len(source); i++ {
-			pSettlementv1GetInvitationsResponse_InvitationList[i] = c.ToInvProto(source[i])
+			pSettlementv1InvitationList[i] = c.ToInvProto(source[i])
 		}
 	}
-	return pSettlementv1GetInvitationsResponse_InvitationList
+	return pSettlementv1InvitationList
 }
 func (c *MapperImpl) ToMemberProto(source model.Member) *v1.Member {
 	var settlementv1Member v1.Member

@@ -251,6 +251,42 @@ func local_request_SettlementService_Reject_0(ctx context.Context, marshaler run
 	return msg, metadata, err
 }
 
+func request_SettlementService_VerificationStatus_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq VerificationStatusRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
+	}
+	protoReq.Id, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
+	}
+	msg, err := client.VerificationStatus(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_SettlementService_VerificationStatus_0(ctx context.Context, marshaler runtime.Marshaler, server SettlementServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq VerificationStatusRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
+	}
+	protoReq.Id, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
+	}
+	msg, err := server.VerificationStatus(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 func request_SettlementService_RemoveMember_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq RemoveMemberRequest
@@ -336,6 +372,78 @@ func local_request_SettlementService_GetInvitations_0(ctx context.Context, marsh
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "settlement_id", err)
 	}
 	msg, err := server.GetInvitations(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_SettlementService_GetUserInvitations_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetUserInvitationsRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["user_id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user_id")
+	}
+	protoReq.UserId, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
+	}
+	msg, err := client.GetUserInvitations(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_SettlementService_GetUserInvitations_0(ctx context.Context, marshaler runtime.Marshaler, server SettlementServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetUserInvitationsRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["user_id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "user_id")
+	}
+	protoReq.UserId, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "user_id", err)
+	}
+	msg, err := server.GetUserInvitations(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_SettlementService_AcceptInvitation_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq AcceptInvitationRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["invitation_id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "invitation_id")
+	}
+	protoReq.InvitationId, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "invitation_id", err)
+	}
+	msg, err := client.AcceptInvitation(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_SettlementService_AcceptInvitation_0(ctx context.Context, marshaler runtime.Marshaler, server SettlementServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq AcceptInvitationRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["invitation_id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "invitation_id")
+	}
+	protoReq.InvitationId, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "invitation_id", err)
+	}
+	msg, err := server.AcceptInvitation(ctx, &protoReq)
 	return msg, metadata, err
 }
 
@@ -531,7 +639,7 @@ func RegisterSettlementServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/ListPending", runtime.WithHTTPPathPattern("/v1/settlements/pending"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/ListPending", runtime.WithHTTPPathPattern("/v1/settlements/verifications"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -551,7 +659,7 @@ func RegisterSettlementServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/Approve", runtime.WithHTTPPathPattern("/v1/settlements/{id}/approve"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/Approve", runtime.WithHTTPPathPattern("/v1/settlements/{id}/verification:approve"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -571,7 +679,7 @@ func RegisterSettlementServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/Reject", runtime.WithHTTPPathPattern("/v1/settlements/{id}/reject"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/Reject", runtime.WithHTTPPathPattern("/v1/settlements/{id}/verification:reject"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -584,6 +692,26 @@ func RegisterSettlementServiceHandlerServer(ctx context.Context, mux *runtime.Se
 			return
 		}
 		forward_SettlementService_Reject_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_SettlementService_VerificationStatus_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/VerificationStatus", runtime.WithHTTPPathPattern("/v1/settlements/{id}/verification:status"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_SettlementService_VerificationStatus_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_SettlementService_VerificationStatus_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodDelete, pattern_SettlementService_RemoveMember_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -625,6 +753,46 @@ func RegisterSettlementServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		}
 		forward_SettlementService_GetInvitations_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_SettlementService_GetUserInvitations_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/GetUserInvitations", runtime.WithHTTPPathPattern("/v1/users/{user_id}/settlements/invitations"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_SettlementService_GetUserInvitations_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_SettlementService_GetUserInvitations_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_SettlementService_AcceptInvitation_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/AcceptInvitation", runtime.WithHTTPPathPattern("/v1/settlements/invitations/{invitation_id}:accept"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_SettlementService_AcceptInvitation_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_SettlementService_AcceptInvitation_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodPost, pattern_SettlementService_InviteMember_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -651,7 +819,7 @@ func RegisterSettlementServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/RevokeInvitation", runtime.WithHTTPPathPattern("/v1/settlements/{settlement_id}/invitations/{invitation_id}/revoke"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/RevokeInvitation", runtime.WithHTTPPathPattern("/v1/settlements/{settlement_id}/invitations/{invitation_id}:revoke"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -777,7 +945,7 @@ func RegisterSettlementServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/ListPending", runtime.WithHTTPPathPattern("/v1/settlements/pending"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/ListPending", runtime.WithHTTPPathPattern("/v1/settlements/verifications"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -794,7 +962,7 @@ func RegisterSettlementServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/Approve", runtime.WithHTTPPathPattern("/v1/settlements/{id}/approve"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/Approve", runtime.WithHTTPPathPattern("/v1/settlements/{id}/verification:approve"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -811,7 +979,7 @@ func RegisterSettlementServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/Reject", runtime.WithHTTPPathPattern("/v1/settlements/{id}/reject"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/Reject", runtime.WithHTTPPathPattern("/v1/settlements/{id}/verification:reject"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -823,6 +991,23 @@ func RegisterSettlementServiceHandlerClient(ctx context.Context, mux *runtime.Se
 			return
 		}
 		forward_SettlementService_Reject_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_SettlementService_VerificationStatus_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/VerificationStatus", runtime.WithHTTPPathPattern("/v1/settlements/{id}/verification:status"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_SettlementService_VerificationStatus_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_SettlementService_VerificationStatus_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodDelete, pattern_SettlementService_RemoveMember_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -858,6 +1043,40 @@ func RegisterSettlementServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		}
 		forward_SettlementService_GetInvitations_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_SettlementService_GetUserInvitations_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/GetUserInvitations", runtime.WithHTTPPathPattern("/v1/users/{user_id}/settlements/invitations"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_SettlementService_GetUserInvitations_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_SettlementService_GetUserInvitations_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_SettlementService_AcceptInvitation_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/AcceptInvitation", runtime.WithHTTPPathPattern("/v1/settlements/invitations/{invitation_id}:accept"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_SettlementService_AcceptInvitation_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_SettlementService_AcceptInvitation_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodPost, pattern_SettlementService_InviteMember_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -879,7 +1098,7 @@ func RegisterSettlementServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/RevokeInvitation", runtime.WithHTTPPathPattern("/v1/settlements/{settlement_id}/invitations/{invitation_id}/revoke"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/RevokeInvitation", runtime.WithHTTPPathPattern("/v1/settlements/{settlement_id}/invitations/{invitation_id}:revoke"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -896,29 +1115,35 @@ func RegisterSettlementServiceHandlerClient(ctx context.Context, mux *runtime.Se
 }
 
 var (
-	pattern_SettlementService_Submit_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "settlements"}, ""))
-	pattern_SettlementService_Get_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "settlements", "id"}, ""))
-	pattern_SettlementService_GetByLeaderId_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "user", "leader_id", "settlements"}, ""))
-	pattern_SettlementService_List_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "settlements"}, ""))
-	pattern_SettlementService_ListPending_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "settlements", "pending"}, ""))
-	pattern_SettlementService_Approve_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "id", "approve"}, ""))
-	pattern_SettlementService_Reject_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "id", "reject"}, ""))
-	pattern_SettlementService_RemoveMember_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "settlements", "settlement_id", "members", "user_id"}, ""))
-	pattern_SettlementService_GetInvitations_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "settlement_id", "invitations"}, ""))
-	pattern_SettlementService_InviteMember_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "settlement_id", "invitations"}, ""))
-	pattern_SettlementService_RevokeInvitation_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1", "settlements", "settlement_id", "invitations", "invitation_id", "revoke"}, ""))
+	pattern_SettlementService_Submit_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "settlements"}, ""))
+	pattern_SettlementService_Get_0                = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "settlements", "id"}, ""))
+	pattern_SettlementService_GetByLeaderId_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "user", "leader_id", "settlements"}, ""))
+	pattern_SettlementService_List_0               = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "settlements"}, ""))
+	pattern_SettlementService_ListPending_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "settlements", "verifications"}, ""))
+	pattern_SettlementService_Approve_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "id", "verification"}, "approve"))
+	pattern_SettlementService_Reject_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "id", "verification"}, "reject"))
+	pattern_SettlementService_VerificationStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "id", "verification"}, "status"))
+	pattern_SettlementService_RemoveMember_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "settlements", "settlement_id", "members", "user_id"}, ""))
+	pattern_SettlementService_GetInvitations_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "settlement_id", "invitations"}, ""))
+	pattern_SettlementService_GetUserInvitations_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1", "users", "user_id", "settlements", "invitations"}, ""))
+	pattern_SettlementService_AcceptInvitation_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "settlements", "invitations", "invitation_id"}, "accept"))
+	pattern_SettlementService_InviteMember_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "settlement_id", "invitations"}, ""))
+	pattern_SettlementService_RevokeInvitation_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "settlements", "settlement_id", "invitations", "invitation_id"}, "revoke"))
 )
 
 var (
-	forward_SettlementService_Submit_0           = runtime.ForwardResponseMessage
-	forward_SettlementService_Get_0              = runtime.ForwardResponseMessage
-	forward_SettlementService_GetByLeaderId_0    = runtime.ForwardResponseMessage
-	forward_SettlementService_List_0             = runtime.ForwardResponseMessage
-	forward_SettlementService_ListPending_0      = runtime.ForwardResponseMessage
-	forward_SettlementService_Approve_0          = runtime.ForwardResponseMessage
-	forward_SettlementService_Reject_0           = runtime.ForwardResponseMessage
-	forward_SettlementService_RemoveMember_0     = runtime.ForwardResponseMessage
-	forward_SettlementService_GetInvitations_0   = runtime.ForwardResponseMessage
-	forward_SettlementService_InviteMember_0     = runtime.ForwardResponseMessage
-	forward_SettlementService_RevokeInvitation_0 = runtime.ForwardResponseMessage
+	forward_SettlementService_Submit_0             = runtime.ForwardResponseMessage
+	forward_SettlementService_Get_0                = runtime.ForwardResponseMessage
+	forward_SettlementService_GetByLeaderId_0      = runtime.ForwardResponseMessage
+	forward_SettlementService_List_0               = runtime.ForwardResponseMessage
+	forward_SettlementService_ListPending_0        = runtime.ForwardResponseMessage
+	forward_SettlementService_Approve_0            = runtime.ForwardResponseMessage
+	forward_SettlementService_Reject_0             = runtime.ForwardResponseMessage
+	forward_SettlementService_VerificationStatus_0 = runtime.ForwardResponseMessage
+	forward_SettlementService_RemoveMember_0       = runtime.ForwardResponseMessage
+	forward_SettlementService_GetInvitations_0     = runtime.ForwardResponseMessage
+	forward_SettlementService_GetUserInvitations_0 = runtime.ForwardResponseMessage
+	forward_SettlementService_AcceptInvitation_0   = runtime.ForwardResponseMessage
+	forward_SettlementService_InviteMember_0       = runtime.ForwardResponseMessage
+	forward_SettlementService_RevokeInvitation_0   = runtime.ForwardResponseMessage
 )

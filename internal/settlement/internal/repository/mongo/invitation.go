@@ -2,53 +2,114 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
 	invitationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
+	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
+	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repoerr"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
-// func (r *Repository) InviteMember(ctx context.Context, settlementID string, member model.Member) error { l := r.log.
-// 		With(zap.String("settlement_id", settlementID), zap.String("user_id", member.UserID)).
-// 		WithMethod("invite_member")
+func (r *Repository) GetUserInvitations(ctx context.Context, userID string) ([]model.Invitation, error) {
+	l := r.log.
+		With(
+			zap.String("user_id", userID),
+		).
+		WithMethod("get_user_invitations")
 
-// 	l.Info("inviting member to settlement")
+	l.Info("getting user invitations")
 
-// 	objectID, err := mongomodel.ParseObjectID(settlementID)
-// 	if err != nil {
-// 		return err
-// 	}
+	filter := bson.M{"user_id": userID}
+	cursor, err := r.setInvColl.Find(ctx, filter)
+	if err != nil {
+		l.Error("failed to get user invitations", zap.Error(err))
+		return nil, err
+	}
+	defer cursor.Close(ctx)
 
-// 	l.Debug("checking existing membership")
-// 	err = r.IsMemberOrLeader(ctx, settlementID, member.UserID)
-// 	if err != nil {
-// 		return err
-// 	}
+	var invitations []invitationdto.Invitation
+	if err := cursor.All(ctx, &invitations); err != nil {
+		l.Error("failed to get user invitations", zap.Error(err))
+		return nil, err
+	}
 
-// 	dtoMember := memberdto.FromModel(&member)
-// 	update := bson.D{
-// 		{Key: "$push", Value: bson.D{{Key: "members", Value: dtoMember}}},
-// 		{Key: "$set", Value: bson.D{{Key: "updated_at", Value: time.Now()}}},
-// 	}
-// 	res, err := r.setInvColl.UpdateOne(ctx,
-// 		bson.M{"_id": objectID},
-// 		update,
-// 	)
-// 	if err != nil {
-// 		l.Error("failed to invite member", zap.Error(err))
-// 		return err
-// 	}
-// 	if res.MatchedCount == 0 {
-// 		return ErrNotFound
-// 	}
+	l.Info("user invitations retrieved successfully")
 
-//		l.Info("member invited successfully")
-//		return nil
-//	}
-//
+	return r.mapper.ToInvModels(invitations), nil
+}
+
+func (r *Repository) AcceptInvitation(ctx context.Context, invitationID string) error {
+	l := r.log.
+		With(
+			zap.String("invitation_id", invitationID),
+		).
+		WithMethod("accept_invitation")
+
+	l.Info("accepting invitation")
+
+	session, err := r.client.StartSession()
+	if err != nil {
+		l.Error("failed to start session", zap.Error(err))
+		return err
+	}
+
+	defer session.EndSession(ctx)
+
+	err = mongo.WithSession(ctx, session, func(ctx context.Context) error {
+		inv, err := r.getInvitation(ctx, invitationID)
+		if err != nil {
+			l.Error("failed to get invitation", zap.Error(err))
+			return err
+		}
+
+		member := memberdto.Member{
+			UserId: inv.UserId,
+		}
+
+		upd, err := r.setColl.UpdateOne(
+			ctx,
+			bson.M{"_id": inv.SettlementId},
+			bson.D{
+				{
+					Key: "$push",
+					Value: bson.D{
+						{Key: "members", Value: member},
+					},
+				},
+				{
+					Key: "$set",
+					Value: bson.D{
+						{Key: "updated_at", Value: time.Now()},
+					},
+				},
+			},
+		)
+		if err != nil {
+			l.Error("failed to update settlement", zap.Error(err))
+			return err
+		}
+
+		err = r.deleteInvitation(ctx, invitationID)
+		if err != nil {
+			l.Error("failed to delete invitation", zap.Error(err))
+			return err
+		}
+
+		l.Info(
+			"invitation accepted successfully",
+			zap.Int64("modified_settlement", upd.ModifiedCount),
+		)
+
+		return nil
+	})
+
+	return err
+}
 
 func (r *Repository) GetInvitations(ctx context.Context, settlementID string) ([]model.Invitation, error) {
 	l := r.log.
@@ -120,8 +181,7 @@ func (r *Repository) RevokeInvitation(ctx context.Context, invID string) error {
 
 	l.Info("revoking invitation")
 
-	filter := bson.M{"_id": invID}
-	_, err := r.setInvColl.DeleteOne(ctx, filter)
+	err := r.deleteInvitation(ctx, invID)
 	if err != nil {
 		l.Error("failed to revoke invitation", zap.Error(err))
 		return err
@@ -175,7 +235,65 @@ func (r *Repository) RemoveMember(ctx context.Context, settlementID, userID stri
 		return err
 	}
 
-	l.Info("successfully removed member from settlement",
-		zap.Int64("modified_count", result.ModifiedCount))
+	l.Info(
+		"successfully removed member from settlement",
+		zap.Int64(
+			"modified_count",
+			result.ModifiedCount,
+		),
+	)
+	return nil
+}
+
+func (r *Repository) getInvitation(ctx context.Context, invitationID string) (*model.Invitation, error) {
+	l := r.log.
+		With(
+			zap.String("invitation_id", invitationID),
+		).
+		WithMethod("get_invitation")
+
+	l.Info("getting invitation")
+
+	filter := bson.M{"_id": invitationID}
+	finded := r.setInvColl.FindOne(ctx, filter)
+	if err := finded.Err(); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			l.Error("invitation not found", zap.Error(err))
+			return nil, repoerr.ErrInvitationNotFound
+		}
+		l.Error("failed to find invitation", zap.Error(err))
+		return nil, err
+	}
+
+	var dto invitationdto.Invitation
+	if err := finded.Decode(&dto); err != nil {
+		l.Error("failed to decode invitation", zap.Error(err))
+		return nil, err
+	}
+
+	res := r.mapper.ToInvModel(dto)
+
+	l.Info("invitation retrieved successfully")
+
+	return &res, nil
+}
+
+func (r *Repository) deleteInvitation(ctx context.Context, invitationID string) error {
+	l := r.log.
+		With(
+			zap.String("invitation_id", invitationID),
+		).
+		WithMethod("delete_invitation")
+
+	l.Info("deleting invitation")
+
+	filter := bson.M{"_id": invitationID}
+	if _, err := r.setInvColl.DeleteOne(ctx, filter); err != nil {
+		l.Error("failed to delete invitation", zap.Error(err))
+		return err
+	}
+
+	l.Info("invitation deleted successfully")
+
 	return nil
 }
