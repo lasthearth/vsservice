@@ -8,62 +8,6 @@ info:
 servers:
     - url: https://api.lasthearth.ru
 paths:
-    /v1/invitations/{invitation_id}/accept:
-        post:
-            tags:
-                - InvitationService
-            description: Accept an invitation to a settlement
-            operationId: InvitationService_AcceptInvitation
-            parameters:
-                - name: invitation_id
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/AcceptInvitationRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content: {}
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/invitations/{invitation_id}/reject:
-        post:
-            tags:
-                - InvitationService
-            description: Reject an invitation to a settlement
-            operationId: InvitationService_RejectInvitation
-            parameters:
-                - name: invitation_id
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/RejectInvitationRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content: {}
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/items:
         post:
             tags:
@@ -964,11 +908,6 @@ paths:
                                 $ref: '#/components/schemas/Status'
 components:
     schemas:
-        AcceptInvitationRequest:
-            type: object
-            properties:
-                invitation_id:
-                    type: string
         AcceptInvitationResponse:
             type: object
             properties: {}
@@ -1223,11 +1162,6 @@ components:
                 players_killed:
                     type: integer
                     format: int32
-        RejectInvitationRequest:
-            type: object
-            properties:
-                invitation_id:
-                    type: string
         RejectRequest:
             required:
                 - id
@@ -1394,8 +1328,6 @@ components:
                 status:
                     type: string
 tags:
-    - name: InvitationService
-      description: Service for managing invitations
     - name: LeaderboardService
       description: Represent basic leaderboard
     - name: NewsService
