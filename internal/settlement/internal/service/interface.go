@@ -38,8 +38,8 @@ type Mapper interface {
 	VerifsToSettlementProtos([]model.SettlementVerification) []*settlementv1.Settlement
 
 	// goverter:ignore state sizeCache unknownFields
-	ToInvProto(model.Invitation) *settlementv1.GetInvitationsResponse_Invitation
-	ToInvProtos([]model.Invitation) []*settlementv1.GetInvitationsResponse_Invitation
+	ToInvProto(model.Invitation) *settlementv1.Invitation
+	ToInvProtos([]model.Invitation) []*settlementv1.Invitation
 }
 
 type Storage interface {
@@ -73,7 +73,9 @@ type SettlementDbRepository interface {
 	RemoveMember(ctx context.Context, settlementID, userID string) error
 	InviteMember(ctx context.Context, settlementID, userID string) error
 	RevokeInvitation(ctx context.Context, invID string) error
+	AcceptInvitation(ctx context.Context, invID string) error
 	GetInvitations(ctx context.Context, settlementID string) ([]model.Invitation, error)
+	GetUserInvitations(ctx context.Context, userID string) ([]model.Invitation, error)
 }
 
 type SettlementRequestDbRepository interface {
