@@ -627,6 +627,29 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/user/search:
+        get:
+            tags:
+                - UserService
+            operationId: UserService_SearchUsers
+            parameters:
+                - name: query
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SearchUsersResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/user/verify/code:
         get:
             tags:
@@ -729,6 +752,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetByLeaderIdResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/user/{user_id}:
+        get:
+            tags:
+                - UserService
+            operationId: UserService_GetUser
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetUserResponse'
                 default:
                     description: Default error response
                     content:
@@ -1009,6 +1056,24 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Invitation'
+        GetUserResponse:
+            type: object
+            properties:
+                user_id:
+                    type: string
+                user_game_name:
+                    type: string
+                avatar:
+                    $ref: '#/components/schemas/GetUserResponse_Image'
+        GetUserResponse_Image:
+            type: object
+            properties:
+                original:
+                    type: string
+                x96:
+                    type: string
+                x48:
+                    type: string
         GetVerifyCodeResponse:
             type: object
             properties:
@@ -1200,6 +1265,13 @@ components:
                     type: array
                     items:
                         type: string
+        SearchUsersResponse:
+            type: object
+            properties:
+                users:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/GetUserResponse'
         Settlement:
             type: object
             properties:

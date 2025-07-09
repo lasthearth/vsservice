@@ -19,6 +19,14 @@ service UserService {
     };
   }
 
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {
+    option (google.api.http) = {get: "/v1/user/{user_id}"};
+  }
+
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse) {
+    option (google.api.http) = {get: "/v1/user/search"};
+  }
+
   rpc VerifyStatus(VerifyStatusRequest) returns (VerifyStatusResponse) {
     option (google.api.http) = {get: "/v1/user/verify/status"};
   }
@@ -67,4 +75,28 @@ message VerifyCodeResponse {}
 
 message UpdateAvatarRequest {
   bytes avatar = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserRequest {
+  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserResponse {
+  string user_id = 1;
+  string user_game_name = 2;
+  Image avatar = 3;
+
+  message Image {
+    string original = 1;
+    string x96 = 2;
+    string x48 = 3;
+  }
+}
+
+message SearchUsersRequest {
+  string query = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message SearchUsersResponse {
+  repeated GetUserResponse users = 1;
 }

@@ -11,8 +11,10 @@ import (
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/image"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
-	"github.com/lasthearth/vsservice/internal/verification/model"
+	"github.com/lasthearth/vsservice/internal/user/internal/model"
+	verificationmodel "github.com/lasthearth/vsservice/internal/verification/model"
 	"github.com/minio/minio-go/v7"
+	"github.com/samber/lo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -23,10 +25,11 @@ type SsoRepository interface {
 }
 
 type DbRepository interface {
-	GetVerificationStatus(ctx context.Context, userID string) (model.VerificationStatus, error)
-	GetVerificationStatusByUserGameName(ctx context.Context, userGameName string) (model.VerificationStatus, error)
+	GetVerificationStatus(ctx context.Context, userID string) (verificationmodel.VerificationStatus, error)
+	GetVerificationStatusByUserGameName(ctx context.Context, userGameName string) (verificationmodel.VerificationStatus, error)
 	GetVerificationCode(ctx context.Context, userID string) (string, error)
 	VerifyCode(ctx context.Context, userGameName string, code string) error
+	SearchUsers(ctx context.Context, query string) ([]model.User, error)
 }
 
 type Storage interface {
@@ -192,4 +195,39 @@ func (s *Service) VerifyCode(ctx context.Context, req *userv1.VerifyCodeRequest)
 	}
 
 	return &userv1.VerifyCodeResponse{}, nil
+}
+
+// GetUser implements userv1.UserServiceServer.
+func (s *Service) GetUser(context.Context, *userv1.GetUserRequest) (*userv1.GetUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUser not implemented")
+}
+
+// SearchUsers implements userv1.UserServiceServer.
+func (s *Service) SearchUsers(ctx context.Context, req *userv1.SearchUsersRequest) (*userv1.SearchUsersResponse, error) {
+	searched, err := s.dbRepo.SearchUsers(ctx, req.Query)
+	if err != nil {
+		return nil, err
+	}
+
+	bucketName := "avatars"
+
+	users := lo.Map(searched, func(user model.User, _ int) *userv1.GetUserResponse {
+		url := fmt.Sprintf("%s/%s/%s", s.cfg.CdnUrl, bucketName, user.UserId)
+		original := fmt.Sprintf("%s/avatar.webp", url)
+		x96 := fmt.Sprintf("%s/avatar_96.webp", url)
+		x48 := fmt.Sprintf("%s/avatar_48.webp", url)
+		return &userv1.GetUserResponse{
+			UserId:       user.UserId,
+			UserGameName: user.GameName,
+			Avatar: &userv1.GetUserResponse_Image{
+				Original: original,
+				X96:      x96,
+				X48:      x48,
+			},
+		}
+	})
+
+	return &userv1.SearchUsersResponse{
+		Users: users,
+	}, nil
 }
