@@ -13,12 +13,11 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mongo"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
+	"github.com/lasthearth/vsservice/internal/player"
 	"github.com/lasthearth/vsservice/internal/rules"
 	"github.com/lasthearth/vsservice/internal/server"
 	"github.com/lasthearth/vsservice/internal/settlement"
 	"github.com/lasthearth/vsservice/internal/stats"
-	"github.com/lasthearth/vsservice/internal/user"
-	"github.com/lasthearth/vsservice/internal/verification"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
@@ -70,9 +69,8 @@ func main() {
 		stats.App,
 		// trademarket.App,
 		rules.App,
-		verification.App,
+		player.App,
 		server.App,
-		user.App,
 		settlement.App,
 		notification.App,
 		news.App,

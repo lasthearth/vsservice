@@ -19,7 +19,7 @@ func (m *Stats) ToModel() *model.Stats {
 	}
 
 	return &model.Stats{
-		ID:            m.Id.String(),
+		Id:            m.Id.String(),
 		Name:          m.Name,
 		DeathCount:    stats.DeathCount,
 		Seeds:         seeds,

@@ -650,71 +650,11 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /v1/user/verify/code:
-        get:
-            tags:
-                - UserService
-            operationId: UserService_GetVerifyCode
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/GetVerifyCodeResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-        post:
-            tags:
-                - UserService
-            description: Used for in game user verification
-            operationId: UserService_VerifyCode
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/VerifyCodeRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/VerifyCodeResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/user/verify/status:
-        get:
-            tags:
-                - UserService
-            operationId: UserService_VerifyStatus
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/VerifyStatusResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/user/verify/{user_game_name}/status:
         get:
             tags:
-                - UserService
-            operationId: UserService_VerifyStatusByName
+                - VerificationService
+            operationId: VerificationService_VerifyStatusByName
             parameters:
                 - name: user_game_name
                   in: path
@@ -801,6 +741,31 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetUserInvitationsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/users/{user_id}/verification:status:
+        get:
+            tags:
+                - VerificationService
+            description: Get user verification status
+            operationId: VerificationService_VerificationStatus
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/VerifyStatusResponse'
                 default:
                     description: Default error response
                     content:
@@ -1073,11 +1038,6 @@ components:
                 x96:
                     type: string
                 x48:
-                    type: string
-        GetVerifyCodeResponse:
-            type: object
-            properties:
-                code:
                     type: string
         GoogleProtobufAny:
             type: object
@@ -1381,19 +1341,6 @@ components:
                     type: string
                 rejection_reason:
                     type: string
-        VerifyCodeRequest:
-            required:
-                - code
-                - user_game_name
-            type: object
-            properties:
-                code:
-                    type: string
-                user_game_name:
-                    type: string
-        VerifyCodeResponse:
-            type: object
-            properties: {}
         VerifyStatusResponse:
             type: object
             properties:
