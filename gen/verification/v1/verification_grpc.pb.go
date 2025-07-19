@@ -19,11 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	VerificationService_List_FullMethodName    = "/verification.v1.VerificationService/List"
-	VerificationService_Submit_FullMethodName  = "/verification.v1.VerificationService/Submit"
-	VerificationService_Approve_FullMethodName = "/verification.v1.VerificationService/Approve"
-	VerificationService_Reject_FullMethodName  = "/verification.v1.VerificationService/Reject"
-	VerificationService_Details_FullMethodName = "/verification.v1.VerificationService/Details"
+	VerificationService_List_FullMethodName               = "/verification.v1.VerificationService/List"
+	VerificationService_Submit_FullMethodName             = "/verification.v1.VerificationService/Submit"
+	VerificationService_Approve_FullMethodName            = "/verification.v1.VerificationService/Approve"
+	VerificationService_Reject_FullMethodName             = "/verification.v1.VerificationService/Reject"
+	VerificationService_Details_FullMethodName            = "/verification.v1.VerificationService/Details"
+	VerificationService_VerificationStatus_FullMethodName = "/verification.v1.VerificationService/VerificationStatus"
+	VerificationService_VerifyStatusByName_FullMethodName = "/verification.v1.VerificationService/VerifyStatusByName"
 )
 
 // VerificationServiceClient is the client API for VerificationService service.
@@ -43,6 +45,9 @@ type VerificationServiceClient interface {
 	// Get user verification details
 	// Possible statuses: pending, approved, rejected, verified
 	Details(ctx context.Context, in *DetailsRequest, opts ...grpc.CallOption) (*DetailsResponse, error)
+	// Get user verification status
+	VerificationStatus(ctx context.Context, in *VerifyStatusRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error)
+	VerifyStatusByName(ctx context.Context, in *VerifyStatusByNameRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error)
 }
 
 type verificationServiceClient struct {
@@ -103,6 +108,26 @@ func (c *verificationServiceClient) Details(ctx context.Context, in *DetailsRequ
 	return out, nil
 }
 
+func (c *verificationServiceClient) VerificationStatus(ctx context.Context, in *VerifyStatusRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyStatusResponse)
+	err := c.cc.Invoke(ctx, VerificationService_VerificationStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *verificationServiceClient) VerifyStatusByName(ctx context.Context, in *VerifyStatusByNameRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyStatusResponse)
+	err := c.cc.Invoke(ctx, VerificationService_VerifyStatusByName_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VerificationServiceServer is the server API for VerificationService service.
 // All implementations should embed UnimplementedVerificationServiceServer
 // for forward compatibility.
@@ -120,6 +145,9 @@ type VerificationServiceServer interface {
 	// Get user verification details
 	// Possible statuses: pending, approved, rejected, verified
 	Details(context.Context, *DetailsRequest) (*DetailsResponse, error)
+	// Get user verification status
+	VerificationStatus(context.Context, *VerifyStatusRequest) (*VerifyStatusResponse, error)
+	VerifyStatusByName(context.Context, *VerifyStatusByNameRequest) (*VerifyStatusResponse, error)
 }
 
 // UnimplementedVerificationServiceServer should be embedded to have
@@ -143,6 +171,12 @@ func (UnimplementedVerificationServiceServer) Reject(context.Context, *RejectReq
 }
 func (UnimplementedVerificationServiceServer) Details(context.Context, *DetailsRequest) (*DetailsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Details not implemented")
+}
+func (UnimplementedVerificationServiceServer) VerificationStatus(context.Context, *VerifyStatusRequest) (*VerifyStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerificationStatus not implemented")
+}
+func (UnimplementedVerificationServiceServer) VerifyStatusByName(context.Context, *VerifyStatusByNameRequest) (*VerifyStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyStatusByName not implemented")
 }
 func (UnimplementedVerificationServiceServer) testEmbeddedByValue() {}
 
@@ -254,6 +288,42 @@ func _VerificationService_Details_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VerificationService_VerificationStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VerificationServiceServer).VerificationStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VerificationService_VerificationStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VerificationServiceServer).VerificationStatus(ctx, req.(*VerifyStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VerificationService_VerifyStatusByName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyStatusByNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VerificationServiceServer).VerifyStatusByName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VerificationService_VerifyStatusByName_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VerificationServiceServer).VerifyStatusByName(ctx, req.(*VerifyStatusByNameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VerificationService_ServiceDesc is the grpc.ServiceDesc for VerificationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -280,6 +350,14 @@ var VerificationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Details",
 			Handler:    _VerificationService_Details_Handler,
+		},
+		{
+			MethodName: "VerificationStatus",
+			Handler:    _VerificationService_VerificationStatus_Handler,
+		},
+		{
+			MethodName: "VerifyStatusByName",
+			Handler:    _VerificationService_VerifyStatusByName_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

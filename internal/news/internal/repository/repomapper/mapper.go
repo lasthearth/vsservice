@@ -30,7 +30,7 @@ func (c *MapperImpl) FromModels(source []model.News) []dto.News {
 }
 func (c *MapperImpl) ToModel(source dto.News) model.News {
 	var modelNews model.News
-	modelNews.Id = goverter.ObjectIdToString(source.Model.Id)
+	modelNews.Id = goverter.ObjectIdToString(source.Id())
 	modelNews.Title = source.Title
 	modelNews.Preview = source.Preview
 	modelNews.Content = source.Content

@@ -1,3 +1,4 @@
+//go:generate goverter gen github.com/lasthearth/vsservice/internal/news/internal/repository
 package repository
 
 import (
@@ -24,6 +25,7 @@ type Mapper interface {
 
 	ToModels(dto []dto.News) []model.News
 	// goverter:autoMap Model
+	// goverter:map Id Id
 	ToModel(dto dto.News) model.News
 }
 
