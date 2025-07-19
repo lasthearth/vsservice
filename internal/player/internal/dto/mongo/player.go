@@ -12,6 +12,6 @@ type Player struct {
 	UserName     string `bson:"user_name"`
 	UserGameName string `bson:"user_game_name"`
 
-	Verification verificationdto.Verification `bson:",inline"`
-	Stats        stats.Stats                  `bson:",inline"`
+	Verification verificationdto.Verification `bson:"verification"`
+	Stats        stats.Stats                  `bson:"stats"`
 }

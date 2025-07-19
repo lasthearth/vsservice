@@ -101,9 +101,8 @@ message RejectResponse {}
 message DetailsRequest {}
 
 message DetailsResponse {
-  string id = 1;
-  string status = 2;
-  string rejection_reason = 3;
+  string status = 1;
+  string rejection_reason = 2;
 }
 
 message VerifyStatusByNameRequest {

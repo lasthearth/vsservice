@@ -149,7 +149,6 @@ func (s *Service) Details(ctx context.Context, req *verificationv1.DetailsReques
 	}
 
 	return &verificationv1.DetailsResponse{
-		Id:              verif.Id,
 		Status:          string(verif.Status),
 		RejectionReason: verif.RejectionReason,
 	}, nil
