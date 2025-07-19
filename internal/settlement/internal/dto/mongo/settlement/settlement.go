@@ -38,6 +38,8 @@ func (s *Settlement) ToModel() *model.Settlement {
 		Members:     members,
 		Coordinates: *s.Coordinates.ToModel(),
 		Attachments: attachments,
+		Diplomacy:   s.Diplomacy,
+		Description: s.Description,
 		UpdatedAt:   s.UpdatedAt,
 		CreatedAt:   s.CreatedAt,
 	}
