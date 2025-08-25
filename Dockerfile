@@ -88,6 +88,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     libwebpmux3 \
     libwebpdemux2 \
     libarchive13 \
+    adduser \
     libexpat1 && \
     apt-get autoremove -y && \
     apt-get autoclean && \
@@ -96,7 +97,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     update-ca-certificates
 
 ARG UID=10001
-RUN su -l && adduser \
+RUN adduser \
     --disabled-password \
     --gecos "" \
     --home "/nonexistent" \
