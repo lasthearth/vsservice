@@ -28,26 +28,26 @@ RUN --mount=type=bind,source=${PROJECT_PATH}/go.sum,target=go.sum \
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update && apt-get install -y \
     build-essential \
-    pkg-config \
-    libglib2.0-dev \
-    libjpeg62-turbo-dev \
-    libpng-dev \
-    libtiff5-dev \
-    meson \
-    ninja-build \
-    libwebp-dev \
-    libarchive-dev \
-    libexpat1-dev && \
-    rm -rf /var/lib/apt/lists/*
+    pkg-config
+    # libglib2.0-dev \
+    # libjpeg62-turbo-dev \
+    # libpng-dev \
+    # libtiff5-dev \
+    # meson \
+    # ninja-build \
+    # libwebp-dev \
+    # libarchive-dev \
+    # libexpat1-dev && \
+    # rm -rf /var/lib/apt/lists/*
 
-RUN wget https://github.com/libvips/libvips/releases/download/v${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION}.tar.xz && \
-    tar -xf vips-${LIBVIPS_VERSION}.tar.xz && \
-    cd vips-${LIBVIPS_VERSION} && \
-    meson setup build --prefix /usr/local --buildtype=release && \
-    meson compile -C build && \
-    meson install -C build && \
-    ldconfig && \
-    cd .. && rm -rf vips-${LIBVIPS_VERSION}*
+# RUN wget https://github.com/libvips/libvips/releases/download/v${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION}.tar.xz && \
+#     tar -xf vips-${LIBVIPS_VERSION}.tar.xz && \
+#     cd vips-${LIBVIPS_VERSION} && \
+#     meson setup build --prefix /usr/local --buildtype=release && \
+#     meson compile -C build && \
+#     meson install -C build && \
+#     ldconfig && \
+#     cd .. && rm -rf vips-${LIBVIPS_VERSION}*
 
 ARG TARGETARCH
 
@@ -77,16 +77,10 @@ RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update && \
     apt-get install --no-install-recommends -y \
     ca-certificates \
-    tzdata \
-    libglib2.0-0 \
-    libjpeg62-turbo \
-    libpng16-16 \
-    libtiff6 \
-    libwebp7 \
-    libwebpmux3 \
-    libwebpdemux2 \
-    libarchive13 \
-    libexpat1 && \
+    libvips \
+    libvips-dev \
+    libvips-tools \
+    tzdata && \
     apt-get autoremove -y && \
     apt-get autoclean && \
     apt-get clean && \
