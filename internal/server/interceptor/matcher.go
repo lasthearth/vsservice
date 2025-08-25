@@ -14,9 +14,9 @@ func AuthMatcher(ctx context.Context, c interceptors.CallMeta) bool {
 		return false
 	case "/leaderboard.v1.LeaderboardService/ListEntries":
 		return false
-	case "/user.v1.UserService/VerifyCode":
+	case "/verification.v1.VerificationService/VerifyCode":
 		return false
-	case "/user.v1.UserService/VerifyStatusByName":
+	case "/verification.v1.VerificationService/VerifyStatusByName":
 		return false
 	case "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo":
 		return false
