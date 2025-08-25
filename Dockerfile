@@ -29,7 +29,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
-    glibc \
+    libc6-dev \
     libglib2.0-dev \
     libjpeg62-turbo-dev \
     libpng-dev \
@@ -79,7 +79,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     apt-get install --no-install-recommends -y \
     ca-certificates \
     tzdata \
-    glibc \
+    libc6-dev \
     libglib2.0-dev \
     libjpeg62-turbo \
     libpng16-16 \
