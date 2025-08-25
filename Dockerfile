@@ -96,7 +96,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     update-ca-certificates
 
 ARG UID=10001
-RUN adduser \
+RUN su -l && adduser \
     --disabled-password \
     --gecos "" \
     --home "/nonexistent" \
