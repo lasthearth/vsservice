@@ -1,4 +1,4 @@
-﻿# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1
 
 # Comments are provided throughout this file to help you get started.
 # If you need more help, visit the Dockerfile reference guide at
@@ -28,26 +28,26 @@ RUN --mount=type=bind,source=${PROJECT_PATH}/go.sum,target=go.sum \
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update && apt-get install -y \
     build-essential \
-    pkg-config
-    # libglib2.0-dev \
-    # libjpeg62-turbo-dev \
-    # libpng-dev \
-    # libtiff5-dev \
-    # meson \
-    # ninja-build \
-    # libwebp-dev \
-    # libarchive-dev \
-    # libexpat1-dev && \
-    # rm -rf /var/lib/apt/lists/*
+    pkg-config \
+    libglib2.0-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libtiff5-dev \
+    meson \
+    ninja-build \
+    libwebp-dev \
+    libarchive-dev \
+    libexpat1-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# RUN wget https://github.com/libvips/libvips/releases/download/v${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION}.tar.xz && \
-#     tar -xf vips-${LIBVIPS_VERSION}.tar.xz && \
-#     cd vips-${LIBVIPS_VERSION} && \
-#     meson setup build --prefix /usr/local --buildtype=release && \
-#     meson compile -C build && \
-#     meson install -C build && \
-#     ldconfig && \
-#     cd .. && rm -rf vips-${LIBVIPS_VERSION}*
+RUN wget https://github.com/libvips/libvips/releases/download/v${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION}.tar.xz && \
+    tar -xf vips-${LIBVIPS_VERSION}.tar.xz && \
+    cd vips-${LIBVIPS_VERSION} && \
+    meson setup build --prefix /usr/local --buildtype=release && \
+    meson compile -C build && \
+    meson install -C build && \
+    ldconfig && \
+    cd .. && rm -rf vips-${LIBVIPS_VERSION}*
 
 ARG TARGETARCH
 
@@ -69,7 +69,7 @@ RUN --mount=type=bind,source=./${PROJECT_PATH}/,target=. \
 # most recent version of that image when you build your Dockerfile. If
 # reproducability is important, consider using a versioned tag
 # (e.g., alpine:3.17.2) or SHA (e.g., alpine@sha256:c41ab5c992deb4fe7e5da09f67a8804a46bd0592bfdf0b1847dde0e0889d2bff).
-FROM debian:bookworm AS final
+FROM debian:bookworm-slim AS final
 
 COPY --from=build /usr/local/lib /usr/local/lib
 
@@ -77,10 +77,16 @@ RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update && \
     apt-get install --no-install-recommends -y \
     ca-certificates \
-    libvips \
-    libvips-dev \
-    libvips-tools \
-    tzdata && \
+    tzdata \
+    libglib2.0-dev \
+    libjpeg62-turbo \
+    libpng16-16 \
+    libtiff6 \
+    libwebp7 \
+    libwebpmux3 \
+    libwebpdemux2 \
+    libarchive13 \
+    libexpat1 && \
     apt-get autoremove -y && \
     apt-get autoclean && \
     apt-get clean && \
