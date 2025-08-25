@@ -38,8 +38,28 @@ func (v *Verification) CanSubmit() error {
 		return ErrVerificationPending
 	case VerificationStatusApproved:
 		return ErrAlreadyVerified
+	case VerificationStatusVerified:
+		return ErrAlreadyVerified
 	default:
 		return errors.New("unknown verification request status")
+	}
+}
+
+func New(
+	userId string,
+	answers []Answer,
+	contacts string,
+) *Verification {
+	return &Verification{
+		Id:               "",
+		UserId:           userId,
+		Answers:          []Answer{},
+		Contacts:         contacts,
+		Status:           VerificationStatusPending,
+		RejectionReason:  "",
+		VerificationCode: "",
+		UpdatedAt:        time.Now(),
+		CreatedAt:        time.Now(),
 	}
 }
 
