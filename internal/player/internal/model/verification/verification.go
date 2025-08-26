@@ -58,7 +58,9 @@ func New(
 	return &Verification{
 		Id:               "",
 		UserId:           userId,
-		Answers:          []Answer{},
+		UserName:         userName,
+		UserGameName:     userGameName,
+		Answers:          answers,
 		Contacts:         contacts,
 		Status:           VerificationStatusPending,
 		RejectionReason:  "",
