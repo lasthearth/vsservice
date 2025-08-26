@@ -19,6 +19,8 @@ type Verification struct {
 	Id string
 	// User id from sso
 	UserId           string
+	UserName         string
+	UserGameName     string
 	Answers          []Answer
 	Contacts         string
 	Status           VerificationStatus
@@ -46,10 +48,13 @@ func (v *Verification) CanSubmit() error {
 }
 
 func New(
-	userId string,
+	userId,
+	userName,
+	userGameName string,
 	answers []Answer,
 	contacts string,
 ) *Verification {
+	now := time.Now()
 	return &Verification{
 		Id:               "",
 		UserId:           userId,
@@ -58,8 +63,8 @@ func New(
 		Status:           VerificationStatusPending,
 		RejectionReason:  "",
 		VerificationCode: "",
-		UpdatedAt:        time.Now(),
-		CreatedAt:        time.Now(),
+		UpdatedAt:        now,
+		CreatedAt:        now,
 	}
 }
 

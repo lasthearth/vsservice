@@ -108,8 +108,13 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 		return nil, err
 	}
 
-	// TODO: create player here
-	v := verification.New(userId, answers, req.Contacts)
+	v := verification.New(
+		userId,
+		req.UserName,
+		req.UserGameName,
+		answers,
+		req.Contacts,
+	)
 
 	existVerification, err := s.dbRepo.GetVerification(ctx, userId)
 	if err != nil {

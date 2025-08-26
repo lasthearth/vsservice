@@ -32,6 +32,8 @@ func (c *MapperImpl) FromAnswers(source []verification.Answer) []verification1.A
 func (c *MapperImpl) FromVerification(source verification.Verification) verification1.Verification {
 	var verificationdtoVerification verification1.Verification
 	verificationdtoVerification.UserId = source.UserId
+	verificationdtoVerification.UserName = source.UserName
+	verificationdtoVerification.UserGameName = source.UserGameName
 	verificationdtoVerification.Answers = c.FromAnswers(source.Answers)
 	verificationdtoVerification.Contacts = source.Contacts
 	verificationdtoVerification.Status = string(source.Status)
@@ -61,6 +63,8 @@ func (c *MapperImpl) ToVerification(source verification1.Verification) verificat
 	var verificationVerification verification.Verification
 	verificationVerification.Id = goverter.ObjectIdToString(source.Model.Id)
 	verificationVerification.UserId = source.UserId
+	verificationVerification.UserName = source.UserName
+	verificationVerification.UserGameName = source.UserGameName
 	verificationVerification.Answers = c.ToAnswers(source.Answers)
 	verificationVerification.Contacts = source.Contacts
 	verificationVerification.Status = verification.VerificationStatus(source.Status)
