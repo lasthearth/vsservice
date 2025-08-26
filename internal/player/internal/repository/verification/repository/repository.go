@@ -44,9 +44,22 @@ func (r *Repository) Create(ctx context.Context, userId string, v verification.V
 
 	l.Debug("inserting verification request into database")
 
-	_, err := r.coll.InsertOne(ctx, dto)
+	res, err := r.coll.InsertOne(ctx, dto)
 	if err != nil {
 		l.Error("failed to insert verification request", zap.Error(err))
+		return err
+	}
+
+	_, err = r.coll.UpdateOne(
+		ctx,
+		bson.M{"_id": res.InsertedID},
+		bson.M{"$set": bson.M{
+			"created_at": time.Now(),
+			"updated_at": time.Now(),
+		}},
+	)
+	if err != nil {
+		l.Error("failed to update verification request", zap.Error(err))
 		return err
 	}
 
@@ -126,7 +139,10 @@ func (r *Repository) GetVerificationRequests(ctx context.Context) ([]verificatio
 	defer cancel()
 
 	l.Debug("executing find query on verification collection")
-	finded, err := r.coll.Find(ctx, bson.M{"status": verification.VerificationStatusPending})
+	finded, err := r.coll.Find(
+		ctx,
+		bson.M{"status": verification.VerificationStatusPending},
+	)
 	if err != nil {
 		l.Error("find error", zap.Error(err))
 		return nil, err
