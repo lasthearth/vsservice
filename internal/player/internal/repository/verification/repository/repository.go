@@ -3,6 +3,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	verificationdto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo/verification"
@@ -50,9 +51,15 @@ func (r *Repository) Create(ctx context.Context, userId string, v verification.V
 		return err
 	}
 
+	oid, ok := res.InsertedID.(bson.ObjectID)
+	if !ok {
+		l.Error("unexpected InsertedID type", zap.Any("id", res.InsertedID))
+		return fmt.Errorf("unexpected InsertedID type: %T", res.InsertedID)
+	}
+
 	_, err = r.coll.UpdateOne(
 		ctx,
-		bson.M{"_id": res.InsertedID},
+		bson.M{"_id": oid},
 		bson.M{"$set": bson.M{
 			"created_at": time.Now(),
 			"updated_at": time.Now(),
