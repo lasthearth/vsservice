@@ -167,11 +167,6 @@ func (s *Service) List(ctx context.Context, req *verificationv1.ListRequest) (*v
 
 	resp := make([]*verificationv1.ListResponse_VerifyUserRequest, len(reqs))
 	for i, req := range reqs {
-		p, err := s.playerRepo.GetPlayerByUserId(ctx, req.UserId)
-		if err != nil {
-			return nil, err
-		}
-
 		answers := lo.Map(
 			req.Answers,
 			func(a verification.Answer, _ int) *verificationv1.Answer {
@@ -183,9 +178,9 @@ func (s *Service) List(ctx context.Context, req *verificationv1.ListRequest) (*v
 		)
 
 		resp[i] = &verificationv1.ListResponse_VerifyUserRequest{
-			UserId:       p.UserId,
-			UserName:     p.UserName,
-			UserGameName: p.UserGameName,
+			UserId:       req.UserId,
+			UserName:     req.UserName,
+			UserGameName: req.UserGameName,
 			Contacts:     req.Contacts,
 			Answers:      answers,
 		}
