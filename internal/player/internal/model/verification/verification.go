@@ -19,6 +19,8 @@ type Verification struct {
 	Id string
 	// User id from sso
 	UserId           string
+	UserName         string
+	UserGameName     string
 	Answers          []Answer
 	Contacts         string
 	Status           VerificationStatus
@@ -38,8 +40,31 @@ func (v *Verification) CanSubmit() error {
 		return ErrVerificationPending
 	case VerificationStatusApproved:
 		return ErrAlreadyVerified
+	case VerificationStatusVerified:
+		return ErrAlreadyVerified
 	default:
 		return errors.New("unknown verification request status")
+	}
+}
+
+func New(
+	userId,
+	userName,
+	userGameName string,
+	answers []Answer,
+	contacts string,
+) *Verification {
+	now := time.Now()
+	return &Verification{
+		Id:               "",
+		UserId:           userId,
+		Answers:          []Answer{},
+		Contacts:         contacts,
+		Status:           VerificationStatusPending,
+		RejectionReason:  "",
+		VerificationCode: "",
+		UpdatedAt:        now,
+		CreatedAt:        now,
 	}
 }
 

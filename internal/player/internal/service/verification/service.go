@@ -108,15 +108,18 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 		return nil, err
 	}
 
-	v := verification.Verification{
-		Contacts: req.Contacts,
-		Answers:  answers,
-	}
+	v := verification.New(
+		userId,
+		req.UserName,
+		req.UserGameName,
+		answers,
+		req.Contacts,
+	)
 
 	existVerification, err := s.dbRepo.GetVerification(ctx, userId)
 	if err != nil {
 		if errors.Is(err, repoerr.ErrNotFound) {
-			if err := s.dbRepo.Create(ctx, userId, v); err != nil {
+			if err := s.dbRepo.Create(ctx, userId, *v); err != nil {
 				return nil, err
 			}
 		}
@@ -129,7 +132,7 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 		return nil, err
 	}
 
-	if err := s.dbRepo.Update(ctx, userId, v); err != nil {
+	if err := s.dbRepo.Update(ctx, userId, *v); err != nil {
 		return nil, err
 	}
 

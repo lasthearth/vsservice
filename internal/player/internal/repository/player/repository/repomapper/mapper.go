@@ -34,6 +34,8 @@ func (c *MapperImpl) FromPlayer(source model.Player) mongo.Player {
 func (c *MapperImpl) FromVerification(source verification.Verification) verification1.Verification {
 	var verificationdtoVerification verification1.Verification
 	verificationdtoVerification.UserId = source.UserId
+	verificationdtoVerification.UserName = source.UserName
+	verificationdtoVerification.UserGameName = source.UserGameName
 	if source.Answers != nil {
 		verificationdtoVerification.Answers = make([]verification1.Answer, len(source.Answers))
 		for i := 0; i < len(source.Answers); i++ {
@@ -80,6 +82,8 @@ func (c *MapperImpl) ToVerification(source verification1.Verification) verificat
 	var verificationVerification verification.Verification
 	verificationVerification.Id = goverter.ObjectIdToString(source.Model.Id)
 	verificationVerification.UserId = source.UserId
+	verificationVerification.UserName = source.UserName
+	verificationVerification.UserGameName = source.UserGameName
 	if source.Answers != nil {
 		verificationVerification.Answers = make([]verification.Answer, len(source.Answers))
 		for i := 0; i < len(source.Answers); i++ {

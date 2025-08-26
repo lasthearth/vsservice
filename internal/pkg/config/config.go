@@ -12,6 +12,9 @@ import (
 type Config struct {
 	AppEnv string `default:"dev"`
 
+	// DisableAuthMatcher disables interceptor for auth token.
+	DisableAuthMatcher bool `envconfig:"DISABLE_AUTH_MATCHER" default:"false"`
+
 	JWKS_URL string `envconfig:"JWKS_URL"`
 	Issuer   string `envconfig:"ISSUER"`
 	Audience string `envconfig:"AUDIENCE"`

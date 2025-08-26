@@ -8,12 +8,9 @@ import (
 	verificationdto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/player/internal/model"
 	"github.com/lasthearth/vsservice/internal/player/internal/model/verification"
-	"github.com/lasthearth/vsservice/internal/player/internal/repository/player/repository/repomapper"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
-
-var _ Mapper = (*repomapper.MapperImpl)(nil)
 
 // goverter:converter
 // goverter:output:file repomapper/mapper.go
