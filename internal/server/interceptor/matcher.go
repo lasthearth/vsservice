@@ -4,9 +4,13 @@ import (
 	"context"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
+	"github.com/lasthearth/vsservice/internal/pkg/config"
 )
 
-func AuthMatcher(ctx context.Context, c interceptors.CallMeta) bool {
+func AuthMatcher(ctx context.Context, c interceptors.CallMeta, cfg config.Config) bool {
+	if cfg.DisableAuthMatcher {
+		return false
+	}
 	switch c.FullMethod() {
 	case "/vintage.v1.VintageService/GetOnlinePlayersCount":
 		return false

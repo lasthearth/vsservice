@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/go-faster/errors"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
@@ -58,12 +59,16 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			selector.UnaryServerInterceptor(s.authInterceptor.Unary(), selector.MatchFunc(interceptor.AuthMatcher)),
+			selector.UnaryServerInterceptor(s.authInterceptor.Unary(), selector.MatchFunc(func(ctx context.Context, callMeta interceptors.CallMeta) bool {
+				return interceptor.AuthMatcher(ctx, callMeta, s.c)
+			})),
 			logging.UnaryServerInterceptor(interceptorLogger(s.log), logOpts...),
 			recovery.UnaryServerInterceptor(recoveryOpts...),
 		),
 		grpc.ChainStreamInterceptor(
-			selector.StreamServerInterceptor(s.authInterceptor.Stream(), selector.MatchFunc(interceptor.AuthMatcher)),
+			selector.StreamServerInterceptor(s.authInterceptor.Stream(), selector.MatchFunc(func(ctx context.Context, callMeta interceptors.CallMeta) bool {
+				return interceptor.AuthMatcher(ctx, callMeta, s.c)
+			})),
 			logging.StreamServerInterceptor(interceptorLogger(s.log), logOpts...),
 			recovery.StreamServerInterceptor(recoveryOpts...),
 		),
