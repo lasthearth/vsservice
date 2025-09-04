@@ -139,10 +139,11 @@ func (r *Repository) Submit(ctx context.Context, opts service.SettlementOpts) er
 		return repoerr.ErrAlreadySubmitted
 	}
 
-	if found.Status != model.SettlementStatusApproved {
-		l.Info("request not approved")
-		return repoerr.ErrNotApproved
-	}
+	// TODO: поменять на found.Status == Approved и возвращать ошибку что уже Approved
+	//if found.Status != model.SettlementStatusApproved {
+	//	l.Info("request not approved")
+	//	return repoerr.ErrNotApproved
+	//}
 
 	found.LvlUp()
 	l.Debug(
