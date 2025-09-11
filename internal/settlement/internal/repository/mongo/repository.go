@@ -149,7 +149,7 @@ func (r *Repository) GetSettlementByLeader(ctx context.Context, leaderID string)
 	defer cancel()
 
 	r.log.Debug("executing find query on settlement collection")
-	found := r.setColl.FindOne(ctx, bson.M{"leader_id": leaderID})
+	found := r.setColl.FindOne(ctx, bson.M{"leader.user_id": leaderID})
 	err := found.Err()
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
