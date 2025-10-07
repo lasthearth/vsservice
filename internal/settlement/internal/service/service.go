@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"mime"
 
@@ -10,6 +11,7 @@ import (
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/image"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
+	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repoerr"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -79,6 +81,11 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		return nil, err
 	}
 
+	if err := s.dbRepo.IsMemberOrLeader(ctx, "", userID); err != nil {
+		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", userID))
+		return nil, err
+	}
+
 	opts := SettlementOpts{
 		Name: req.Name,
 		Type: *stype,
@@ -94,8 +101,39 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		Attachments: attahs,
 	}
 
-	if err := s.dbRepo.Submit(ctx, opts); err != nil {
-		s.log.Error("failed to create settlement", zap.Error(err))
+	found, err := s.dbRepo.GetSettlementRequestByLeader(ctx, userID)
+	if err != nil {
+		// If no existing request found, create a new one
+		if errors.Is(err, repoerr.ErrNotFound) {
+			if err := s.dbRepo.CreateRequest(ctx, opts); err != nil {
+				s.log.Error("failed to create new settlement request", zap.Error(err))
+				return nil, err
+			}
+
+			return &settlementv1.SubmitResponse{}, nil
+		}
+
+		s.log.Error("error checking for existing settlement request", zap.Error(err))
+		return nil, err
+
+	}
+	// User already has a request, handle level up or update
+	if found.Status == model.SettlementStatusPending {
+		s.log.Info("request already submitted", zap.String("user_id", userID))
+		return nil, status.Error(codes.AlreadyExists, "settlement request already pending")
+	}
+
+	if found.Status == model.SettlementStatusApproved {
+		found.LvlUp()
+		s.log.Debug("settlement level up",
+			zap.String("before", string(opts.Type)),
+			zap.String("after", string(found.Type)),
+		)
+		opts.Type = found.Type
+	}
+
+	if err := s.dbRepo.UpdateRequest(ctx, opts); err != nil {
+		s.log.Error("failed to update settlement request", zap.Error(err))
 		return nil, err
 	}
 

@@ -1,0 +1,465 @@
+openapi: 3.0.3
+info:
+  title: Settlement Submission API
+  description: API for submitting new settlements with validation and business logic
+  version: 1.0.0
+servers:
+  - url: https://api.lasthearth.ru/v1
+    description: Production server
+  - url: http://localhost:6969/v1
+    description: Development server
+
+paths:
+  /settlements:
+    post:
+      summary: Submit a new settlement registration request
+      description: Submit a new settlement request with all required information for administrator review
+      operationId: submitSettlement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitRequest'
+      responses:
+        '200':
+          description: Settlement request successfully submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitResponse'
+        '400':
+          description: Invalid request - missing required fields or validation errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - user is already a leader or member of another settlement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /settlements/{id}:
+    get:
+      summary: Get settlement by ID
+      description: Retrieve details of a specific settlement by its ID
+      operationId: getSettlement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the settlement
+      responses:
+        '200':
+          description: Settlement details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Settlement not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /settlements:
+    get:
+      summary: List all settlements
+      description: Retrieve a list of all approved settlements
+      operationId: listSettlements
+      responses:
+        '200':
+          description: List of settlements retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Settlement'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /settlements/verifications:
+    get:
+      summary: List pending settlement requests
+      description: Retrieve a list of all pending settlement requests for administrator review (requires admin privileges)
+      operationId: listPendingSettlements
+      responses:
+        '200':
+          description: List of pending settlement requests retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Settlement'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient privileges to access this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /settlements/{id}/verification:approve:
+    post:
+      summary: Approve a settlement request
+      description: Approve a pending settlement request (requires admin privileges)
+      operationId: approveSettlement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the settlement request
+      responses:
+        '200':
+          description: Settlement request approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApproveResponse'
+        '400':
+          description: Bad request - settlement already approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient privileges to access this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Settlement request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /settlements/{id}/verification:reject:
+    post:
+      summary: Reject a settlement request
+      description: Reject a pending settlement request with a rejection reason (requires admin privileges)
+      operationId: rejectSettlement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the settlement request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rejection_reason:
+                  type: string
+                  description: Reason for rejecting the settlement request
+              required:
+                - rejection_reason
+      responses:
+        '200':
+          description: Settlement request rejected successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RejectResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - insufficient privileges to access this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Settlement request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /user/{leader_id}/settlements:
+    get:
+      summary: Get settlement by leader ID
+      description: Retrieve settlement information for a specific leader
+      operationId: getSettlementByLeaderId
+      parameters:
+        - name: leader_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the settlement leader
+      responses:
+        '200':
+          description: Settlement details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetByLeaderIdResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Settlement not found for the leader
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    SubmitRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [CAMP, GUILD, ORDEN]
+          description: Type of settlement to create
+        name:
+          type: string
+          description: Name of the settlement
+          example: "New Village"
+        description:
+          type: string
+          description: Description of the settlement
+          example: "A small peaceful village"
+        diplomacy:
+          type: string
+          description: Diplomacy information
+          example: "Allied with neighboring settlements"
+        coordinates:
+          $ref: '#/components/schemas/Vector2'
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubmitAttachment'
+      required:
+        - type
+        - name
+        - description
+        - diplomacy
+        - coordinates
+        - attachments
+
+    SubmitAttachment:
+      type: object
+      properties:
+        data:
+          type: string
+          format: byte
+          description: Base64 encoded attachment data
+        description:
+          type: string
+          description: Description of the attachment
+      required:
+        - data
+        - description
+
+    SubmitResponse:
+      type: object
+      description: Empty response body on successful submission
+
+    GetResponse:
+      type: object
+      properties:
+        settlement:
+          $ref: '#/components/schemas/Settlement'
+
+    ListResponse:
+      type: object
+      properties:
+        settlements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Settlement'
+
+    ListPendingResponse:
+      type: object
+      properties:
+        settlements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Settlement'
+
+    ApproveResponse:
+      type: object
+      description: Empty response body on successful approval
+
+    RejectResponse:
+      type: object
+      description: Empty response body on successful rejection
+
+    GetByLeaderIdResponse:
+      type: object
+      properties:
+        settlement:
+          $ref: '#/components/schemas/Settlement'
+
+    Settlement:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier of the settlement
+        name:
+          type: string
+          description: Name of the settlement
+        type:
+          type: string
+          enum: [CAMP, VILLAGE, CITY, PROVINCE, GUILD, GUILD_LVL2, ORDEN]
+          description: Type of settlement
+        description:
+          type: string
+          description: Description of the settlement
+        diplomacy:
+          type: string
+          description: Diplomacy information
+        leader:
+          $ref: '#/components/schemas/Member'
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+        coordinates:
+          $ref: '#/components/schemas/Vector2'
+        created_at:
+          type: integer
+          format: int64
+          description: Creation timestamp in milliseconds
+        updated_at:
+          type: integer
+          format: int64
+          description: Last updated timestamp in milliseconds
+
+    Member:
+      type: object
+      properties:
+        user_id:
+          type: string
+          description: Unique identifier of the user
+
+    Attachment:
+      type: object
+      properties:
+        desc:
+          type: string
+          description: Description of the attachment
+        url:
+          type: string
+          description: Public URL to access the attachment
+
+    Vector2:
+      type: object
+      properties:
+        x:
+          type: integer
+          format: int32
+        y:
+          type: integer
+          format: int32
+      required:
+        - x
+        - y
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
