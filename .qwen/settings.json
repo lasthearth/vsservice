@@ -1,7 +1,18 @@
 {
   "mcpServers": {
     "deepwiki": {
-      "serverUrl": "https://mcp.deepwiki.com/sse"
+      "httpUrl": "https://mcp.deepwiki.com/mcp"
+    },
+    "MongoDB": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-e",
+        "MDB_MCP_READ_ONLY=true",
+        "-i",
+        "mongodb/mongodb-mcp-server:latest"
+      ]
     }
   }
 }

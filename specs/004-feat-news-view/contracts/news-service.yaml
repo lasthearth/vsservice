@@ -1,0 +1,116 @@
+# News Service API Contract
+
+## Overview
+This OpenAPI specification defines the API contract for the news service, including the new view counter functionality.
+
+## News Service Endpoints
+
+### Get News Article
+```
+GET /v1/news/{id}
+```
+Retrieves a specific news article by ID, including the current view count.
+
+**Path Parameters:**
+- `id` (string, required): Unique identifier of the news article
+
+**Response:**
+```json
+{
+  "id": "string",
+  "title": "string",
+  "content": "string",
+  "author": "string",
+  "created_at": "timestamp",
+  "updated_at": "timestamp",
+  "view_count": "integer"
+}
+```
+
+**HTTP Status Codes:**
+- 200: Success - News article retrieved with view count
+- 404: Not Found - News article with specified ID does not exist
+- 500: Internal Server Error - Server error occurred
+
+### Increment View Count (Internal)
+```
+POST /v1/news/{id}:incrementView
+```
+Atomically increments the view count for a specific news article. This endpoint would typically be called internally when a user views an article.
+
+**Path Parameters:**
+- `id` (string, required): Unique identifier of the news article
+
+**Request Body:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+  "success": "boolean",
+  "new_view_count": "integer"
+}
+```
+
+**HTTP Status Codes:**
+- 200: Success - View count incremented successfully
+- 404: Not Found - News article with specified ID does not exist
+- 500: Internal Server Error - Server error occurred during increment
+```
+
+## gRPC Service Definition
+
+```protobuf
+syntax = "proto3";
+
+package news;
+
+import "google/api/annotations.proto";
+
+// News service definition
+service NewsService {
+  // Get a news article by ID
+  rpc GetNews(GetNewsRequest) returns (GetNewsResponse) {
+    option (google.api.http) = {
+      get: "/v1/news/{id}"
+    };
+  }
+
+  // Increment the view count for a news article
+  rpc IncrementNewsView(IncrementNewsViewRequest) returns (IncrementNewsViewResponse) {
+    option (google.api.http) = {
+      post: "/v1/news/{id}:incrementView"
+      body: "*"
+    };
+  }
+}
+
+// Request message for GetNews
+message GetNewsRequest {
+  string id = 1;
+}
+
+// Response message for GetNews
+message GetNewsResponse {
+  string id = 1;
+  string title = 2;
+  string content = 3;
+  string author = 4;
+  int64 created_at = 5;  // Unix timestamp
+  int64 updated_at = 6;  // Unix timestamp
+  int64 view_count = 7;  // New field for view counter
+}
+
+// Request message for IncrementNewsView
+message IncrementNewsViewRequest {
+  string id = 1;
+}
+
+// Response message for IncrementNewsView
+message IncrementNewsViewResponse {
+  bool success = 1;
+  int64 new_view_count = 2;
+}
+```

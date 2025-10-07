@@ -27,6 +27,7 @@ type Repository interface {
 	ListNews(ctx context.Context, next string, limit int) ([]model.News, string, error)
 	GetNewsById(ctx context.Context, id string) (*model.News, error)
 	DeleteNews(ctx context.Context, id string) error
+	IncrementViewCount(ctx context.Context, id string) error
 }
 
 var _ Storage = (*storage.Storage)(nil)

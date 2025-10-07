@@ -9,7 +9,8 @@ import (
 	"github.com/google/uuid"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	"github.com/lasthearth/vsservice/internal/news/internal/model"
-	nmodel "github.com/lasthearth/vsservice/internal/notification/model"
+	notification "github.com/lasthearth/vsservice/internal/notification/model"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -59,11 +60,11 @@ func (s *Service) CreateNews(ctx context.Context, req *newsv1.CreateNewsRequest)
 
 	if err := s.cnuc.CreateNotification(
 		ctx,
-		nmodel.Notification{
-			UserId:  nmodel.BroadcastUserId,
+		notification.Notification{
+			UserId:  notification.BroadcastUserId,
 			Title:   "Новая новость",
 			Message: "Новость: " + req.Title,
-			State:   nmodel.NotificationStateUnread,
+			State:   notification.NotificationStateUnread,
 		},
 	); err != nil {
 		return nil, err
@@ -81,6 +82,12 @@ func (s *Service) ListNews(ctx context.Context, req *newsv1.ListNewsRequest) (*n
 	news, next, err := s.repo.ListNews(ctx, req.PageToken, limit)
 	if err != nil {
 		return nil, err
+	}
+
+	for _, v := range news {
+		if err := s.repo.IncrementViewCount(ctx, v.Id); err != nil {
+			s.logger.Error("failed to increment view count", zap.Error(err))
+		}
 	}
 
 	return &newsv1.ListNewsResponse{
@@ -102,4 +109,18 @@ func (s *Service) DeleteNews(ctx context.Context, req *newsv1.DeleteNewsRequest)
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// GetNews implements newsv1.NewsServiceServer.
+func (s *Service) GetNews(ctx context.Context, req *newsv1.GetNewsRequest) (*newsv1.News, error) {
+	if err := s.repo.IncrementViewCount(ctx, req.Id); err != nil {
+		s.logger.Error("failed to increment view count", zap.Error(err))
+	}
+
+	news, err := s.repo.GetNewsById(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.mapper.ToProto(*news), nil
 }
