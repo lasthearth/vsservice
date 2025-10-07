@@ -79,7 +79,8 @@ type SettlementDbRepository interface {
 }
 
 type SettlementRequestDbRepository interface {
-	Submit(ctx context.Context, opts SettlementOpts) error
+	CreateRequest(ctx context.Context, opts SettlementOpts) error
+	UpdateRequest(ctx context.Context, opts SettlementOpts) error
 	GetSettlementRequest(ctx context.Context, id string) (*model.SettlementVerification, error)
 	GetSettlementRequestByLeader(ctx context.Context, leaderID string) (*model.SettlementVerification, error)
 	GetPendingSettlements(ctx context.Context) ([]model.SettlementVerification, error)

@@ -110,52 +110,6 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 	return nil
 }
 
-func (r *Repository) Submit(ctx context.Context, opts service.SettlementOpts) error {
-	l := r.log.
-		With(
-			zap.String("leader_id", opts.Leader.UserId),
-			zap.String("settlement_name", opts.Name),
-			zap.String("settlement_type", string(opts.Type)),
-		).
-		WithMethod("submit")
-	l.Info("submitting new settlement request")
-
-	found, err := r.GetSettlementRequestByLeader(ctx, opts.Leader.UserId)
-	if err != nil {
-		if errors.Is(err, repoerr.ErrNotFound) {
-			l.Info("request not found, creating new request")
-			err := r.IsMemberOrLeader(ctx, opts.Leader.UserId, opts.Leader.UserId)
-			if err != nil {
-				return err
-			}
-
-			return r.CreateRequest(ctx, opts)
-		}
-		return nil
-	}
-
-	if found.Status == model.SettlementStatusPending {
-		l.Info("request already submitted")
-		return repoerr.ErrAlreadySubmitted
-	}
-
-	// TODO: поменять на found.Status == Approved и возвращать ошибку что уже Approved
-	//if found.Status != model.SettlementStatusApproved {
-	//	l.Info("request not approved")
-	//	return repoerr.ErrNotApproved
-	//}
-
-	found.LvlUp()
-	l.Debug(
-		"settlemnt lvl up",
-		zap.String("before", string(opts.Type)),
-		zap.String("after", string(found.Type)),
-	)
-	opts.Type = found.Type
-
-	return r.UpdateRequest(ctx, opts)
-}
-
 // Approve implements service.SettlementDbRepository.
 func (r *Repository) Approve(ctx context.Context, id string) error {
 	l := r.log.
