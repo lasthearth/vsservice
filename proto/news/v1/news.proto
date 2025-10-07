@@ -29,6 +29,13 @@ service NewsService {
     };
     option (google.api.method_signature) = "id";
   }
+
+  rpc GetNews(GetNewsRequest) returns (News) {
+    option (google.api.http) = {
+      get: "/v1/news/{id}"
+    };
+    option (google.api.method_signature) = "id";
+  }
 }
 
 message News {
@@ -36,6 +43,7 @@ message News {
   string title = 2;
   string content = 3;
   string preview = 4;
+  int64 view_count = 5;
 }
 
 message CreateNewsRequest {
@@ -69,5 +77,10 @@ message ListNewsResponse {
 
 message DeleteNewsRequest {
   // The unique identifier of the news item to delete.
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetNewsRequest {
+  // The unique identifier of the news item to retrieve.
   string id = 1 [(google.api.field_behavior) = REQUIRED];
 }

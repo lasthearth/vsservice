@@ -20,9 +20,9 @@ tests/
 Go 1.24: Follow standard conventions
 
 ## Recent Changes
+- 004-feat-news-view: Added Go 1.24 + Uber fx for dependency injection, Google gRPC for service communication, grpc-gateway for REST API, MongoDB driver v2
 - 002-id-scope-news: Added Go 1.24 + Uber fx for dependency injection, Google gRPC for service communication, grpc-gateway for REST API, MongoDB driver v2, JWT authentication with interceptor package
 - 002-id-scope-news: Added Go 1.24 + Uber fx for dependency injection, Google gRPC for service communication, grpc-gateway for REST API, MongoDB driver v2, JWT authentication with interceptor package
-- 001-submit-settlement: Added Go 1.24 + Uber fx for dependency injection, Google gRPC for service communication, grpc-gateway for REST API, MongoDB driver v2, MinIO client, JWT authentication, buf for protobuf generation, goverter for struct conversion
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

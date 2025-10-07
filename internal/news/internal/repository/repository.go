@@ -158,3 +158,30 @@ func (r *Repository) DeleteNews(ctx context.Context, id string) error {
 	l.Info("news deleted successfully", zap.Int64("deleted_count", result.DeletedCount))
 	return nil
 }
+
+// IncrementViewCount implements service.Repository.
+func (r *Repository) IncrementViewCount(ctx context.Context, id string) error {
+	l := r.logger.
+		WithMethod("increment_view_count").
+		With(zap.String("id", id))
+
+	l.Info("incrementing view count")
+
+	objID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		l.Error("invalid object id", zap.Error(err))
+		return ierror.ErrNotFound
+	}
+
+	filter := bson.M{"_id": objID}
+	update := bson.M{"$inc": bson.M{"view_count": 1}}
+
+	_, err = r.coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		l.Error("failed to increment view count", zap.Error(err))
+		return err
+	}
+
+	l.Info("view count incremented successfully")
+	return nil
+}

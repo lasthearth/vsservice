@@ -129,6 +129,30 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/Status'
     /v1/news/{id}:
+        get:
+            tags:
+                - NewsService
+            operationId: NewsService_GetNews
+            parameters:
+                - name: id
+                  in: path
+                  description: The unique identifier of the news item to retrieve.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/News'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
         delete:
             tags:
                 - NewsService
@@ -1165,6 +1189,8 @@ components:
                 content:
                     type: string
                 preview:
+                    type: string
+                view_count:
                     type: string
         Notification:
             required:
