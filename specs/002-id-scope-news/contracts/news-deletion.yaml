@@ -1,0 +1,193 @@
+openapi: 3.0.3
+info:
+  title: News Deletion API
+  description: API for deleting news items by ID with scope-based authorization
+  version: 1.0.0
+servers:
+  - url: https://api.lasthearth.ru/v1
+    description: Production server
+  - url: http://localhost:6969/v1
+    description: Development server
+
+paths:
+  /news/{id}:
+    delete:
+      summary: Delete a news item by ID
+      description: Delete a specific news item by its unique identifier. Requires news:delete scope.
+      operationId: deleteNews
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the news item to delete
+      security:
+        - bearerAuth: [news:delete]
+      responses:
+        '200':
+          description: News item successfully deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteNewsResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - user lacks news:delete scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found - news item does not exist (may also occur for concurrent deletion attempts)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /news:
+    post:
+      summary: Create a news item
+      description: Create a new news item (existing endpoint for context)
+      operationId: createNews
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNewsRequest'
+      responses:
+        '200':
+          description: News item successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/News'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad request - validation errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List news items
+      description: List all available news items (existing endpoint for context)
+      operationId: listNews
+      responses:
+        '200':
+          description: List of news items retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListNewsResponse'
+        '401':
+          description: Unauthorized - invalid or missing authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authentication token with required scopes
+
+  schemas:
+    DeleteNewsResponse:
+      type: object
+      description: Response for successful news deletion
+      properties:
+        success:
+          type: boolean
+          description: Indicates whether the deletion was successful
+          example: true
+
+    CreateNewsRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Title of the news item
+          example: "New Feature Released"
+        content:
+          type: string
+          description: Content of the news item
+          example: "We have released a new feature that will enhance user experience..."
+        preview:
+          type: string
+          format: byte
+          description: Preview image data for the news item
+      required:
+        - title
+        - content
+        - preview
+
+    ListNewsResponse:
+      type: object
+      properties:
+        news:
+          type: array
+          items:
+            $ref: '#/components/schemas/News'
+        next_page_token:
+          type: string
+          description: Token for retrieving the next page of results
+
+    News:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the news item
+        title:
+          type: string
+          description: Title of the news item
+        content:
+          type: string
+          description: Content of the news item
+        preview:
+          type: string
+          description: URL to the preview image
+      required:
+        - id
+        - title
+        - content
+        - preview
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "News item not found"
+        code:
+          type: string
+          description: Error code
+          example: "NOT_FOUND"
+        details:
+          type: array
+          items:
+            type: object
+            description: Additional error details
