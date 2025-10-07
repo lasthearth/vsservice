@@ -94,7 +94,67 @@ func (r *Repository) ListNews(
 	return r.mapper.ToModels(resp.Data), resp.Next, nil
 }
 
+// GetNewsById implements service.Repository.
+func (r *Repository) GetNewsById(ctx context.Context, id string) (*model.News, error) {
+	l := r.logger.
+		WithMethod("get_by_id").
+		With(zap.String("id", id))
+
+	l.Info("getting news by id")
+
+	objID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		l.Error("invalid object id", zap.Error(err))
+		return nil, ierror.ErrNotFound
+	}
+
+	finded := r.coll.FindOne(ctx, bson.M{"_id": objID})
+	err = finded.Err()
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			l.Warn("news not found", zap.Error(err))
+			return nil, ierror.ErrNotFound
+		}
+		l.Error("failed to find news", zap.Error(err))
+		return nil, err
+	}
+
+	var news dto.News
+	if err := finded.Decode(&news); err != nil {
+		l.Error("failed to decode news", zap.Error(err))
+		return nil, err
+	}
+
+	newsModel := r.mapper.ToModel(news)
+
+	return &newsModel, nil
+}
+
 // DeleteNews implements service.Repository.
 func (r *Repository) DeleteNews(ctx context.Context, id string) error {
-	panic("unimplemented")
+	l := r.logger.
+		WithMethod("delete").
+		With(zap.String("id", id))
+
+	l.Info("deleting news")
+
+	objID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		l.Error("invalid object id", zap.Error(err))
+		return ierror.ErrNotFound
+	}
+
+	result, err := r.coll.DeleteOne(ctx, bson.M{"_id": objID})
+	if err != nil {
+		l.Error("failed to delete news", zap.Error(err))
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		l.Warn("news not found for deletion")
+		return ierror.ErrNotFound
+	}
+
+	l.Info("news deleted successfully", zap.Int64("deleted_count", result.DeletedCount))
+	return nil
 }

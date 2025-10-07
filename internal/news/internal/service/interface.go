@@ -25,6 +25,7 @@ var _ Repository = (*repository.Repository)(nil)
 type Repository interface {
 	CreateNews(ctx context.Context, news *model.News) (*model.News, error)
 	ListNews(ctx context.Context, next string, limit int) ([]model.News, string, error)
+	GetNewsById(ctx context.Context, id string) (*model.News, error)
 	DeleteNews(ctx context.Context, id string) error
 }
 

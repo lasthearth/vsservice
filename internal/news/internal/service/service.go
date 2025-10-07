@@ -10,6 +10,7 @@ import (
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	"github.com/lasthearth/vsservice/internal/news/internal/model"
 	nmodel "github.com/lasthearth/vsservice/internal/notification/model"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // CreateNews implements newsv1.NewsServiceServer.
@@ -86,4 +87,19 @@ func (s *Service) ListNews(ctx context.Context, req *newsv1.ListNewsRequest) (*n
 		News:          s.mapper.ToProtos(news),
 		NextPageToken: next,
 	}, nil
+}
+
+// DeleteNews implements newsv1.NewsServiceServer.
+func (s *Service) DeleteNews(ctx context.Context, req *newsv1.DeleteNewsRequest) (*emptypb.Empty, error) {
+	_, err := s.repo.GetNewsById(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.repo.DeleteNews(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }

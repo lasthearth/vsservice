@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -21,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	NewsService_CreateNews_FullMethodName = "/news.v1.NewsService/CreateNews"
 	NewsService_ListNews_FullMethodName   = "/news.v1.NewsService/ListNews"
+	NewsService_DeleteNews_FullMethodName = "/news.v1.NewsService/DeleteNews"
 )
 
 // NewsServiceClient is the client API for NewsService service.
@@ -31,6 +33,7 @@ const (
 type NewsServiceClient interface {
 	CreateNews(ctx context.Context, in *CreateNewsRequest, opts ...grpc.CallOption) (*News, error)
 	ListNews(ctx context.Context, in *ListNewsRequest, opts ...grpc.CallOption) (*ListNewsResponse, error)
+	DeleteNews(ctx context.Context, in *DeleteNewsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type newsServiceClient struct {
@@ -61,6 +64,16 @@ func (c *newsServiceClient) ListNews(ctx context.Context, in *ListNewsRequest, o
 	return out, nil
 }
 
+func (c *newsServiceClient) DeleteNews(ctx context.Context, in *DeleteNewsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, NewsService_DeleteNews_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NewsServiceServer is the server API for NewsService service.
 // All implementations should embed UnimplementedNewsServiceServer
 // for forward compatibility.
@@ -69,6 +82,7 @@ func (c *newsServiceClient) ListNews(ctx context.Context, in *ListNewsRequest, o
 type NewsServiceServer interface {
 	CreateNews(context.Context, *CreateNewsRequest) (*News, error)
 	ListNews(context.Context, *ListNewsRequest) (*ListNewsResponse, error)
+	DeleteNews(context.Context, *DeleteNewsRequest) (*emptypb.Empty, error)
 }
 
 // UnimplementedNewsServiceServer should be embedded to have
@@ -83,6 +97,9 @@ func (UnimplementedNewsServiceServer) CreateNews(context.Context, *CreateNewsReq
 }
 func (UnimplementedNewsServiceServer) ListNews(context.Context, *ListNewsRequest) (*ListNewsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListNews not implemented")
+}
+func (UnimplementedNewsServiceServer) DeleteNews(context.Context, *DeleteNewsRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteNews not implemented")
 }
 func (UnimplementedNewsServiceServer) testEmbeddedByValue() {}
 
@@ -140,6 +157,24 @@ func _NewsService_ListNews_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NewsService_DeleteNews_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteNewsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NewsServiceServer).DeleteNews(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NewsService_DeleteNews_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NewsServiceServer).DeleteNews(ctx, req.(*DeleteNewsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NewsService_ServiceDesc is the grpc.ServiceDesc for NewsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -154,6 +189,10 @@ var NewsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListNews",
 			Handler:    _NewsService_ListNews_Handler,
+		},
+		{
+			MethodName: "DeleteNews",
+			Handler:    _NewsService_DeleteNews_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
