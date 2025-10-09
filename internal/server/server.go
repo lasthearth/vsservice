@@ -57,7 +57,9 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 		}),
 	}
 
+	mb := 1024 * 1024
 	srv := grpc.NewServer(
+		grpc.MaxRecvMsgSize(60*mb),
 		grpc.ChainUnaryInterceptor(
 			selector.UnaryServerInterceptor(s.authInterceptor.Unary(), selector.MatchFunc(func(ctx context.Context, callMeta interceptors.CallMeta) bool {
 				return interceptor.AuthMatcher(ctx, callMeta, s.c)
