@@ -7,6 +7,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func ObjectIdToObjectId(id bson.ObjectID) bson.ObjectID {
+	return id
+}
+
 func ObjectIdToString(id bson.ObjectID) string {
 	return id.Hex()
 }

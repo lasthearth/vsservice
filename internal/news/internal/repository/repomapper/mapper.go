@@ -16,6 +16,7 @@ func (c *MapperImpl) FromModel(source model.News) dto.News {
 	dtoNews.Title = source.Title
 	dtoNews.Preview = source.Preview
 	dtoNews.Content = source.Content
+	dtoNews.ViewCount = source.ViewCount
 	return dtoNews
 }
 func (c *MapperImpl) FromModels(source []model.News) []dto.News {
@@ -35,6 +36,7 @@ func (c *MapperImpl) ToModel(source dto.News) model.News {
 	modelNews.Preview = source.Preview
 	modelNews.Content = source.Content
 	modelNews.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
+	modelNews.ViewCount = source.ViewCount
 	return modelNews
 }
 func (c *MapperImpl) ToModels(source []dto.News) []model.News {

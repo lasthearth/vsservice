@@ -36,9 +36,19 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		zap.String("settlement_name", req.Name),
 		zap.Int("attachments", len(req.Attachments)))
 
-	attahs := make([]model.Attachment, len(req.Attachments))
+	stype, err := TypeFromReqProto(req.Type)
+	if err != nil {
+		return nil, err
+	}
 
-	s.log.Debug("attach len", zap.Int("attachments", len(attahs)))
+	if err := s.dbRepo.IsMemberOrLeader(ctx, "", userID); err != nil {
+		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", userID))
+		return nil, err
+	}
+
+	attachs := make([]model.Attachment, len(req.Attachments))
+
+	s.log.Debug("attach len", zap.Int("attachments", len(attachs)))
 
 	for i, attachment := range req.Attachments {
 		uid, err := uuid.NewV7()
@@ -69,21 +79,11 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 		url := fmt.Sprintf("%s/%s/%s", s.cfg.CdnUrl, bucketName, filename)
 
-		attahs[i] = model.Attachment{
+		attachs[i] = model.Attachment{
 			Url:      url,
 			Desc:     attachment.Description,
 			MimeType: mimeType,
 		}
-	}
-
-	stype, err := TypeFromReqProto(req.Type)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.dbRepo.IsMemberOrLeader(ctx, "", userID); err != nil {
-		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", userID))
-		return nil, err
 	}
 
 	opts := SettlementOpts{
@@ -98,7 +98,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 			X: int(req.Coordinates.X),
 			Y: int(req.Coordinates.Y),
 		},
-		Attachments: attahs,
+		Attachments: attachs,
 	}
 
 	found, err := s.dbRepo.GetSettlementRequestByLeader(ctx, userID)
@@ -115,8 +115,8 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 		s.log.Error("error checking for existing settlement request", zap.Error(err))
 		return nil, err
-
 	}
+
 	// User already has a request, handle level up or update
 	if found.Status == model.SettlementStatusPending {
 		s.log.Info("request already submitted", zap.String("user_id", userID))
@@ -137,7 +137,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		return nil, err
 	}
 
-	s.log.Info("settlement req created", zap.Int("attachment", len(attahs)))
+	s.log.Info("settlement req created", zap.Int("attachment", len(attachs)))
 
 	return &settlementv1.SubmitResponse{}, nil
 }

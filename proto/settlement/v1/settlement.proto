@@ -128,11 +128,9 @@ enum SettlementType {
   SETTLEMENT_TYPE_UNSPECIFIED = 0;
   CAMP = 1;
   VILLAGE = 2;
-  CITY = 3;
-  PROVINCE = 4;
-  GUILD = 5;
-  GUILD_LVL2 = 6;
-  ORDEN = 7;
+  TOWNSHIP = 3;
+  CITY = 4;
+  PROVINCE = 5;
 }
 
 message Member {

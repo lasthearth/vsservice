@@ -19,4 +19,6 @@ type UpdateSettlementOpts struct {
 	Leader      model.Member
 	Coordinates model.Vector2
 	Attachments []model.Attachment
+	Diplomacy   string
+	Description string
 }

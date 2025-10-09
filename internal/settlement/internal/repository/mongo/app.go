@@ -1,3 +1,4 @@
+//go:generate goverter gen github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo
 package repository
 
 import (
@@ -7,6 +8,8 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	invitationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
+	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
+	verificationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -26,12 +29,17 @@ var _ service.SettlementRepository = (*Repository)(nil)
 // goverter:converter
 // goverter:output:file repomapper/mapper.go
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:ObjectIdToString
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:ObjectIdToObjectId
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTime
 type Mapper interface {
 	FromInvModels([]model.Invitation) []invitationdto.Invitation
 	// goverter:ignore Id
 	FromInvModel(model.Invitation) invitationdto.Invitation
 	ToInvModels(dto []invitationdto.Invitation) []model.Invitation
 	ToInvModel(dto invitationdto.Invitation) model.Invitation
+
+	// goverter:ignore Members
+	FromVerification(dto verificationdto.SettlementVerification) settlementdto.Settlement
 }
 
 type Opts struct {

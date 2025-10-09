@@ -35,12 +35,11 @@ func (s *SettlementVerification) LvlUp() {
 		s.Type = SettlementTypeCity
 	case SettlementTypeCity:
 		s.Type = SettlementTypeProvince
-	case SettlementTypeGuild:
-		s.Type = SettlementTypeGuildLvl2
+	// case SettlementTypeGuild:
+	// 	s.Type = SettlementTypeGuildLvl2
 	// no level up
-	case SettlementTypeGuildLvl2:
+	// case SettlementTypeGuildLvl2:
 	case SettlementTypeProvince:
-	case SettlementTypeOrden:
 		break
 	}
 }

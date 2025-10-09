@@ -5,7 +5,13 @@ package repomapper
 
 import (
 	goverter "github.com/lasthearth/vsservice/internal/pkg/goverter"
+	mongo "github.com/lasthearth/vsservice/internal/pkg/mongo"
+	attachment "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
 	invitation "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
+	member "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
+	settlement "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
+	vector2 "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
+	verification "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/verification"
 	model "github.com/lasthearth/vsservice/internal/settlement/model"
 )
 
@@ -27,6 +33,23 @@ func (c *MapperImpl) FromInvModels(source []model.Invitation) []invitation.Invit
 	}
 	return invitationdtoInvitationList
 }
+func (c *MapperImpl) FromVerification(source verification.SettlementVerification) settlement.Settlement {
+	var settlementdtoSettlement settlement.Settlement
+	settlementdtoSettlement.Model = c.mongoModelToMongoModel(source.Model)
+	settlementdtoSettlement.Name = source.Name
+	settlementdtoSettlement.Type = source.Type
+	settlementdtoSettlement.Leader = c.memberdtoMemberToMemberdtoMember(source.Leader)
+	settlementdtoSettlement.Coordinates = c.vector2dtoVector2ToVector2dtoVector2(source.Coordinates)
+	if source.Attachments != nil {
+		settlementdtoSettlement.Attachments = make([]attachment.Attachment, len(source.Attachments))
+		for i := 0; i < len(source.Attachments); i++ {
+			settlementdtoSettlement.Attachments[i] = c.attachmentdtoAttachmentToAttachmentdtoAttachment(source.Attachments[i])
+		}
+	}
+	settlementdtoSettlement.Diplomacy = source.Diplomacy
+	settlementdtoSettlement.Description = source.Description
+	return settlementdtoSettlement
+}
 func (c *MapperImpl) ToInvModel(source invitation.Invitation) model.Invitation {
 	var modelInvitation model.Invitation
 	modelInvitation.Id = goverter.ObjectIdToString(source.Id)
@@ -43,4 +66,29 @@ func (c *MapperImpl) ToInvModels(source []invitation.Invitation) []model.Invitat
 		}
 	}
 	return modelInvitationList
+}
+func (c *MapperImpl) attachmentdtoAttachmentToAttachmentdtoAttachment(source attachment.Attachment) attachment.Attachment {
+	var attachmentdtoAttachment attachment.Attachment
+	attachmentdtoAttachment.Url = source.Url
+	attachmentdtoAttachment.Desc = source.Desc
+	attachmentdtoAttachment.MimeType = source.MimeType
+	return attachmentdtoAttachment
+}
+func (c *MapperImpl) memberdtoMemberToMemberdtoMember(source member.Member) member.Member {
+	var memberdtoMember member.Member
+	memberdtoMember.UserId = source.UserId
+	return memberdtoMember
+}
+func (c *MapperImpl) mongoModelToMongoModel(source mongo.Model) mongo.Model {
+	var mongoModel mongo.Model
+	mongoModel.Id = goverter.ObjectIdToObjectId(source.Id)
+	mongoModel.CreatedAt = goverter.TimeToTime(source.CreatedAt)
+	mongoModel.UpdatedAt = goverter.TimeToTime(source.UpdatedAt)
+	return mongoModel
+}
+func (c *MapperImpl) vector2dtoVector2ToVector2dtoVector2(source vector2.Vector2) vector2.Vector2 {
+	var vector2dtoVector2 vector2.Vector2
+	vector2dtoVector2.X = source.X
+	vector2dtoVector2.Y = source.Y
+	return vector2dtoVector2
 }

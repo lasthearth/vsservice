@@ -8,7 +8,6 @@ import (
 	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
 	attachmentdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
 	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
-	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	vector2dto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
 	verificationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repoerr"
@@ -179,15 +178,9 @@ func (r *Repository) Approve(ctx context.Context, id string) error {
 				model := mongomodel.NewModel()
 				model.Id = dto.Id
 
-				return r.Create(ctx, settlementdto.Settlement{
-					Model:       model,
-					Name:        dto.Name,
-					Type:        dto.Type,
-					Leader:      dto.Leader,
-					Members:     make([]memberdto.Member, 0),
-					Coordinates: dto.Coordinates,
-					Attachments: dto.Attachments,
-				})
+				cdto := r.mapper.FromVerification(dto)
+				cdto.Members = make([]memberdto.Member, 0)
+				return r.Create(ctx, cdto)
 			}
 
 			return err
@@ -200,6 +193,7 @@ func (r *Repository) Approve(ctx context.Context, id string) error {
 			Type:        setModel.Type,
 			Coordinates: setModel.Coordinates,
 			Attachments: setModel.Attachments,
+			Leader:      *dto.Leader.ToModel(),
 		})
 	})
 }
