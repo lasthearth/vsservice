@@ -32,6 +32,7 @@ func (c *MapperImpl) ToInvProto(source model.Invitation) *v1.Invitation {
 	var settlementv1Invitation v1.Invitation
 	settlementv1Invitation.Id = source.Id
 	settlementv1Invitation.UserId = source.UserId
+	settlementv1Invitation.SettlementId = source.SettlementId
 	return &settlementv1Invitation
 }
 func (c *MapperImpl) ToInvProtos(source []model.Invitation) []*v1.Invitation {

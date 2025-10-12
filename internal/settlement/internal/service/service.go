@@ -153,7 +153,7 @@ func (s *Service) Get(ctx context.Context, req *settlementv1.GetRequest) (*settl
 	}
 
 	if settlement == nil {
-		return nil, ErrSettlementNotFound
+		return nil, status.Error(codes.NotFound, ErrSettlementNotFound.Error())
 	}
 
 	return &settlementv1.GetResponse{

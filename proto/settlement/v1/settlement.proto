@@ -228,6 +228,7 @@ message GetInvitationsResponse {
 message Invitation {
   string id = 1;
   string user_id = 2;
+  string settlement_id = 3;
 }
 
 message RevokeInvitationRequest {

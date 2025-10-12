@@ -1100,6 +1100,8 @@ components:
                     type: string
                 user_id:
                     type: string
+                settlement_id:
+                    type: string
         InviteMemberRequest:
             required:
                 - settlement_id
