@@ -254,7 +254,11 @@ func (r *Repository) getInvitation(ctx context.Context, invitationID string) (*m
 
 	l.Info("getting invitation")
 
-	filter := bson.M{"_id": invitationID}
+	oid, err := mongomodel.ParseObjectID(invitationID)
+	if err != nil {
+		return nil, err
+	}
+	filter := bson.M{"_id": oid}
 	finded := r.setInvColl.FindOne(ctx, filter)
 	if err := finded.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
