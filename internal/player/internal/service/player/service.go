@@ -46,7 +46,7 @@ func (s *Service) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequ
 	bucketName := "avatars"
 	filename := "avatar"
 	ext := ".webp"
-	mb := 1 << (10 * 2)
+	mb := 1024 * 1024
 
 	fmt.Printf("Updating avatar for user")
 
