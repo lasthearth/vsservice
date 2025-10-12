@@ -71,9 +71,14 @@ func (r *Repository) AcceptInvitation(ctx context.Context, invitationID string) 
 			UserId: inv.UserId,
 		}
 
+		sid, err := mongomodel.ParseObjectID(inv.SettlementId)
+		if err != nil {
+			return err
+		}
+
 		upd, err := r.setColl.UpdateOne(
 			ctx,
-			bson.M{"_id": inv.SettlementId},
+			bson.M{"_id": sid},
 			bson.D{
 				{
 					Key: "$push",
@@ -258,6 +263,7 @@ func (r *Repository) getInvitation(ctx context.Context, invitationID string) (*m
 	if err != nil {
 		return nil, err
 	}
+
 	filter := bson.M{"_id": oid}
 	finded := r.setInvColl.FindOne(ctx, filter)
 	if err := finded.Err(); err != nil {
@@ -291,7 +297,12 @@ func (r *Repository) deleteInvitation(ctx context.Context, invitationID string) 
 
 	l.Info("deleting invitation")
 
-	filter := bson.M{"_id": invitationID}
+	oid, err := mongomodel.ParseObjectID(invitationID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": oid}
 	if _, err := r.setInvColl.DeleteOne(ctx, filter); err != nil {
 		l.Error("failed to delete invitation", zap.Error(err))
 		return err
