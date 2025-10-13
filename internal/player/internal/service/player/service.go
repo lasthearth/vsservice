@@ -1,8 +1,10 @@
+//go:generate goverter gen github.com/lasthearth/vsservice/internal/player/internal/service/player
 package service
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -10,6 +12,7 @@ import (
 
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/image"
+	"github.com/lasthearth/vsservice/internal/player/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/player/internal/model"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/minio/minio-go/v7"
@@ -24,6 +27,7 @@ type SsoRepository interface {
 }
 
 type DbRepository interface {
+	GetUserById(ctx context.Context, id string) (*model.Player, error)
 	SearchUsers(ctx context.Context, query string) ([]model.Player, error)
 }
 
@@ -38,6 +42,15 @@ type Storage interface {
 		size int64,
 		contentType string,
 	) (*minio.UploadInfo, error)
+}
+
+// goverter:converter
+// goverter:output:file sermapper/mapper.go
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTimestamp
+type Mapper interface {
+	// goverter:ignore state sizeCache unknownFields Avatar
+	ToUserProto(model.Player) *userv1.User
+	ToUserProtos([]model.Player) []*userv1.User
 }
 
 // UpdateAvatar implements userv1.UserServiceServer.
@@ -133,8 +146,19 @@ func (s *Service) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequ
 }
 
 // GetUser implements userv1.UserServiceServer.
-func (s *Service) GetUser(context.Context, *userv1.GetUserRequest) (*userv1.GetUserResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetUser not implemented")
+func (s *Service) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.User, error) {
+	u, err := s.dbRepo.GetUserById(ctx, req.UserId)
+	if err != nil {
+		if errors.Is(err, ierror.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	resp := s.mapper.ToUserProto(*u)
+
+	return resp, nil
 }
 
 // SearchUsers implements userv1.UserServiceServer.
@@ -146,15 +170,15 @@ func (s *Service) SearchUsers(ctx context.Context, req *userv1.SearchUsersReques
 
 	bucketName := "avatars"
 
-	users := lo.Map(searched, func(player model.Player, _ int) *userv1.GetUserResponse {
+	users := lo.Map(searched, func(player model.Player, _ int) *userv1.User {
 		url := fmt.Sprintf("%s/%s/%s", s.cfg.CdnUrl, bucketName, player.UserId)
 		original := fmt.Sprintf("%s/avatar.webp", url)
 		x96 := fmt.Sprintf("%s/avatar_96.webp", url)
 		x48 := fmt.Sprintf("%s/avatar_48.webp", url)
-		return &userv1.GetUserResponse{
+		return &userv1.User{
 			UserId:       player.UserId,
 			UserGameName: player.UserGameName,
-			Avatar: &userv1.GetUserResponse_Image{
+			Avatar: &userv1.User_Image{
 				Original: original,
 				X96:      x96,
 				X48:      x48,

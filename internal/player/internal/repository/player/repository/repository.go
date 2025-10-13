@@ -3,12 +3,15 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	dto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo"
 	verificationdto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo/verification"
+	"github.com/lasthearth/vsservice/internal/player/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/player/internal/model"
 	"github.com/lasthearth/vsservice/internal/player/internal/model/verification"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
@@ -44,6 +47,31 @@ func (r *Repository) GetPlayerByUserId(
 }
 
 const limit = 7
+
+func (r *Repository) GetUserById(ctx context.Context, id string) (*model.Player, error) {
+	filter := bson.M{
+		"user_id": id,
+	}
+
+	finded := r.coll.FindOne(ctx, filter)
+	err := finded.Err()
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ierror.ErrNotFound
+		}
+
+		return nil, err
+	}
+
+	var dto dto.Player
+	err = finded.Decode(&dto)
+	if err != nil {
+		return nil, err
+	}
+
+	p := r.mapper.ToPlayer(dto)
+	return &p, nil
+}
 
 // SearchUsers implements service.DbRepository.
 func (r *Repository) SearchUsers(

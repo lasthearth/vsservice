@@ -761,7 +761,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/GetUserResponse'
+                                $ref: '#/components/schemas/User'
                 default:
                     description: Default error response
                     content:
@@ -1067,24 +1067,6 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Invitation'
-        GetUserResponse:
-            type: object
-            properties:
-                user_id:
-                    type: string
-                user_game_name:
-                    type: string
-                avatar:
-                    $ref: '#/components/schemas/GetUserResponse_Image'
-        GetUserResponse_Image:
-            type: object
-            properties:
-                original:
-                    type: string
-                x96:
-                    type: string
-                x48:
-                    type: string
         GoogleProtobufAny:
             type: object
             properties:
@@ -1281,7 +1263,7 @@ components:
                 users:
                     type: array
                     items:
-                        $ref: '#/components/schemas/GetUserResponse'
+                        $ref: '#/components/schemas/User'
         Settlement:
             type: object
             properties:
@@ -1375,6 +1357,26 @@ components:
                 avatar:
                     type: string
                     format: bytes
+        User:
+            type: object
+            properties:
+                user_id:
+                    type: string
+                user_game_name:
+                    type: string
+                avatar:
+                    $ref: '#/components/schemas/User_Image'
+                user_name:
+                    type: string
+        User_Image:
+            type: object
+            properties:
+                original:
+                    type: string
+                x96:
+                    type: string
+                x48:
+                    type: string
         Vector2:
             type: object
             properties:
