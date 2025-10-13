@@ -19,7 +19,7 @@ service UserService {
     };
   }
 
-  rpc GetUser(GetUserRequest) returns (GetUserResponse) {
+  rpc GetUser(GetUserRequest) returns (User) {
     option (google.api.http) = {get: "/v1/user/{user_id}"};
   }
 
@@ -36,10 +36,11 @@ message GetUserRequest {
   string user_id = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
-message GetUserResponse {
+message User {
   string user_id = 1;
   string user_game_name = 2;
   Image avatar = 3;
+  string user_name = 4;
 
   message Image {
     string original = 1;
@@ -53,5 +54,5 @@ message SearchUsersRequest {
 }
 
 message SearchUsersResponse {
-  repeated GetUserResponse users = 1;
+  repeated User users = 1;
 }

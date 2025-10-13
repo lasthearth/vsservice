@@ -8,6 +8,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/player/internal/repository/player/repository/repomapper"
 	"github.com/lasthearth/vsservice/internal/player/internal/repository/player/sso"
 	service "github.com/lasthearth/vsservice/internal/player/internal/service/player"
+	"github.com/lasthearth/vsservice/internal/player/internal/service/player/sermapper"
 	"go.uber.org/fx"
 )
 
@@ -44,6 +45,13 @@ var App = fx.Options(
 			fx.Annotate(
 				sso.New,
 				fx.As(new(service.SsoRepository)),
+			),
+
+			fx.Annotate(
+				func() *sermapper.MapperImpl {
+					return &sermapper.MapperImpl{}
+				},
+				fx.As(new(service.Mapper)),
 			),
 		),
 

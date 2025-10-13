@@ -14,6 +14,7 @@ type Opts struct {
 	SsoRepo SsoRepository
 	Storage Storage
 	Cfg     config.Config
+	Mapper  Mapper
 }
 
 type Service struct {
@@ -21,6 +22,7 @@ type Service struct {
 	ssoRepo SsoRepository
 	storage Storage
 	cfg     config.Config
+	mapper  Mapper
 }
 
 func New(opts Opts) *Service {
@@ -29,5 +31,6 @@ func New(opts Opts) *Service {
 		storage: opts.Storage,
 		ssoRepo: opts.SsoRepo,
 		cfg:     opts.Cfg,
+		mapper:  opts.Mapper,
 	}
 }
