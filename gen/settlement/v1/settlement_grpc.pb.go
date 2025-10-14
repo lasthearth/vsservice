@@ -31,6 +31,7 @@ const (
 	SettlementService_GetInvitations_FullMethodName     = "/settlement.v1.SettlementService/GetInvitations"
 	SettlementService_GetUserInvitations_FullMethodName = "/settlement.v1.SettlementService/GetUserInvitations"
 	SettlementService_AcceptInvitation_FullMethodName   = "/settlement.v1.SettlementService/AcceptInvitation"
+	SettlementService_RejectInvitation_FullMethodName   = "/settlement.v1.SettlementService/RejectInvitation"
 	SettlementService_InviteMember_FullMethodName       = "/settlement.v1.SettlementService/InviteMember"
 	SettlementService_RevokeInvitation_FullMethodName   = "/settlement.v1.SettlementService/RevokeInvitation"
 )
@@ -64,6 +65,8 @@ type SettlementServiceClient interface {
 	GetUserInvitations(ctx context.Context, in *GetUserInvitationsRequest, opts ...grpc.CallOption) (*GetUserInvitationsResponse, error)
 	// Accept an invitation to a settlement
 	AcceptInvitation(ctx context.Context, in *AcceptInvitationRequest, opts ...grpc.CallOption) (*AcceptInvitationResponse, error)
+	// Reject an invitation to a settlement
+	RejectInvitation(ctx context.Context, in *RejectInvitationRequest, opts ...grpc.CallOption) (*RejectInvitationResponse, error)
 	// Invite a member to a settlement (requires being the settlement leader)
 	InviteMember(ctx context.Context, in *InviteMemberRequest, opts ...grpc.CallOption) (*InviteMemberResponse, error)
 	// Revoke an invitation to a settlement (requires being the settlement leader)
@@ -198,6 +201,16 @@ func (c *settlementServiceClient) AcceptInvitation(ctx context.Context, in *Acce
 	return out, nil
 }
 
+func (c *settlementServiceClient) RejectInvitation(ctx context.Context, in *RejectInvitationRequest, opts ...grpc.CallOption) (*RejectInvitationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RejectInvitationResponse)
+	err := c.cc.Invoke(ctx, SettlementService_RejectInvitation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *settlementServiceClient) InviteMember(ctx context.Context, in *InviteMemberRequest, opts ...grpc.CallOption) (*InviteMemberResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(InviteMemberResponse)
@@ -247,6 +260,8 @@ type SettlementServiceServer interface {
 	GetUserInvitations(context.Context, *GetUserInvitationsRequest) (*GetUserInvitationsResponse, error)
 	// Accept an invitation to a settlement
 	AcceptInvitation(context.Context, *AcceptInvitationRequest) (*AcceptInvitationResponse, error)
+	// Reject an invitation to a settlement
+	RejectInvitation(context.Context, *RejectInvitationRequest) (*RejectInvitationResponse, error)
 	// Invite a member to a settlement (requires being the settlement leader)
 	InviteMember(context.Context, *InviteMemberRequest) (*InviteMemberResponse, error)
 	// Revoke an invitation to a settlement (requires being the settlement leader)
@@ -295,6 +310,9 @@ func (UnimplementedSettlementServiceServer) GetUserInvitations(context.Context, 
 }
 func (UnimplementedSettlementServiceServer) AcceptInvitation(context.Context, *AcceptInvitationRequest) (*AcceptInvitationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AcceptInvitation not implemented")
+}
+func (UnimplementedSettlementServiceServer) RejectInvitation(context.Context, *RejectInvitationRequest) (*RejectInvitationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RejectInvitation not implemented")
 }
 func (UnimplementedSettlementServiceServer) InviteMember(context.Context, *InviteMemberRequest) (*InviteMemberResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InviteMember not implemented")
@@ -538,6 +556,24 @@ func _SettlementService_AcceptInvitation_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SettlementService_RejectInvitation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RejectInvitationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).RejectInvitation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_RejectInvitation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).RejectInvitation(ctx, req.(*RejectInvitationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SettlementService_InviteMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InviteMemberRequest)
 	if err := dec(in); err != nil {
@@ -628,6 +664,10 @@ var SettlementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AcceptInvitation",
 			Handler:    _SettlementService_AcceptInvitation_Handler,
+		},
+		{
+			MethodName: "RejectInvitation",
+			Handler:    _SettlementService_RejectInvitation_Handler,
 		},
 		{
 			MethodName: "InviteMember",

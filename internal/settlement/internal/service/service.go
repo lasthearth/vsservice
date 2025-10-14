@@ -13,6 +13,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repoerr"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -254,17 +255,17 @@ func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemb
 	uid, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		s.log.Error("failed to get user id", zap.Error(err))
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.SettlementId, uid); err != nil {
 		s.log.Error("failed to check if user is leader", zap.Error(err))
-		return nil, err
+		return nil, status.Error(codes.PermissionDenied, "user is not leader")
 	}
 
-	if err := s.dbRepo.InviteMember(ctx, req.SettlementId, req.UserId); err != nil {
+	if err := s.dbRepo.CreateInvitation(ctx, req.SettlementId, req.UserId); err != nil {
 		s.log.Error("failed to add member", zap.Error(err))
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &settlementv1.InviteMemberResponse{}, nil
@@ -281,6 +282,7 @@ func (s *Service) GetInvitations(ctx context.Context, req *settlementv1.GetInvit
 		l.Error("failed to get user id", zap.Error(err))
 		return nil, err
 	}
+	l = l.With(zap.String("user_id", uid))
 
 	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.SettlementId, uid); err != nil {
 		l.Error("failed to check member or leader", zap.Error(err))
@@ -300,7 +302,20 @@ func (s *Service) GetInvitations(ctx context.Context, req *settlementv1.GetInvit
 
 // RevokeInvitation implements settlementv1.SettlementServiceServer.
 func (s *Service) RevokeInvitation(ctx context.Context, req *settlementv1.RevokeInvitationRequest) (*settlementv1.RevokeInvitationResponse, error) {
-	if err := s.dbRepo.RevokeInvitation(ctx, req.InvitationId); err != nil {
+	l := s.log.With(zap.String("method", "RevokeInvitation"), zap.String("settlement_id", req.SettlementId), zap.String("invitation_id", req.InvitationId))
+	uid, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		l.Error("failed to get user id", zap.Error(err))
+		return nil, err
+	}
+	l = l.With(zap.String("user_id", uid))
+
+	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.SettlementId, uid); err != nil {
+		l.Error("failed to check member or leader", zap.Error(err))
+		return nil, err
+	}
+
+	if err := s.dbRepo.DeleteInvitationForLeader(ctx, req.InvitationId, req.SettlementId); err != nil {
 		s.log.Error("failed to revoke invitation", zap.Error(err))
 		return nil, err
 	}
@@ -310,12 +325,48 @@ func (s *Service) RevokeInvitation(ctx context.Context, req *settlementv1.Revoke
 
 // AcceptInvitation implements settlementv1.SettlementServiceServer.
 func (s *Service) AcceptInvitation(ctx context.Context, req *settlementv1.AcceptInvitationRequest) (*settlementv1.AcceptInvitationResponse, error) {
-	if err := s.dbRepo.AcceptInvitation(ctx, req.InvitationId); err != nil {
+	uid, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		s.log.Error("failed to get user id", zap.Error(err))
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	// TODO: утекла бизнесуха в репу, придумать как вынести транкзакции и отрефакторить репу
+	if err := s.dbRepo.AcceptInvitation(ctx, req.InvitationId, uid); err != nil {
 		s.log.Error("failed to accept invitation", zap.Error(err))
 		return nil, err
 	}
 
 	return &settlementv1.AcceptInvitationResponse{}, nil
+}
+
+// RejectInvitation implements settlementv1.SettlementServiceServer.
+func (s *Service) RejectInvitation(ctx context.Context, req *settlementv1.RejectInvitationRequest) (*settlementv1.RejectInvitationResponse, error) {
+	uid, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		s.log.Error("failed to get user id", zap.Error(err))
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	invs, err := s.dbRepo.GetUserInvitations(ctx, uid)
+	if err != nil {
+		s.log.Error("failed to reject invitation", zap.Error(err))
+		return nil, err
+	}
+
+	ids := lo.Map(invs, func(item model.Invitation, _ int) string {
+		return item.Id
+	})
+	if !lo.Contains(ids, req.InvitationId) {
+		return nil, status.Errorf(codes.NotFound, "invitation for user %s not found", uid)
+	}
+
+	if err := s.dbRepo.DeleteInvitationForUser(ctx, req.InvitationId, uid); err != nil {
+		s.log.Error("failed to delete invitation", zap.Error(err))
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &settlementv1.RejectInvitationResponse{}, nil
 }
 
 // GetUserInvitations implements settlementv1.SettlementServiceServer.

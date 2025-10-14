@@ -13,4 +13,5 @@ var (
 	ErrAlreadySubmitted      = errors.New("settlement request already submitted")
 	ErrAlreadyMember         = errors.New("user is already a member of the settlement")
 	ErrNotLeader             = errors.New("user is not a leader of this settlement")
+	ErrPermissionDenied      = errors.New("permission denied")
 )

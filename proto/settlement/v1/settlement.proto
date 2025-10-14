@@ -79,6 +79,11 @@ service SettlementService {
     option (google.api.http) = {post: "/v1/settlements/invitations/{invitation_id}:accept"};
   }
 
+  // Reject an invitation to a settlement
+  rpc RejectInvitation(RejectInvitationRequest) returns (RejectInvitationResponse) {
+    option (google.api.http) = {post: "/v1/settlements/invitations/{invitation_id}:reject"};
+  }
+
   // Invite a member to a settlement (requires being the settlement leader)
   rpc InviteMember(InviteMemberRequest) returns (InviteMemberResponse) {
     option (google.api.http) = {
@@ -109,6 +114,12 @@ message AcceptInvitationRequest {
 }
 
 message AcceptInvitationResponse {}
+
+message RejectInvitationRequest {
+  string invitation_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message RejectInvitationResponse {}
 
 message Settlement {
   string id = 1;

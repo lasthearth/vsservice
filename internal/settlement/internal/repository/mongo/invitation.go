@@ -43,7 +43,7 @@ func (r *Repository) GetUserInvitations(ctx context.Context, userID string) ([]m
 	return r.mapper.ToInvModels(invitations), nil
 }
 
-func (r *Repository) AcceptInvitation(ctx context.Context, invitationID string) error {
+func (r *Repository) AcceptInvitation(ctx context.Context, invitationID, userID string) error {
 	l := r.log.
 		With(
 			zap.String("invitation_id", invitationID),
@@ -65,6 +65,10 @@ func (r *Repository) AcceptInvitation(ctx context.Context, invitationID string) 
 		if err != nil {
 			l.Error("failed to get invitation", zap.Error(err))
 			return err
+		}
+
+		if userID != inv.UserId {
+			return repoerr.ErrPermissionDenied
 		}
 
 		member := memberdto.Member{
@@ -99,7 +103,7 @@ func (r *Repository) AcceptInvitation(ctx context.Context, invitationID string) 
 			return err
 		}
 
-		err = r.deleteInvitation(ctx, invitationID)
+		err = r.DeleteInvitation(ctx, invitationID)
 		if err != nil {
 			l.Error("failed to delete invitation", zap.Error(err))
 			return err
@@ -144,55 +148,29 @@ func (r *Repository) GetInvitations(ctx context.Context, settlementID string) ([
 	return r.mapper.ToInvModels(invitations), nil
 }
 
-// InviteMember implements service.SettlementDbRepository.
-func (r *Repository) InviteMember(ctx context.Context, settlementID, userID string) error {
+// CreateInvitation implements service.SettlementDbRepository.
+func (r *Repository) CreateInvitation(ctx context.Context, settlementID, userID string) error {
 	l := r.log.
 		With(
 			zap.String("settlement_id", settlementID),
 			zap.String("user_id", userID),
 		).
-		WithMethod("invite_member")
+		WithMethod("create_invitation")
 
-	l.Info("inviting member to settlement")
-
-	err := r.IsMemberOrLeader(ctx, settlementID, userID)
-	if err != nil {
-		return err
-	}
-
+	l.Info("creating invitation")
 	dto := invitationdto.Invitation{
 		Id:           bson.NewObjectIDFromTimestamp(time.Now()),
 		UserId:       userID,
 		SettlementId: settlementID,
 	}
 
-	_, err = r.setInvColl.InsertOne(ctx, dto)
+	_, err := r.setInvColl.InsertOne(ctx, dto)
 	if err != nil {
-		l.Error("failed to invite member", zap.Error(err))
+		l.Error("failed to create invitation", zap.Error(err))
 		return err
 	}
 
-	l.Info("member invited successfully")
-	return nil
-}
-
-// InviteMember implements service.SettlementDbRepository.
-func (r *Repository) RevokeInvitation(ctx context.Context, invID string) error {
-	l := r.log.
-		With(
-			zap.String("invitation_id", invID),
-		).
-		WithMethod("revoke_invitation")
-
-	l.Info("revoking invitation")
-
-	err := r.deleteInvitation(ctx, invID)
-	if err != nil {
-		l.Error("failed to revoke invitation", zap.Error(err))
-		return err
-	}
-
-	l.Info("invitation revoked successfully")
+	l.Info("invitation created successfully")
 	return nil
 }
 
@@ -288,7 +266,57 @@ func (r *Repository) getInvitation(ctx context.Context, invitationID string) (*m
 	return &res, nil
 }
 
-func (r *Repository) deleteInvitation(ctx context.Context, invitationID string) error {
+func (r *Repository) DeleteInvitationForUser(ctx context.Context, invitationID, userID string) error {
+	l := r.log.
+		With(
+			zap.String("invitation_id", invitationID),
+		).
+		WithMethod("delete_invitation")
+
+	l.Info("deleting invitation")
+
+	oid, err := mongomodel.ParseObjectID(invitationID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": oid, "user_id": userID}
+	if _, err := r.setInvColl.DeleteOne(ctx, filter); err != nil {
+		l.Error("failed to delete invitation", zap.Error(err))
+		return err
+	}
+
+	l.Info("invitation deleted successfully")
+
+	return nil
+}
+
+func (r *Repository) DeleteInvitationForLeader(ctx context.Context, invitationID, settlementID string) error {
+	l := r.log.
+		With(
+			zap.String("invitation_id", invitationID),
+		).
+		WithMethod("delete_invitation")
+
+	l.Info("deleting invitation")
+
+	oid, err := mongomodel.ParseObjectID(invitationID)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": oid, "settlement_id": settlementID}
+	if _, err := r.setInvColl.DeleteOne(ctx, filter); err != nil {
+		l.Error("failed to delete invitation", zap.Error(err))
+		return err
+	}
+
+	l.Info("invitation deleted successfully")
+
+	return nil
+}
+
+func (r *Repository) DeleteInvitation(ctx context.Context, invitationID string) error {
 	l := r.log.
 		With(
 			zap.String("invitation_id", invitationID),
