@@ -652,50 +652,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /v1/user/avatar:
-        post:
-            tags:
-                - UserService
-            operationId: UserService_UpdateAvatar
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/UpdateAvatarRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content: {}
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
-    /v1/user/search:
-        get:
-            tags:
-                - UserService
-            operationId: UserService_SearchUsers
-            parameters:
-                - name: query
-                  in: query
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/SearchUsersResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/user/verify/{user_game_name}/status:
         get:
             tags:
@@ -720,7 +676,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /v1/user/{user_id}:
+    /v1/users/search:
+        get:
+            tags:
+                - UserService
+            operationId: UserService_SearchUsers
+            parameters:
+                - name: query
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SearchUsersResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/users/{user_id}:
         get:
             tags:
                 - UserService
@@ -738,6 +717,33 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/User'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/users/{user_id}/avatar:
+        post:
+            tags:
+                - UserService
+            operationId: UserService_UpdateAvatar
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateAvatarRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
                 default:
                     description: Default error response
                     content:
@@ -1352,11 +1358,14 @@ components:
         UpdateAvatarRequest:
             required:
                 - avatar
+                - user_id
             type: object
             properties:
                 avatar:
                     type: string
                     format: bytes
+                user_id:
+                    type: string
         User:
             type: object
             properties:
