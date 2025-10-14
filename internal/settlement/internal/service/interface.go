@@ -72,9 +72,10 @@ type SettlementDbRepository interface {
 	IsLeaderOfSettlement(ctx context.Context, settlementID, userID string) error
 
 	RemoveMember(ctx context.Context, settlementID, userID string) error
-	InviteMember(ctx context.Context, settlementID, userID string) error
-	RevokeInvitation(ctx context.Context, invID string) error
-	AcceptInvitation(ctx context.Context, invID string) error
+	CreateInvitation(ctx context.Context, settlementID, userID string) error
+	DeleteInvitationForUser(ctx context.Context, invitationID, userID string) error
+	DeleteInvitationForLeader(ctx context.Context, invitationID, settlementID string) error
+	AcceptInvitation(ctx context.Context, invID, userID string) error
 	GetInvitations(ctx context.Context, settlementID string) ([]model.Invitation, error)
 	GetUserInvitations(ctx context.Context, userID string) ([]model.Invitation, error)
 }

@@ -369,6 +369,31 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/settlements/invitations/{invitation_id}:reject:
+        post:
+            tags:
+                - SettlementService
+            description: Reject an invitation to a settlement
+            operationId: SettlementService_RejectInvitation
+            parameters:
+                - name: invitation_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RejectInvitationResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/settlements/verifications:
         get:
             tags:
@@ -1219,6 +1244,9 @@ components:
                 players_killed:
                     type: integer
                     format: int32
+        RejectInvitationResponse:
+            type: object
+            properties: {}
         RejectRequest:
             required:
                 - id
