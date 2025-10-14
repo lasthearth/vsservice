@@ -14,22 +14,23 @@ service UserService {
 
   rpc UpdateAvatar(UpdateAvatarRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      post: "/v1/user/avatar"
+      post: "/v1/users/{user_id}/avatar"
       body: "*"
     };
   }
 
   rpc GetUser(GetUserRequest) returns (User) {
-    option (google.api.http) = {get: "/v1/user/{user_id}"};
+    option (google.api.http) = {get: "/v1/users/{user_id}"};
   }
 
   rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse) {
-    option (google.api.http) = {get: "/v1/user/search"};
+    option (google.api.http) = {get: "/v1/users/search"};
   }
 }
 
 message UpdateAvatarRequest {
   bytes avatar = 1 [(google.api.field_behavior) = REQUIRED];
+  string user_id = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
 message GetUserRequest {

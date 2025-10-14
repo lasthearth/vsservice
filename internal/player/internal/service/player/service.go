@@ -55,6 +55,15 @@ type Mapper interface {
 
 // UpdateAvatar implements userv1.UserServiceServer.
 func (s *Service) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequest) (*emptypb.Empty, error) {
+	uid, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if uid != req.UserId {
+		return nil, status.Error(codes.PermissionDenied, "user id mismatch, you are can't update another user's avatar")
+	}
+
 	file := req.Avatar
 	bucketName := "avatars"
 	filename := "avatar"
@@ -79,11 +88,6 @@ func (s *Service) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequ
 
 	if !valid {
 		return nil, status.Error(codes.InvalidArgument, "avatar size is too large")
-	}
-
-	uid, err := interceptor.GetUserID(ctx)
-	if err != nil {
-		return nil, err
 	}
 
 	webp, err := image.ConvertToWebp(file)
