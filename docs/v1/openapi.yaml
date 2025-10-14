@@ -720,30 +720,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
-    /v1/user/{leader_id}/settlements:
-        get:
-            tags:
-                - SettlementService
-            operationId: SettlementService_GetByLeaderId
-            parameters:
-                - name: leader_id
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/GetByLeaderIdResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/user/{user_id}:
         get:
             tags:
@@ -762,6 +738,30 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/User'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/users/{user_id}/settlements:
+        get:
+            tags:
+                - SettlementService
+            operationId: SettlementService_GetByUserId
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetByUserIdResponse'
                 default:
                     description: Default error response
                     content:
@@ -1028,7 +1028,7 @@ components:
                     type: string
                 rejection_reason:
                     type: string
-        GetByLeaderIdResponse:
+        GetByUserIdResponse:
             type: object
             properties:
                 settlement:

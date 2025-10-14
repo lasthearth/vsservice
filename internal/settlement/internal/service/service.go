@@ -342,14 +342,14 @@ func (s *Service) GetUserInvitations(ctx context.Context, req *settlementv1.GetU
 }
 
 // GetByUserId implements settlementv1.SettlementServiceServer.
-func (s *Service) GetByLeaderId(ctx context.Context, req *settlementv1.GetByLeaderIdRequest) (*settlementv1.GetByLeaderIdResponse, error) {
-	settlement, err := s.dbRepo.GetSettlementByLeader(ctx, req.LeaderId)
+func (s *Service) GetByUserId(ctx context.Context, req *settlementv1.GetByUserIdRequest) (*settlementv1.GetByUserIdResponse, error) {
+	settlement, err := s.dbRepo.GetSettlementByUserId(ctx, req.UserId)
 	if err != nil {
 		s.log.Error("failed to get settlements", zap.Error(err))
 		return nil, err
 	}
 
-	return &settlementv1.GetByLeaderIdResponse{
+	return &settlementv1.GetByUserIdResponse{
 		Settlement: s.mapper.ToSettlementProto(*settlement),
 	}, nil
 }
