@@ -144,14 +144,21 @@ func (r *Repository) GetSettlement(ctx context.Context, id string) (*model.Settl
 }
 
 // GetSettlementsByLeader implements service.SettlementDbRepository.
-func (r *Repository) GetSettlementByLeader(ctx context.Context, leaderID string) (*model.Settlement, error) {
-	r.log.Info("retrieving settlements by leader", zap.String("leader_id", leaderID))
+func (r *Repository) GetSettlementByUserId(ctx context.Context, userId string) (*model.Settlement, error) {
+	r.log.Info("retrieving settlements by leader", zap.String("user_id", userId))
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	r.log.Debug("executing find query on settlement collection")
-	found := r.setColl.FindOne(ctx, bson.M{"leader.user_id": leaderID})
+
+	filter := bson.M{
+		"$or": []bson.M{
+			{"leader.user_id": userId},
+			{"members.user_id": userId},
+		},
+	}
+	found := r.setColl.FindOne(ctx, filter)
 	err := found.Err()
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {

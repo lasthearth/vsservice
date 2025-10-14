@@ -24,8 +24,8 @@ service SettlementService {
     option (google.api.http) = {get: "/v1/settlements/{id}"};
   }
 
-  rpc GetByLeaderId(GetByLeaderIdRequest) returns (GetByLeaderIdResponse) {
-    option (google.api.http) = {get: "/v1/user/{leader_id}/settlements"};
+  rpc GetByUserId(GetByUserIdRequest) returns (GetByUserIdResponse) {
+    option (google.api.http) = {get: "/v1/users/{user_id}/settlements"};
   }
 
   // List all settlements
@@ -240,11 +240,11 @@ message RevokeInvitationResponse {
   repeated string invitation_ids = 1;
 }
 
-message GetByLeaderIdRequest {
-  string leader_id = 1 [(google.api.field_behavior) = REQUIRED];
+message GetByUserIdRequest {
+  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
-message GetByLeaderIdResponse {
+message GetByUserIdResponse {
   Settlement settlement = 1;
 }
 

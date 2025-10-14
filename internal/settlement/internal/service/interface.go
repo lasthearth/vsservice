@@ -65,7 +65,7 @@ type SettlementDbRepository interface {
 	Create(ctx context.Context, dto settlementdto.Settlement) error
 	CountByLeaderID(ctx context.Context, id string) (int64, error)
 	GetSettlement(ctx context.Context, id string) (*model.Settlement, error)
-	GetSettlementByLeader(ctx context.Context, leaderID string) (*model.Settlement, error)
+	GetSettlementByUserId(ctx context.Context, userId string) (*model.Settlement, error)
 	GetAllSettlements(ctx context.Context) ([]model.Settlement, error)
 
 	IsMemberOrLeader(ctx context.Context, settlementID, userID string) error
