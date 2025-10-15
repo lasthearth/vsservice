@@ -45,6 +45,12 @@ description: "Task list template for feature implementation"
 
 **Purpose**: Project initialization and basic structure
 
+**CRITICAL NOTE FOR EXISTING CODEBASES**: 
+- Analyze the existing project structure in internal/ before creating new files
+- Follow existing architectural patterns (e.g., internal/service/internal/structure)
+- Identify which existing services/components need modification vs. new development
+- Follow existing naming conventions and package structures
+
 - [ ] T001 Create project structure per implementation plan
 - [ ] T002 Initialize [language] project with [framework] dependencies
 - [ ] T003 [P] Configure linting and formatting tools
