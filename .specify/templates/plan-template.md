@@ -15,6 +15,19 @@
   ACTION REQUIRED: Replace the content in this section with the technical details
   for the project. The structure here is presented in advisory capacity to guide
   the iteration process.
+  
+  CRITICAL NOTE FOR EXISTING CODEBASES: Before planning any new feature, analyze the
+  existing codebase to understand:
+  - Current architectural patterns and conventions
+  - Domain boundaries and service responsibilities
+  - Data models and repository patterns
+  - API design patterns and protobuf definitions
+  - Authentication and authorization mechanisms
+  - Error handling and logging patterns
+  - Dependency injection with Uber fx
+  - Testing strategies and patterns
+  
+  Incorporate these existing patterns in your plan to ensure consistency.
 -->
 
 **Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
@@ -26,6 +39,31 @@
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+
+## Existing Codebase Analysis
+
+**Current Architecture Patterns**:
+- [Identify main architectural patterns: e.g., microservices, layered architecture, DDD]
+- [Service structure: e.g., each feature as separate service with fx dependency injection]
+- [API patterns: e.g., gRPC with grpc-gateway for REST, protobuf definitions]
+- [Data layer: e.g., models, DTOs, repository pattern, MongoDB usage]
+- [Authentication: e.g., JWT-based with interceptors, scope-based authorization]
+
+**Integration Points**:
+- [Identify where new feature will integrate: specific services, models, repositories]
+- [API endpoints that may need extension or modification]
+- [Database collections that will be affected]
+
+**Existing Patterns to Follow**:
+- [List specific patterns from the codebase that new implementation should follow]
+- [Naming conventions, error handling, logging patterns]
+- [Dependency injection patterns, service registration]
+- [Validation and security patterns]
+
+**Potential Conflicts**:
+- [Identify any existing code that might conflict with new feature]
+- [Domain boundaries that might be affected]
+- [Shared resources that might need coordination]
 
 ## Constitution Check
 

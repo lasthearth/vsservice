@@ -20,9 +20,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_UpdateAvatar_FullMethodName = "/user.v1.UserService/UpdateAvatar"
-	UserService_GetUser_FullMethodName      = "/user.v1.UserService/GetUser"
-	UserService_SearchUsers_FullMethodName  = "/user.v1.UserService/SearchUsers"
+	UserService_UpdateAvatar_FullMethodName   = "/user.v1.UserService/UpdateAvatar"
+	UserService_GetUser_FullMethodName        = "/user.v1.UserService/GetUser"
+	UserService_SearchUsers_FullMethodName    = "/user.v1.UserService/SearchUsers"
+	UserService_ChangeNickname_FullMethodName = "/user.v1.UserService/ChangeNickname"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -34,6 +35,7 @@ type UserServiceClient interface {
 	UpdateAvatar(ctx context.Context, in *UpdateAvatarRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*User, error)
 	SearchUsers(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error)
+	ChangeNickname(ctx context.Context, in *ChangeNicknameRequest, opts ...grpc.CallOption) (*ChangeNicknameResponse, error)
 }
 
 type userServiceClient struct {
@@ -74,6 +76,16 @@ func (c *userServiceClient) SearchUsers(ctx context.Context, in *SearchUsersRequ
 	return out, nil
 }
 
+func (c *userServiceClient) ChangeNickname(ctx context.Context, in *ChangeNicknameRequest, opts ...grpc.CallOption) (*ChangeNicknameResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangeNicknameResponse)
+	err := c.cc.Invoke(ctx, UserService_ChangeNickname_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations should embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -83,6 +95,7 @@ type UserServiceServer interface {
 	UpdateAvatar(context.Context, *UpdateAvatarRequest) (*emptypb.Empty, error)
 	GetUser(context.Context, *GetUserRequest) (*User, error)
 	SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error)
+	ChangeNickname(context.Context, *ChangeNicknameRequest) (*ChangeNicknameResponse, error)
 }
 
 // UnimplementedUserServiceServer should be embedded to have
@@ -100,6 +113,9 @@ func (UnimplementedUserServiceServer) GetUser(context.Context, *GetUserRequest) 
 }
 func (UnimplementedUserServiceServer) SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SearchUsers not implemented")
+}
+func (UnimplementedUserServiceServer) ChangeNickname(context.Context, *ChangeNicknameRequest) (*ChangeNicknameResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ChangeNickname not implemented")
 }
 func (UnimplementedUserServiceServer) testEmbeddedByValue() {}
 
@@ -175,6 +191,24 @@ func _UserService_SearchUsers_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ChangeNickname_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeNicknameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ChangeNickname(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ChangeNickname_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ChangeNickname(ctx, req.(*ChangeNicknameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -193,6 +227,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchUsers",
 			Handler:    _UserService_SearchUsers_Handler,
+		},
+		{
+			MethodName: "ChangeNickname",
+			Handler:    _UserService_ChangeNickname_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

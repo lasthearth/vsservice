@@ -7,7 +7,6 @@ import (
 
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	httpdto "github.com/lasthearth/vsservice/internal/player/internal/dto/http"
-	"github.com/lasthearth/vsservice/internal/player/internal/model"
 	"github.com/lasthearth/vsservice/internal/player/internal/model/verification"
 	"github.com/lasthearth/vsservice/internal/player/internal/repository/verification/repository/repoerr"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
@@ -20,10 +19,6 @@ type DbRepository interface {
 	GetVerificationStatusByUserGameName(ctx context.Context, userGameName string) (verification.VerificationStatus, error)
 	Create(ctx context.Context, userId string, v verification.Verification) error
 	Update(ctx context.Context, userId string, v verification.Verification) error
-}
-
-type PlayerRepository interface {
-	GetPlayerByUserId(ctx context.Context, userId string) (*model.Player, error)
 }
 
 type SsoRepository interface {

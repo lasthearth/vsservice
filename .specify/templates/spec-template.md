@@ -80,6 +80,15 @@
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
   Fill them out with the right functional requirements.
+  
+  CRITICAL NOTE FOR EXISTING CODEBASES: When defining requirements, consider:
+  - How they align with existing system architecture and patterns
+  - Whether they extend or modify existing functionality
+  - What existing components will be affected
+  - How they fit into current domain boundaries
+  - Whether they follow established API patterns
+  - How they integrate with current authentication/authorization
+  - Whether they follow existing data modeling approaches
 -->
 
 ### Functional Requirements

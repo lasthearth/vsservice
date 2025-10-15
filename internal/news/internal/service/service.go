@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	"github.com/lasthearth/vsservice/internal/news/internal/model"
-	notification "github.com/lasthearth/vsservice/internal/notification/model"
+	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -60,12 +60,9 @@ func (s *Service) CreateNews(ctx context.Context, req *newsv1.CreateNewsRequest)
 
 	if err := s.cnuc.CreateNotification(
 		ctx,
-		notification.Notification{
-			UserId:  notification.BroadcastUserId,
-			Title:   "Новая новость",
-			Message: "Новость: " + req.Title,
-			State:   notification.NotificationStateUnread,
-		},
+		"Новая новость",
+		fmt.Sprintf("Новость: %s", req.Title),
+		notificationuc.WithBroadcast(),
 	); err != nil {
 		return nil, err
 	}

@@ -15,6 +15,7 @@ func (c *MapperImpl) ToUserProto(source model.Player) *v1.User {
 	userv1User.UserId = source.UserId
 	userv1User.UserGameName = source.UserGameName
 	userv1User.UserName = source.UserName
+	userv1User.PreviousNickname = source.PreviousNickname
 	return &userv1User
 }
 func (c *MapperImpl) ToUserProtos(source []model.Player) []*v1.User {

@@ -2,10 +2,11 @@ package notificationuc
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/lasthearth/vsservice/internal/notification/internal/model"
 	"github.com/lasthearth/vsservice/internal/notification/internal/repository"
-	"github.com/lasthearth/vsservice/internal/notification/model"
 	"go.uber.org/fx"
 )
 
@@ -33,13 +34,45 @@ func NewCreateNotificationUseCase(opts Opts) *Create {
 	}
 }
 
+type NotificationOpts func(*model.Notification)
+
 // CreateNotification creates a new notification, for user.
 //
 // For sending broadcast notifications specify userId with model.BroadcastUserId
-func (uc *Create) CreateNotification(ctx context.Context, notification model.Notification) error {
+func (uc *Create) CreateNotification(
+	ctx context.Context,
+	title,
+	message string,
+	opts ...NotificationOpts,
+) error {
+	now := time.Now()
+	notification := model.Notification{
+		Title:     title,
+		Message:   message,
+		State:     model.NotificationStateUnread,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	for _, opt := range opts {
+		opt(&notification)
+	}
+
 	if err := uc.validate.Struct(notification); err != nil {
 		return err
 	}
 
 	return uc.repo.Create(ctx, notification)
+}
+
+func WithUserId(userId string) NotificationOpts {
+	return func(n *model.Notification) {
+		n.UserId = userId
+	}
+}
+
+func WithBroadcast() NotificationOpts {
+	return func(n *model.Notification) {
+		n.UserId = model.BroadcastUserId
+	}
 }
