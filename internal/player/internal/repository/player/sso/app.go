@@ -7,8 +7,11 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
+	service "github.com/lasthearth/vsservice/internal/player/internal/service/player"
 	"go.uber.org/fx"
 )
+
+var _ service.SsoRepository = (*Repository)(nil)
 
 type Opts struct {
 	fx.In

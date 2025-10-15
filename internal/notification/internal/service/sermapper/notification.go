@@ -5,7 +5,7 @@ package sermapper
 
 import (
 	v1 "github.com/lasthearth/vsservice/gen/notification/v1"
-	model "github.com/lasthearth/vsservice/internal/notification/model"
+	model "github.com/lasthearth/vsservice/internal/notification/internal/model"
 	service "github.com/lasthearth/vsservice/internal/notification/internal/service"
 	goverter "github.com/lasthearth/vsservice/internal/pkg/goverter"
 )

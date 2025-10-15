@@ -775,6 +775,36 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/users/{user_id}/nickname:
+        put:
+            tags:
+                - UserService
+            operationId: UserService_ChangeNickname
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ChangeNicknameRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ChangeNicknameResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/users/{user_id}/settlements:
         get:
             tags:
@@ -1019,6 +1049,23 @@ components:
                 desc:
                     type: string
                 url:
+                    type: string
+        ChangeNicknameRequest:
+            required:
+                - user_id
+                - new_nickname
+            type: object
+            properties:
+                user_id:
+                    type: string
+                new_nickname:
+                    type: string
+        ChangeNicknameResponse:
+            type: object
+            properties:
+                old_nickname:
+                    type: string
+                new_nickname:
                     type: string
         CreateNewsRequest:
             type: object
@@ -1404,6 +1451,8 @@ components:
                 avatar:
                     $ref: '#/components/schemas/User_Image'
                 user_name:
+                    type: string
+                previous_nickname:
                     type: string
         User_Image:
             type: object

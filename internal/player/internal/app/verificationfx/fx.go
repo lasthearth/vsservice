@@ -29,19 +29,13 @@ var App = fx.Options(
 		fx.Provide(
 			fx.Private,
 
-			// Player repository
 			fx.Annotate(
 				func() *prepomapper.MapperImpl {
 					return &prepomapper.MapperImpl{}
 				},
 				fx.As(new(prepository.Mapper)),
 			),
-			fx.Annotate(
-				prepository.New,
-				fx.As(new(service.PlayerRepository)),
-			),
 
-			// Verification repository
 			fx.Annotate(
 				func() *repomapper.MapperImpl {
 					return &repomapper.MapperImpl{}
@@ -53,7 +47,6 @@ var App = fx.Options(
 				fx.As(new(service.DbRepository)),
 			),
 
-			// SSO repository
 			fx.Annotate(
 				ssorepository.New,
 				fx.As(new(service.SsoRepository)),
@@ -61,12 +54,10 @@ var App = fx.Options(
 		),
 
 		fx.Provide(
-			// Verification service
 			fx.Annotate(service.New,
 				fx.As(new(verificationv1.VerificationServiceServer)),
 			),
 
-			// Verification service scoper
 			fx.Annotate(service.New,
 				fx.As(new(interceptor.Scoper)),
 				fx.ResultTags(`group:"scopers"`),

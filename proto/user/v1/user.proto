@@ -26,6 +26,13 @@ service UserService {
   rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse) {
     option (google.api.http) = {get: "/v1/users/search"};
   }
+
+  rpc ChangeNickname(ChangeNicknameRequest) returns (ChangeNicknameResponse) {
+    option (google.api.http) = {
+      put: "/v1/users/{user_id}/nickname"
+      body: "*"
+    };
+  }
 }
 
 message UpdateAvatarRequest {
@@ -42,6 +49,7 @@ message User {
   string user_game_name = 2;
   Image avatar = 3;
   string user_name = 4;
+  string previous_nickname = 5;
 
   message Image {
     string original = 1;
@@ -56,4 +64,14 @@ message SearchUsersRequest {
 
 message SearchUsersResponse {
   repeated User users = 1;
+}
+
+message ChangeNicknameRequest {
+  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string new_nickname = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ChangeNicknameResponse {
+  string old_nickname = 1;
+  string new_nickname = 2;
 }

@@ -14,6 +14,10 @@ type Player struct {
 	UserName     string
 	UserGameName string
 
+	// Nickname change tracking
+	PreviousNickname      string
+	LastNicknameChangedAt time.Time
+
 	Verification verification.Verification
 	Stats        stats.Stats
 

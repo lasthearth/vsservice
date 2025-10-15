@@ -21,30 +21,27 @@ type Opts struct {
 	Cfg           config.Config
 	Retrier       *retrier.Retrier
 	DbRepo        DbRepository
-	PlayerRepo    PlayerRepository
 	SsoRepository SsoRepository
 }
 
 type Service struct {
 	// Needs to be a client for making HTTP requests to sso
 	// So http client must automatically manage tokens
-	client     *http.Client
-	log        logger.Logger
-	cfg        config.Config
-	dbRepo     DbRepository
-	playerRepo PlayerRepository
-	ssoRepo    SsoRepository
-	retrier    *retrier.Retrier
+	client  *http.Client
+	log     logger.Logger
+	cfg     config.Config
+	dbRepo  DbRepository
+	ssoRepo SsoRepository
+	retrier *retrier.Retrier
 }
 
 func New(opts Opts) *Service {
 	return &Service{
-		client:     opts.Client,
-		log:        opts.Log,
-		cfg:        opts.Cfg,
-		dbRepo:     opts.DbRepo,
-		playerRepo: opts.PlayerRepo,
-		ssoRepo:    opts.SsoRepository,
-		retrier:    opts.Retrier,
+		client:  opts.Client,
+		log:     opts.Log,
+		cfg:     opts.Cfg,
+		dbRepo:  opts.DbRepo,
+		ssoRepo: opts.SsoRepository,
+		retrier: opts.Retrier,
 	}
 }

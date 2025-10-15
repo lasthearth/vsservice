@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/lasthearth/vsservice/internal/notification/internal/dto"
-	"github.com/lasthearth/vsservice/internal/notification/model"
+	"github.com/lasthearth/vsservice/internal/notification/internal/model"
 	"github.com/lasthearth/vsservice/internal/pkg/mongo"
 	"github.com/lasthearth/vsservice/internal/pkg/mongo/orderby"
 	"github.com/lasthearth/vsservice/internal/pkg/mongo/pagination"

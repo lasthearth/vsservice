@@ -4,6 +4,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	dto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo"
 	verificationdto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo/verification"
@@ -34,18 +35,6 @@ type Mapper interface {
 	ToAnswer(dto verificationdto.Answer) verification.Answer
 }
 
-func (r *Repository) GetPlayerByUserId(
-	ctx context.Context,
-	userId string,
-) (*model.Player, error) {
-	player := &model.Player{}
-	err := r.coll.FindOne(ctx, bson.M{"user_id": userId}).Decode(player)
-	if err != nil {
-		return nil, err
-	}
-	return player, nil
-}
-
 const limit = 7
 
 func (r *Repository) GetUserById(ctx context.Context, id string) (*model.Player, error) {
@@ -73,7 +62,7 @@ func (r *Repository) GetUserById(ctx context.Context, id string) (*model.Player,
 	return &p, nil
 }
 
-// SearchUsers implements service.DbRepository.
+// SearchUsers searches for players based on a query string, looking for matches in user_game_name and user_name fields.
 func (r *Repository) SearchUsers(
 	ctx context.Context,
 	query string,
@@ -90,6 +79,7 @@ func (r *Repository) SearchUsers(
 			{Key: "user_game_name", Value: 1},
 			{Key: "user_name", Value: 1},
 			{Key: "user_id", Value: 1},
+			{Key: "previous_nickname", Value: 1},
 		}).
 		SetSort(bson.D{
 			{Key: "_id", Value: 1},
@@ -109,4 +99,22 @@ func (r *Repository) SearchUsers(
 
 	users := r.mapper.ToPlayers(dtos)
 	return users, nil
+}
+
+// UpdatePlayerNickname updates the player's nickname and related fields
+func (r *Repository) UpdatePlayerNickname(
+	ctx context.Context,
+	userId,
+	newNickname,
+	previousNickname string,
+	lastChangedAt time.Time,
+) error {
+	update := bson.M{
+		"user_game_name":           newNickname,
+		"previous_nickname":        previousNickname,
+		"last_nickname_changed_at": lastChangedAt,
+	}
+
+	_, err := r.coll.UpdateOne(ctx, bson.M{"user_id": userId}, bson.M{"$set": update})
+	return err
 }
