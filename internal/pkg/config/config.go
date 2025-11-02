@@ -42,6 +42,8 @@ type Config struct {
 	MinioAccessKey string `envconfig:"MINIO_ACCESS_KEY"`
 	MinioSecretKey string `envconfig:"MINIO_SECRET_KEY"`
 	MinioUseSSL    bool   `envconfig:"MINIO_USE_SSL"`
+
+	NatsUrl string `envconfig:"NATS_URL"`
 }
 
 // New initializes from .env and returns a new Config instance.
