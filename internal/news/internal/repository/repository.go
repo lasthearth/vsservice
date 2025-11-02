@@ -8,7 +8,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/news/internal/dto"
 	"github.com/lasthearth/vsservice/internal/news/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/news/internal/model"
-	"github.com/lasthearth/vsservice/internal/pkg/mongo/pagination"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox/pagination"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"

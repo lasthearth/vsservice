@@ -3,16 +3,18 @@ package dto
 import (
 	"time"
 
-	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	verificationdto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/player/internal/model/stats"
 )
 
 type Player struct {
-	mongo.Model  `bson:",inline"`
+	mongox.Model `bson:",inline"`
 	UserId       string `bson:"user_id"`
 	UserName     string `bson:"user_name"`
 	UserGameName string `bson:"user_game_name"`
+
+	IsOnline bool `bson:"is_online"`
 
 	// Nickname change tracking
 	PreviousNickname      string    `bson:"previous_nickname"`

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
+	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongox"
 	attachmentdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
 	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
 	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"

@@ -50,6 +50,7 @@ message User {
   Image avatar = 3;
   string user_name = 4;
   string previous_nickname = 5;
+  bool is_online = 6;
 
   message Image {
     string original = 1;

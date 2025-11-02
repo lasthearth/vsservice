@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/player/internal/event"
 	service "github.com/lasthearth/vsservice/internal/player/internal/service/player"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/fx"
@@ -9,7 +10,10 @@ import (
 
 const collName = "verification_requests"
 
-var _ service.DbRepository = (*Repository)(nil)
+var (
+	_ service.DbRepository   = (*Repository)(nil)
+	_ event.PlayerRepository = (*Repository)(nil)
+)
 
 type Opts struct {
 	fx.In

@@ -1,17 +1,17 @@
 package mongodto
 
 import (
-	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"time"
 )
 
 type Stats struct {
-	mongo.Model `bson:",inline"`
-	Name        string      `bson:"name"`
-	SeedStats   []SeedStats `bson:"seed_stats"`
-	LastOnline  int64       `bson:"last_online,truncate"`
-	CreatedAt   time.Time   `bson:"created_at"`
-	UpdatedAt   time.Time   `bson:"updated_at"`
+	mongox.Model `bson:",inline"`
+	Name         string      `bson:"name"`
+	SeedStats    []SeedStats `bson:"seed_stats"`
+	LastOnline   int64       `bson:"last_online,truncate"`
+	CreatedAt    time.Time   `bson:"created_at"`
+	UpdatedAt    time.Time   `bson:"updated_at"`
 }
 
 type SeedStats struct {

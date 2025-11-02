@@ -1,6 +1,7 @@
 package player
 
 import (
+	"github.com/lasthearth/vsservice/internal/player/internal/app/playerevfx"
 	"github.com/lasthearth/vsservice/internal/player/internal/app/playerfx"
 	"github.com/lasthearth/vsservice/internal/player/internal/app/verificationfx"
 	"go.uber.org/fx"
@@ -9,4 +10,5 @@ import (
 var App = fx.Options(
 	playerfx.App,
 	verificationfx.App,
+	playerevfx.App,
 )

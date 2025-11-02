@@ -27,6 +27,7 @@ func (c *MapperImpl) FromPlayer(source model.Player) mongo.Player {
 	dtoPlayer.UserId = source.UserId
 	dtoPlayer.UserName = source.UserName
 	dtoPlayer.UserGameName = source.UserGameName
+	dtoPlayer.IsOnline = source.IsOnline
 	dtoPlayer.PreviousNickname = source.PreviousNickname
 	dtoPlayer.LastNicknameChangedAt = goverter.TimeToTime(source.LastNicknameChangedAt)
 	dtoPlayer.Verification = c.FromVerification(source.Verification)
@@ -66,6 +67,7 @@ func (c *MapperImpl) ToPlayer(source mongo.Player) model.Player {
 	modelPlayer.UserGameName = source.UserGameName
 	modelPlayer.PreviousNickname = source.PreviousNickname
 	modelPlayer.LastNicknameChangedAt = goverter.TimeToTime(source.LastNicknameChangedAt)
+	modelPlayer.IsOnline = source.IsOnline
 	modelPlayer.Verification = c.ToVerification(source.Verification)
 	modelPlayer.Stats = c.statsStatsToStatsStats(source.Stats)
 	modelPlayer.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)
