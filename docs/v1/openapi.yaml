@@ -1454,6 +1454,8 @@ components:
                     type: string
                 previous_nickname:
                     type: string
+                is_online:
+                    type: boolean
         User_Image:
             type: object
             properties:

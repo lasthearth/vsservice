@@ -14,6 +14,8 @@ type Player struct {
 	UserName     string `bson:"user_name"`
 	UserGameName string `bson:"user_game_name"`
 
+	IsOnline bool `bson:"is_online"`
+
 	// Nickname change tracking
 	PreviousNickname      string    `bson:"previous_nickname"`
 	LastNicknameChangedAt time.Time `bson:"last_nickname_changed_at"`

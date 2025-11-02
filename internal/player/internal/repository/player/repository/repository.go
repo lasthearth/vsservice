@@ -4,8 +4,10 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	dto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo"
 	verificationdto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/player/internal/ierror"
@@ -120,8 +122,45 @@ func (r *Repository) UpdatePlayerNickname(
 	return err
 }
 
-func (r *Repository) Update(id string, p model.Player) {
+func (r *Repository) UpdateById(ctx context.Context, id string, p model.Player) error {
 	dto := r.mapper.FromPlayer(p)
+	updset, _ := mongox.ComputeUpdateBson(
+		dto,
+		mongox.WithoutFields("_id"),
+	)
+
+	fmt.Printf("%+v", updset)
+
+	return nil
+}
+
+func (r *Repository) UpdateByUserGameName(ctx context.Context, userGameName string, p model.PlayerUpdate) error {
+	update := bson.M{}
+	if p.UserId != nil && *p.UserId != "" {
+		update["user_id"] = *p.UserId
+	}
+	if p.UserName != nil && *p.UserName != "" {
+		update["user_name"] = *p.UserName
+	}
+	if p.UserGameName != nil && *p.UserGameName != "" {
+		update["user_game_name"] = *p.UserGameName
+	}
+	if p.PreviousNickname != nil && *p.PreviousNickname != "" {
+		update["previous_nickname"] = *p.PreviousNickname
+	}
+	if p.LastNicknameChangedAt != nil {
+		update["last_nickname_changed_at"] = *p.LastNicknameChangedAt
+	}
+	if p.IsOnline != nil {
+		update["is_online"] = *p.IsOnline
+	}
+
+	_, err := r.coll.UpdateOne(
+		ctx,
+		bson.M{"user_game_name": userGameName},
+		bson.M{"$set": update},
+	)
+	return err
 }
 
 // GetByUserGameName implements event.PlayerRepository.

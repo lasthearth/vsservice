@@ -10,22 +10,25 @@ type PlayerTryJoinRespEvent struct {
 }
 
 type PlayerJoinEvent struct {
-	Stats struct {
-		Id            string  `json:"id"`
-		DeathCount    int     `json:"death_count"`
-		Deaths        []death `json:"deaths"`
-		HoursPlayed   int     `json:"hours_played"`
-		Name          string  `json:"name"`
-		PlayersKilled int     `json:"players_killed"`
-	} `json:"stats"`
-	OnlinePlayersCount int `json:"online_players_count"`
+	Stats              Stats `json:"stats"`
+	OnlinePlayersCount int   `json:"online_players_count"`
 }
 
-type death struct {
+type Stats struct {
+	Id            int     `json:"id"`
+	DeathCount    int     `json:"death_count"`
+	Deaths        []Death `json:"deaths"`
+	HoursPlayed   float32 `json:"hours_played"`
+	Name          string  `json:"name"`
+	PlayersKilled int     `json:"players_killed"`
+}
+
+type Death struct {
 	Cause      string `json:"cause"`
 	EntityName string `json:"entity_name"`
 }
 
 type PlayerLeaveEvent struct {
-	Status string `json:"status"`
+	Stats              Stats `json:"stats"`
+	OnlinePlayersCount int   `json:"online_players_count"`
 }

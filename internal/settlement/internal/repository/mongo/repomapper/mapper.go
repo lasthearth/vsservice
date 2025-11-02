@@ -5,7 +5,7 @@ package repomapper
 
 import (
 	goverter "github.com/lasthearth/vsservice/internal/pkg/goverter"
-	mongo "github.com/lasthearth/vsservice/internal/pkg/mongox"
+	mongox "github.com/lasthearth/vsservice/internal/pkg/mongox"
 	attachment "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
 	invitation "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
 	member "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
@@ -35,7 +35,7 @@ func (c *MapperImpl) FromInvModels(source []model.Invitation) []invitation.Invit
 }
 func (c *MapperImpl) FromVerification(source verification.SettlementVerification) settlement.Settlement {
 	var settlementdtoSettlement settlement.Settlement
-	settlementdtoSettlement.Model = c.mongoModelToMongoModel(source.Model)
+	settlementdtoSettlement.Model = c.mongoxModelToMongoxModel(source.Model)
 	settlementdtoSettlement.Name = source.Name
 	settlementdtoSettlement.Type = source.Type
 	settlementdtoSettlement.Leader = c.memberdtoMemberToMemberdtoMember(source.Leader)
@@ -79,12 +79,12 @@ func (c *MapperImpl) memberdtoMemberToMemberdtoMember(source member.Member) memb
 	memberdtoMember.UserId = source.UserId
 	return memberdtoMember
 }
-func (c *MapperImpl) mongoModelToMongoModel(source mongo.Model) mongo.Model {
-	var mongoModel mongo.Model
-	mongoModel.Id = goverter.ObjectIdToObjectId(source.Id)
-	mongoModel.CreatedAt = goverter.TimeToTime(source.CreatedAt)
-	mongoModel.UpdatedAt = goverter.TimeToTime(source.UpdatedAt)
-	return mongoModel
+func (c *MapperImpl) mongoxModelToMongoxModel(source mongox.Model) mongox.Model {
+	var mongoxModel mongox.Model
+	mongoxModel.Id = goverter.ObjectIdToObjectId(source.Id)
+	mongoxModel.CreatedAt = goverter.TimeToTime(source.CreatedAt)
+	mongoxModel.UpdatedAt = goverter.TimeToTime(source.UpdatedAt)
+	return mongoxModel
 }
 func (c *MapperImpl) vector2dtoVector2ToVector2dtoVector2(source vector2.Vector2) vector2.Vector2 {
 	var vector2dtoVector2 vector2.Vector2

@@ -6,14 +6,19 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go"
+	"go.uber.org/zap"
 )
+
+const DefaultQueueGroup = "workers"
 
 type QueueResponse[T any] struct {
 	Data T
 }
 
-type QueueSubscribeCallback[Req, Resp any] func(ctx context.Context, data Req) (Resp, error)
-type QueueObserveCallback[Req any] func(ctx context.Context, data Req)
+type (
+	QueueSubscribeCallback[Req, Resp any] func(ctx context.Context, data Req) (Resp, error)
+	QueueObserveCallback[Req any]         func(ctx context.Context, data Req)
+)
 
 type Queue[Req, Resp any] interface {
 	Publish(ctx context.Context, data Req) error
@@ -21,28 +26,6 @@ type Queue[Req, Resp any] interface {
 	SubscribeGroup(queueGroup string, data QueueSubscribeCallback[Req, Resp], obs ...QueueObserveCallback[Req]) error
 	Subscribe(data QueueSubscribeCallback[Req, Resp]) error
 	Unsubscribe()
-}
-
-type NatsQueue[Req, Resp any] struct {
-	nc           *nats.Conn
-	subscription *nats.Subscription
-	subject      string
-	timeout      time.Duration
-	encoder      QueueEncoder
-}
-
-func NewNatsQueue[Req, Resp any](
-	nc *nats.Conn,
-	subject string,
-	timeout time.Duration,
-	encoder QueueEncoder,
-) *NatsQueue[Req, Resp] {
-	return &NatsQueue[Req, Resp]{
-		nc:      nc,
-		subject: subject,
-		timeout: timeout,
-		encoder: encoder,
-	}
 }
 
 const lhNatsErrorHeader = "LHError"
@@ -112,6 +95,9 @@ func (c *NatsQueue[Req, Resp]) SubscribeGroup(
 
 				data, err := natsDecode[Req](c.encoder, requestMsg.Data)
 				if err != nil {
+					if c.log != nil {
+						c.log.Error("failed to decode request", zap.Error(err))
+					}
 					resp.Header.Set(lhNatsErrorHeader, err.Error())
 					c.nc.PublishMsg(resp)
 					return
@@ -119,6 +105,9 @@ func (c *NatsQueue[Req, Resp]) SubscribeGroup(
 
 				response, err := cb(ctx, data)
 				if err != nil {
+					if c.log != nil {
+						c.log.Error("failed to process request", zap.Error(err))
+					}
 					resp.Header.Set(lhNatsErrorHeader, err.Error())
 					c.nc.PublishMsg(resp)
 					return
@@ -130,6 +119,9 @@ func (c *NatsQueue[Req, Resp]) SubscribeGroup(
 
 				responseBytes, err := natsEncode(c.encoder, response)
 				if err != nil {
+					if c.log != nil {
+						c.log.Error("failed to encode response", zap.Error(err))
+					}
 					resp.Header.Set(lhNatsErrorHeader, err.Error())
 					c.nc.PublishMsg(resp)
 					return
@@ -164,6 +156,9 @@ func (c *NatsQueue[Req, Resp]) Subscribe(
 
 				data, err := natsDecode[Req](c.encoder, m.Data)
 				if err != nil {
+					if c.log != nil {
+						c.log.Error("failed to decode request", zap.Error(err))
+					}
 					resp.Header.Set(lhNatsErrorHeader, err.Error())
 					c.nc.PublishMsg(resp)
 					return
@@ -171,6 +166,9 @@ func (c *NatsQueue[Req, Resp]) Subscribe(
 
 				response, err := cb(ctx, data)
 				if err != nil {
+					if c.log != nil {
+						c.log.Error("failed to process request", zap.Error(err))
+					}
 					resp.Header.Set(lhNatsErrorHeader, err.Error())
 					c.nc.PublishMsg(resp)
 					return
@@ -178,6 +176,9 @@ func (c *NatsQueue[Req, Resp]) Subscribe(
 
 				responseBytes, err := natsEncode(c.encoder, response)
 				if err != nil {
+					if c.log != nil {
+						c.log.Error("failed to encode response", zap.Error(err))
+					}
 					resp.Header.Set(lhNatsErrorHeader, err.Error())
 					c.nc.PublishMsg(resp)
 					return
@@ -213,6 +214,9 @@ func (c *NatsQueue[Req, Resp]) Publish(ctx context.Context, data Req) error {
 
 func (c *NatsQueue[Req, Resp]) Unsubscribe() {
 	if c.subscription != nil {
-		c.subscription.Unsubscribe()
+		err := c.subscription.Unsubscribe()
+		if err != nil {
+			c.log.Error("failed to unsubscribe", zap.Error(err))
+		}
 	}
 }

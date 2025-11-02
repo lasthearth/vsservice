@@ -18,9 +18,22 @@ type Player struct {
 	PreviousNickname      string
 	LastNicknameChangedAt time.Time
 
+	IsOnline bool
+
 	Verification verification.Verification
 	Stats        stats.Stats
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
+}
+
+type PlayerUpdate struct {
+	UserId       *string
+	UserName     *string
+	UserGameName *string
+
+	IsOnline *bool
+
+	PreviousNickname      *string
+	LastNicknameChangedAt *time.Time
 }

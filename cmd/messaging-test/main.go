@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/messaging"
@@ -34,8 +33,6 @@ func main() {
 	queue := messaging.NewNatsQueue[PlayerTryJoinReqEvent, PlayerTryJoinResEvent](
 		nc,
 		"player.try-join",
-		time.Second*2,
-		messaging.JsonEncoder,
 	)
 
 	queue.Subscribe(func(
