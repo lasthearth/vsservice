@@ -5,7 +5,7 @@ package repomapper
 
 import (
 	goverter "github.com/lasthearth/vsservice/internal/pkg/goverter"
-	mongo "github.com/lasthearth/vsservice/internal/pkg/mongo"
+	mongo "github.com/lasthearth/vsservice/internal/pkg/mongox"
 	attachment "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
 	invitation "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
 	member "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"

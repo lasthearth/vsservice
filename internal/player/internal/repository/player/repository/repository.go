@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.uber.org/zap"
 )
 
 // goverter:converter
@@ -117,4 +118,33 @@ func (r *Repository) UpdatePlayerNickname(
 
 	_, err := r.coll.UpdateOne(ctx, bson.M{"user_id": userId}, bson.M{"$set": update})
 	return err
+}
+
+func (r *Repository) Update(id string, p model.Player) {
+	dto := r.mapper.FromPlayer(p)
+}
+
+// GetByUserGameName implements event.PlayerRepository.
+func (r *Repository) GetByUserGameName(ctx context.Context, userGameName string) (*model.Player, error) {
+	l := r.log.WithMethod("get_by_user_game_name").With(zap.String("user_game_name", userGameName))
+
+	l.Info("get player by user_game_name")
+
+	var dto dto.Player
+	finded := r.coll.FindOne(ctx, bson.M{"user_game_name": userGameName})
+	err := finded.Err()
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, ierror.ErrNotFound
+		}
+		return nil, err
+	}
+
+	err = finded.Decode(&dto)
+	if err != nil {
+		return nil, err
+	}
+
+	res := r.mapper.ToPlayer(dto)
+	return &res, nil
 }

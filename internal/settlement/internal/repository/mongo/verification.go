@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/go-faster/errors"
-	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongo"
+	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongox"
 	attachmentdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
 	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
 	vector2dto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"

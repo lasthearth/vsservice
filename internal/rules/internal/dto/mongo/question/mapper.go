@@ -1,7 +1,7 @@
 package questiondto
 
 import (
-	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/rules/model"
 )
 
@@ -16,7 +16,7 @@ func (m *Question) ToModel() *model.Question {
 
 func FromModel(question *model.Question) *Question {
 	return &Question{
-		Model:    mongo.NewModel(),
+		Model:    mongox.NewModel(),
 		Question: question.Question,
 	}
 }

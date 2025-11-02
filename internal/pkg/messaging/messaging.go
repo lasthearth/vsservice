@@ -12,17 +12,18 @@ type QueueResponse[T any] struct {
 	Data T
 }
 
-type QueueSubscribeCallback[Req, Res any] func(ctx context.Context, data Req) (Res, error)
+type QueueSubscribeCallback[Req, Resp any] func(ctx context.Context, data Req) (Resp, error)
+type QueueObserveCallback[Req any] func(ctx context.Context, data Req)
 
-type Queue[Req, Res any] interface {
+type Queue[Req, Resp any] interface {
 	Publish(ctx context.Context, data Req) error
-	Request(ctx context.Context, data Req) (*QueueResponse[Res], error)
-	SubscribeGroup(queueGroup string, data QueueSubscribeCallback[Req, Res]) error
-	Subscribe(data QueueSubscribeCallback[Req, Res]) error
+	Request(ctx context.Context, data Req) (*QueueResponse[Resp], error)
+	SubscribeGroup(queueGroup string, data QueueSubscribeCallback[Req, Resp], obs ...QueueObserveCallback[Req]) error
+	Subscribe(data QueueSubscribeCallback[Req, Resp]) error
 	Unsubscribe()
 }
 
-type NatsQueue[Req, Res any] struct {
+type NatsQueue[Req, Resp any] struct {
 	nc           *nats.Conn
 	subscription *nats.Subscription
 	subject      string
@@ -30,13 +31,13 @@ type NatsQueue[Req, Res any] struct {
 	encoder      QueueEncoder
 }
 
-func NewNatsQueue[Req, Res any](
+func NewNatsQueue[Req, Resp any](
 	nc *nats.Conn,
 	subject string,
 	timeout time.Duration,
 	encoder QueueEncoder,
-) *NatsQueue[Req, Res] {
-	return &NatsQueue[Req, Res]{
+) *NatsQueue[Req, Resp] {
+	return &NatsQueue[Req, Resp]{
 		nc:      nc,
 		subject: subject,
 		timeout: timeout,
@@ -46,7 +47,7 @@ func NewNatsQueue[Req, Res any](
 
 const lhNatsErrorHeader = "LHError"
 
-func (c *NatsQueue[Req, Res]) Request(ctx context.Context, req Req) (*QueueResponse[Res], error) {
+func (c *NatsQueue[Req, Resp]) Request(ctx context.Context, req Req) (*QueueResponse[Resp], error) {
 	reqBytes, err := natsEncode(c.encoder, req)
 	if err != nil {
 		return nil, err
@@ -78,13 +79,13 @@ func (c *NatsQueue[Req, Res]) Request(ctx context.Context, req Req) (*QueueRespo
 			return nil, errors.New(errMsg)
 		}
 
-		res, err := natsDecode[Res](c.encoder, resp.Data)
+		res, err := natsDecode[Resp](c.encoder, resp.Data)
 		if err != nil {
 			retries++
 			continue
 		}
 
-		return &QueueResponse[Res]{
+		return &QueueResponse[Resp]{
 			Data: res,
 		}, nil
 	}
@@ -92,9 +93,10 @@ func (c *NatsQueue[Req, Res]) Request(ctx context.Context, req Req) (*QueueRespo
 	return nil, errors.New("timeout")
 }
 
-func (c *NatsQueue[Req, Res]) SubscribeGroup(
+func (c *NatsQueue[Req, Resp]) SubscribeGroup(
 	queueGroup string,
-	cb QueueSubscribeCallback[Req, Res],
+	cb QueueSubscribeCallback[Req, Resp],
+	obs ...QueueObserveCallback[Req],
 ) error {
 	sub, err := c.nc.QueueSubscribe(
 		c.subject,
@@ -122,6 +124,10 @@ func (c *NatsQueue[Req, Res]) SubscribeGroup(
 					return
 				}
 
+				for _, observer := range obs {
+					observer(ctx, data)
+				}
+
 				responseBytes, err := natsEncode(c.encoder, response)
 				if err != nil {
 					resp.Header.Set(lhNatsErrorHeader, err.Error())
@@ -141,8 +147,8 @@ func (c *NatsQueue[Req, Res]) SubscribeGroup(
 	return err
 }
 
-func (c *NatsQueue[Req, Res]) Subscribe(
-	cb QueueSubscribeCallback[Req, Res],
+func (c *NatsQueue[Req, Resp]) Subscribe(
+	cb QueueSubscribeCallback[Req, Resp],
 ) error {
 	sub, err := c.nc.Subscribe(
 		c.subject,
@@ -189,7 +195,7 @@ func (c *NatsQueue[Req, Res]) Subscribe(
 	return err
 }
 
-func (c *NatsQueue[Req, Res]) Publish(ctx context.Context, data Req) error {
+func (c *NatsQueue[Req, Resp]) Publish(ctx context.Context, data Req) error {
 	dataBytes, err := natsEncode(c.encoder, data)
 	if err != nil {
 		return err
@@ -205,7 +211,7 @@ func (c *NatsQueue[Req, Res]) Publish(ctx context.Context, data Req) error {
 	return c.nc.PublishMsg(msg)
 }
 
-func (c *NatsQueue[Req, Res]) Unsubscribe() {
+func (c *NatsQueue[Req, Resp]) Unsubscribe() {
 	if c.subscription != nil {
 		c.subscription.Unsubscribe()
 	}

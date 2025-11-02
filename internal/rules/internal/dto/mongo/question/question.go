@@ -1,8 +1,8 @@
 package questiondto
 
-import "github.com/lasthearth/vsservice/internal/pkg/mongo"
+import "github.com/lasthearth/vsservice/internal/pkg/mongox"
 
 type Question struct {
-	mongo.Model `bson:",inline"`
-	Question    string
+	mongox.Model `bson:",inline"`
+	Question     string
 }

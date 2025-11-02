@@ -7,9 +7,9 @@ import (
 
 	"github.com/lasthearth/vsservice/internal/notification/internal/dto"
 	"github.com/lasthearth/vsservice/internal/notification/internal/model"
-	"github.com/lasthearth/vsservice/internal/pkg/mongo"
-	"github.com/lasthearth/vsservice/internal/pkg/mongo/orderby"
-	"github.com/lasthearth/vsservice/internal/pkg/mongo/pagination"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox/orderby"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox/pagination"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.uber.org/zap"
 )
@@ -40,7 +40,7 @@ func (r *Repository) Create(ctx context.Context, notification model.Notification
 
 	dto := r.mapper.FromModel(notification)
 
-	dto.Model = mongo.NewModel()
+	dto.Model = mongox.NewModel()
 
 	if _, err := r.coll.InsertOne(ctx, dto); err != nil {
 		l.Error("insert error", zap.Error(err))
@@ -127,7 +127,7 @@ func (r *Repository) MarkNotificationRead(ctx context.Context, id string) error 
 		},
 	}
 
-	oid, err := mongo.ParseObjectID(id)
+	oid, err := mongox.ParseObjectID(id)
 	if err != nil {
 		l.Error("parse object id error", zap.Error(err))
 		return err

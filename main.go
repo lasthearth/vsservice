@@ -11,7 +11,8 @@ import (
 	"github.com/lasthearth/vsservice/internal/notification"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
-	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/pkg/messaging"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
 	"github.com/lasthearth/vsservice/internal/player"
 	"github.com/lasthearth/vsservice/internal/rules"
@@ -58,10 +59,11 @@ func main() {
 					Scopes:       c.Scopes,
 				})
 			},
+			messaging.SetupConn,
 			setupLogger,
 			setupStorage,
-			mongo.New,
-			mongo.NewDatabase,
+			mongox.New,
+			mongox.NewDatabase,
 			// fx.Annotate(service.New, fx.As(new(vsservice.StatsService))),
 		),
 

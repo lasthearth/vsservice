@@ -1,11 +1,11 @@
 package verificationdto
 
 import (
-	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 )
 
 type Verification struct {
-	mongo.Model `bson:",inline"`
+	mongox.Model `bson:",inline"`
 	// User id from sso
 	UserId           string   `bson:"user_id"`
 	UserName         string   `bson:"user_name"`

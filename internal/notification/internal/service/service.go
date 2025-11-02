@@ -8,7 +8,7 @@ import (
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
 	"github.com/lasthearth/vsservice/internal/notification/internal/model"
 	"github.com/lasthearth/vsservice/internal/notification/internal/repository/repoerr"
-	"github.com/lasthearth/vsservice/internal/pkg/mongo"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -39,7 +39,7 @@ func (s *Service) ListNotifications(ctx context.Context, req *notificationv1.Lis
 	pageToken := strings.TrimSpace(req.PageToken)
 	orderBy := strings.ToLower(strings.TrimSpace(req.OrderBy))
 
-	_, err := mongo.ParseObjectID(pageToken)
+	_, err := mongox.ParseObjectID(pageToken)
 	if err != nil {
 		l.Debug("failed to parse page token, make it empty", zap.Error(err))
 		pageToken = ""
@@ -76,7 +76,7 @@ func (s *Service) ListNotifications(ctx context.Context, req *notificationv1.Lis
 func (s *Service) MarkAsRead(ctx context.Context, req *notificationv1.MarkAsReadRequest) (*emptypb.Empty, error) {
 	l := s.log.WithMethod("mark_as_read")
 
-	_, err := mongo.ParseObjectID(req.Id)
+	_, err := mongox.ParseObjectID(req.Id)
 	if err != nil {
 		l.Error("failed to parse notification id", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid notification id")
