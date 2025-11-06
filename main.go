@@ -19,6 +19,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/server"
 	"github.com/lasthearth/vsservice/internal/settlement"
 	"github.com/lasthearth/vsservice/internal/stats"
+	"github.com/lasthearth/vsservice/internal/webhook"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
@@ -76,6 +77,7 @@ func main() {
 		settlement.App,
 		notification.App,
 		news.App,
+		webhook.App,
 	)
 
 	a.Run()

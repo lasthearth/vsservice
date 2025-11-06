@@ -142,6 +142,11 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 		Debug:            s.c.AppEnv != "prod",
 	}).Handler(mux)
 
+	// Register the Logto webhook endpoint
+	mux.HandlePath("POST", "/logtohook", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+		s.logtoWebhookService.HandleWebhook(w, r)
+	})
+
 	wshandler := wsproxy.WebsocketProxy(handler)
 
 	srv := &http.Server{

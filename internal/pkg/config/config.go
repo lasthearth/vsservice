@@ -44,6 +44,8 @@ type Config struct {
 	MinioUseSSL    bool   `envconfig:"MINIO_USE_SSL"`
 
 	NatsUrl string `envconfig:"NATS_URL"`
+
+	LogtoWebhookSecret string `envconfig:"LOGTO_WEBHOOK_SECRET"`
 }
 
 // New initializes from .env and returns a new Config instance.
