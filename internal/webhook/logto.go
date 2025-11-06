@@ -124,7 +124,7 @@ func (s *LogtoWebhookService) handleUserDeleted(w http.ResponseWriter, r *http.R
 // handleUserSignedIn processes user sign-in events from Logto
 func (s *LogtoWebhookService) handleUserSignedIn(w http.ResponseWriter, r *http.Request, payload LogtoPayload) {
 	s.log.Info("Processing User.SignedIn event", zap.String("user_id", payload.UserID))
-
+	fmt.Println(string(payload.Payload))
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "User sign-in event processed successfully")
 }
