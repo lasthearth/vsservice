@@ -141,31 +141,15 @@ func (s *LogtoWebhookService) handleUserSignedOut(w http.ResponseWriter, r *http
 func (s *LogtoWebhookService) ValidateSignature(r *http.Request, payload []byte, secret string) error {
 	signature := r.Header.Get("logto-signature-sha-256")
 	if signature == "" {
-		return status.Error(codes.Unauthenticated, "Missing logto-signature-sha-256 header")
-	}
-
-	timestampStr := r.Header.Get("logto-timestamp")
-	if timestampStr == "" {
-		return status.Error(codes.Unauthenticated, "Missing logto-timestamp header")
-	}
-
-	timestamp, err := time.Parse(time.RFC3339, timestampStr)
-	if err != nil {
-		return status.Error(codes.InvalidArgument, "Invalid timestamp format")
-	}
-
-	if time.Since(timestamp) > 5*time.Minute {
-		return status.Error(codes.DeadlineExceeded, "Webhook timestamp is too old")
+		return status.Error(codes.Unauthenticated, "missing logto-signature-sha-256 header")
 	}
 
 	h := hmac.New(sha256.New, []byte(secret))
-	h.Write([]byte(timestampStr))
-	h.Write([]byte("."))
 	h.Write(payload)
 	expectedSignature := hex.EncodeToString(h.Sum(nil))
 
 	if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
-		return status.Error(codes.Unauthenticated, "Invalid signature")
+		return status.Error(codes.Unauthenticated, "invalid signature")
 	}
 
 	return nil
