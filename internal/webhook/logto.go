@@ -139,9 +139,9 @@ func (s *LogtoWebhookService) handleUserSignedOut(w http.ResponseWriter, r *http
 
 // ValidateSignature validates the webhook request signature using HMAC-SHA256
 func (s *LogtoWebhookService) ValidateSignature(r *http.Request, payload []byte, secret string) error {
-	signature := r.Header.Get("logto-signature-sha256")
+	signature := r.Header.Get("logto-signature-sha-256")
 	if signature == "" {
-		return status.Error(codes.Unauthenticated, "Missing logto-signature-sha256 header")
+		return status.Error(codes.Unauthenticated, "Missing logto-signature-sha-256 header")
 	}
 
 	timestampStr := r.Header.Get("logto-timestamp")
