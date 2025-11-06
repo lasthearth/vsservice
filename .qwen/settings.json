@@ -14,5 +14,6 @@
         "mongodb/mongodb-mcp-server:latest"
       ]
     }
-  }
+  },
+  "$version": 2
 }
