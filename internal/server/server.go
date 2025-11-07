@@ -135,6 +135,13 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 			"http://0.0.0.0*",
 			"https://*.lasthearth.ru",
 		},
+		AllowedMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodDelete,
+			http.MethodOptions,
+		},
 		AllowedHeaders: []string{
 			"*",
 		},
