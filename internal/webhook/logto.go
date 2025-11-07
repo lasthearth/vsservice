@@ -5,10 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
@@ -19,11 +19,15 @@ import (
 
 // LogtoPayload represents the structure of a Logto webhook payload
 type LogtoPayload struct {
-	Event     string          `json:"event"`
-	UserID    string          `json:"userId"`
-	Payload   json.RawMessage `json:"payload"`
-	TenantID  string          `json:"tenantId"`
-	Timestamp time.Time       `json:"timestamp"`
+	Event  string `json:"event"`
+	UserID string `json:"userId"`
+}
+
+type User struct {
+	Id       string `json:"id"`
+	Name     string `json:"name"`
+	Avatar   string `json:"avatar"`
+	UserName string `json:"username"`
 }
 
 type LogtoWebhookService struct {
@@ -41,100 +45,88 @@ func NewLogtoWebhookService(log logger.Logger, config config.Config) *LogtoWebho
 // HandleWebhook processes incoming Logto webhook requests
 func (s *LogtoWebhookService) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	s.log.Info("Received Logto webhook request",
+	s.log.Info("received Logto webhook request",
 		zap.String("method", r.Method),
 		zap.String("url", r.URL.Path),
-		zap.String("remote_addr", r.RemoteAddr))
+	)
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		s.log.Error("Failed to read request body", zap.Error(err))
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		s.log.Error("failed to read request body", zap.Error(err))
+		http.Error(w, "failed to read request body", http.StatusBadRequest)
 		return
 	}
 
 	if s.config.LogtoWebhookSecret != "" {
 		if err := s.ValidateSignature(r, body, s.config.LogtoWebhookSecret); err != nil {
-			s.log.Error("Webhook signature validation failed", zap.Error(err))
-			http.Error(w, "Unauthorized: Invalid signature", http.StatusUnauthorized)
+			s.log.Error("webhook signature validation failed", zap.Error(err))
+			http.Error(w, "unauthorized: Invalid signature", http.StatusUnauthorized)
 			return
 		}
 	} else {
 		s.log.Warn("Logto webhook secret is not configured, signature validation skipped")
 	}
 
+	var rawMap map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(body), &rawMap); err != nil {
+		s.log.Error("unmarshal to rawMap", zap.Error(err))
+	}
 	var payload LogtoPayload
-	if err := json.Unmarshal(body, &payload); err != nil {
-		s.log.Error("Failed to parse webhook payload", zap.Error(err))
-		http.Error(w, "Invalid payload format", http.StatusBadRequest)
-		return
+	if err := json.Unmarshal(rawMap["event"], &payload.Event); err != nil {
+		s.log.Error("failed to parse event", zap.Error(err))
 	}
 
 	s.log.Info("Processing Logto event",
 		zap.String("event", payload.Event),
 		zap.String("user_id", payload.UserID),
-		zap.String("tenant_id", payload.TenantID))
+	)
 
 	switch payload.Event {
-	case "User.Created":
-		s.handleUserCreated(w, r, payload)
-	case "User.Updated":
-		s.handleUserUpdated(w, r, payload)
-	case "User.Deleted":
-		s.handleUserDeleted(w, r, payload)
 	case "PostSignIn":
-		s.handleUserSignedIn(w, r, payload)
-	case "User.SignedOut":
-		s.handleUserSignedOut(w, r, payload)
+		user, err := s.parseUser(rawMap)
+		if err != nil {
+			s.log.Error("failed to parse user", zap.Error(err))
+			http.Error(w, "Failed to parse user data", http.StatusBadRequest)
+			return
+		}
+		s.handleUserSignedIn(w, r, *user)
 	default:
-		s.log.Info("Received unsupported event type", zap.String("event", payload.Event))
+		s.log.Warn(
+			"received unsupported event type",
+			zap.String("event", payload.Event),
+		)
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "Event %s is not handled but acknowledged", payload.Event)
 	}
 }
 
-// handleUserCreated processes user creation events from Logto
-func (s *LogtoWebhookService) handleUserCreated(w http.ResponseWriter, r *http.Request, payload LogtoPayload) {
-	s.log.Info("Processing User.Created event", zap.String("user_id", payload.UserID))
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "User creation event processed successfully")
-}
-
-// handleUserUpdated processes user update events from Logto
-func (s *LogtoWebhookService) handleUserUpdated(w http.ResponseWriter, r *http.Request, payload LogtoPayload) {
-	s.log.Info("Processing User.Updated event", zap.String("user_id", payload.UserID))
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "User update event processed successfully")
-}
-
-// handleUserDeleted processes user deletion events from Logto
-func (s *LogtoWebhookService) handleUserDeleted(w http.ResponseWriter, r *http.Request, payload LogtoPayload) {
-	s.log.Info("Processing User.Deleted event", zap.String("user_id", payload.UserID))
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "User deletion event processed successfully")
+func (s *LogtoWebhookService) parseUser(rawMap map[string]json.RawMessage) (*User, error) {
+	var user User
+	userJson, ok := rawMap["user"]
+	if !ok {
+		s.log.Error("user data not found in payload")
+		return nil, errors.New("user data not found")
+	}
+	if err := json.Unmarshal(userJson, &user); err != nil {
+		s.log.Error("failed to parse user data", zap.Error(err))
+		return nil, errors.New("invalid user data format")
+	}
+	return &user, nil
 }
 
 // handleUserSignedIn processes user sign-in events from Logto
-func (s *LogtoWebhookService) handleUserSignedIn(w http.ResponseWriter, r *http.Request, payload LogtoPayload) {
-	s.log.Info("Processing PostSignIn event", zap.String("user_id", payload.UserID))
-	s.log.Debug("payload", zap.ByteString("payload", payload.Payload))
+func (s *LogtoWebhookService) handleUserSignedIn(
+	w http.ResponseWriter,
+	_ *http.Request,
+	user User,
+) {
+	s.log.Info("Processing PostSignIn event", zap.String("user_id", user.Id))
+	s.log.Debug("avatar", zap.String("avatar", user.Avatar))
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "User sign-in event processed successfully")
-}
-
-// handleUserSignedOut processes user sign-out events from Logto
-func (s *LogtoWebhookService) handleUserSignedOut(w http.ResponseWriter, r *http.Request, payload LogtoPayload) {
-	s.log.Info("Processing User.SignedOut event", zap.String("user_id", payload.UserID))
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "User sign-out event processed successfully")
 }
 
 // ValidateSignature validates the webhook request signature using HMAC-SHA256
