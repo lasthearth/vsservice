@@ -13,6 +13,7 @@ type Player struct {
 	UserId       string
 	UserName     string
 	UserGameName string
+	Avatar       *Avatar
 
 	// Nickname change tracking
 	PreviousNickname      string
@@ -27,13 +28,8 @@ type Player struct {
 	CreatedAt time.Time
 }
 
-type PlayerUpdate struct {
-	UserId       *string
-	UserName     *string
-	UserGameName *string
-
-	IsOnline *bool
-
-	PreviousNickname      *string
-	LastNicknameChangedAt *time.Time
+type Avatar struct {
+	Original string
+	X96      string
+	X48      string
 }

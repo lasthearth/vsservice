@@ -10,7 +10,7 @@ import (
 
 type PlayerRepository interface {
 	GetByUserGameName(ctx context.Context, userGameName string) (*model.Player, error)
-	UpdateById(ctx context.Context, id string, p model.Player) error
+	UpdateById(ctx context.Context, id string, p model.PlayerUpdate) error
 	UpdateByUserGameName(ctx context.Context, userGameName string, p model.PlayerUpdate) error
 }
 

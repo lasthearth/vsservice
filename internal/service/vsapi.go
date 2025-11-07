@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+
 	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	"github.com/lasthearth/vsservice/internal/model/player"
 	"github.com/lasthearth/vsservice/internal/model/worldtime"
@@ -11,8 +14,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"io"
-	"net/http"
 )
 
 var _ v1.VintageServiceServer = (*VsApiV1)(nil)
@@ -86,24 +87,25 @@ func (v *VsApiV1) GetGameTime(ctx context.Context, e *emptypb.Empty) (*v1.TimeRe
 }
 
 func (v *VsApiV1) StreamGameTime(empty *emptypb.Empty, g grpc.ServerStreamingServer[v1.TimeResponse]) error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (v *VsApiV1) StreamOnlinePlayersCount(empty *emptypb.Empty, g grpc.ServerStreamingServer[v1.PlayersCountResponse]) error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (v *VsApiV1) GetOnlinePlayersList(ctx context.Context, empty *emptypb.Empty) (*v1.PlayersListResponse, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (v *VsApiV1) StreamOnlinePlayersList(empty *emptypb.Empty, g grpc.ServerStreamingServer[v1.PlayersListResponse]) error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
+
 func (v *VsApiV1) checkStatusCode(resp *http.Response) error {
 	if resp.StatusCode >= 400 {
 		return status.Error(codes.Internal, ErrHTTPStatusNotOK.Error())

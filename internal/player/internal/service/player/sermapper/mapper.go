@@ -10,10 +10,22 @@ import (
 
 type MapperImpl struct{}
 
+func (c *MapperImpl) ToImageProto(source *model.Avatar) *v1.User_Image {
+	var pUserv1User_Image *v1.User_Image
+	if source != nil {
+		var userv1User_Image v1.User_Image
+		userv1User_Image.Original = (*source).Original
+		userv1User_Image.X96 = (*source).X96
+		userv1User_Image.X48 = (*source).X48
+		pUserv1User_Image = &userv1User_Image
+	}
+	return pUserv1User_Image
+}
 func (c *MapperImpl) ToUserProto(source model.Player) *v1.User {
 	var userv1User v1.User
 	userv1User.UserId = source.UserId
 	userv1User.UserGameName = source.UserGameName
+	userv1User.Avatar = c.ToImageProto(source.Avatar)
 	userv1User.UserName = source.UserName
 	userv1User.PreviousNickname = source.PreviousNickname
 	userv1User.IsOnline = source.IsOnline

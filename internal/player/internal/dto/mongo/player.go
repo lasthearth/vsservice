@@ -10,9 +10,10 @@ import (
 
 type Player struct {
 	mongox.Model `bson:",inline"`
-	UserId       string `bson:"user_id"`
-	UserName     string `bson:"user_name"`
-	UserGameName string `bson:"user_game_name"`
+	UserId       string  `bson:"user_id"`
+	UserName     string  `bson:"user_name"`
+	UserGameName string  `bson:"user_game_name"`
+	Avatar       *Avatar `bson:"avatar"`
 
 	IsOnline bool `bson:"is_online"`
 
@@ -22,4 +23,10 @@ type Player struct {
 
 	Verification verificationdto.Verification `bson:",inline"`
 	Stats        stats.Stats                  `bson:",inline"`
+}
+
+type Avatar struct {
+	Original string `bson:"original"`
+	X96      string `bson:"x96"`
+	X48      string `bson:"x48"`
 }
