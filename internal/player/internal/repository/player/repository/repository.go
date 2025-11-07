@@ -4,10 +4,8 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
-	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	dto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo"
 	verificationdto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/player/internal/ierror"
@@ -122,19 +120,27 @@ func (r *Repository) UpdatePlayerNickname(
 	return err
 }
 
-func (r *Repository) UpdateById(ctx context.Context, id string, p model.Player) error {
-	dto := r.mapper.FromPlayer(p)
-	updset, _ := mongox.ComputeUpdateBson(
-		dto,
-		mongox.WithoutFields("_id"),
+func (r *Repository) UpdateById(ctx context.Context, uid string, p model.PlayerUpdate) error {
+	update := r.buildUpdateSet(p)
+	_, err := r.coll.UpdateOne(
+		ctx,
+		bson.M{"user_id": uid},
+		bson.M{"$set": update},
 	)
-
-	fmt.Printf("%+v", updset)
-
-	return nil
+	return err
 }
 
 func (r *Repository) UpdateByUserGameName(ctx context.Context, userGameName string, p model.PlayerUpdate) error {
+	update := r.buildUpdateSet(p)
+	_, err := r.coll.UpdateOne(
+		ctx,
+		bson.M{"user_game_name": userGameName},
+		bson.M{"$set": update},
+	)
+	return err
+}
+
+func (r *Repository) buildUpdateSet(p model.PlayerUpdate) bson.M {
 	update := bson.M{}
 	if p.UserId != nil && *p.UserId != "" {
 		update["user_id"] = *p.UserId
@@ -154,13 +160,18 @@ func (r *Repository) UpdateByUserGameName(ctx context.Context, userGameName stri
 	if p.IsOnline != nil {
 		update["is_online"] = *p.IsOnline
 	}
-
-	_, err := r.coll.UpdateOne(
-		ctx,
-		bson.M{"user_game_name": userGameName},
-		bson.M{"$set": update},
-	)
-	return err
+	if p.Avatar != nil {
+		if p.Avatar.Original != "" {
+			update["avatar.original"] = p.Avatar.Original
+		}
+		if p.Avatar.X96 != "" {
+			update["avatar.x96"] = p.Avatar.X96
+		}
+		if p.Avatar.X48 != "" {
+			update["avatar.x48"] = p.Avatar.X48
+		}
+	}
+	return update
 }
 
 // GetByUserGameName implements event.PlayerRepository.

@@ -41,6 +41,7 @@ type DbRepository interface {
 		previousNickname string,
 		lastChangedAt time.Time,
 	) error
+	UpdateById(ctx context.Context, uid string, p model.PlayerUpdate) error
 }
 
 type Storage interface {
@@ -60,7 +61,10 @@ type Storage interface {
 // goverter:output:file sermapper/mapper.go
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTimestamp
 type Mapper interface {
-	// goverter:ignore state sizeCache unknownFields Avatar
+	// goverter:ignore state sizeCache unknownFields
+	ToImageProto(*model.Avatar) *userv1.User_Image
+
+	// goverter:ignore state sizeCache unknownFields
 	ToUserProto(model.Player) *userv1.User
 	ToUserProtos([]model.Player) []*userv1.User
 }
@@ -122,6 +126,9 @@ func (s *Service) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequ
 
 	heights := []int{96, 48}
 	imgs := make(map[string][]byte)
+	avatar := model.Avatar{
+		Original: originalPath,
+	}
 
 	for _, height := range heights {
 		img, err := image.ProcessImage(webp, height, height)
@@ -134,6 +141,13 @@ func (s *Service) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequ
 			uid,
 			fileName,
 		}, "/")
+
+		if height == 96 {
+			avatar.X96 = path
+		}
+		if height == 48 {
+			avatar.X48 = path
+		}
 
 		imgs[path] = img
 	}
@@ -154,6 +168,13 @@ func (s *Service) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequ
 
 	url := fmt.Sprintf("%s/%s/%s", s.cfg.CdnUrl, bucketName, originalPath)
 	err = s.ssoRepo.UpdateUserAvatar(ctx, uid, url)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.dbRepo.UpdateById(ctx, uid, model.PlayerUpdate{
+		Avatar: &avatar,
+	})
 	if err != nil {
 		return nil, err
 	}

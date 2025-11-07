@@ -27,6 +27,7 @@ func (c *MapperImpl) FromPlayer(source model.Player) mongo.Player {
 	dtoPlayer.UserId = source.UserId
 	dtoPlayer.UserName = source.UserName
 	dtoPlayer.UserGameName = source.UserGameName
+	dtoPlayer.Avatar = c.pModelAvatarToPDtoAvatar(source.Avatar)
 	dtoPlayer.IsOnline = source.IsOnline
 	dtoPlayer.PreviousNickname = source.PreviousNickname
 	dtoPlayer.LastNicknameChangedAt = goverter.TimeToTime(source.LastNicknameChangedAt)
@@ -65,6 +66,7 @@ func (c *MapperImpl) ToPlayer(source mongo.Player) model.Player {
 	modelPlayer.UserId = source.UserId
 	modelPlayer.UserName = source.UserName
 	modelPlayer.UserGameName = source.UserGameName
+	modelPlayer.Avatar = c.pDtoAvatarToPModelAvatar(source.Avatar)
 	modelPlayer.PreviousNickname = source.PreviousNickname
 	modelPlayer.LastNicknameChangedAt = goverter.TimeToTime(source.LastNicknameChangedAt)
 	modelPlayer.IsOnline = source.IsOnline
@@ -103,6 +105,28 @@ func (c *MapperImpl) ToVerification(source verification1.Verification) verificat
 	verificationVerification.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)
 	verificationVerification.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
 	return verificationVerification
+}
+func (c *MapperImpl) pDtoAvatarToPModelAvatar(source *mongo.Avatar) *model.Avatar {
+	var pModelAvatar *model.Avatar
+	if source != nil {
+		var modelAvatar model.Avatar
+		modelAvatar.Original = (*source).Original
+		modelAvatar.X96 = (*source).X96
+		modelAvatar.X48 = (*source).X48
+		pModelAvatar = &modelAvatar
+	}
+	return pModelAvatar
+}
+func (c *MapperImpl) pModelAvatarToPDtoAvatar(source *model.Avatar) *mongo.Avatar {
+	var pDtoAvatar *mongo.Avatar
+	if source != nil {
+		var dtoAvatar mongo.Avatar
+		dtoAvatar.Original = (*source).Original
+		dtoAvatar.X96 = (*source).X96
+		dtoAvatar.X48 = (*source).X48
+		pDtoAvatar = &dtoAvatar
+	}
+	return pDtoAvatar
 }
 func (c *MapperImpl) statsStatsToStatsStats(source stats.Stats) stats.Stats {
 	var statsStats stats.Stats
