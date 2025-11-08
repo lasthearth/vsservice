@@ -3,7 +3,7 @@ package leaderboard
 import (
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	"github.com/lasthearth/vsservice/internal/leaderboard/internal/repository"
-	service2 "github.com/lasthearth/vsservice/internal/leaderboard/internal/service"
+	"github.com/lasthearth/vsservice/internal/leaderboard/internal/service"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 )
@@ -21,14 +21,15 @@ var App = fx.Options(
 
 		fx.Provide(
 			fx.Private,
+
 			fx.Annotate(
 				repository.New,
-				fx.As(new(service2.Repository)),
+				fx.As(new(service.Repository)),
 			),
 		),
 
 		fx.Provide(
-			fx.Annotate(service2.New, fx.As(new(leaderboardv1.LeaderboardServiceServer))),
+			fx.Annotate(service.New, fx.As(new(leaderboardv1.LeaderboardServiceServer))),
 		),
 	),
 )

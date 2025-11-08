@@ -1189,6 +1189,8 @@ components:
                 hours_played:
                     type: number
                     format: float
+                user_id:
+                    type: string
         LeaderboardResponse:
             type: object
             properties:

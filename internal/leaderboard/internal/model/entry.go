@@ -5,4 +5,5 @@ type Entry struct {
 	DeathCount  int
 	KillCount   int
 	HoursPlayed float32
+	UserID      string
 }

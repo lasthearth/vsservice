@@ -49,6 +49,7 @@ func (s *Service) ListEntries(ctx context.Context, req *leaderboardv1.Leaderboar
 			Deaths:      int32(entry.DeathCount),
 			Kills:       int32(entry.KillCount),
 			HoursPlayed: entry.HoursPlayed,
+			UserId:      entry.UserID,
 		}
 	})
 

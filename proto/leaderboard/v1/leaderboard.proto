@@ -39,6 +39,7 @@ message LeaderboardEntry {
   int32 deaths = 2;
   int32 kills = 3;
   float hours_played = 5;
+  string user_id = 6;
 }
 
 message LeaderboardResponse {

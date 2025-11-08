@@ -83,11 +83,24 @@ func (r *Repository) listEntries(
 	}
 
 	entries := lo.Map(rawEntries, func(item *mongodto.Entry, index int) *model.Entry {
+		user := struct {
+			UserID string `bson:"user_id"`
+		}{}
+		finded := r.pColl.FindOne(ctx, bson.M{"user_game_name": item.Name})
+		if err := finded.Err(); err != nil {
+			r.log.Error("find user error", zap.Error(err))
+		}
+		err = finded.Decode(&user)
+		if err != nil {
+			r.log.Error("decode user error", zap.Error(err))
+		}
+
 		return &model.Entry{
 			Name:        item.Name,
 			DeathCount:  item.DeathCount,
 			KillCount:   item.KillCount,
 			HoursPlayed: float32(item.HoursPlayed),
+			UserID:      user.UserID,
 		}
 	})
 
