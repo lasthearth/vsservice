@@ -4,6 +4,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	dto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo"
@@ -21,6 +22,7 @@ import (
 // goverter:output:file repomapper/mapper.go
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:ObjectIdToString
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTime
+// goverter:extend AvatarWithPrefix
 type Mapper interface {
 	// goverter:ignore Model
 	FromPlayer(p model.Player) dto.Player
@@ -28,9 +30,11 @@ type Mapper interface {
 	FromVerification(verification verification.Verification) verificationdto.Verification
 	FromAnswer(answer verification.Answer) verificationdto.Answer
 
-	ToPlayers(dtos []dto.Player) []model.Player
+	// goverter:context avatarPrefix
+	ToPlayers(dtos []dto.Player, avatarPrefix string) []model.Player
 	// goverter:autoMap Model
-	ToPlayer(dto dto.Player) model.Player
+	// goverter:context avatarPrefix
+	ToPlayer(dto dto.Player, avatarPrefix string) model.Player
 	// goverter:autoMap Model
 	ToVerification(dto verificationdto.Verification) verification.Verification
 	ToAnswer(dto verificationdto.Answer) verification.Answer
@@ -59,7 +63,7 @@ func (r *Repository) GetUserById(ctx context.Context, id string) (*model.Player,
 		return nil, err
 	}
 
-	p := r.mapper.ToPlayer(dto)
+	p := r.mapper.ToPlayer(dto, r.getAvatarPrefix())
 	return &p, nil
 }
 
@@ -98,7 +102,7 @@ func (r *Repository) SearchUsers(
 		return nil, err
 	}
 
-	users := r.mapper.ToPlayers(dtos)
+	users := r.mapper.ToPlayers(dtos, r.getAvatarPrefix())
 	return users, nil
 }
 
@@ -195,6 +199,10 @@ func (r *Repository) GetByUserGameName(ctx context.Context, userGameName string)
 		return nil, err
 	}
 
-	res := r.mapper.ToPlayer(dto)
+	res := r.mapper.ToPlayer(dto, r.getAvatarPrefix())
 	return &res, nil
+}
+
+func (r *Repository) getAvatarPrefix() string {
+	return fmt.Sprintf("%s/avatars", r.cfg.CdnUrl)
 }

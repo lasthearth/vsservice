@@ -10,6 +10,7 @@ import (
 	model "github.com/lasthearth/vsservice/internal/player/internal/model"
 	stats "github.com/lasthearth/vsservice/internal/player/internal/model/stats"
 	verification "github.com/lasthearth/vsservice/internal/player/internal/model/verification"
+	repository "github.com/lasthearth/vsservice/internal/player/internal/repository/player/repository"
 )
 
 type MapperImpl struct{}
@@ -60,13 +61,13 @@ func (c *MapperImpl) ToAnswer(source verification1.Answer) verification.Answer {
 	verificationAnswer.CreatedAt = goverter.TimeToTime(source.CreatedAt)
 	return verificationAnswer
 }
-func (c *MapperImpl) ToPlayer(source mongo.Player) model.Player {
+func (c *MapperImpl) ToPlayer(source mongo.Player, context string) model.Player {
 	var modelPlayer model.Player
 	modelPlayer.Id = goverter.ObjectIdToString(source.Model.Id)
 	modelPlayer.UserId = source.UserId
 	modelPlayer.UserName = source.UserName
 	modelPlayer.UserGameName = source.UserGameName
-	modelPlayer.Avatar = c.pDtoAvatarToPModelAvatar(source.Avatar)
+	modelPlayer.Avatar = repository.AvatarWithPrefix(source.Avatar, context)
 	modelPlayer.PreviousNickname = source.PreviousNickname
 	modelPlayer.LastNicknameChangedAt = goverter.TimeToTime(source.LastNicknameChangedAt)
 	modelPlayer.IsOnline = source.IsOnline
@@ -76,12 +77,12 @@ func (c *MapperImpl) ToPlayer(source mongo.Player) model.Player {
 	modelPlayer.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
 	return modelPlayer
 }
-func (c *MapperImpl) ToPlayers(source []mongo.Player) []model.Player {
+func (c *MapperImpl) ToPlayers(source []mongo.Player, context string) []model.Player {
 	var modelPlayerList []model.Player
 	if source != nil {
 		modelPlayerList = make([]model.Player, len(source))
 		for i := 0; i < len(source); i++ {
-			modelPlayerList[i] = c.ToPlayer(source[i])
+			modelPlayerList[i] = c.ToPlayer(source[i], context)
 		}
 	}
 	return modelPlayerList
@@ -105,17 +106,6 @@ func (c *MapperImpl) ToVerification(source verification1.Verification) verificat
 	verificationVerification.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)
 	verificationVerification.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
 	return verificationVerification
-}
-func (c *MapperImpl) pDtoAvatarToPModelAvatar(source *mongo.Avatar) *model.Avatar {
-	var pModelAvatar *model.Avatar
-	if source != nil {
-		var modelAvatar model.Avatar
-		modelAvatar.Original = (*source).Original
-		modelAvatar.X96 = (*source).X96
-		modelAvatar.X48 = (*source).X48
-		pModelAvatar = &modelAvatar
-	}
-	return pModelAvatar
 }
 func (c *MapperImpl) pModelAvatarToPDtoAvatar(source *model.Avatar) *mongo.Avatar {
 	var pDtoAvatar *mongo.Avatar

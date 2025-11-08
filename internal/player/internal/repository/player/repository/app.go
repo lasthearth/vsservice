@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/player/internal/event"
 	service "github.com/lasthearth/vsservice/internal/player/internal/service/player"
@@ -20,12 +21,14 @@ type Opts struct {
 	Database *mongo.Database
 	Logger   logger.Logger
 	Mapper   Mapper
+	Config   config.Config
 }
 
 type Repository struct {
 	log    logger.Logger
 	coll   *mongo.Collection
 	mapper Mapper
+	cfg    config.Config
 }
 
 func New(opts Opts) *Repository {
@@ -35,5 +38,6 @@ func New(opts Opts) *Repository {
 		log:    logger,
 		coll:   coll,
 		mapper: opts.Mapper,
+		cfg:    opts.Config,
 	}
 }
