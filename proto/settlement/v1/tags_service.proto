@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package settlement.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "settlement/v1/tag.proto";
+
+// Administrative service for tag management
+service SettlementTagService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+  rpc GetTag(GetTagRequest) returns (SettlementTag) {
+    option (google.api.http) = {
+      get: "/v1/settlements/tags/{tag_id}"
+    };
+  }
+  rpc GetTagsByIds(GetTagsByIdsRequest) returns (GetTagsByIdsResponse) {
+      option (google.api.http) = {
+        post: "/v1/settlements/tags:batch"
+        body: "*"
+      };
+    }
+
+  // Require tags:create privilege
+  rpc CreateTag(SettlementTag) returns (SettlementTag) {
+    option (google.api.http) = {
+      post: "/v1/settlements/tags"
+      body: "*"
+    };
+  }
+
+  // Require tags:delete privilege
+  rpc DeleteTag(DeleteTagRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/v1/settlements/tags/{tag_id}"};
+  }
+}
+
+message GetTagRequest {
+  string tag_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetTagsByIdsRequest {
+  repeated string tag_ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetTagsByIdsResponse {
+  repeated SettlementTag tags = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateTagRequest {
+  SettlementTag tag = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteTagRequest {
+  string tag_id = 1 [(google.api.field_behavior) = REQUIRED];
+}

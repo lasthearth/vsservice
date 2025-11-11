@@ -10,7 +10,7 @@ import (
 	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
 	vector2dto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
 	verificationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/verification"
-	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repoerr"
+	repoerr "github.com/lasthearth/vsservice/internal/settlement/internal/ierror"
 
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service"
 	"github.com/lasthearth/vsservice/internal/settlement/model"

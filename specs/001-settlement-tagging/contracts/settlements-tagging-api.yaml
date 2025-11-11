@@ -1,0 +1,205 @@
+# API Contract: Settlements Service with Tagging
+
+## Overview
+Extended settlements service API to include tagging functionality. The API follows gRPC patterns with automatic REST conversion via grpc-gateway.
+
+## Protobuf Definitions
+
+### Tag Message
+```protobuf
+message Tag {
+  string id = 1;           // Unique identifier for the tag
+  string name = 2;         // Display name for the tag (unique across system)
+  string color = 3;        // Color code for visual representation (optional)
+  string description = 4;  // Brief description of the tag (optional)
+  int64 created_at = 5;    // Creation timestamp
+  int64 updated_at = 6;    // Last update timestamp
+  bool is_active = 7;      // Whether the tag is currently in use (for soft deletion)
+}
+```
+
+### Settlement Message Extension
+```protobuf
+message Settlement {
+  string id = 1;                    // Unique identifier for the settlement
+  string name = 2;                  // Name of the settlement
+  // ... other existing fields ...
+  
+  // New fields for tagging support:
+  repeated string tag_ids = 20;     // List of tag IDs associated with this settlement
+  repeated Tag tags = 21;           // Full tag objects (populated on read operations)
+}
+```
+
+### Tagging Requests/Responses
+
+```protobuf
+// Request to add a tag to a settlement
+message AddTagToSettlementRequest {
+  string settlement_id = 1;         // ID of the settlement to tag
+  string tag_id = 2;                // ID of the tag to add
+}
+
+// Response from adding a tag to a settlement
+message AddTagToSettlementResponse {
+  Settlement settlement = 1;        // Updated settlement with the new tag
+}
+
+// Request to remove a tag from a settlement
+message RemoveTagFromSettlementRequest {
+  string settlement_id = 1;         // ID of the settlement
+  string tag_id = 2;                // ID of the tag to remove
+}
+
+// Response from removing a tag from a settlement
+message RemoveTagFromSettlementResponse {
+  Settlement settlement = 1;        // Updated settlement after tag removal
+}
+
+// Request to create a new tag
+message CreateTagRequest {
+  Tag tag = 1;                     // Tag object with details (id will be generated, name must be unique)
+}
+
+// Response from creating a new tag
+message CreateTagResponse {
+  Tag tag = 1;                     // Created tag with assigned ID
+}
+
+// Request to update an existing tag
+message UpdateTagRequest {
+  string id = 1;                   // ID of the tag to update
+  string name = 2;                 // New name for the tag (must remain unique)
+  string color = 3;                // New color for the tag
+  string description = 4;          // New description for the tag
+}
+
+// Response from updating a tag
+message UpdateTagResponse {
+  Tag tag = 1;                     // Updated tag object
+}
+
+// Request to soft delete a tag
+message DeleteTagRequest {
+  string id = 1;                   // ID of the tag to soft delete
+}
+
+// Response from soft deleting a tag
+message DeleteTagResponse {
+  Tag tag = 1;                     // The soft deleted tag (isActive = false)
+}
+
+// Request to get all available tags
+message ListTagsRequest {
+  bool only_active = 1;            // If true, only return active tags; if false, return all tags
+  // Pagination parameters (though not required for this feature per spec)
+  int32 page_size = 2;
+  int32 page_token = 3;
+}
+
+// Response with available tags
+message ListTagsResponse {
+  repeated Tag tags = 1;           // List of tags
+  string next_page_token = 2;      // Not used if pagination is not needed
+}
+
+// Request to list settlements filtered by tags
+message ListSettlementsByTagsRequest {
+  repeated string tag_ids = 1;     // Tags to filter by
+  bool match_all = 2;              // If true, settlement must have ALL specified tags; if false, ANY of the tags (default: false for partial matching)
+}
+
+// Response from listing settlements by tags
+message ListSettlementsByTagsResponse {
+  repeated Settlement settlements = 1; // List of settlements matching the tag filters
+}
+```
+
+## gRPC Service Definition
+
+```protobuf
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+
+package settlements;
+
+service SettlementsService {
+  // ... existing methods ...
+  
+  // New tag-related methods:
+  
+  // Add a tag to a settlement
+  rpc AddTagToSettlement(AddTagToSettlementRequest) returns (AddTagToSettlementResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{settlement_id}/tags"
+      body: "*"
+    };
+  }
+  
+  // Remove a tag from a settlement
+  rpc RemoveTagFromSettlement(RemoveTagFromSettlementRequest) returns (RemoveTagFromSettlementResponse) {
+    option (google.api.http) = {
+      delete: "/v1/settlements/{settlement_id}/tags/{tag_id}"
+    };
+  }
+  
+  // Create a new tag
+  rpc CreateTag(CreateTagRequest) returns (CreateTagResponse) {
+    option (google.api.http) = {
+      post: "/v1/tags"
+      body: "*"
+    };
+  }
+  
+  // Update an existing tag
+  rpc UpdateTag(UpdateTagRequest) returns (UpdateTagResponse) {
+    option (google.api.http) = {
+      put: "/v1/tags/{id}"
+      body: "*"
+    };
+  }
+  
+  // Soft delete a tag
+  rpc DeleteTag(DeleteTagRequest) returns (DeleteTagResponse) {
+    option (google.api.http) = {
+      patch: "/v1/tags/{id}:deactivate"
+    };
+  }
+  
+  // List all available tags
+  rpc ListTags(ListTagsRequest) returns (ListTagsResponse) {
+    option (google.api.http) = {
+      get: "/v1/tags"
+    };
+  }
+  
+  // List settlements filtered by tags
+  rpc ListSettlementsByTags(ListSettlementsByTagsRequest) returns (ListSettlementsByTagsResponse) {
+    option (google.api.http) = {
+      get: "/v1/settlements:filter-by-tags"
+    };
+  }
+}
+```
+
+## Security and Authorization
+
+All tag-related operations follow the existing authentication and authorization patterns:
+
+- `CreateTag`: Requires `tags:create` scope
+- `UpdateTag`: Requires `tags:delete` scope (or specific update scope if implemented)
+- `DeleteTag`: Requires `tags:delete` scope
+- `AddTagToSettlement`: Requires `tags:create` scope
+- `RemoveTagFromSettlement`: Requires `tags:delete` scope
+- `ListTags`, `ListSettlementsByTags`: Available to all authenticated users
+
+## Error Handling
+
+Standard error codes apply:
+
+- `INVALID_ARGUMENT`: For malformed requests (e.g., invalid tag IDs, exceeding tag limits, duplicate names)
+- `NOT_FOUND`: When requested settlement or tag doesn't exist
+- `PERMISSION_DENIED`: When user doesn't have required scopes
+- `FAILED_PRECONDITION`: When trying to add more tags than allowed limit (20 per settlement) or when attempting to create a tag with a name that already exists
+- `ALREADY_EXISTS`: When attempting to create a tag with a name that already exists in the system

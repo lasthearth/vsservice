@@ -7,6 +7,16 @@ import (
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 )
 
+func TagIdsToProto(ids []string) []*settlementv1.TagReference {
+	var tagIds []*settlementv1.TagReference
+	for _, id := range ids {
+		tagIds = append(tagIds, &settlementv1.TagReference{
+			Id: id,
+		})
+	}
+	return tagIds
+}
+
 // TypeToProto converts a model.SettlementType to a settlementv1.SettlementType.
 func TypeToProto(s model.SettlementType) settlementv1.SettlementType {
 	var stype settlementv1.SettlementType

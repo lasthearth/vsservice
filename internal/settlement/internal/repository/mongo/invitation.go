@@ -8,7 +8,7 @@ import (
 	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongox"
 	invitationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
 	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
-	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repoerr"
+	repoerr "github.com/lasthearth/vsservice/internal/settlement/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"

@@ -33,6 +33,47 @@ func (c *MapperImpl) FromInvModels(source []model.Invitation) []invitation.Invit
 	}
 	return invitationdtoInvitationList
 }
+func (c *MapperImpl) FromSettlementDTO(source settlement.Settlement) model.Settlement {
+	var modelSettlement model.Settlement
+	modelSettlement.Id = goverter.ObjectIdToString(source.Model.Id)
+	modelSettlement.Name = source.Name
+	modelSettlement.Type = model.SettlementType(source.Type)
+	modelSettlement.Description = source.Description
+	modelSettlement.Leader = c.memberdtoMemberToModelMember(source.Leader)
+	if source.Members != nil {
+		modelSettlement.Members = make([]model.Member, len(source.Members))
+		for i := 0; i < len(source.Members); i++ {
+			modelSettlement.Members[i] = c.memberdtoMemberToModelMember(source.Members[i])
+		}
+	}
+	modelSettlement.Coordinates = c.vector2dtoVector2ToModelVector2(source.Coordinates)
+	modelSettlement.Diplomacy = source.Diplomacy
+	if source.Attachments != nil {
+		modelSettlement.Attachments = make([]model.Attachment, len(source.Attachments))
+		for j := 0; j < len(source.Attachments); j++ {
+			modelSettlement.Attachments[j] = c.attachmentdtoAttachmentToModelAttachment(source.Attachments[j])
+		}
+	}
+	if source.TagIds != nil {
+		modelSettlement.TagIds = make([]string, len(source.TagIds))
+		for k := 0; k < len(source.TagIds); k++ {
+			modelSettlement.TagIds[k] = source.TagIds[k]
+		}
+	}
+	modelSettlement.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)
+	modelSettlement.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
+	return modelSettlement
+}
+func (c *MapperImpl) FromSettlementsDTO(source []settlement.Settlement) []model.Settlement {
+	var modelSettlementList []model.Settlement
+	if source != nil {
+		modelSettlementList = make([]model.Settlement, len(source))
+		for i := 0; i < len(source); i++ {
+			modelSettlementList[i] = c.FromSettlementDTO(source[i])
+		}
+	}
+	return modelSettlementList
+}
 func (c *MapperImpl) FromVerification(source verification.SettlementVerification) settlement.Settlement {
 	var settlementdtoSettlement settlement.Settlement
 	settlementdtoSettlement.Model = c.mongoxModelToMongoxModel(source.Model)
@@ -67,6 +108,34 @@ func (c *MapperImpl) ToInvModels(source []invitation.Invitation) []model.Invitat
 	}
 	return modelInvitationList
 }
+func (c *MapperImpl) ToSettlementDTO(source model.Settlement) settlement.Settlement {
+	var settlementdtoSettlement settlement.Settlement
+	settlementdtoSettlement.Name = source.Name
+	settlementdtoSettlement.Type = string(source.Type)
+	settlementdtoSettlement.Leader = c.modelMemberToMemberdtoMember(source.Leader)
+	if source.Members != nil {
+		settlementdtoSettlement.Members = make([]member.Member, len(source.Members))
+		for i := 0; i < len(source.Members); i++ {
+			settlementdtoSettlement.Members[i] = c.modelMemberToMemberdtoMember(source.Members[i])
+		}
+	}
+	settlementdtoSettlement.Coordinates = c.modelVector2ToVector2dtoVector2(source.Coordinates)
+	if source.Attachments != nil {
+		settlementdtoSettlement.Attachments = make([]attachment.Attachment, len(source.Attachments))
+		for j := 0; j < len(source.Attachments); j++ {
+			settlementdtoSettlement.Attachments[j] = c.modelAttachmentToAttachmentdtoAttachment(source.Attachments[j])
+		}
+	}
+	settlementdtoSettlement.Diplomacy = source.Diplomacy
+	settlementdtoSettlement.Description = source.Description
+	if source.TagIds != nil {
+		settlementdtoSettlement.TagIds = make([]string, len(source.TagIds))
+		for k := 0; k < len(source.TagIds); k++ {
+			settlementdtoSettlement.TagIds[k] = source.TagIds[k]
+		}
+	}
+	return settlementdtoSettlement
+}
 func (c *MapperImpl) attachmentdtoAttachmentToAttachmentdtoAttachment(source attachment.Attachment) attachment.Attachment {
 	var attachmentdtoAttachment attachment.Attachment
 	attachmentdtoAttachment.Url = source.Url
@@ -74,10 +143,40 @@ func (c *MapperImpl) attachmentdtoAttachmentToAttachmentdtoAttachment(source att
 	attachmentdtoAttachment.MimeType = source.MimeType
 	return attachmentdtoAttachment
 }
+func (c *MapperImpl) attachmentdtoAttachmentToModelAttachment(source attachment.Attachment) model.Attachment {
+	var modelAttachment model.Attachment
+	modelAttachment.Url = source.Url
+	modelAttachment.Desc = source.Desc
+	modelAttachment.MimeType = source.MimeType
+	return modelAttachment
+}
 func (c *MapperImpl) memberdtoMemberToMemberdtoMember(source member.Member) member.Member {
 	var memberdtoMember member.Member
 	memberdtoMember.UserId = source.UserId
 	return memberdtoMember
+}
+func (c *MapperImpl) memberdtoMemberToModelMember(source member.Member) model.Member {
+	var modelMember model.Member
+	modelMember.UserId = source.UserId
+	return modelMember
+}
+func (c *MapperImpl) modelAttachmentToAttachmentdtoAttachment(source model.Attachment) attachment.Attachment {
+	var attachmentdtoAttachment attachment.Attachment
+	attachmentdtoAttachment.Url = source.Url
+	attachmentdtoAttachment.Desc = source.Desc
+	attachmentdtoAttachment.MimeType = source.MimeType
+	return attachmentdtoAttachment
+}
+func (c *MapperImpl) modelMemberToMemberdtoMember(source model.Member) member.Member {
+	var memberdtoMember member.Member
+	memberdtoMember.UserId = source.UserId
+	return memberdtoMember
+}
+func (c *MapperImpl) modelVector2ToVector2dtoVector2(source model.Vector2) vector2.Vector2 {
+	var vector2dtoVector2 vector2.Vector2
+	vector2dtoVector2.X = source.X
+	vector2dtoVector2.Y = source.Y
+	return vector2dtoVector2
 }
 func (c *MapperImpl) mongoxModelToMongoxModel(source mongox.Model) mongox.Model {
 	var mongoxModel mongox.Model
@@ -85,6 +184,12 @@ func (c *MapperImpl) mongoxModelToMongoxModel(source mongox.Model) mongox.Model 
 	mongoxModel.CreatedAt = goverter.TimeToTime(source.CreatedAt)
 	mongoxModel.UpdatedAt = goverter.TimeToTime(source.UpdatedAt)
 	return mongoxModel
+}
+func (c *MapperImpl) vector2dtoVector2ToModelVector2(source vector2.Vector2) model.Vector2 {
+	var modelVector2 model.Vector2
+	modelVector2.X = source.X
+	modelVector2.Y = source.Y
+	return modelVector2
 }
 func (c *MapperImpl) vector2dtoVector2ToVector2dtoVector2(source vector2.Vector2) vector2.Vector2 {
 	var vector2dtoVector2 vector2.Vector2

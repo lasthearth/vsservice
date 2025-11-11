@@ -19,21 +19,23 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SettlementService_Submit_FullMethodName             = "/settlement.v1.SettlementService/Submit"
-	SettlementService_Get_FullMethodName                = "/settlement.v1.SettlementService/Get"
-	SettlementService_GetByUserId_FullMethodName        = "/settlement.v1.SettlementService/GetByUserId"
-	SettlementService_List_FullMethodName               = "/settlement.v1.SettlementService/List"
-	SettlementService_ListPending_FullMethodName        = "/settlement.v1.SettlementService/ListPending"
-	SettlementService_Approve_FullMethodName            = "/settlement.v1.SettlementService/Approve"
-	SettlementService_Reject_FullMethodName             = "/settlement.v1.SettlementService/Reject"
-	SettlementService_VerificationStatus_FullMethodName = "/settlement.v1.SettlementService/VerificationStatus"
-	SettlementService_RemoveMember_FullMethodName       = "/settlement.v1.SettlementService/RemoveMember"
-	SettlementService_GetInvitations_FullMethodName     = "/settlement.v1.SettlementService/GetInvitations"
-	SettlementService_GetUserInvitations_FullMethodName = "/settlement.v1.SettlementService/GetUserInvitations"
-	SettlementService_AcceptInvitation_FullMethodName   = "/settlement.v1.SettlementService/AcceptInvitation"
-	SettlementService_RejectInvitation_FullMethodName   = "/settlement.v1.SettlementService/RejectInvitation"
-	SettlementService_InviteMember_FullMethodName       = "/settlement.v1.SettlementService/InviteMember"
-	SettlementService_RevokeInvitation_FullMethodName   = "/settlement.v1.SettlementService/RevokeInvitation"
+	SettlementService_Submit_FullMethodName                  = "/settlement.v1.SettlementService/Submit"
+	SettlementService_Get_FullMethodName                     = "/settlement.v1.SettlementService/Get"
+	SettlementService_GetByUserId_FullMethodName             = "/settlement.v1.SettlementService/GetByUserId"
+	SettlementService_List_FullMethodName                    = "/settlement.v1.SettlementService/List"
+	SettlementService_ListPending_FullMethodName             = "/settlement.v1.SettlementService/ListPending"
+	SettlementService_Approve_FullMethodName                 = "/settlement.v1.SettlementService/Approve"
+	SettlementService_Reject_FullMethodName                  = "/settlement.v1.SettlementService/Reject"
+	SettlementService_VerificationStatus_FullMethodName      = "/settlement.v1.SettlementService/VerificationStatus"
+	SettlementService_RemoveMember_FullMethodName            = "/settlement.v1.SettlementService/RemoveMember"
+	SettlementService_GetInvitations_FullMethodName          = "/settlement.v1.SettlementService/GetInvitations"
+	SettlementService_GetUserInvitations_FullMethodName      = "/settlement.v1.SettlementService/GetUserInvitations"
+	SettlementService_AcceptInvitation_FullMethodName        = "/settlement.v1.SettlementService/AcceptInvitation"
+	SettlementService_RejectInvitation_FullMethodName        = "/settlement.v1.SettlementService/RejectInvitation"
+	SettlementService_InviteMember_FullMethodName            = "/settlement.v1.SettlementService/InviteMember"
+	SettlementService_RevokeInvitation_FullMethodName        = "/settlement.v1.SettlementService/RevokeInvitation"
+	SettlementService_AddTagToSettlement_FullMethodName      = "/settlement.v1.SettlementService/AddTagToSettlement"
+	SettlementService_RemoveTagFromSettlement_FullMethodName = "/settlement.v1.SettlementService/RemoveTagFromSettlement"
 )
 
 // SettlementServiceClient is the client API for SettlementService service.
@@ -71,6 +73,10 @@ type SettlementServiceClient interface {
 	InviteMember(ctx context.Context, in *InviteMemberRequest, opts ...grpc.CallOption) (*InviteMemberResponse, error)
 	// Revoke an invitation to a settlement (requires being the settlement leader)
 	RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error)
+	// Add a tag to a settlement
+	AddTagToSettlement(ctx context.Context, in *AddTagToSettlementRequest, opts ...grpc.CallOption) (*AddTagToSettlementResponse, error)
+	// Remove a tag from a settlement
+	RemoveTagFromSettlement(ctx context.Context, in *RemoveTagFromSettlementRequest, opts ...grpc.CallOption) (*RemoveTagFromSettlementResponse, error)
 }
 
 type settlementServiceClient struct {
@@ -231,6 +237,26 @@ func (c *settlementServiceClient) RevokeInvitation(ctx context.Context, in *Revo
 	return out, nil
 }
 
+func (c *settlementServiceClient) AddTagToSettlement(ctx context.Context, in *AddTagToSettlementRequest, opts ...grpc.CallOption) (*AddTagToSettlementResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddTagToSettlementResponse)
+	err := c.cc.Invoke(ctx, SettlementService_AddTagToSettlement_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *settlementServiceClient) RemoveTagFromSettlement(ctx context.Context, in *RemoveTagFromSettlementRequest, opts ...grpc.CallOption) (*RemoveTagFromSettlementResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveTagFromSettlementResponse)
+	err := c.cc.Invoke(ctx, SettlementService_RemoveTagFromSettlement_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SettlementServiceServer is the server API for SettlementService service.
 // All implementations should embed UnimplementedSettlementServiceServer
 // for forward compatibility.
@@ -266,6 +292,10 @@ type SettlementServiceServer interface {
 	InviteMember(context.Context, *InviteMemberRequest) (*InviteMemberResponse, error)
 	// Revoke an invitation to a settlement (requires being the settlement leader)
 	RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error)
+	// Add a tag to a settlement
+	AddTagToSettlement(context.Context, *AddTagToSettlementRequest) (*AddTagToSettlementResponse, error)
+	// Remove a tag from a settlement
+	RemoveTagFromSettlement(context.Context, *RemoveTagFromSettlementRequest) (*RemoveTagFromSettlementResponse, error)
 }
 
 // UnimplementedSettlementServiceServer should be embedded to have
@@ -319,6 +349,12 @@ func (UnimplementedSettlementServiceServer) InviteMember(context.Context, *Invit
 }
 func (UnimplementedSettlementServiceServer) RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RevokeInvitation not implemented")
+}
+func (UnimplementedSettlementServiceServer) AddTagToSettlement(context.Context, *AddTagToSettlementRequest) (*AddTagToSettlementResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddTagToSettlement not implemented")
+}
+func (UnimplementedSettlementServiceServer) RemoveTagFromSettlement(context.Context, *RemoveTagFromSettlementRequest) (*RemoveTagFromSettlementResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveTagFromSettlement not implemented")
 }
 func (UnimplementedSettlementServiceServer) testEmbeddedByValue() {}
 
@@ -610,6 +646,42 @@ func _SettlementService_RevokeInvitation_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SettlementService_AddTagToSettlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddTagToSettlementRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).AddTagToSettlement(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_AddTagToSettlement_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).AddTagToSettlement(ctx, req.(*AddTagToSettlementRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SettlementService_RemoveTagFromSettlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveTagFromSettlementRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).RemoveTagFromSettlement(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_RemoveTagFromSettlement_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).RemoveTagFromSettlement(ctx, req.(*RemoveTagFromSettlementRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SettlementService_ServiceDesc is the grpc.ServiceDesc for SettlementService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -676,6 +748,14 @@ var SettlementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RevokeInvitation",
 			Handler:    _SettlementService_RevokeInvitation_Handler,
+		},
+		{
+			MethodName: "AddTagToSettlement",
+			Handler:    _SettlementService_AddTagToSettlement_Handler,
+		},
+		{
+			MethodName: "RemoveTagFromSettlement",
+			Handler:    _SettlementService_RemoveTagFromSettlement_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

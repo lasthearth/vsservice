@@ -82,6 +82,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	verificationv1.RegisterVerificationServiceServer(srv, s.verificationV1)
 	userv1.RegisterUserServiceServer(srv, s.userV1)
 	settlementv1.RegisterSettlementServiceServer(srv, s.settlementV1)
+	settlementv1.RegisterSettlementTagServiceServer(srv, s.settlementTagV1)
 	notificationv1.RegisterNotificationServiceServer(srv, s.notificationV1)
 	newsv1.RegisterNewsServiceServer(srv, s.newsV1)
 	reflection.Register(srv)
@@ -118,6 +119,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := settlementv1.RegisterSettlementServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register settlement service handler")
+	}
+
+	if err := settlementv1.RegisterSettlementTagServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register settlement tag service handler")
 	}
 
 	if err := notificationv1.RegisterNotificationServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {

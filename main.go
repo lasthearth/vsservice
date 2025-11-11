@@ -18,6 +18,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/rules"
 	"github.com/lasthearth/vsservice/internal/server"
 	"github.com/lasthearth/vsservice/internal/settlement"
+	settlementtag "github.com/lasthearth/vsservice/internal/settlement-tag"
 	"github.com/lasthearth/vsservice/internal/stats"
 	"github.com/lasthearth/vsservice/internal/webhook"
 	"github.com/minio/minio-go/v7"
@@ -75,6 +76,7 @@ func main() {
 		player.App,
 		server.App,
 		settlement.App,
+		settlementtag.App,
 		notification.App,
 		news.App,
 		webhook.App,

@@ -27,15 +27,16 @@ type Opts struct {
 
 	Config config.Config
 
-	Log            logger.Logger
-	VsApiV1        v1.VintageServiceServer
-	LeaderboardV1  leaderboardv1.LeaderboardServiceServer
-	RulesV1        rulesv1.RuleServiceServer
-	VerificationV1 verificationv1.VerificationServiceServer
-	UserV1         userv1.UserServiceServer
-	SettlementV1   settlementv1.SettlementServiceServer
-	NotificationV1 notificationv1.NotificationServiceServer
-	NewsV1         newsv1.NewsServiceServer
+	Log             logger.Logger
+	VsApiV1         v1.VintageServiceServer
+	LeaderboardV1   leaderboardv1.LeaderboardServiceServer
+	RulesV1         rulesv1.RuleServiceServer
+	VerificationV1  verificationv1.VerificationServiceServer
+	UserV1          userv1.UserServiceServer
+	SettlementV1    settlementv1.SettlementServiceServer
+	SettlementTagV1 settlementv1.SettlementTagServiceServer
+	NotificationV1  notificationv1.NotificationServiceServer
+	NewsV1          newsv1.NewsServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -43,15 +44,16 @@ type Opts struct {
 type Server struct {
 	authInterceptor *interceptor.Auth
 
-	c              config.Config
-	vsApiV1        v1.VintageServiceServer
-	leaderboardV1  leaderboardv1.LeaderboardServiceServer
-	rulesV1        rulesv1.RuleServiceServer
-	verificationV1 verificationv1.VerificationServiceServer
-	userV1         userv1.UserServiceServer
-	settlementV1   settlementv1.SettlementServiceServer
-	notificationV1 notificationv1.NotificationServiceServer
-	newsV1         newsv1.NewsServiceServer
+	c                   config.Config
+	vsApiV1             v1.VintageServiceServer
+	leaderboardV1       leaderboardv1.LeaderboardServiceServer
+	rulesV1             rulesv1.RuleServiceServer
+	verificationV1      verificationv1.VerificationServiceServer
+	userV1              userv1.UserServiceServer
+	settlementV1        settlementv1.SettlementServiceServer
+	settlementTagV1     settlementv1.SettlementTagServiceServer
+	notificationV1      notificationv1.NotificationServiceServer
+	newsV1              newsv1.NewsServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -63,17 +65,18 @@ type Server struct {
 
 func New(opts Opts) *Server {
 	return &Server{
-		authInterceptor: opts.AuthInterceptor,
-		c:               opts.Config,
-		vsApiV1:         opts.VsApiV1,
-		leaderboardV1:   opts.LeaderboardV1,
-		rulesV1:         opts.RulesV1,
-		verificationV1:  opts.VerificationV1,
-		userV1:          opts.UserV1,
-		settlementV1:    opts.SettlementV1,
-		notificationV1:  opts.NotificationV1,
-		newsV1:          opts.NewsV1,
+		authInterceptor:     opts.AuthInterceptor,
+		c:                   opts.Config,
+		vsApiV1:             opts.VsApiV1,
+		leaderboardV1:       opts.LeaderboardV1,
+		rulesV1:             opts.RulesV1,
+		verificationV1:      opts.VerificationV1,
+		userV1:              opts.UserV1,
+		settlementV1:        opts.SettlementV1,
+		settlementTagV1:     opts.SettlementTagV1,
+		notificationV1:      opts.NotificationV1,
+		newsV1:              opts.NewsV1,
 		logtoWebhookService: opts.LogtoWebhookService, // Add the webhook service
-		log:             opts.Log,
+		log:                 opts.Log,
 	}
 }
