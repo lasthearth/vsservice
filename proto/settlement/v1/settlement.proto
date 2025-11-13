@@ -6,6 +6,7 @@ import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
 import "google/protobuf/empty.proto";
+import "settlement/v1/tag.proto";
 
 // Represents settlement management service
 service SettlementService {
@@ -99,6 +100,21 @@ service SettlementService {
       body: "*"
     };
   }
+
+  // Tag-related methods:
+
+  // Add a tag to a settlement
+  rpc AddTagToSettlement(AddTagToSettlementRequest) returns (AddTagToSettlementResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{settlement_id}/tags"
+      body: "*"
+    };
+  }
+
+  // Remove a tag from a settlement
+  rpc RemoveTagFromSettlement(RemoveTagFromSettlementRequest) returns (RemoveTagFromSettlementResponse) {
+    option (google.api.http) = {delete: "/v1/settlements/{settlement_id}/tags/{tag_id}"};
+  }
 }
 
 message GetUserInvitationsRequest {
@@ -133,6 +149,7 @@ message Settlement {
   Vector2 coordinates = 9;
   int64 created_at = 10;
   int64 updated_at = 11;
+  repeated TagReference tags = 20 [(google.api.field_behavior) = OPTIONAL];
 }
 
 enum SettlementType {
@@ -266,4 +283,26 @@ message VerificationStatusRequest {
 message VerificationStatusResponse {
   string status = 1;
   string rejection_reason = 2;
+}
+
+// Request to add a tag to a settlement
+message AddTagToSettlementRequest {
+  string settlement_id = 1;
+  string tag_id = 2;
+}
+
+// Response from adding a tag to a settlement
+message AddTagToSettlementResponse {
+  Settlement settlement = 1;
+}
+
+// Request to remove a tag from a settlement
+message RemoveTagFromSettlementRequest {
+  string settlement_id = 1;
+  string tag_id = 2;
+}
+
+// Response from removing a tag from a settlement
+message RemoveTagFromSettlementResponse {
+  Settlement settlement = 1;
 }

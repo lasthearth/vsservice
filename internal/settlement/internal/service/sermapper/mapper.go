@@ -73,6 +73,7 @@ func (c *MapperImpl) ToSettlementProto(source model.Settlement) *v1.Settlement {
 	settlementv1Settlement.Coordinates = c.ToVector2Proto(source.Coordinates)
 	settlementv1Settlement.CreatedAt = goverter.TimeToInt64(source.CreatedAt)
 	settlementv1Settlement.UpdatedAt = goverter.TimeToInt64(source.UpdatedAt)
+	settlementv1Settlement.Tags = service.TagIdsToProto(source.TagIds)
 	return &settlementv1Settlement
 }
 func (c *MapperImpl) ToSettlementProtos(source []model.Settlement) []*v1.Settlement {

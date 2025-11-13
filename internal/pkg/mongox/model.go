@@ -1,6 +1,7 @@
 package mongox
 
 import (
+	"errors"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -23,4 +24,15 @@ func NewModel() Model {
 
 func ParseObjectID(id string) (bson.ObjectID, error) {
 	return bson.ObjectIDFromHex(id)
+}
+
+func ParseAnyObjectID(id any) (bson.ObjectID, error) {
+	switch v := id.(type) {
+	case string:
+		return ParseObjectID(v)
+	case bson.ObjectID:
+		return v, nil
+	default:
+		return bson.ObjectID{}, errors.New("invalid object id")
+	}
 }

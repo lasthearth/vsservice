@@ -38,8 +38,16 @@ type Mapper interface {
 	ToInvModels(dto []invitationdto.Invitation) []model.Invitation
 	ToInvModel(dto invitationdto.Invitation) model.Invitation
 
-	// goverter:ignore Members
+	// goverter:ignore Members TagIds
 	FromVerification(dto verificationdto.SettlementVerification) settlementdto.Settlement
+
+	FromSettlementsDTO([]settlementdto.Settlement) []model.Settlement
+
+	// goverter:autoMap Model
+	FromSettlementDTO(dto settlementdto.Settlement) model.Settlement
+
+	// goverter:ignore Model
+	ToSettlementDTO(model.Settlement) settlementdto.Settlement
 }
 
 type Opts struct {

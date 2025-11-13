@@ -14,6 +14,7 @@ import (
 // goverter:converter
 // goverter:output:file sermapper/mapper.go
 // goverter:extend TypeToProto
+// goverter:extend TagIdsToProto
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTimestamp
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToInt64
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:IntToInt32
@@ -31,10 +32,11 @@ type Mapper interface {
 	ToMembersProto([]model.Member) []*settlementv1.Member
 
 	// goverter:ignore state sizeCache unknownFields
+	// goverter:map TagIds Tags
 	ToSettlementProto(model.Settlement) *settlementv1.Settlement
 	ToSettlementProtos([]model.Settlement) []*settlementv1.Settlement
 	// goverter:ignore state sizeCache unknownFields
-	// goverter:ignore Members
+	// goverter:ignore Members Tags
 	VerifToSettlementProto(model.SettlementVerification) *settlementv1.Settlement
 	VerifsToSettlementProtos([]model.SettlementVerification) []*settlementv1.Settlement
 
@@ -70,6 +72,9 @@ type SettlementDbRepository interface {
 
 	IsMemberOrLeader(ctx context.Context, settlementID, userID string) error
 	IsLeaderOfSettlement(ctx context.Context, settlementID, userID string) error
+
+	AddTag(ctx context.Context, settlementID, tagID string) error
+	RemoveTag(ctx context.Context, settlementID, tagID string) error
 
 	RemoveMember(ctx context.Context, settlementID, userID string) error
 	CreateInvitation(ctx context.Context, settlementID, userID string) error

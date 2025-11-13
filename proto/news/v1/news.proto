@@ -24,16 +24,12 @@ service NewsService {
   }
 
   rpc DeleteNews(DeleteNewsRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      delete: "/v1/news/{id}"
-    };
+    option (google.api.http) = {delete: "/v1/news/{id}"};
     option (google.api.method_signature) = "id";
   }
 
   rpc GetNews(GetNewsRequest) returns (News) {
-    option (google.api.http) = {
-      get: "/v1/news/{id}"
-    };
+    option (google.api.http) = {get: "/v1/news/{id}"};
     option (google.api.method_signature) = "id";
   }
 }

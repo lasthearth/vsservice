@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package settlement.v1;
+
+import "google/api/field_behavior.proto";
+import "google/type/color.proto";
+
+// Representation of a settlement tag.
+message SettlementTag {
+  // Unique identifier for the tag.
+  string id = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  // Color associated with the tag.
+  google.type.Color color = 3 [(google.api.field_behavior) = REQUIRED];
+  string description = 4 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// Reference to tag in other messages
+message TagReference {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}

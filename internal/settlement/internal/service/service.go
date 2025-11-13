@@ -11,7 +11,7 @@ import (
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/image"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
-	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repoerr"
+	"github.com/lasthearth/vsservice/internal/settlement/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -105,7 +105,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 	found, err := s.dbRepo.GetSettlementRequestByLeader(ctx, userID)
 	if err != nil {
 		// If no existing request found, create a new one
-		if errors.Is(err, repoerr.ErrNotFound) {
+		if errors.Is(err, ierror.ErrNotFound) {
 			if err := s.dbRepo.CreateRequest(ctx, opts); err != nil {
 				s.log.Error("failed to create new settlement request", zap.Error(err))
 				return nil, err
@@ -154,7 +154,7 @@ func (s *Service) Get(ctx context.Context, req *settlementv1.GetRequest) (*settl
 	}
 
 	if settlement == nil {
-		return nil, status.Error(codes.NotFound, ErrSettlementNotFound.Error())
+		return nil, status.Error(codes.NotFound, ierror.ErrNotFound.Error())
 	}
 
 	return &settlementv1.GetResponse{
@@ -203,11 +203,11 @@ func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest)
 	}
 
 	if settlement == nil {
-		return nil, ErrSettlementNotFound
+		return nil, ierror.ErrNotFound
 	}
 
 	if settlement.Status == model.SettlementStatusApproved {
-		return nil, ErrAlreadyApproved
+		return nil, ierror.ErrAlreadyApproved
 	}
 
 	if err := s.dbRepo.Approve(ctx, req.Id); err != nil {

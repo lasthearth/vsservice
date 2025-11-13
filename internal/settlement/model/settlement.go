@@ -32,6 +32,7 @@ type Settlement struct {
 	Coordinates Vector2
 	Diplomacy   string
 	Attachments []Attachment
+	TagIds      []string
 
 	UpdatedAt time.Time
 	CreatedAt time.Time

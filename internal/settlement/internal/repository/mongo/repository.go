@@ -10,7 +10,7 @@ import (
 	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
 	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	vector2dto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
-	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repoerr"
+	repoerr "github.com/lasthearth/vsservice/internal/settlement/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"github.com/samber/lo"
@@ -140,7 +140,8 @@ func (r *Repository) GetSettlement(ctx context.Context, id string) (*model.Settl
 	}
 
 	r.log.Debug("settlement retrieved", zap.String("settlement_id", id))
-	return settlement.ToModel(), nil
+	set := r.mapper.FromSettlementDTO(settlement)
+	return &set, nil
 }
 
 // GetSettlementsByLeader implements service.SettlementDbRepository.
@@ -174,9 +175,12 @@ func (r *Repository) GetSettlementByUserId(ctx context.Context, userId string) (
 		return nil, err
 	}
 
-	res := settlement.ToModel()
-	r.log.Info("successfully retrieved settlements", zap.String("settlement_id", res.Id))
-	return res, nil
+	set := r.mapper.FromSettlementDTO(settlement)
+	r.log.Info(
+		"successfully retrieved settlements",
+		zap.String("settlement_id", set.Id),
+	)
+	return &set, nil
 }
 
 // GetAllSettlements implements service.SettlementDbRepository.
@@ -200,12 +204,12 @@ func (r *Repository) GetAllSettlements(ctx context.Context) ([]model.Settlement,
 		return nil, err
 	}
 
-	result := lo.Map(settlements, func(item settlementdto.Settlement, index int) model.Settlement {
-		return *item.ToModel()
-	})
-
-	r.log.Info("successfully retrieved all settlements", zap.Int("count", len(result)))
-	return result, nil
+	res := r.mapper.FromSettlementsDTO(settlements)
+	r.log.Info(
+		"successfully retrieved all settlements",
+		zap.Int("count", len(res)),
+	)
+	return res, nil
 }
 
 // IsMemberOrLeader checks if a user is already a member or leader of any settlement. Returns ErrAlreadyMember if the user is already a member or leader.
