@@ -103,7 +103,7 @@ service SettlementService {
 
   // Tag-related methods:
 
-  // Add a tag to a settlement
+  // Add a tag to a settlement, require tags:manage privilege
   rpc AddTagToSettlement(AddTagToSettlementRequest) returns (AddTagToSettlementResponse) {
     option (google.api.http) = {
       post: "/v1/settlements/{settlement_id}/tags"
@@ -111,7 +111,7 @@ service SettlementService {
     };
   }
 
-  // Remove a tag from a settlement
+  // Remove a tag from a settlement, require tags:manage privilege
   rpc RemoveTagFromSettlement(RemoveTagFromSettlementRequest) returns (RemoveTagFromSettlementResponse) {
     option (google.api.http) = {delete: "/v1/settlements/{settlement_id}/tags/{tag_id}"};
   }
