@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	SettlementTagService_GetTag_FullMethodName       = "/settlement.v1.SettlementTagService/GetTag"
+	SettlementTagService_GetTags_FullMethodName      = "/settlement.v1.SettlementTagService/GetTags"
 	SettlementTagService_GetTagsByIds_FullMethodName = "/settlement.v1.SettlementTagService/GetTagsByIds"
 	SettlementTagService_CreateTag_FullMethodName    = "/settlement.v1.SettlementTagService/CreateTag"
 	SettlementTagService_DeleteTag_FullMethodName    = "/settlement.v1.SettlementTagService/DeleteTag"
@@ -33,6 +34,7 @@ const (
 // Administrative service for tag management
 type SettlementTagServiceClient interface {
 	GetTag(ctx context.Context, in *GetTagRequest, opts ...grpc.CallOption) (*SettlementTag, error)
+	GetTags(ctx context.Context, in *GetTagsRequest, opts ...grpc.CallOption) (*GetTagsResponse, error)
 	GetTagsByIds(ctx context.Context, in *GetTagsByIdsRequest, opts ...grpc.CallOption) (*GetTagsByIdsResponse, error)
 	// Require tags:create privilege
 	CreateTag(ctx context.Context, in *SettlementTag, opts ...grpc.CallOption) (*SettlementTag, error)
@@ -52,6 +54,16 @@ func (c *settlementTagServiceClient) GetTag(ctx context.Context, in *GetTagReque
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SettlementTag)
 	err := c.cc.Invoke(ctx, SettlementTagService_GetTag_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *settlementTagServiceClient) GetTags(ctx context.Context, in *GetTagsRequest, opts ...grpc.CallOption) (*GetTagsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTagsResponse)
+	err := c.cc.Invoke(ctx, SettlementTagService_GetTags_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +107,7 @@ func (c *settlementTagServiceClient) DeleteTag(ctx context.Context, in *DeleteTa
 // Administrative service for tag management
 type SettlementTagServiceServer interface {
 	GetTag(context.Context, *GetTagRequest) (*SettlementTag, error)
+	GetTags(context.Context, *GetTagsRequest) (*GetTagsResponse, error)
 	GetTagsByIds(context.Context, *GetTagsByIdsRequest) (*GetTagsByIdsResponse, error)
 	// Require tags:create privilege
 	CreateTag(context.Context, *SettlementTag) (*SettlementTag, error)
@@ -111,6 +124,9 @@ type UnimplementedSettlementTagServiceServer struct{}
 
 func (UnimplementedSettlementTagServiceServer) GetTag(context.Context, *GetTagRequest) (*SettlementTag, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTag not implemented")
+}
+func (UnimplementedSettlementTagServiceServer) GetTags(context.Context, *GetTagsRequest) (*GetTagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTags not implemented")
 }
 func (UnimplementedSettlementTagServiceServer) GetTagsByIds(context.Context, *GetTagsByIdsRequest) (*GetTagsByIdsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTagsByIds not implemented")
@@ -155,6 +171,24 @@ func _SettlementTagService_GetTag_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SettlementTagServiceServer).GetTag(ctx, req.(*GetTagRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SettlementTagService_GetTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementTagServiceServer).GetTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementTagService_GetTags_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementTagServiceServer).GetTags(ctx, req.(*GetTagsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -223,6 +257,10 @@ var SettlementTagService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTag",
 			Handler:    _SettlementTagService_GetTag_Handler,
+		},
+		{
+			MethodName: "GetTags",
+			Handler:    _SettlementTagService_GetTags_Handler,
 		},
 		{
 			MethodName: "GetTagsByIds",

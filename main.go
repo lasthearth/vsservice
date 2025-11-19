@@ -6,6 +6,7 @@ import (
 
 	"github.com/eapache/go-resiliency/retrier"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/lasthearth/vsservice/internal/kit"
 	"github.com/lasthearth/vsservice/internal/leaderboard"
 	"github.com/lasthearth/vsservice/internal/news"
 	"github.com/lasthearth/vsservice/internal/notification"
@@ -80,6 +81,7 @@ func main() {
 		notification.App,
 		news.App,
 		webhook.App,
+		kit.App,
 	)
 
 	a.Run()

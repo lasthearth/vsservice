@@ -3,7 +3,6 @@ package event
 import (
 	"context"
 
-	"github.com/lasthearth/vsservice/internal/pkg/messaging"
 	"github.com/lasthearth/vsservice/internal/player/internal/model"
 	"go.uber.org/zap"
 )
@@ -16,8 +15,7 @@ type PlayerRepository interface {
 
 func (b *Bus) Subscribe() {
 	l := b.log.WithMethod("subscribe")
-	err := b.playerTryJoinQ.SubscribeGroup(
-		messaging.DefaultQueueGroup,
+	err := b.playerTryJoin.Respond(
 		b.onPlayerTryJoin,
 	)
 	if err != nil {
@@ -27,8 +25,7 @@ func (b *Bus) Subscribe() {
 		)
 	}
 
-	err = b.playerJoinQ.SubscribeGroup(
-		messaging.DefaultQueueGroup,
+	err = b.playerJoin.Subscribe(
 		b.onPlayerJoin,
 	)
 	if err != nil {
@@ -38,8 +35,7 @@ func (b *Bus) Subscribe() {
 		)
 	}
 
-	err = b.playerLeaveQ.SubscribeGroup(
-		messaging.DefaultQueueGroup,
+	err = b.playerLeave.Subscribe(
 		b.onPlayerLeave,
 	)
 	if err != nil {
@@ -51,9 +47,9 @@ func (b *Bus) Subscribe() {
 }
 
 func (b *Bus) Unsubscribe() {
-	b.playerTryJoinQ.Unsubscribe()
-	b.playerJoinQ.Unsubscribe()
-	b.playerLeaveQ.Unsubscribe()
+	b.playerTryJoin.Unsubscribe()
+	b.playerJoin.Unsubscribe()
+	b.playerLeave.Unsubscribe()
 }
 
 func (b *Bus) onPlayerTryJoin(ctx context.Context, data PlayerTryJoinReqEvent) (PlayerTryJoinRespEvent, error) {
@@ -69,7 +65,8 @@ func (b *Bus) onPlayerTryJoin(ctx context.Context, data PlayerTryJoinReqEvent) (
 	}, nil
 }
 
-func (b *Bus) onPlayerJoin(ctx context.Context, data PlayerJoinEvent) (struct{}, error) {
+func (b *Bus) onPlayerJoin(ctx context.Context, data PlayerJoinEvent) {
+	l := b.log.WithMethod("on-player-join")
 	isOnline := true
 	if err := b.playerRepo.UpdateByUserGameName(
 		ctx,
@@ -78,13 +75,15 @@ func (b *Bus) onPlayerJoin(ctx context.Context, data PlayerJoinEvent) (struct{},
 			IsOnline: &isOnline,
 		},
 	); err != nil {
-		return struct{}{}, err
+		l.Error(
+			"failed to update player online status",
+			zap.Error(err),
+		)
 	}
-
-	return struct{}{}, nil
 }
 
-func (b *Bus) onPlayerLeave(ctx context.Context, data PlayerLeaveEvent) (struct{}, error) {
+func (b *Bus) onPlayerLeave(ctx context.Context, data PlayerLeaveEvent) {
+	l := b.log.WithMethod("on-player-leave")
 	isOnline := false
 	if err := b.playerRepo.UpdateByUserGameName(
 		ctx,
@@ -93,8 +92,9 @@ func (b *Bus) onPlayerLeave(ctx context.Context, data PlayerLeaveEvent) (struct{
 			IsOnline: &isOnline,
 		},
 	); err != nil {
-		return struct{}{}, err
+		l.Error(
+			"failed to update player online status",
+			zap.Error(err),
+		)
 	}
-
-	return struct{}{}, nil
 }

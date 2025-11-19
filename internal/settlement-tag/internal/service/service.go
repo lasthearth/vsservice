@@ -28,6 +28,24 @@ func (s *Service) GetTag(ctx context.Context, req *settlementv1.GetTagRequest) (
 	return resp, nil
 }
 
+// GetTags implements settlementv1.SettlementTagServiceServer.
+func (s *Service) GetTags(ctx context.Context, req *settlementv1.GetTagsRequest) (*settlementv1.GetTagsResponse, error) {
+	tags, err := s.repo.GetTags(ctx)
+	if err != nil {
+		if errors.Is(err, ierror.ErrNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		if errors.Is(err, ierror.ErrInvalidArgument) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get tags: %v", err)
+	}
+	resp := s.mapper.TagsToProto(tags)
+	return &settlementv1.GetTagsResponse{
+		Tags: resp,
+	}, nil
+}
+
 // GetTagsByIds implements settlementv1.SettlementTagServiceServer.
 func (s *Service) GetTagsByIds(ctx context.Context, req *settlementv1.GetTagsByIdsRequest) (*settlementv1.GetTagsByIdsResponse, error) {
 	tags, err := s.repo.GetTagsByIds(ctx, req.TagIds)

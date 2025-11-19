@@ -73,9 +73,9 @@ type SettlementServiceClient interface {
 	InviteMember(ctx context.Context, in *InviteMemberRequest, opts ...grpc.CallOption) (*InviteMemberResponse, error)
 	// Revoke an invitation to a settlement (requires being the settlement leader)
 	RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error)
-	// Add a tag to a settlement
+	// Add a tag to a settlement, require tags:manage privilege
 	AddTagToSettlement(ctx context.Context, in *AddTagToSettlementRequest, opts ...grpc.CallOption) (*AddTagToSettlementResponse, error)
-	// Remove a tag from a settlement
+	// Remove a tag from a settlement, require tags:manage privilege
 	RemoveTagFromSettlement(ctx context.Context, in *RemoveTagFromSettlementRequest, opts ...grpc.CallOption) (*RemoveTagFromSettlementResponse, error)
 }
 
@@ -292,9 +292,9 @@ type SettlementServiceServer interface {
 	InviteMember(context.Context, *InviteMemberRequest) (*InviteMemberResponse, error)
 	// Revoke an invitation to a settlement (requires being the settlement leader)
 	RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error)
-	// Add a tag to a settlement
+	// Add a tag to a settlement, require tags:manage privilege
 	AddTagToSettlement(context.Context, *AddTagToSettlementRequest) (*AddTagToSettlementResponse, error)
-	// Remove a tag from a settlement
+	// Remove a tag from a settlement, require tags:manage privilege
 	RemoveTagFromSettlement(context.Context, *RemoveTagFromSettlementRequest) (*RemoveTagFromSettlementResponse, error)
 }
 

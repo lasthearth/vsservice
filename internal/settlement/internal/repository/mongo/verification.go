@@ -180,6 +180,7 @@ func (r *Repository) Approve(ctx context.Context, id string) error {
 
 				cdto := r.mapper.FromVerification(dto)
 				cdto.Members = make([]memberdto.Member, 0)
+				cdto.TagIds = make([]string, 0)
 				return r.Create(ctx, cdto)
 			}
 
@@ -193,6 +194,8 @@ func (r *Repository) Approve(ctx context.Context, id string) error {
 			Type:        setModel.Type,
 			Coordinates: setModel.Coordinates,
 			Attachments: setModel.Attachments,
+			Diplomacy:   setModel.Diplomacy,
+			Description: setModel.Description,
 			Leader:      *dto.Leader.ToModel(),
 		})
 	})

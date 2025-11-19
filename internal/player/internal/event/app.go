@@ -3,6 +3,7 @@ package event
 import (
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/messaging"
+	"github.com/lasthearth/vsservice/internal/pkg/messaging/mnats"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/fx"
 )
@@ -23,34 +24,37 @@ type Opts struct {
 }
 
 type Bus struct {
-	log            logger.Logger
-	playerJoinQ    messaging.Queue[PlayerJoinEvent, struct{}]
-	playerLeaveQ   messaging.Queue[PlayerLeaveEvent, struct{}]
-	playerTryJoinQ messaging.Queue[PlayerTryJoinReqEvent, PlayerTryJoinRespEvent]
-	playerRepo     PlayerRepository
+	log           logger.Logger
+	playerJoin    messaging.Subscriber[PlayerJoinEvent]
+	playerLeave   messaging.Subscriber[PlayerLeaveEvent]
+	playerTryJoin messaging.RpcResponder[PlayerTryJoinReqEvent, PlayerTryJoinRespEvent]
+	playerRepo    PlayerRepository
 }
 
 func NewEventManager(opts Opts) *Bus {
-	ptjq := messaging.NewNatsQueue[PlayerTryJoinReqEvent, PlayerTryJoinRespEvent](
+	presp := mnats.NewRpcResponder[PlayerTryJoinReqEvent, PlayerTryJoinRespEvent](
 		opts.NC,
 		playerTryJoinSubject,
+		messaging.DefaultWorkerGroup,
 	)
 
-	pjq := messaging.NewNatsQueue[PlayerJoinEvent, struct{}](
+	pjs := mnats.NewEventSubscriber[PlayerJoinEvent](
 		opts.NC,
 		playerJoinSubject,
+		messaging.DefaultWorkerGroup,
 	)
 
-	plq := messaging.NewNatsQueue[PlayerLeaveEvent, struct{}](
+	pls := mnats.NewEventSubscriber[PlayerLeaveEvent](
 		opts.NC,
 		playerLeaveSubject,
+		messaging.DefaultWorkerGroup,
 	)
 
 	return &Bus{
-		playerJoinQ:    pjq,
-		playerLeaveQ:   plq,
-		playerTryJoinQ: ptjq,
-		playerRepo:     opts.PlayerRepo,
-		log:            opts.Log.WithComponent("player-event-bus"),
+		playerJoin:    pjs,
+		playerLeave:   pls,
+		playerTryJoin: presp,
+		playerRepo:    opts.PlayerRepo,
+		log:           opts.Log.WithComponent("player-event-bus"),
 	}
 }
