@@ -44,7 +44,9 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 	if err := s.dbRepo.IsMemberOrLeader(ctx, "", userID); err != nil {
 		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", userID))
-		return nil, err
+		if err != ierror.ErrAlreadyMember {
+			return nil, err
+		}
 	}
 
 	attachs := make([]model.Attachment, len(req.Attachments))
