@@ -12,7 +12,8 @@ import "settlement/v1/tag.proto";
 service SettlementService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
-  // Submit a new settlement registration request
+  // Submit or lvlup a settlement request
+  // Type needed on for initial request
   rpc Submit(SubmitRequest) returns (SubmitResponse) {
     option (google.api.http) = {
       post: "/v1/settlements"
@@ -181,8 +182,6 @@ message SubmitRequest {
   enum Type {
     TYPE_UNSPECIFIED = 0;
     CAMP = 1;
-    GUILD = 2;
-    ORDEN = 3;
   }
 }
 
