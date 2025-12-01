@@ -19,7 +19,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/player/internal/model"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/minio/minio-go/v7"
-	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -205,24 +204,7 @@ func (s *Service) SearchUsers(ctx context.Context, req *userv1.SearchUsersReques
 		return nil, err
 	}
 
-	bucketName := "avatars"
-
-	users := lo.Map(searched, func(player model.Player, _ int) *userv1.User {
-		url := fmt.Sprintf("%s/%s/%s", s.cfg.CdnUrl, bucketName, player.UserId)
-		original := fmt.Sprintf("%s/avatar.webp", url)
-		x96 := fmt.Sprintf("%s/avatar_96.webp", url)
-		x48 := fmt.Sprintf("%s/avatar_48.webp", url)
-		return &userv1.User{
-			UserId:           player.UserId,
-			UserGameName:     player.UserGameName,
-			PreviousNickname: player.PreviousNickname,
-			Avatar: &userv1.User_Image{
-				Original: original,
-				X96:      x96,
-				X48:      x48,
-			},
-		}
-	})
+	users := s.mapper.ToUserProtos(searched)
 
 	return &userv1.SearchUsersResponse{
 		Users: users,
