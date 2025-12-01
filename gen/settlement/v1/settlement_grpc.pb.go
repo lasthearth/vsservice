@@ -44,7 +44,8 @@ const (
 //
 // Represents settlement management service
 type SettlementServiceClient interface {
-	// Submit a new settlement registration request
+	// Submit or lvlup a settlement request
+	// Type needed on for initial request
 	Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*SubmitResponse, error)
 	// Get settlement by ID
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
@@ -73,9 +74,9 @@ type SettlementServiceClient interface {
 	InviteMember(ctx context.Context, in *InviteMemberRequest, opts ...grpc.CallOption) (*InviteMemberResponse, error)
 	// Revoke an invitation to a settlement (requires being the settlement leader)
 	RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error)
-	// Add a tag to a settlement
+	// Add a tag to a settlement, require tags:manage privilege
 	AddTagToSettlement(ctx context.Context, in *AddTagToSettlementRequest, opts ...grpc.CallOption) (*AddTagToSettlementResponse, error)
-	// Remove a tag from a settlement
+	// Remove a tag from a settlement, require tags:manage privilege
 	RemoveTagFromSettlement(ctx context.Context, in *RemoveTagFromSettlementRequest, opts ...grpc.CallOption) (*RemoveTagFromSettlementResponse, error)
 }
 
@@ -263,7 +264,8 @@ func (c *settlementServiceClient) RemoveTagFromSettlement(ctx context.Context, i
 //
 // Represents settlement management service
 type SettlementServiceServer interface {
-	// Submit a new settlement registration request
+	// Submit or lvlup a settlement request
+	// Type needed on for initial request
 	Submit(context.Context, *SubmitRequest) (*SubmitResponse, error)
 	// Get settlement by ID
 	Get(context.Context, *GetRequest) (*GetResponse, error)
@@ -292,9 +294,9 @@ type SettlementServiceServer interface {
 	InviteMember(context.Context, *InviteMemberRequest) (*InviteMemberResponse, error)
 	// Revoke an invitation to a settlement (requires being the settlement leader)
 	RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error)
-	// Add a tag to a settlement
+	// Add a tag to a settlement, require tags:manage privilege
 	AddTagToSettlement(context.Context, *AddTagToSettlementRequest) (*AddTagToSettlementResponse, error)
-	// Remove a tag from a settlement
+	// Remove a tag from a settlement, require tags:manage privilege
 	RemoveTagFromSettlement(context.Context, *RemoveTagFromSettlementRequest) (*RemoveTagFromSettlementResponse, error)
 }
 

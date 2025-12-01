@@ -323,7 +323,9 @@ paths:
         post:
             tags:
                 - SettlementService
-            description: Submit a new settlement registration request
+            description: |-
+                Submit or lvlup a settlement request
+                 Type needed on for initial request
             operationId: SettlementService_Submit
             requestBody:
                 content:
@@ -744,7 +746,7 @@ paths:
         post:
             tags:
                 - SettlementService
-            description: Add a tag to a settlement
+            description: Add a tag to a settlement, require tags:manage privilege
             operationId: SettlementService_AddTagToSettlement
             parameters:
                 - name: settlement_id
@@ -775,7 +777,7 @@ paths:
         delete:
             tags:
                 - SettlementService
-            description: Remove a tag from a settlement
+            description: Remove a tag from a settlement, require tags:manage privilege
             operationId: SettlementService_RemoveTagFromSettlement
             parameters:
                 - name: settlement_id
