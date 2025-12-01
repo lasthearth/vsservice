@@ -117,6 +117,7 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 			if err := s.dbRepo.Create(ctx, userId, *v); err != nil {
 				return nil, err
 			}
+			return &verificationv1.SubmitResponse{}, nil
 		}
 
 		return nil, err
