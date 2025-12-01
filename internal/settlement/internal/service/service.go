@@ -265,6 +265,13 @@ func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemb
 		return nil, status.Error(codes.PermissionDenied, "user is not leader")
 	}
 
+	if err := s.dbRepo.IsMemberOrLeader(ctx, req.SettlementId, req.UserId); err != nil {
+		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", req.UserId))
+		if err != ierror.ErrAlreadyMember {
+			return nil, err
+		}
+	}
+
 	if err := s.dbRepo.CreateInvitation(ctx, req.SettlementId, req.UserId); err != nil {
 		s.log.Error("failed to add member", zap.Error(err))
 		return nil, status.Error(codes.Internal, err.Error())
