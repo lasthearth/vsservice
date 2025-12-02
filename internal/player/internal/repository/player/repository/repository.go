@@ -85,6 +85,7 @@ func (r *Repository) SearchUsers(
 			{Key: "user_name", Value: 1},
 			{Key: "user_id", Value: 1},
 			{Key: "previous_nickname", Value: 1},
+			{Key: "avatar", Value: 1},
 		}).
 		SetSort(bson.D{
 			{Key: "_id", Value: 1},
