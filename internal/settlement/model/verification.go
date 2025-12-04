@@ -32,13 +32,11 @@ func (s *SettlementVerification) LvlUp() {
 	case SettlementTypeCamp:
 		s.Type = SettlementTypeVillage
 	case SettlementTypeVillage:
+		s.Type = SettlementTypeTownship
+	case SettlementTypeTownship:
 		s.Type = SettlementTypeCity
 	case SettlementTypeCity:
 		s.Type = SettlementTypeProvince
-	// case SettlementTypeGuild:
-	// 	s.Type = SettlementTypeGuildLvl2
-	// no level up
-	// case SettlementTypeGuildLvl2:
 	case SettlementTypeProvince:
 		break
 	}
