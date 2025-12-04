@@ -234,10 +234,11 @@ func (r *Repository) Reject(ctx context.Context, id string, rejectionReason stri
 	}
 
 	var status model.SettlementStatus
-	if dto.Type != string(model.SettlementTypeVillage) {
-		status = model.SettlementStatusUpdateRejected
-	} else {
+	switch model.SettlementType(dto.Type) {
+	case model.SettlementTypeCamp:
 		status = model.SettlementStatusRejected
+	default:
+		status = model.SettlementStatusUpdateRejected
 	}
 
 	l.Debug("executing update query")
