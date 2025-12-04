@@ -194,6 +194,8 @@ func (r *Repository) Approve(ctx context.Context, id string) error {
 			Coordinates: setModel.Coordinates,
 			Attachments: setModel.Attachments,
 			Leader:      *dto.Leader.ToModel(),
+			Diplomacy:   dto.Diplomacy,
+			Description: dto.Description,
 		})
 	})
 }
