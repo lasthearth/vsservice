@@ -46,6 +46,9 @@ type Config struct {
 	NatsUrl string `envconfig:"NATS_URL"`
 
 	LogtoWebhookSecret string `envconfig:"LOGTO_WEBHOOK_SECRET"`
+
+	TelegramToken string `envconfig:"TELEGRAM_TOKEN"`
+	GroupId       string `envconfig:"GROUP_ID"`
 }
 
 // New initializes from .env and returns a new Config instance.

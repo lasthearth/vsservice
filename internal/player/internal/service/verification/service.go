@@ -1,8 +1,11 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
@@ -11,6 +14,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/player/internal/repository/verification/repository/repoerr"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 )
 
 type DbRepository interface {
@@ -111,12 +115,15 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 		req.Contacts,
 	)
 
+	tgText := fmt.Sprintf("У игрока %s появилась новая анкета.", req.UserGameName)
 	existVerification, err := s.dbRepo.GetVerification(ctx, userId)
 	if err != nil {
 		if errors.Is(err, repoerr.ErrNotFound) {
 			if err := s.dbRepo.Create(ctx, userId, *v); err != nil {
 				return nil, err
 			}
+
+			_ = s.SendToTelegram(tgText)
 			return &verificationv1.SubmitResponse{}, nil
 		}
 
@@ -131,8 +138,31 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 	if err := s.dbRepo.Update(ctx, userId, *v); err != nil {
 		return nil, err
 	}
-
+	_ = s.SendToTelegram(tgText)
 	return &verificationv1.SubmitResponse{}, nil
+}
+
+func (s *Service) SendToTelegram(text string) error {
+	v := struct {
+		ChatID string `json:"chat_id"`
+		Text   string `json:"text"`
+	}{
+		ChatID: s.cfg.GroupId,
+		Text:   text,
+	}
+
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		s.log.Error("failed to marshal JSON payload", zap.Error(err))
+		return err
+	}
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", s.cfg.TelegramToken)
+	_, err = s.client.Post(url, "application/json", bytes.NewBuffer(encoded))
+	if err != nil {
+		s.log.Error("failed to send telegram message", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 // Details implements verificationv1.VerificationServiceServer.
