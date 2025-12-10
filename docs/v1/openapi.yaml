@@ -1325,6 +1325,8 @@ components:
                 assigned_at:
                     type: string
                     format: date-time
+                user_game_name:
+                    type: string
             description: Response for successful assignment of a kit to a user
         Assignment:
             type: object
@@ -1336,6 +1338,8 @@ components:
                 kit_name:
                     type: string
                 status:
+                    type: string
+                user_game_name:
                     type: string
                 assigned_at:
                     type: string

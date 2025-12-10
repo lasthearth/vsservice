@@ -48,6 +48,7 @@ message AssignKitToUserResponse {
   string kit_name = 3;
   string status = 4;
   google.protobuf.Timestamp assigned_at = 5;
+  string user_game_name = 6;
 }
 
 // Request for listing user assignments
@@ -66,7 +67,8 @@ message Assignment {
   string user_id = 2;
   string kit_name = 3;
   string status = 4;
-  google.protobuf.Timestamp assigned_at = 5;
-  google.protobuf.Timestamp delivered_at = 6;
-  google.protobuf.Timestamp claimed_at = 7;
+  string user_game_name = 5;
+  google.protobuf.Timestamp assigned_at = 6;
+  google.protobuf.Timestamp delivered_at = 7;
+  google.protobuf.Timestamp claimed_at = 8;
 }

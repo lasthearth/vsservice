@@ -36,11 +36,7 @@ type Mapper interface {
 	ToAssignmentProto(model.KitAssignment) *kitv1.Assignment
 	ToAssignmentsProto([]*model.KitAssignment) []*kitv1.Assignment
 
-	// goverter:autoMap Model
-	// goverter:map AssignedAt assigned_at
-	// goverter:map DeliveredAt delivered_at
-	// goverter:map ClaimedAt claimed_at
-	ToAssignmentModel(*kitv1.Assignment) model.KitAssignment
+	ToAssignmentModel(*kitv1.Assignment) *model.KitAssignment
 }
 
 // GetAvailableKits implements kitv1.KitServiceServer.

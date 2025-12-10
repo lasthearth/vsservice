@@ -32,10 +32,10 @@ type Bus struct {
 
 type Opts struct {
 	fx.In
-	NC             *nats.Conn
 	Log            logger.Logger
 	Config         config.Config
 	AssignmentRepo AssignmentRepository
+	Bus            *Bus
 }
 
 func NewFx(opts Opts) *Service {
@@ -44,7 +44,7 @@ func NewFx(opts Opts) *Service {
 		opts.AssignmentRepo,
 		opts.Config,
 		opts.Log,
-		opts.NC,
+		opts.Bus,
 	)
 }
 
@@ -53,7 +53,7 @@ func New(
 	assignmentRepo AssignmentRepository,
 	cfg config.Config,
 	log logger.Logger,
-	nc *nats.Conn,
+	bus *Bus,
 ) *Service {
 	return &Service{
 		kitRepo:        kitRepo,
@@ -61,7 +61,7 @@ func New(
 		cfg:            cfg,
 		log:            log,
 		mapper:         nil,
-		bus:            NewEventManager(nc, log, assignmentRepo),
+		bus:            bus,
 	}
 }
 
@@ -106,5 +106,6 @@ func NewEventManager(
 		kitGrantedPub:  kgrt,
 		kitClaimedSub:  kclm,
 		assignmentRepo: assignmentRepo,
+		log:            l,
 	}
 }
