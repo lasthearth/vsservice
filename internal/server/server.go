@@ -13,6 +13,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
@@ -85,6 +86,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	settlementv1.RegisterSettlementTagServiceServer(srv, s.settlementTagV1)
 	notificationv1.RegisterNotificationServiceServer(srv, s.notificationV1)
 	newsv1.RegisterNewsServiceServer(srv, s.newsV1)
+	kitv1.RegisterKitServiceServer(srv, s.kitV1)
 	reflection.Register(srv)
 
 	s.grpcSrv = srv
@@ -131,6 +133,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := newsv1.RegisterNewsServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register news service handler")
+	}
+
+	if err := kitv1.RegisterKitServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register kit service handler")
 	}
 
 	handler := cors.New(cors.Options{

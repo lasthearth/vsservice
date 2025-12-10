@@ -5,6 +5,7 @@ import (
 
 	"github.com/lasthearth/vsservice/internal/webhook"
 
+	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
@@ -37,6 +38,7 @@ type Opts struct {
 	SettlementTagV1 settlementv1.SettlementTagServiceServer
 	NotificationV1  notificationv1.NotificationServiceServer
 	NewsV1          newsv1.NewsServiceServer
+	KitV1           kitv1.KitServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -54,6 +56,7 @@ type Server struct {
 	settlementTagV1     settlementv1.SettlementTagServiceServer
 	notificationV1      notificationv1.NotificationServiceServer
 	newsV1              newsv1.NewsServiceServer
+	kitV1               kitv1.KitServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -76,6 +79,7 @@ func New(opts Opts) *Server {
 		settlementTagV1:     opts.SettlementTagV1,
 		notificationV1:      opts.NotificationV1,
 		newsV1:              opts.NewsV1,
+		kitV1:               opts.KitV1,
 		logtoWebhookService: opts.LogtoWebhookService, // Add the webhook service
 		log:                 opts.Log,
 	}

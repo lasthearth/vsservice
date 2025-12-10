@@ -68,6 +68,7 @@ require (
 require (
 	github.com/nats-io/nkeys v0.4.11 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
 )
 
 require (

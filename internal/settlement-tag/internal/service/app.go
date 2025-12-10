@@ -25,6 +25,7 @@ type Mapper interface {
 }
 
 type Repository interface {
+	GetTags(ctx context.Context) ([]model.Tag, error)
 	CreateTag(ctx context.Context, tag *model.Tag) (*model.Tag, error)
 	GetTagById(ctx context.Context, id string) (*model.Tag, error)
 	GetTagsByIds(ctx context.Context, ids []string) ([]model.Tag, error)

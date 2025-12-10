@@ -40,6 +40,25 @@ func (r *Repository) GetTagsByIds(ctx context.Context, ids []string) ([]model.Ta
 	return tags, nil
 }
 
+// GetTags implements service.Repository.
+func (r *Repository) GetTags(ctx context.Context) ([]model.Tag, error) {
+	var dtos []dto.Tag
+	filter := bson.M{"is_active": true}
+	cursor, err := r.tagsColl.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	defer cursor.Close(ctx)
+	err = cursor.All(ctx, &dtos)
+	if err != nil {
+		return nil, err
+	}
+
+	tags := r.mapper.FromTagDtos(dtos)
+	return tags, nil
+}
+
 // CreateTag creates a new tag in the database
 func (r *Repository) CreateTag(ctx context.Context, tag *model.Tag) (*model.Tag, error) {
 	existingTag, err := r.GetTagByName(ctx, tag.Name)

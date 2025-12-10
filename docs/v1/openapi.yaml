@@ -32,6 +32,56 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/kits:
+        get:
+            tags:
+                - KitService
+            description: Get all available kits that can be assigned to users
+            operationId: KitService_GetAvailableKits
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetAvailableKitsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/kits/{kit_name}:assign:
+        post:
+            tags:
+                - KitService
+            description: Assign a specific kit to a user
+            operationId: KitService_AssignKitToUser
+            parameters:
+                - name: kit_name
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AssignKitToUserRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AssignKitToUserResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/leaderboard:
         get:
             tags:
@@ -397,6 +447,23 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/Status'
     /v1/settlements/tags:
+        get:
+            tags:
+                - SettlementTagService
+            operationId: SettlementTagService_GetTags
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetTagsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
         post:
             tags:
                 - SettlementTagService
@@ -932,6 +999,31 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/users/{user_id}/kits/assignments:
+        get:
+            tags:
+                - KitService
+            description: List all kit assignments for a specific user
+            operationId: KitService_ListUserAssignments
+            parameters:
+                - name: user_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListUserAssignmentsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/users/{user_id}/nickname:
         put:
             tags:
@@ -1211,6 +1303,52 @@ components:
         ApproveResponse:
             type: object
             properties: {}
+        AssignKitToUserRequest:
+            type: object
+            properties:
+                user_id:
+                    type: string
+                user_game_name:
+                    type: string
+                kit_name:
+                    type: string
+            description: Request for assigning a kit to a user
+        AssignKitToUserResponse:
+            type: object
+            properties:
+                assignment_id:
+                    type: string
+                user_id:
+                    type: string
+                kit_name:
+                    type: string
+                status:
+                    type: string
+                assigned_at:
+                    type: string
+                    format: date-time
+            description: Response for successful assignment of a kit to a user
+        Assignment:
+            type: object
+            properties:
+                id:
+                    type: string
+                user_id:
+                    type: string
+                kit_name:
+                    type: string
+                status:
+                    type: string
+                assigned_at:
+                    type: string
+                    format: date-time
+                delivered_at:
+                    type: string
+                    format: date-time
+                claimed_at:
+                    type: string
+                    format: date-time
+            description: Assignment definition
         Attachment:
             required:
                 - desc
@@ -1432,6 +1570,14 @@ components:
                     type: string
                 rejection_reason:
                     type: string
+        GetAvailableKitsResponse:
+            type: object
+            properties:
+                kits:
+                    type: array
+                    items:
+                        type: string
+            description: Response containing all available kits
         GetByUserIdResponse:
             type: object
             properties:
@@ -1474,6 +1620,15 @@ components:
                     items:
                         type: string
         GetTagsByIdsResponse:
+            required:
+                - tags
+            type: object
+            properties:
+                tags:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SettlementTag'
+        GetTagsResponse:
             required:
                 - tags
             type: object
@@ -1580,6 +1735,14 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Settlement'
+        ListUserAssignmentsResponse:
+            type: object
+            properties:
+                assignments:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Assignment'
+            description: Response containing user assignments list
         Member:
             required:
                 - user_id
@@ -1870,6 +2033,8 @@ components:
                 status:
                     type: string
 tags:
+    - name: KitService
+      description: Kit service for managing game kit assignment to users
     - name: LeaderboardService
       description: Represent basic leaderboard
     - name: NewsService

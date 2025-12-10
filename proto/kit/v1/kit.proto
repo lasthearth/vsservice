@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package kit.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+// Kit service for managing game kit assignment to users
+service KitService {
+  // Get all available kits that can be assigned to users
+  rpc GetAvailableKits(GetAvailableKitsRequest) returns (GetAvailableKitsResponse) {
+    option (google.api.http) = {get: "/v1/kits"};
+  }
+
+  // Assign a specific kit to a user
+  rpc AssignKitToUser(AssignKitToUserRequest) returns (AssignKitToUserResponse) {
+    option (google.api.http) = {
+      post: "/v1/kits/{kit_name}:assign"
+      body: "*"
+    };
+  }
+
+  // List all kit assignments for a specific user
+  rpc ListUserAssignments(ListUserAssignmentsRequest) returns (ListUserAssignmentsResponse) {
+    option (google.api.http) = {get: "/v1/users/{user_id}/kits/assignments"};
+  }
+}
+
+// Request for getting all available kits
+message GetAvailableKitsRequest {}
+
+// Response containing all available kits
+message GetAvailableKitsResponse {
+  repeated string kits = 1;
+}
+
+// Request for assigning a kit to a user
+message AssignKitToUserRequest {
+  string user_id = 1;
+  string user_game_name = 2;
+  string kit_name = 3;
+}
+
+// Response for successful assignment of a kit to a user
+message AssignKitToUserResponse {
+  string assignment_id = 1;
+  string user_id = 2;
+  string kit_name = 3;
+  string status = 4;
+  google.protobuf.Timestamp assigned_at = 5;
+}
+
+// Request for listing user assignments
+message ListUserAssignmentsRequest {
+  string user_id = 1;
+}
+
+// Response containing user assignments list
+message ListUserAssignmentsResponse {
+  repeated Assignment assignments = 1;
+}
+
+// Assignment definition
+message Assignment {
+  string id = 1;
+  string user_id = 2;
+  string kit_name = 3;
+  string status = 4;
+  google.protobuf.Timestamp assigned_at = 5;
+  google.protobuf.Timestamp delivered_at = 6;
+  google.protobuf.Timestamp claimed_at = 7;
+}
