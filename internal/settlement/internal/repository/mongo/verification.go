@@ -197,8 +197,6 @@ func (r *Repository) Approve(ctx context.Context, id string) error {
 			Diplomacy:   setModel.Diplomacy,
 			Description: setModel.Description,
 			Leader:      *dto.Leader.ToModel(),
-			Diplomacy:   dto.Diplomacy,
-			Description: dto.Description,
 		})
 	})
 }
