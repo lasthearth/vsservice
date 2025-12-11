@@ -35,7 +35,7 @@ func ensureStream(js jetstream.JetStream, name string, subjects []string) error 
 	return err
 }
 
-func ensureConsumer(js jetstream.JetStream, stream, durable, filterSubject, deliverGroup string) error {
+func ensureConsumer(js jetstream.JetStream, stream, durable, filterSubject, deliverGroup string) (jetstream.Consumer, error) {
 	cfg := jetstream.ConsumerConfig{
 		Durable:       durable,
 		FilterSubject: filterSubject,
@@ -48,9 +48,9 @@ func ensureConsumer(js jetstream.JetStream, stream, durable, filterSubject, deli
 	if deliverGroup != "" {
 		cfg.DeliverGroup = deliverGroup
 	}
-	_, err := js.CreateConsumer(context.Background(), stream, cfg)
+	cons, err := js.CreateOrUpdateConsumer(context.Background(), stream, cfg)
 	if err != nil && !errors.Is(err, jetstream.ErrConsumerExists) {
-		return err
+		return nil, err
 	}
-	return nil
+	return cons, nil
 }

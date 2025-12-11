@@ -30,13 +30,11 @@ type AssignmentRepository interface {
 // goverter:converter
 // goverter:output:file sermapper/mapper.go
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTimestamp
-// Mapper interface is used to convert between models and proto messages
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimePtrToTimestamp
 type Mapper interface {
-	// goverter:ignore Model
-	ToAssignmentProto(model.KitAssignment) *kitv1.Assignment
+	// goverter:ignore state sizeCache unknownFields
+	ToAssignmentProto(*model.KitAssignment) *kitv1.Assignment
 	ToAssignmentsProto([]*model.KitAssignment) []*kitv1.Assignment
-
-	ToAssignmentModel(*kitv1.Assignment) *model.KitAssignment
 }
 
 // GetAvailableKits implements kitv1.KitServiceServer.
@@ -60,12 +58,12 @@ func (s *Service) GetAvailableKits(ctx context.Context, req *kitv1.GetAvailableK
 
 // AssignKitToUser implements kitv1.KitServiceServer.
 func (s *Service) AssignKitToUser(ctx context.Context, req *kitv1.AssignKitToUserRequest) (*kitv1.AssignKitToUserResponse, error) {
-	requesterID, err := interceptor.GetUserID(ctx)
-	if err != nil {
-		s.log.Error("failed to get user ID from context", zap.Error(err))
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
+	// requesterID, err := interceptor.GetUserID(ctx)
+	// if err != nil {
+	// 	s.log.Error("failed to get user ID from context", zap.Error(err))
+	// 	return nil, status.Error(codes.Internal, err.Error())
+	// }
+	requesterID := "asdjakl123"
 	l := s.log.With(
 		zap.String("method", "AssignKitToUser"),
 		zap.String("requester_id", requesterID),
@@ -143,7 +141,7 @@ func (s *Service) ListUserAssignments(ctx context.Context, req *kitv1.ListUserAs
 
 	assignmentProtos := make([]*kitv1.Assignment, len(assignments))
 	for i, assignment := range assignments {
-		assignmentProtos[i] = s.mapper.ToAssignmentProto(*assignment)
+		assignmentProtos[i] = s.mapper.ToAssignmentProto(assignment)
 	}
 
 	l.Info(

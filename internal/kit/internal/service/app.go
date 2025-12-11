@@ -2,6 +2,7 @@ package service
 
 import (
 	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
+	"github.com/lasthearth/vsservice/internal/kit/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/messaging"
@@ -60,7 +61,7 @@ func New(
 		assignmentRepo: assignmentRepo,
 		cfg:            cfg,
 		log:            log,
-		mapper:         nil,
+		mapper:         &sermapper.MapperImpl{},
 		bus:            bus,
 	}
 }
