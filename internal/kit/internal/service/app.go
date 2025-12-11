@@ -2,6 +2,7 @@ package service
 
 import (
 	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
+	"github.com/lasthearth/vsservice/internal/kit/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/messaging"
@@ -32,10 +33,10 @@ type Bus struct {
 
 type Opts struct {
 	fx.In
-	NC             *nats.Conn
 	Log            logger.Logger
 	Config         config.Config
 	AssignmentRepo AssignmentRepository
+	Bus            *Bus
 }
 
 func NewFx(opts Opts) *Service {
@@ -44,7 +45,7 @@ func NewFx(opts Opts) *Service {
 		opts.AssignmentRepo,
 		opts.Config,
 		opts.Log,
-		opts.NC,
+		opts.Bus,
 	)
 }
 
@@ -53,15 +54,15 @@ func New(
 	assignmentRepo AssignmentRepository,
 	cfg config.Config,
 	log logger.Logger,
-	nc *nats.Conn,
+	bus *Bus,
 ) *Service {
 	return &Service{
 		kitRepo:        kitRepo,
 		assignmentRepo: assignmentRepo,
 		cfg:            cfg,
 		log:            log,
-		mapper:         nil,
-		bus:            NewEventManager(nc, log, assignmentRepo),
+		mapper:         &sermapper.MapperImpl{},
+		bus:            bus,
 	}
 }
 
@@ -106,5 +107,6 @@ func NewEventManager(
 		kitGrantedPub:  kgrt,
 		kitClaimedSub:  kclm,
 		assignmentRepo: assignmentRepo,
+		log:            l,
 	}
 }

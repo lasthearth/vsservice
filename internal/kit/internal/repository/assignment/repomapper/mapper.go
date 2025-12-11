@@ -17,6 +17,7 @@ func (c *MapperImpl) FromAssignment(source model.KitAssignment) mongo.Assignment
 	mongoAssignment.UserId = source.UserId
 	mongoAssignment.KitName = source.KitName
 	mongoAssignment.Status = string(source.Status)
+	mongoAssignment.UserGameName = source.UserGameName
 	mongoAssignment.AssignedAt = goverter.TimeToTime(source.AssignedAt)
 	mongoAssignment.DeliveredAt = c.pTimeTimeToPTimeTime(source.DeliveredAt)
 	mongoAssignment.ClaimedAt = c.pTimeTimeToPTimeTime(source.ClaimedAt)
@@ -37,6 +38,7 @@ func (c *MapperImpl) ToAssignment(source mongo.Assignment) model.KitAssignment {
 	var modelKitAssignment model.KitAssignment
 	modelKitAssignment.Id = goverter.ObjectIdToString(source.Model.Id)
 	modelKitAssignment.UserId = source.UserId
+	modelKitAssignment.UserGameName = source.UserGameName
 	modelKitAssignment.KitName = source.KitName
 	modelKitAssignment.Status = model.AssignmentStatus(source.Status)
 	modelKitAssignment.AssignedAt = goverter.TimeToTime(source.AssignedAt)

@@ -11,7 +11,7 @@ type Publisher[T any] interface {
 }
 
 type Subscriber[T any] interface {
-	Subscribe(handler func(ctx context.Context, event T)) error
+	Subscribe(handler func(ctx context.Context, event T) error) error
 	Unsubscribe() error
 }
 

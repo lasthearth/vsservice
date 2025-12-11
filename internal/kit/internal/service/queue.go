@@ -25,7 +25,7 @@ func (b *Bus) Unsubscribe() {
 	b.kitClaimedSub.Unsubscribe()
 }
 
-func (b *Bus) onKitReceived(ctx context.Context, data KitClaimedEvent) {
+func (b *Bus) onKitReceived(ctx context.Context, data KitClaimedEvent) error {
 	err := b.assignmentRepo.UpdateAssignment(
 		ctx,
 		data.AssignmentID,
@@ -44,5 +44,8 @@ func (b *Bus) onKitReceived(ctx context.Context, data KitClaimedEvent) {
 			"failed to update assignment status",
 			zap.Error(err),
 		)
+		return err
 	}
+
+	return nil
 }
