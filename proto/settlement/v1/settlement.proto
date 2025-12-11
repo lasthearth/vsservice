@@ -58,7 +58,7 @@ service SettlementService {
 
   // Get the verification status of a settlement request
   rpc VerificationStatus(VerificationStatusRequest) returns (VerificationStatusResponse) {
-    option (google.api.http) = {get: "/v1/settlements/{id}/verification:status"};
+    option (google.api.http) = {get: "/v1/users/{user_id}/settlements/verification:status"};
   }
 
   // Remove a member from a settlement (requires admin privileges)
@@ -276,7 +276,7 @@ message GetByUserIdResponse {
 }
 
 message VerificationStatusRequest {
-  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message VerificationStatusResponse {

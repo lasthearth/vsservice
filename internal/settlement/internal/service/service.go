@@ -416,7 +416,7 @@ func (s *Service) GetByUserId(ctx context.Context, req *settlementv1.GetByUserId
 
 // VerificationStatus implements settlementv1.SettlementServiceServer.
 func (s *Service) VerificationStatus(ctx context.Context, req *settlementv1.VerificationStatusRequest) (*settlementv1.VerificationStatusResponse, error) {
-	sreq, err := s.dbRepo.GetSettlementRequest(ctx, req.Id)
+	sreq, err := s.dbRepo.GetSettlementRequestByLeader(ctx, req.UserId)
 	if err != nil {
 		s.log.Error("failed to get request status", zap.Error(err))
 		return nil, err
