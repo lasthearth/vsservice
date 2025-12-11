@@ -65,7 +65,7 @@ func (b *Bus) onPlayerTryJoin(ctx context.Context, data PlayerTryJoinReqEvent) (
 	}, nil
 }
 
-func (b *Bus) onPlayerJoin(ctx context.Context, data PlayerJoinEvent) {
+func (b *Bus) onPlayerJoin(ctx context.Context, data PlayerJoinEvent) error {
 	l := b.log.WithMethod("on-player-join")
 	isOnline := true
 	if err := b.playerRepo.UpdateByUserGameName(
@@ -80,9 +80,10 @@ func (b *Bus) onPlayerJoin(ctx context.Context, data PlayerJoinEvent) {
 			zap.Error(err),
 		)
 	}
+	return nil
 }
 
-func (b *Bus) onPlayerLeave(ctx context.Context, data PlayerLeaveEvent) {
+func (b *Bus) onPlayerLeave(ctx context.Context, data PlayerLeaveEvent) error {
 	l := b.log.WithMethod("on-player-leave")
 	isOnline := false
 	if err := b.playerRepo.UpdateByUserGameName(
@@ -97,4 +98,5 @@ func (b *Bus) onPlayerLeave(ctx context.Context, data PlayerLeaveEvent) {
 			zap.Error(err),
 		)
 	}
+	return nil
 }

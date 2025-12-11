@@ -31,8 +31,19 @@ func TimeToTime(t time.Time) time.Time {
 	return t
 }
 
+func TimestampToTime(t *timestamppb.Timestamp) time.Time {
+	return t.AsTime()
+}
+
 func TimeToTimestamp(t time.Time) *timestamppb.Timestamp {
 	return timestamppb.New(t)
+}
+
+func TimePtrToTimestamp(t *time.Time) *timestamppb.Timestamp {
+	if t == nil {
+		return nil
+	}
+	return timestamppb.New(*t)
 }
 
 func TimeToInt64(t time.Time) int64 {

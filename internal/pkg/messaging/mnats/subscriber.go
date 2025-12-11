@@ -28,7 +28,7 @@ func NewEventSubscriber[T any](
 	}
 }
 
-func (s *eventSubscriber[T]) Subscribe(handler func(ctx context.Context, event T)) error {
+func (s *eventSubscriber[T]) Subscribe(handler func(ctx context.Context, event T) error) error {
 	msgHandler := func(m *nats.Msg) {
 		ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 		defer cancel()
@@ -40,7 +40,12 @@ func (s *eventSubscriber[T]) Subscribe(handler func(ctx context.Context, event T
 			}
 			return
 		}
-		handler(ctx, event)
+		err = handler(ctx, event)
+		if err != nil {
+			if s.log != nil {
+				s.log.Error("event handler failed", zap.Error(err), zap.String("subject", s.subject))
+			}
+		}
 	}
 
 	var err error
