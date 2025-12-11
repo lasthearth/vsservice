@@ -58,12 +58,12 @@ func (s *Service) GetAvailableKits(ctx context.Context, req *kitv1.GetAvailableK
 
 // AssignKitToUser implements kitv1.KitServiceServer.
 func (s *Service) AssignKitToUser(ctx context.Context, req *kitv1.AssignKitToUserRequest) (*kitv1.AssignKitToUserResponse, error) {
-	// requesterID, err := interceptor.GetUserID(ctx)
-	// if err != nil {
-	// 	s.log.Error("failed to get user ID from context", zap.Error(err))
-	// 	return nil, status.Error(codes.Internal, err.Error())
-	// }
-	requesterID := "asdjakl123"
+	requesterID, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		s.log.Error("failed to get user ID from context", zap.Error(err))
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	l := s.log.With(
 		zap.String("method", "AssignKitToUser"),
 		zap.String("requester_id", requesterID),
