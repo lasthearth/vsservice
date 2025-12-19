@@ -126,7 +126,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		return nil, status.Error(codes.AlreadyExists, "settlement request already pending")
 	}
 
-	if found.Status == model.SettlementStatusApproved {
+	if found.Status == model.SettlementStatusApproved || found.Status == model.SettlementStatusUpdateRejected {
 		found.LvlUp()
 		s.log.Debug("settlement level up",
 			zap.String("before", string(opts.Type)),
