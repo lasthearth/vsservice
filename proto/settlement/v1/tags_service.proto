@@ -16,9 +16,7 @@ service SettlementTagService {
   }
 
   rpc GetTags(GetTagsRequest) returns (GetTagsResponse) {
-    option (google.api.http) = {
-      get: "/v1/settlements/tags"
-    };
+    option (google.api.http) = {get: "/v1/settlements/tags"};
   }
 
   rpc GetTagsByIds(GetTagsByIdsRequest) returns (GetTagsByIdsResponse) {

@@ -17,8 +17,8 @@ import (
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
-	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
+	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
@@ -77,7 +77,6 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 		),
 	)
 
-	v1.RegisterVintageServiceServer(srv, s.vsApiV1)
 	leaderboardv1.RegisterLeaderboardServiceServer(srv, s.leaderboardV1)
 	rulesv1.RegisterRuleServiceServer(srv, s.rulesV1)
 	verificationv1.RegisterVerificationServiceServer(srv, s.verificationV1)
@@ -87,6 +86,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	notificationv1.RegisterNotificationServiceServer(srv, s.notificationV1)
 	newsv1.RegisterNewsServiceServer(srv, s.newsV1)
 	kitv1.RegisterKitServiceServer(srv, s.kitV1)
+	serverinfov1.RegisterServerInfoServiceServer(srv, s.serverInfoV1)
 	reflection.Register(srv)
 
 	s.grpcSrv = srv
@@ -98,10 +98,6 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 	mux := runtime.NewServeMux(opts...)
 
 	dopts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-
-	if err := v1.RegisterVintageServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
-		return errors.Wrap(err, "register vintage service handler")
-	}
 
 	if err := leaderboardv1.RegisterLeaderboardServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register leaderboard service handler")
@@ -137,6 +133,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := kitv1.RegisterKitServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register kit service handler")
+	}
+
+	if err := serverinfov1.RegisterServerInfoServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register server info service handler")
 	}
 
 	handler := cors.New(cors.Options{

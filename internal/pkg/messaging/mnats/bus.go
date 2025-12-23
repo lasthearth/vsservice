@@ -3,14 +3,14 @@ package mnats
 import (
 	"time"
 
+	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/nats-io/nats.go"
-	"go.uber.org/zap"
 )
 
 type natsBus struct {
 	nc      *nats.Conn
 	subject string
-	log     *zap.Logger
+	log     logger.Logger
 	timeout time.Duration
 	encoder QueueEncoder
 	sub     *nats.Subscription
@@ -27,7 +27,7 @@ func defaultNatsBus(nc *nats.Conn, subject string) *natsBus {
 
 type BusOption func(*natsBus)
 
-func WithLogger(l *zap.Logger) BusOption {
+func WithLogger(l logger.Logger) BusOption {
 	return func(b *natsBus) {
 		b.log = l
 	}

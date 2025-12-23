@@ -18,9 +18,9 @@ import (
 	"github.com/lasthearth/vsservice/internal/player"
 	"github.com/lasthearth/vsservice/internal/rules"
 	"github.com/lasthearth/vsservice/internal/server"
+	serverinfo "github.com/lasthearth/vsservice/internal/serverinfo"
 	"github.com/lasthearth/vsservice/internal/settlement"
 	settlementtag "github.com/lasthearth/vsservice/internal/settlement-tag"
-	"github.com/lasthearth/vsservice/internal/stats"
 	"github.com/lasthearth/vsservice/internal/webhook"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -71,7 +71,6 @@ func main() {
 		),
 
 		leaderboard.App,
-		stats.App,
 		// trademarket.App,
 		rules.App,
 		player.App,
@@ -82,6 +81,7 @@ func main() {
 		news.App,
 		webhook.App,
 		kit.App,
+		serverinfo.App,
 	)
 
 	a.Run()
