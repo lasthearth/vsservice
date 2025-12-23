@@ -27,6 +27,7 @@ func (r *Repository) GetServerInfo(ctx context.Context) (*model.ServerInfo, erro
 		Id:          si.Id.Hex(),
 		WorldTime:   si.WorldTime,
 		TotalOnline: si.TotalOnline,
+		MaxOnline:   si.MaxOnline,
 		CreatedAt:   si.CreatedAt,
 		UpdatedAt:   si.UpdatedAt,
 	}, nil

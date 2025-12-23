@@ -26,7 +26,7 @@ func (s *Service) TotalOnline(ctx context.Context, req *serverinfov1.TotalOnline
 	}
 	return &serverinfov1.TotalOnlineResponse{
 		Online:    int32(info.TotalOnline),
-		MaxOnline: int32(info.TotalOnline),
+		MaxOnline: int32(info.MaxOnline),
 	}, nil
 }
 
