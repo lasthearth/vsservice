@@ -7,12 +7,10 @@ import (
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/jwt"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
-	"github.com/lasthearth/vsservice/internal/service"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -38,8 +36,6 @@ var App = fx.Options(
 
 		fx.Provide(
 			interceptor.NewAuth,
-
-			fx.Annotate(service.NewVsApiV1, fx.As(new(v1.VintageServiceServer))),
 			New,
 		),
 

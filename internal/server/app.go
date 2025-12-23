@@ -9,7 +9,8 @@ import (
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
-	v1 "github.com/lasthearth/vsservice/gen/proto/v1"
+	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
+
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
@@ -29,7 +30,6 @@ type Opts struct {
 	Config config.Config
 
 	Log             logger.Logger
-	VsApiV1         v1.VintageServiceServer
 	LeaderboardV1   leaderboardv1.LeaderboardServiceServer
 	RulesV1         rulesv1.RuleServiceServer
 	VerificationV1  verificationv1.VerificationServiceServer
@@ -39,6 +39,7 @@ type Opts struct {
 	NotificationV1  notificationv1.NotificationServiceServer
 	NewsV1          newsv1.NewsServiceServer
 	KitV1           kitv1.KitServiceServer
+	ServerInfoV1    serverinfov1.ServerInfoServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -47,7 +48,6 @@ type Server struct {
 	authInterceptor *interceptor.Auth
 
 	c                   config.Config
-	vsApiV1             v1.VintageServiceServer
 	leaderboardV1       leaderboardv1.LeaderboardServiceServer
 	rulesV1             rulesv1.RuleServiceServer
 	verificationV1      verificationv1.VerificationServiceServer
@@ -57,6 +57,7 @@ type Server struct {
 	notificationV1      notificationv1.NotificationServiceServer
 	newsV1              newsv1.NewsServiceServer
 	kitV1               kitv1.KitServiceServer
+	serverInfoV1        serverinfov1.ServerInfoServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -70,7 +71,6 @@ func New(opts Opts) *Server {
 	return &Server{
 		authInterceptor:     opts.AuthInterceptor,
 		c:                   opts.Config,
-		vsApiV1:             opts.VsApiV1,
 		leaderboardV1:       opts.LeaderboardV1,
 		rulesV1:             opts.RulesV1,
 		verificationV1:      opts.VerificationV1,
@@ -80,7 +80,8 @@ func New(opts Opts) *Server {
 		notificationV1:      opts.NotificationV1,
 		newsV1:              opts.NewsV1,
 		kitV1:               opts.KitV1,
-		logtoWebhookService: opts.LogtoWebhookService, // Add the webhook service
+		serverInfoV1:        opts.ServerInfoV1,
+		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}
 }

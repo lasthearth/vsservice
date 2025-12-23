@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package serverinfo.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// Provides methods to manage user notifications
+service ServerInfoService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  rpc WorldTime(WorldTimeRequest) returns (WorldTimeResponse) {
+    option (google.api.http) = {get: "/v1/serverinfo/worldtime"};
+  }
+
+  rpc TotalOnline(TotalOnlineRequest) returns (TotalOnlineResponse) {
+    option (google.api.http) = {get: "/v1/serverinfo/totalonline"};
+  }
+}
+
+message WorldTimeRequest {}
+
+message WorldTimeResponse {
+  string time = 1;
+}
+
+message TotalOnlineRequest {}
+
+message TotalOnlineResponse {
+  int32 online = 1;
+  int32 max_online = 2;
+}
