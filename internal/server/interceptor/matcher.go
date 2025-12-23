@@ -12,9 +12,9 @@ func AuthMatcher(ctx context.Context, c interceptors.CallMeta, cfg config.Config
 		return false
 	}
 	switch c.FullMethod() {
-	case "/vintage.v1.VintageService/GetOnlinePlayersCount":
+	case "/serverinfo.v1.ServerInfoService/WorldTime":
 		return false
-	case "/vintage.v1.VintageService/GetGameTime":
+	case "/serverinfo.v1.ServerInfoService/TotalOnline":
 		return false
 	case "/leaderboard.v1.LeaderboardService/ListEntries":
 		return false
