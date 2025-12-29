@@ -81,6 +81,8 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 		{Key: "leader", Value: memberdto.FromModel(&opts.Leader)},
 		{Key: "coordinates", Value: vector2dto.FromModel(&opts.Coordinates)},
 		{Key: "attachments", Value: attachments},
+		{Key: "diplomacy", Value: opts.Diplomacy},
+		{Key: "description", Value: opts.Description},
 		{Key: "status", Value: string(model.SettlementStatusPending)},
 		{Key: "rejection_reason", Value: ""},
 		{Key: "updated_at", Value: time.Now()},
