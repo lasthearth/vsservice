@@ -70,7 +70,7 @@ func (b *Bus) onPlayerJoin(ctx context.Context, data PlayerJoinEvent) error {
 	isOnline := true
 	if err := b.playerRepo.UpdateByUserGameName(
 		ctx,
-		data.Stats.Name,
+		data.PlayerName,
 		model.PlayerUpdate{
 			IsOnline: &isOnline,
 		},
@@ -88,7 +88,7 @@ func (b *Bus) onPlayerLeave(ctx context.Context, data PlayerLeaveEvent) error {
 	isOnline := false
 	if err := b.playerRepo.UpdateByUserGameName(
 		ctx,
-		data.Stats.Name,
+		data.PlayerName,
 		model.PlayerUpdate{
 			IsOnline: &isOnline,
 		},
