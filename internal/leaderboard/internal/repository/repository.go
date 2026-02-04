@@ -11,7 +11,7 @@ import (
 )
 
 func (r *Repository) ListEntriesSortByDeath(ctx context.Context, limit int) ([]*model.Entry, error) {
-	return r.listEntries(ctx, "total_death", limit)
+	return r.listEntries(ctx, "total_deaths", limit)
 }
 
 func (r *Repository) ListEntriesSortByKills(ctx context.Context, limit int) ([]*model.Entry, error) {
