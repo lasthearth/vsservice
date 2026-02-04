@@ -1,9 +1,9 @@
 package model
 
 type Entry struct {
+	UserId      string
 	Name        string
-	DeathCount  int
-	KillCount   int
-	HoursPlayed float32
-	UserID      string
+	TotalHours  float64
+	TotalDeaths int
+	TotalKills  int
 }

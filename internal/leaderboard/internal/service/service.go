@@ -46,10 +46,10 @@ func (s *Service) ListEntries(ctx context.Context, req *leaderboardv1.Leaderboar
 	response := lo.Map(entries, func(entry *model.Entry, index int) *leaderboardv1.LeaderboardEntry {
 		return &leaderboardv1.LeaderboardEntry{
 			Name:        entry.Name,
-			Deaths:      int32(entry.DeathCount),
-			Kills:       int32(entry.KillCount),
-			HoursPlayed: entry.HoursPlayed,
-			UserId:      entry.UserID,
+			Deaths:      int32(entry.TotalDeaths),
+			Kills:       int32(entry.TotalKills),
+			HoursPlayed: float32(entry.TotalHours),
+			UserId:      entry.UserId,
 		}
 	})
 
