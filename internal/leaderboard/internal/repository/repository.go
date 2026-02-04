@@ -11,15 +11,15 @@ import (
 )
 
 func (r *Repository) ListEntriesSortByDeath(ctx context.Context, limit int) ([]*model.Entry, error) {
-	return r.listEntries(ctx, "death_count", limit)
+	return r.listEntries(ctx, "total_death", limit)
 }
 
 func (r *Repository) ListEntriesSortByKills(ctx context.Context, limit int) ([]*model.Entry, error) {
-	return r.listEntries(ctx, "kill_count", limit)
+	return r.listEntries(ctx, "total_kills", limit)
 }
 
 func (r *Repository) ListEntriesSortByOnline(ctx context.Context, limit int) ([]*model.Entry, error) {
-	return r.listEntries(ctx, "hours_played", limit)
+	return r.listEntries(ctx, "total_hours", limit)
 }
 
 func (r *Repository) listEntries(
@@ -28,47 +28,29 @@ func (r *Repository) listEntries(
 	limit int,
 ) ([]*model.Entry, error) {
 	pipeline := bson.A{
-		bson.D{{
-			Key:   "$unwind",
-			Value: bson.D{{Key: "path", Value: "$seed_stats"}},
-		}},
 		bson.D{
-			{
-				Key: "$group",
-				Value: bson.D{
-					{Key: "_id", Value: "$_id"},
-					{
-						Key:   "name",
-						Value: bson.D{{Key: "$first", Value: "$name"}},
-					},
-					{
-						Key: "death_count",
-						Value: bson.D{{
-							Key:   "$sum",
-							Value: "$seed_stats.death_count",
-						}},
-					},
-					{
-						Key: "kill_count",
-						Value: bson.D{
-							{
-								Key:   "$sum",
-								Value: "$seed_stats.players_killed",
-							},
-						},
-					},
-					{
-						Key:   "hours_played",
-						Value: bson.D{{Key: "$sum", Value: "$seed_stats.hours_played"}},
-					},
+			{"$group",
+				bson.D{
+					{"_id", "$user_game_name"},
+					{"total_hours", bson.D{{"$sum", "$hours_played"}}},
+					{"total_deaths", bson.D{{"$sum", "$death_count"}}},
+					{"total_kills", bson.D{{"$sum", "$players_killed"}}},
 				},
 			},
 		},
-		bson.D{{
-			Key:   "$sort",
-			Value: bson.D{{Key: filter, Value: -1}},
-		}},
-		bson.D{{Key: "$limit", Value: limit}},
+		bson.D{
+			{"$project",
+				bson.D{
+					{"_id", 0},
+					{"user_game_name", "$_id"},
+					{"total_hours", 1},
+					{"total_deaths", 1},
+					{"total_kills", 1},
+				},
+			},
+		},
+		bson.D{{"$sort", bson.D{{filter, -1}}}},
+		bson.D{{"$limit", limit}},
 	}
 	cursor, err := r.coll.Aggregate(ctx, pipeline)
 	if err != nil {
@@ -96,11 +78,11 @@ func (r *Repository) listEntries(
 		}
 
 		return &model.Entry{
+			UserId:      user.UserID,
 			Name:        item.Name,
-			DeathCount:  item.DeathCount,
-			KillCount:   item.KillCount,
-			HoursPlayed: float32(item.HoursPlayed),
-			UserID:      user.UserID,
+			TotalHours:  item.TotalHours,
+			TotalDeaths: item.TotalDeaths,
+			TotalKills:  item.TotalKills,
 		}
 	})
 
