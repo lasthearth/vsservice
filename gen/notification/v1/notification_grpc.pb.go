@@ -30,17 +30,21 @@ const (
 //
 // Provides methods to manage user notifications
 type NotificationServiceClient interface {
-	// Lists notifications for a specific user.
+	// Lists notifications for the authenticated user with pagination.
+	// Default page size is 15, maximum is 15.
+	// Supports order_by: "created_at" or "state" with optional " asc"/" desc" suffix.
 	//
-	// This method retrieves a paginated list of notifications for the specified
-	// user. The response includes a list of notifications and a token for the next
-	// page (if applicable).
+	// Errors:
+	//   - NOT_FOUND (404): no notifications found for user
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	ListNotifications(ctx context.Context, in *ListNotificationsRequest, opts ...grpc.CallOption) (*ListNotificationsResponse, error)
-	// Marks notification as read.
+	// Mark a notification as read.
 	//
-	// This method updates the state of a specific notification to "READ" for the
-	// specified user. It does not return any data, only confirming the action's
-	// success.
+	// Errors:
+	//   - INVALID_ARGUMENT (400): invalid notification ID format
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	MarkAsRead(ctx context.Context, in *MarkAsReadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -78,17 +82,21 @@ func (c *notificationServiceClient) MarkAsRead(ctx context.Context, in *MarkAsRe
 //
 // Provides methods to manage user notifications
 type NotificationServiceServer interface {
-	// Lists notifications for a specific user.
+	// Lists notifications for the authenticated user with pagination.
+	// Default page size is 15, maximum is 15.
+	// Supports order_by: "created_at" or "state" with optional " asc"/" desc" suffix.
 	//
-	// This method retrieves a paginated list of notifications for the specified
-	// user. The response includes a list of notifications and a token for the next
-	// page (if applicable).
+	// Errors:
+	//   - NOT_FOUND (404): no notifications found for user
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	ListNotifications(context.Context, *ListNotificationsRequest) (*ListNotificationsResponse, error)
-	// Marks notification as read.
+	// Mark a notification as read.
 	//
-	// This method updates the state of a specific notification to "READ" for the
-	// specified user. It does not return any data, only confirming the action's
-	// success.
+	// Errors:
+	//   - INVALID_ARGUMENT (400): invalid notification ID format
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	MarkAsRead(context.Context, *MarkAsReadRequest) (*emptypb.Empty, error)
 }
 

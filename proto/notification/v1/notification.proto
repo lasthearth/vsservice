@@ -12,20 +12,24 @@ import "google/protobuf/timestamp.proto";
 service NotificationService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
-  // Lists notifications for a specific user.
+  // Lists notifications for the authenticated user with pagination.
+  // Default page size is 15, maximum is 15.
+  // Supports order_by: "created_at" or "state" with optional " asc"/" desc" suffix.
   //
-  // This method retrieves a paginated list of notifications for the specified
-  // user. The response includes a list of notifications and a token for the next
-  // page (if applicable).
+  // Errors:
+  //   - NOT_FOUND (404): no notifications found for user
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse) {
     option (google.api.http) = {get: "/v1/notifications"};
   }
 
-  // Marks notification as read.
+  // Mark a notification as read.
   //
-  // This method updates the state of a specific notification to "READ" for the
-  // specified user. It does not return any data, only confirming the action's
-  // success.
+  // Errors:
+  //   - INVALID_ARGUMENT (400): invalid notification ID format
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc MarkAsRead(MarkAsReadRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {post: "/v1/notifications/{id}:markAsRead"};
   }

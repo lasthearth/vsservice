@@ -1,13 +1,13 @@
 package ierror
 
-import "errors"
+import "github.com/lasthearth/vsservice/internal/pkg/ierror"
 
 var (
-	ErrNotFound                = errors.New("tag not found")
-	ErrAlreadyExists           = errors.New("tag already exists")
-	ErrInvalidArgument         = errors.New("invalid argument")
-	ErrValidationError         = errors.New("validation error")
-	ErrConstraintViolation     = errors.New("constraint violation")
-	ErrSettlementNotFound      = errors.New("settlement not found")
-	ErrTagNotActive = errors.New("tag is not active")
-)           
+	ErrNotFound            = ierror.NotFound("tag not found")
+	ErrAlreadyExists       = ierror.AlreadyExists("tag already exists")
+	ErrInvalidArgument     = ierror.InvalidArgument("invalid argument")
+	ErrValidationError     = ierror.InvalidArgument("validation error")
+	ErrConstraintViolation = ierror.FailedPrecondition("constraint violation")
+	ErrSettlementNotFound  = ierror.NotFound("settlement not found")
+	ErrTagNotActive        = ierror.FailedPrecondition("tag is not active")
+)

@@ -48,6 +48,9 @@ func (r *Repository) Create(ctx context.Context, userId string, v verification.V
 	res, err := r.coll.InsertOne(ctx, dto)
 	if err != nil {
 		l.Error("failed to insert verification request", zap.Error(err))
+		if mongo.IsDuplicateKeyError(err) {
+			return repoerr.ErrNickAlreadyExists
+		}
 		return err
 	}
 
@@ -198,6 +201,9 @@ func (r *Repository) Update(ctx context.Context, userId string, v verification.V
 	)
 	if err != nil {
 		l.Error("failed to update verification request", zap.Error(err))
+		if mongo.IsDuplicateKeyError(err) {
+			return repoerr.ErrNickAlreadyExists
+		}
 		return err
 	}
 

@@ -28,7 +28,12 @@ const (
 //
 // Represent basic leaderboard
 type LeaderboardServiceClient interface {
-	// List of leaderboard entries.
+	// List leaderboard entries sorted by the specified filter.
+	// Defaults to 25 entries if limit is not specified.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): unknown filter value
+	//   - INTERNAL (500): database failure
 	ListEntries(ctx context.Context, in *LeaderboardRequest, opts ...grpc.CallOption) (*LeaderboardResponse, error)
 }
 
@@ -56,7 +61,12 @@ func (c *leaderboardServiceClient) ListEntries(ctx context.Context, in *Leaderbo
 //
 // Represent basic leaderboard
 type LeaderboardServiceServer interface {
-	// List of leaderboard entries.
+	// List leaderboard entries sorted by the specified filter.
+	// Defaults to 25 entries if limit is not specified.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): unknown filter value
+	//   - INTERNAL (500): database failure
 	ListEntries(context.Context, *LeaderboardRequest) (*LeaderboardResponse, error)
 }
 

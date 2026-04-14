@@ -36,7 +36,11 @@ paths:
         get:
             tags:
                 - KitService
-            description: Get all available kits that can be assigned to users
+            description: |-
+                Get all available kits that can be assigned to users.
+
+                 Errors:
+                   - INTERNAL (500): database failure
             operationId: KitService_GetAvailableKits
             responses:
                 "200":
@@ -55,7 +59,13 @@ paths:
         post:
             tags:
                 - KitService
-            description: Assign a specific kit to a user
+            description: |-
+                Assign a specific kit to a user. Requires admin privileges.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): validation or database failure
             operationId: KitService_AssignKitToUser
             parameters:
                 - name: kit_name
@@ -86,7 +96,13 @@ paths:
         get:
             tags:
                 - LeaderboardService
-            description: List of leaderboard entries.
+            description: |-
+                List leaderboard entries sorted by the specified filter.
+                 Defaults to 25 entries if limit is not specified.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): unknown filter value
+                   - INTERNAL (500): database failure
             operationId: LeaderboardService_ListEntries
             parameters:
                 - name: filter
@@ -120,6 +136,12 @@ paths:
         get:
             tags:
                 - NewsService
+            description: |-
+                List news with pagination. View count is incremented for each item returned.
+                 Default page size is 15, maximum is 50.
+
+                 Errors:
+                   - INTERNAL (500): database failure
             operationId: NewsService_ListNews
             parameters:
                 - name: page_size
@@ -158,6 +180,14 @@ paths:
         post:
             tags:
                 - NewsService
+            description: |-
+                Create a news entry. Requires admin privileges.
+                 Preview image is stored as WebP. Broadcasts a notification to all users.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): storage or database failure
             operationId: NewsService_CreateNews
             requestBody:
                 content:
@@ -182,6 +212,12 @@ paths:
         get:
             tags:
                 - NewsService
+            description: |-
+                Get a specific news entry by ID. View count is incremented.
+
+                 Errors:
+                   - NOT_FOUND (404): news not found
+                   - INTERNAL (500): database failure
             operationId: NewsService_GetNews
             parameters:
                 - name: id
@@ -206,6 +242,14 @@ paths:
         delete:
             tags:
                 - NewsService
+            description: |-
+                Delete a news entry by ID. Requires admin privileges.
+
+                 Errors:
+                   - NOT_FOUND (404): news not found
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
             operationId: NewsService_DeleteNews
             parameters:
                 - name: id
@@ -229,11 +273,14 @@ paths:
             tags:
                 - NotificationService
             description: |-
-                Lists notifications for a specific user.
+                Lists notifications for the authenticated user with pagination.
+                 Default page size is 15, maximum is 15.
+                 Supports order_by: "created_at" or "state" with optional " asc"/" desc" suffix.
 
-                 This method retrieves a paginated list of notifications for the specified
-                 user. The response includes a list of notifications and a token for the next
-                 page (if applicable).
+                 Errors:
+                   - NOT_FOUND (404): no notifications found for user
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: NotificationService_ListNotifications
             parameters:
                 - name: page_size
@@ -275,11 +322,12 @@ paths:
             tags:
                 - NotificationService
             description: |-
-                Marks notification as read.
+                Mark a notification as read.
 
-                 This method updates the state of a specific notification to "READ" for the
-                 specified user. It does not return any data, only confirming the action's
-                 success.
+                 Errors:
+                   - INVALID_ARGUMENT (400): invalid notification ID format
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: NotificationService_MarkAsRead
             parameters:
                 - name: id
@@ -304,7 +352,14 @@ paths:
         post:
             tags:
                 - RuleService
-            description: Creates a new question about rules
+            description: |-
+                Creates a new rule question. Requires admin privileges.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): question is empty
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
             operationId: RuleService_CreateQuestion
             requestBody:
                 content:
@@ -329,7 +384,12 @@ paths:
         get:
             tags:
                 - RuleService
-            description: Returns random questions about rules
+            description: |-
+                Returns random questions about server rules.
+                 Defaults to 5 questions if count is not specified.
+
+                 Errors:
+                   - INTERNAL (500): database failure
             operationId: RuleService_GetRandomQuestions
             parameters:
                 - name: count
@@ -355,6 +415,11 @@ paths:
         get:
             tags:
                 - ServerInfoService
+            description: |-
+                Get the current and maximum player online counts.
+
+                 Errors:
+                   - INTERNAL (500): database failure
             operationId: ServerInfoService_TotalOnline
             responses:
                 "200":
@@ -373,6 +438,11 @@ paths:
         get:
             tags:
                 - ServerInfoService
+            description: |-
+                Get the current in-game world time.
+
+                 Errors:
+                   - INTERNAL (500): database failure
             operationId: ServerInfoService_WorldTime
             responses:
                 "200":
@@ -391,7 +461,11 @@ paths:
         get:
             tags:
                 - SettlementService
-            description: List all settlements
+            description: |-
+                List all approved settlements.
+
+                 Errors:
+                   - INTERNAL (500): database failure
             operationId: SettlementService_List
             responses:
                 "200":
@@ -410,8 +484,14 @@ paths:
             tags:
                 - SettlementService
             description: |-
-                Submit or lvlup a settlement request
-                 Type needed on for initial request
+                Submit or level-up a settlement request.
+                 On first call creates a new request; on subsequent calls upgrades an approved settlement.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): attachments is empty; invalid settlement type
+                   - ALREADY_EXISTS (409): settlement request is already pending
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): storage upload or database failure
             operationId: SettlementService_Submit
             requestBody:
                 content:
@@ -436,7 +516,13 @@ paths:
         post:
             tags:
                 - SettlementService
-            description: Accept an invitation to a settlement
+            description: |-
+                Accept an invitation to join a settlement.
+
+                 Errors:
+                   - NOT_FOUND (404): invitation not found
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: SettlementService_AcceptInvitation
             parameters:
                 - name: invitation_id
@@ -461,7 +547,13 @@ paths:
         post:
             tags:
                 - SettlementService
-            description: Reject an invitation to a settlement
+            description: |-
+                Reject an invitation to join a settlement.
+
+                 Errors:
+                   - NOT_FOUND (404): invitation not found for authenticated user
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: SettlementService_RejectInvitation
             parameters:
                 - name: invitation_id
@@ -486,6 +578,11 @@ paths:
         get:
             tags:
                 - SettlementTagService
+            description: |-
+                List all tags.
+
+                 Errors:
+                   - INTERNAL (500): database failure
             operationId: SettlementTagService_GetTags
             responses:
                 "200":
@@ -503,7 +600,14 @@ paths:
         post:
             tags:
                 - SettlementTagService
-            description: Require tags:create privilege
+            description: |-
+                Create a new tag. Requires tags:create privilege.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): invalid tag fields (name, description, or color)
+                   - PERMISSION_DENIED (403): requires tags:create privilege
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: SettlementTagService_CreateTag
             requestBody:
                 content:
@@ -528,6 +632,13 @@ paths:
         get:
             tags:
                 - SettlementTagService
+            description: |-
+                Get a tag by ID.
+
+                 Errors:
+                   - NOT_FOUND (404): tag not found
+                   - INVALID_ARGUMENT (400): invalid tag_id format
+                   - INTERNAL (500): database failure
             operationId: SettlementTagService_GetTag
             parameters:
                 - name: tag_id
@@ -551,7 +662,15 @@ paths:
         delete:
             tags:
                 - SettlementTagService
-            description: Require tags:delete privilege
+            description: |-
+                Soft-delete a tag by ID. Requires tags:delete privilege.
+
+                 Errors:
+                   - NOT_FOUND (404): tag not found
+                   - INVALID_ARGUMENT (400): invalid tag_id format
+                   - PERMISSION_DENIED (403): requires tags:delete privilege
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: SettlementTagService_DeleteTag
             parameters:
                 - name: tag_id
@@ -573,6 +692,11 @@ paths:
         post:
             tags:
                 - SettlementTagService
+            description: |-
+                Get multiple tags by their IDs in a single batch request.
+
+                 Errors:
+                   - INTERNAL (500): database failure
             operationId: SettlementTagService_GetTagsByIds
             requestBody:
                 content:
@@ -597,7 +721,13 @@ paths:
         get:
             tags:
                 - SettlementService
-            description: List pending settlement requests (requires admin privileges)
+            description: |-
+                List pending settlement requests. Requires admin privileges.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
             operationId: SettlementService_ListPending
             responses:
                 "200":
@@ -616,7 +746,12 @@ paths:
         get:
             tags:
                 - SettlementService
-            description: Get settlement by ID
+            description: |-
+                Get settlement by ID.
+
+                 Errors:
+                   - NOT_FOUND (404): settlement not found
+                   - INTERNAL (500): database failure
             operationId: SettlementService_Get
             parameters:
                 - name: id
@@ -641,7 +776,15 @@ paths:
         post:
             tags:
                 - SettlementService
-            description: Approve a settlement request (requires admin privileges)
+            description: |-
+                Approve a settlement request. Requires admin privileges.
+
+                 Errors:
+                   - NOT_FOUND (404): settlement request not found
+                   - FAILED_PRECONDITION (400): settlement request already approved
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
             operationId: SettlementService_Approve
             parameters:
                 - name: id
@@ -672,7 +815,13 @@ paths:
         post:
             tags:
                 - SettlementService
-            description: Reject a settlement request (requires admin privileges)
+            description: |-
+                Reject a settlement request. Requires admin privileges.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
             operationId: SettlementService_Reject
             parameters:
                 - name: id
@@ -703,7 +852,13 @@ paths:
         get:
             tags:
                 - SettlementService
-            description: Get all invitations to a settlement
+            description: |-
+                Get all pending invitations for a settlement. Caller must be the settlement leader.
+
+                 Errors:
+                   - PERMISSION_DENIED (403): caller is not the settlement leader
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: SettlementService_GetInvitations
             parameters:
                 - name: settlement_id
@@ -727,7 +882,14 @@ paths:
         post:
             tags:
                 - SettlementService
-            description: Invite a member to a settlement (requires being the settlement leader)
+            description: |-
+                Invite a user to join a settlement. Caller must be the settlement leader.
+
+                 Errors:
+                   - PERMISSION_DENIED (403): caller is not the settlement leader
+                   - ALREADY_EXISTS (409): user is already a member of the settlement
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: SettlementService_InviteMember
             parameters:
                 - name: settlement_id
@@ -758,7 +920,14 @@ paths:
         post:
             tags:
                 - SettlementService
-            description: Revoke an invitation to a settlement (requires being the settlement leader)
+            description: |-
+                Revoke a pending invitation. Caller must be the settlement leader.
+
+                 Errors:
+                   - PERMISSION_DENIED (403): caller is not the settlement leader
+                   - NOT_FOUND (404): invitation not found
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: SettlementService_RevokeInvitation
             parameters:
                 - name: settlement_id
@@ -794,7 +963,13 @@ paths:
         delete:
             tags:
                 - SettlementService
-            description: Remove a member from a settlement (requires admin privileges)
+            description: |-
+                Remove a member from a settlement. Requires admin privileges.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
             operationId: SettlementService_RemoveMember
             parameters:
                 - name: settlement_id
@@ -824,7 +999,16 @@ paths:
         post:
             tags:
                 - SettlementService
-            description: Add a tag to a settlement, require tags:manage privilege
+            description: |-
+                Add a tag to a settlement. Requires tags:manage privilege.
+
+                 Errors:
+                   - NOT_FOUND (404): settlement or tag not found
+                   - ALREADY_EXISTS (409): settlement already has this tag
+                   - FAILED_PRECONDITION (400): tag is not active; too many tags limit reached
+                   - PERMISSION_DENIED (403): requires tags:manage privilege
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: SettlementService_AddTagToSettlement
             parameters:
                 - name: settlement_id
@@ -855,7 +1039,14 @@ paths:
         delete:
             tags:
                 - SettlementService
-            description: Remove a tag from a settlement, require tags:manage privilege
+            description: |-
+                Remove a tag from a settlement. Requires tags:manage privilege.
+
+                 Errors:
+                   - NOT_FOUND (404): settlement or tag not found
+                   - PERMISSION_DENIED (403): requires tags:manage privilege
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: SettlementService_RemoveTagFromSettlement
             parameters:
                 - name: settlement_id
@@ -916,6 +1107,12 @@ paths:
         get:
             tags:
                 - VerificationService
+            description: |-
+                Get verification status for a user by in-game name.
+
+                 Errors:
+                   - NOT_FOUND (404): user with given game name not found
+                   - INTERNAL (500): database failure
             operationId: VerificationService_VerifyStatusByName
             parameters:
                 - name: user_game_name
@@ -940,6 +1137,11 @@ paths:
         get:
             tags:
                 - UserService
+            description: |-
+                Search users by query string.
+
+                 Errors:
+                   - INTERNAL (500): database failure
             operationId: UserService_SearchUsers
             parameters:
                 - name: query
@@ -963,6 +1165,12 @@ paths:
         get:
             tags:
                 - UserService
+            description: |-
+                Get user profile by ID.
+
+                 Errors:
+                   - NOT_FOUND (404): user not found
+                   - INTERNAL (500): database failure
             operationId: UserService_GetUser
             parameters:
                 - name: user_id
@@ -987,6 +1195,15 @@ paths:
         post:
             tags:
                 - UserService
+            description: |-
+                Update the avatar for a user. Caller must match user_id.
+                 Avatar must be at most 3MB and exactly 512x512 pixels; converted to WebP internally.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): avatar is empty; exceeds 3MB; invalid dimensions (must be 512x512)
+                   - PERMISSION_DENIED (403): cannot update another user's avatar
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): image processing, storage, or SSO failure
             operationId: UserService_UpdateAvatar
             parameters:
                 - name: user_id
@@ -1014,7 +1231,13 @@ paths:
         get:
             tags:
                 - KitService
-            description: List all kit assignments for a specific user
+            description: |-
+                List all kit assignments for a specific user. Caller must match user_id.
+
+                 Errors:
+                   - PERMISSION_DENIED (403): cannot list assignments for another user
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: KitService_ListUserAssignments
             parameters:
                 - name: user_id
@@ -1039,6 +1262,17 @@ paths:
         put:
             tags:
                 - UserService
+            description: |-
+                Change in-game nickname for a user. Caller must match user_id.
+                 Nickname must be 1-15 alphanumeric/underscore/dash characters.
+                 Change is subject to a 6-month cooldown per user.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): invalid nickname format; new nickname same as current
+                   - PERMISSION_DENIED (403): cannot change another user's nickname
+                   - FAILED_PRECONDITION (400): nickname change on cooldown; response includes next allowed date
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: UserService_ChangeNickname
             parameters:
                 - name: user_id
@@ -1069,6 +1303,12 @@ paths:
         get:
             tags:
                 - SettlementService
+            description: |-
+                Get settlement by user ID.
+
+                 Errors:
+                   - NOT_FOUND (404): settlement not found for user
+                   - INTERNAL (500): database failure
             operationId: SettlementService_GetByUserId
             parameters:
                 - name: user_id
@@ -1093,7 +1333,13 @@ paths:
         get:
             tags:
                 - SettlementService
-            description: Get all invitations to a settlement belonging to a user
+            description: |-
+                Get all invitations belonging to a specific user. Caller must match user_id.
+
+                 Errors:
+                   - PERMISSION_DENIED (403): user_id in request does not match authenticated user
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: SettlementService_GetUserInvitations
             parameters:
                 - name: user_id
@@ -1118,7 +1364,12 @@ paths:
         get:
             tags:
                 - SettlementService
-            description: Get the verification status of a settlement request
+            description: |-
+                Get the verification status of a settlement request for a user.
+
+                 Errors:
+                   - NOT_FOUND (404): no settlement request found for user
+                   - INTERNAL (500): database failure
             operationId: SettlementService_VerificationStatus
             parameters:
                 - name: user_id
@@ -1143,7 +1394,12 @@ paths:
         get:
             tags:
                 - VerificationService
-            description: Get user verification status
+            description: |-
+                Get verification status for a user by ID.
+
+                 Errors:
+                   - NOT_FOUND (404): verification request not found
+                   - INTERNAL (500): database failure
             operationId: VerificationService_VerificationStatus
             parameters:
                 - name: user_id
@@ -1168,7 +1424,14 @@ paths:
         post:
             tags:
                 - VerificationService
-            description: Submit user verification request
+            description: |-
+                Submit a verification request for the authenticated user.
+                 If a previous request exists and is re-submittable, it will be updated.
+
+                 Errors:
+                   - ALREADY_EXISTS (409): user is already verified
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database or SSO failure
             operationId: VerificationService_Submit
             requestBody:
                 content:
@@ -1194,8 +1457,13 @@ paths:
             tags:
                 - VerificationService
             description: |-
-                Get user verification details
-                 Possible statuses: pending, approved, rejected, verified
+                Get verification details for the authenticated user.
+                 Possible statuses: pending, approved, rejected, verified.
+
+                 Errors:
+                   - NOT_FOUND (404): no verification request found for user
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
             operationId: VerificationService_Details
             responses:
                 "200":
@@ -1214,7 +1482,16 @@ paths:
         post:
             tags:
                 - VerificationService
-            description: Approve user verification request, need admin privelege
+            description: |-
+                Approve a user's verification request. Requires admin privileges.
+                 Grants the "player" role to the user in SSO.
+
+                 Errors:
+                   - NOT_FOUND (404): verification request not found
+                   - ALREADY_EXISTS (409): user is already verified
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database or SSO failure
             operationId: VerificationService_Approve
             parameters:
                 - name: user_id
@@ -1239,7 +1516,14 @@ paths:
         post:
             tags:
                 - VerificationService
-            description: Reject user verification request, need admin privelege
+            description: |-
+                Reject a user's verification request. Requires admin privileges.
+
+                 Errors:
+                   - NOT_FOUND (404): verification request not found
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
             operationId: VerificationService_Reject
             parameters:
                 - name: user_id
@@ -1270,7 +1554,13 @@ paths:
         get:
             tags:
                 - VerificationService
-            description: Returns verification requests from users, need admin privelege
+            description: |-
+                List all pending verification requests. Requires admin privileges.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
             operationId: VerificationService_List
             responses:
                 "200":
@@ -2098,7 +2388,7 @@ tags:
     - name: RuleService
       description: Represents rules service
     - name: ServerInfoService
-      description: Provides methods to manage user notifications
+      description: Provides server runtime information
     - name: SettlementService
       description: Represents settlement management service
     - name: SettlementTagService

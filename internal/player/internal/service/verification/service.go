@@ -10,6 +10,7 @@ import (
 
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	httpdto "github.com/lasthearth/vsservice/internal/player/internal/dto/http"
+	playerierror "github.com/lasthearth/vsservice/internal/player/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/player/internal/model/verification"
 	"github.com/lasthearth/vsservice/internal/player/internal/repository/verification/repository/repoerr"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
@@ -120,6 +121,9 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 	if err != nil {
 		if errors.Is(err, repoerr.ErrNotFound) {
 			if err := s.dbRepo.Create(ctx, userId, *v); err != nil {
+				if errors.Is(err, repoerr.ErrNickAlreadyExists) {
+					return nil, playerierror.ErrNickAlreadyExists
+				}
 				return nil, err
 			}
 
@@ -136,6 +140,9 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 	}
 
 	if err := s.dbRepo.Update(ctx, userId, *v); err != nil {
+		if errors.Is(err, repoerr.ErrNickAlreadyExists) {
+			return nil, playerierror.ErrNickAlreadyExists
+		}
 		return nil, err
 	}
 	_ = s.SendToTelegram(tgText)

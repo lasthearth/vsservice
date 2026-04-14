@@ -7,12 +7,20 @@ import "google/protobuf/timestamp.proto";
 
 // Kit service for managing game kit assignment to users
 service KitService {
-  // Get all available kits that can be assigned to users
+  // Get all available kits that can be assigned to users.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
   rpc GetAvailableKits(GetAvailableKitsRequest) returns (GetAvailableKitsResponse) {
     option (google.api.http) = {get: "/v1/kits"};
   }
 
-  // Assign a specific kit to a user
+  // Assign a specific kit to a user. Requires admin privileges.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): validation or database failure
   rpc AssignKitToUser(AssignKitToUserRequest) returns (AssignKitToUserResponse) {
     option (google.api.http) = {
       post: "/v1/kits/{kit_name}:assign"
@@ -20,7 +28,12 @@ service KitService {
     };
   }
 
-  // List all kit assignments for a specific user
+  // List all kit assignments for a specific user. Caller must match user_id.
+  //
+  // Errors:
+  //   - PERMISSION_DENIED (403): cannot list assignments for another user
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc ListUserAssignments(ListUserAssignmentsRequest) returns (ListUserAssignmentsResponse) {
     option (google.api.http) = {get: "/v1/users/{user_id}/kits/assignments"};
   }

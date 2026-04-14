@@ -27,9 +27,17 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// Provides methods to manage user notifications
+// Provides server runtime information
 type ServerInfoServiceClient interface {
+	// Get the current in-game world time.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	WorldTime(ctx context.Context, in *WorldTimeRequest, opts ...grpc.CallOption) (*WorldTimeResponse, error)
+	// Get the current and maximum player online counts.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	TotalOnline(ctx context.Context, in *TotalOnlineRequest, opts ...grpc.CallOption) (*TotalOnlineResponse, error)
 }
 
@@ -65,9 +73,17 @@ func (c *serverInfoServiceClient) TotalOnline(ctx context.Context, in *TotalOnli
 // All implementations should embed UnimplementedServerInfoServiceServer
 // for forward compatibility.
 //
-// Provides methods to manage user notifications
+// Provides server runtime information
 type ServerInfoServiceServer interface {
+	// Get the current in-game world time.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	WorldTime(context.Context, *WorldTimeRequest) (*WorldTimeResponse, error)
+	// Get the current and maximum player online counts.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	TotalOnline(context.Context, *TotalOnlineRequest) (*TotalOnlineResponse, error)
 }
 

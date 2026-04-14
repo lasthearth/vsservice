@@ -1,5 +1,8 @@
 package ierror
 
-import "errors"
+import "github.com/lasthearth/vsservice/internal/pkg/ierror"
 
-var ErrNotFound = errors.New("user not found")
+var (
+	ErrNotFound          = ierror.NotFound("user not found")
+	ErrNickAlreadyExists = ierror.AlreadyExists("nickname already taken")
+)

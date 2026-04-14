@@ -29,9 +29,19 @@ const (
 //
 // Represents rules service
 type RuleServiceClient interface {
-	// Returns random questions about rules
+	// Returns random questions about server rules.
+	// Defaults to 5 questions if count is not specified.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	GetRandomQuestions(ctx context.Context, in *GetRandomQuestionsRequest, opts ...grpc.CallOption) (*GetRandomQuestionsResponse, error)
-	// Creates a new question about rules
+	// Creates a new rule question. Requires admin privileges.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): question is empty
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	CreateQuestion(ctx context.Context, in *CreateQuestionRequest, opts ...grpc.CallOption) (*CreateQuestionResponse, error)
 }
 
@@ -69,9 +79,19 @@ func (c *ruleServiceClient) CreateQuestion(ctx context.Context, in *CreateQuesti
 //
 // Represents rules service
 type RuleServiceServer interface {
-	// Returns random questions about rules
+	// Returns random questions about server rules.
+	// Defaults to 5 questions if count is not specified.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	GetRandomQuestions(context.Context, *GetRandomQuestionsRequest) (*GetRandomQuestionsResponse, error)
-	// Creates a new question about rules
+	// Creates a new rule question. Requires admin privileges.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): question is empty
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	CreateQuestion(context.Context, *CreateQuestionRequest) (*CreateQuestionResponse, error)
 }
 

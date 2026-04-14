@@ -11,14 +11,29 @@ import "settlement/v1/tag.proto";
 // Administrative service for tag management
 service SettlementTagService {
   option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Get a tag by ID.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): tag not found
+  //   - INVALID_ARGUMENT (400): invalid tag_id format
+  //   - INTERNAL (500): database failure
   rpc GetTag(GetTagRequest) returns (SettlementTag) {
     option (google.api.http) = {get: "/v1/settlements/tags/{tag_id}"};
   }
 
+  // List all tags.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
   rpc GetTags(GetTagsRequest) returns (GetTagsResponse) {
     option (google.api.http) = {get: "/v1/settlements/tags"};
   }
 
+  // Get multiple tags by their IDs in a single batch request.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
   rpc GetTagsByIds(GetTagsByIdsRequest) returns (GetTagsByIdsResponse) {
     option (google.api.http) = {
       post: "/v1/settlements/tags:batch"
@@ -26,7 +41,13 @@ service SettlementTagService {
     };
   }
 
-  // Require tags:create privilege
+  // Create a new tag. Requires tags:create privilege.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): invalid tag fields (name, description, or color)
+  //   - PERMISSION_DENIED (403): requires tags:create privilege
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc CreateTag(SettlementTag) returns (SettlementTag) {
     option (google.api.http) = {
       post: "/v1/settlements/tags"
@@ -34,7 +55,14 @@ service SettlementTagService {
     };
   }
 
-  // Require tags:delete privilege
+  // Soft-delete a tag by ID. Requires tags:delete privilege.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): tag not found
+  //   - INVALID_ARGUMENT (400): invalid tag_id format
+  //   - PERMISSION_DENIED (403): requires tags:delete privilege
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc DeleteTag(DeleteTagRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/v1/settlements/tags/{tag_id}"};
   }

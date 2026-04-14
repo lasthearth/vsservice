@@ -12,6 +12,14 @@ import "rules/v1/rules.proto";
 service UserService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
+  // Update the avatar for a user. Caller must match user_id.
+  // Avatar must be at most 3MB and exactly 512x512 pixels; converted to WebP internally.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): avatar is empty; exceeds 3MB; invalid dimensions (must be 512x512)
+  //   - PERMISSION_DENIED (403): cannot update another user's avatar
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): image processing, storage, or SSO failure
   rpc UpdateAvatar(UpdateAvatarRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/v1/users/{user_id}/avatar"
@@ -19,14 +27,33 @@ service UserService {
     };
   }
 
+  // Get user profile by ID.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): user not found
+  //   - INTERNAL (500): database failure
   rpc GetUser(GetUserRequest) returns (User) {
     option (google.api.http) = {get: "/v1/users/{user_id}"};
   }
 
+  // Search users by query string.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
   rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse) {
     option (google.api.http) = {get: "/v1/users/search"};
   }
 
+  // Change in-game nickname for a user. Caller must match user_id.
+  // Nickname must be 1-15 alphanumeric/underscore/dash characters.
+  // Change is subject to a 6-month cooldown per user.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): invalid nickname format; new nickname same as current
+  //   - PERMISSION_DENIED (403): cannot change another user's nickname
+  //   - FAILED_PRECONDITION (400): nickname change on cooldown; response includes next allowed date
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc ChangeNickname(ChangeNicknameRequest) returns (ChangeNicknameResponse) {
     option (google.api.http) = {
       put: "/v1/users/{user_id}/nickname"

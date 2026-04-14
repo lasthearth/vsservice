@@ -11,6 +11,13 @@ import "google/protobuf/empty.proto";
 service NewsService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
+  // Create a news entry. Requires admin privileges.
+  // Preview image is stored as WebP. Broadcasts a notification to all users.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): storage or database failure
   rpc CreateNews(CreateNewsRequest) returns (News) {
     option (google.api.http) = {
       post: "/v1/news"
@@ -19,15 +26,32 @@ service NewsService {
     option (google.api.method_signature) = "news";
   }
 
+  // List news with pagination. View count is incremented for each item returned.
+  // Default page size is 15, maximum is 50.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
   rpc ListNews(ListNewsRequest) returns (ListNewsResponse) {
     option (google.api.http) = {get: "/v1/news"};
   }
 
+  // Delete a news entry by ID. Requires admin privileges.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): news not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
   rpc DeleteNews(DeleteNewsRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/v1/news/{id}"};
     option (google.api.method_signature) = "id";
   }
 
+  // Get a specific news entry by ID. View count is incremented.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): news not found
+  //   - INTERNAL (500): database failure
   rpc GetNews(GetNewsRequest) returns (News) {
     option (google.api.http) = {get: "/v1/news/{id}"};
     option (google.api.method_signature) = "id";

@@ -1,10 +1,8 @@
-// ierror provides custom error types for the news domain.
 package ierror
 
-import "errors"
+import "github.com/lasthearth/vsservice/internal/pkg/ierror"
 
 var (
-	// ErrNotFound is returned when a single resource entry is not found.
-	ErrNotFound     = errors.New("not found")
-	ErrNewsNotFound = errors.New("news not found")
+	ErrNotFound     = ierror.NotFound("not found")
+	ErrNewsNotFound = ierror.NotFound("news not found")
 )

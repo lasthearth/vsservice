@@ -32,9 +32,33 @@ const (
 //
 // Represents news service
 type NewsServiceClient interface {
+	// Create a news entry. Requires admin privileges.
+	// Preview image is stored as WebP. Broadcasts a notification to all users.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): storage or database failure
 	CreateNews(ctx context.Context, in *CreateNewsRequest, opts ...grpc.CallOption) (*News, error)
+	// List news with pagination. View count is incremented for each item returned.
+	// Default page size is 15, maximum is 50.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	ListNews(ctx context.Context, in *ListNewsRequest, opts ...grpc.CallOption) (*ListNewsResponse, error)
+	// Delete a news entry by ID. Requires admin privileges.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): news not found
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	DeleteNews(ctx context.Context, in *DeleteNewsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Get a specific news entry by ID. View count is incremented.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): news not found
+	//   - INTERNAL (500): database failure
 	GetNews(ctx context.Context, in *GetNewsRequest, opts ...grpc.CallOption) (*News, error)
 }
 
@@ -92,9 +116,33 @@ func (c *newsServiceClient) GetNews(ctx context.Context, in *GetNewsRequest, opt
 //
 // Represents news service
 type NewsServiceServer interface {
+	// Create a news entry. Requires admin privileges.
+	// Preview image is stored as WebP. Broadcasts a notification to all users.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): storage or database failure
 	CreateNews(context.Context, *CreateNewsRequest) (*News, error)
+	// List news with pagination. View count is incremented for each item returned.
+	// Default page size is 15, maximum is 50.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	ListNews(context.Context, *ListNewsRequest) (*ListNewsResponse, error)
+	// Delete a news entry by ID. Requires admin privileges.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): news not found
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	DeleteNews(context.Context, *DeleteNewsRequest) (*emptypb.Empty, error)
+	// Get a specific news entry by ID. View count is incremented.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): news not found
+	//   - INTERNAL (500): database failure
 	GetNews(context.Context, *GetNewsRequest) (*News, error)
 }
 

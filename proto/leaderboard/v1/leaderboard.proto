@@ -9,7 +9,12 @@ import "google/protobuf/empty.proto";
 
 // Represent basic leaderboard
 service LeaderboardService {
-  // List of leaderboard entries.
+  // List leaderboard entries sorted by the specified filter.
+  // Defaults to 25 entries if limit is not specified.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): unknown filter value
+  //   - INTERNAL (500): database failure
   rpc ListEntries(LeaderboardRequest) returns (LeaderboardResponse) {
     option (google.api.http) = {get: "/v1/leaderboard"};
   }

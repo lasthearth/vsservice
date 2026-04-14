@@ -33,12 +33,39 @@ const (
 //
 // Administrative service for tag management
 type SettlementTagServiceClient interface {
+	// Get a tag by ID.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): tag not found
+	//   - INVALID_ARGUMENT (400): invalid tag_id format
+	//   - INTERNAL (500): database failure
 	GetTag(ctx context.Context, in *GetTagRequest, opts ...grpc.CallOption) (*SettlementTag, error)
+	// List all tags.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	GetTags(ctx context.Context, in *GetTagsRequest, opts ...grpc.CallOption) (*GetTagsResponse, error)
+	// Get multiple tags by their IDs in a single batch request.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	GetTagsByIds(ctx context.Context, in *GetTagsByIdsRequest, opts ...grpc.CallOption) (*GetTagsByIdsResponse, error)
-	// Require tags:create privilege
+	// Create a new tag. Requires tags:create privilege.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): invalid tag fields (name, description, or color)
+	//   - PERMISSION_DENIED (403): requires tags:create privilege
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	CreateTag(ctx context.Context, in *SettlementTag, opts ...grpc.CallOption) (*SettlementTag, error)
-	// Require tags:delete privilege
+	// Soft-delete a tag by ID. Requires tags:delete privilege.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): tag not found
+	//   - INVALID_ARGUMENT (400): invalid tag_id format
+	//   - PERMISSION_DENIED (403): requires tags:delete privilege
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	DeleteTag(ctx context.Context, in *DeleteTagRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -106,12 +133,39 @@ func (c *settlementTagServiceClient) DeleteTag(ctx context.Context, in *DeleteTa
 //
 // Administrative service for tag management
 type SettlementTagServiceServer interface {
+	// Get a tag by ID.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): tag not found
+	//   - INVALID_ARGUMENT (400): invalid tag_id format
+	//   - INTERNAL (500): database failure
 	GetTag(context.Context, *GetTagRequest) (*SettlementTag, error)
+	// List all tags.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	GetTags(context.Context, *GetTagsRequest) (*GetTagsResponse, error)
+	// Get multiple tags by their IDs in a single batch request.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	GetTagsByIds(context.Context, *GetTagsByIdsRequest) (*GetTagsByIdsResponse, error)
-	// Require tags:create privilege
+	// Create a new tag. Requires tags:create privilege.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): invalid tag fields (name, description, or color)
+	//   - PERMISSION_DENIED (403): requires tags:create privilege
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	CreateTag(context.Context, *SettlementTag) (*SettlementTag, error)
-	// Require tags:delete privilege
+	// Soft-delete a tag by ID. Requires tags:delete privilege.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): tag not found
+	//   - INVALID_ARGUMENT (400): invalid tag_id format
+	//   - PERMISSION_DENIED (403): requires tags:delete privilege
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	DeleteTag(context.Context, *DeleteTagRequest) (*emptypb.Empty, error)
 }
 

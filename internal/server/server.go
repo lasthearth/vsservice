@@ -67,6 +67,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 			})),
 			logging.UnaryServerInterceptor(interceptorLogger(s.log), logOpts...),
 			recovery.UnaryServerInterceptor(recoveryOpts...),
+			interceptor.DomainErrorUnaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
 			selector.StreamServerInterceptor(s.authInterceptor.Stream(), selector.MatchFunc(func(ctx context.Context, callMeta interceptors.CallMeta) bool {
@@ -74,6 +75,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 			})),
 			logging.StreamServerInterceptor(interceptorLogger(s.log), logOpts...),
 			recovery.StreamServerInterceptor(recoveryOpts...),
+			interceptor.DomainErrorStreamInterceptor,
 		),
 	)
 

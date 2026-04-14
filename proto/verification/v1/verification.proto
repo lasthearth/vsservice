@@ -11,12 +11,23 @@ import "google/protobuf/empty.proto";
 service VerificationService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
-  // Returns verification requests from users, need admin privelege
+  // List all pending verification requests. Requires admin privileges.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
   rpc List(ListRequest) returns (ListResponse) {
     option (google.api.http) = {get: "/v1/verifications"};
   }
 
-  // Submit user verification request
+  // Submit a verification request for the authenticated user.
+  // If a previous request exists and is re-submittable, it will be updated.
+  //
+  // Errors:
+  //   - ALREADY_EXISTS (409): user is already verified
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database or SSO failure
   rpc Submit(SubmitRequest) returns (SubmitResponse) {
     option (google.api.http) = {
       post: "/v1/verification"
@@ -24,12 +35,26 @@ service VerificationService {
     };
   }
 
-  // Approve user verification request, need admin privelege
+  // Approve a user's verification request. Requires admin privileges.
+  // Grants the "player" role to the user in SSO.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): verification request not found
+  //   - ALREADY_EXISTS (409): user is already verified
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database or SSO failure
   rpc Approve(ApproveRequest) returns (ApproveResponse) {
     option (google.api.http) = {post: "/v1/verification/{user_id}/approve"};
   }
 
-  // Reject user verification request, need admin privelege
+  // Reject a user's verification request. Requires admin privileges.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): verification request not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
   rpc Reject(RejectRequest) returns (RejectResponse) {
     option (google.api.http) = {
       post: "/v1/verification/{user_id}/reject"
@@ -37,17 +62,31 @@ service VerificationService {
     };
   }
 
-  // Get user verification details
-  // Possible statuses: pending, approved, rejected, verified
+  // Get verification details for the authenticated user.
+  // Possible statuses: pending, approved, rejected, verified.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no verification request found for user
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc Details(DetailsRequest) returns (DetailsResponse) {
     option (google.api.http) = {get: "/v1/verification/details"};
   }
 
-  // Get user verification status
+  // Get verification status for a user by ID.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): verification request not found
+  //   - INTERNAL (500): database failure
   rpc VerificationStatus(VerifyStatusRequest) returns (VerifyStatusResponse) {
     option (google.api.http) = {get: "/v1/users/{user_id}/verification:status"};
   }
 
+  // Get verification status for a user by in-game name.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): user with given game name not found
+  //   - INTERNAL (500): database failure
   rpc VerifyStatusByName(VerifyStatusByNameRequest) returns (VerifyStatusResponse) {
     option (google.api.http) = {get: "/v1/user/verify/{user_game_name}/status"};
   }

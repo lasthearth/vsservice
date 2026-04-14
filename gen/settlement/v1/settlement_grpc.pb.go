@@ -44,39 +44,129 @@ const (
 //
 // Represents settlement management service
 type SettlementServiceClient interface {
-	// Submit or lvlup a settlement request
-	// Type needed on for initial request
+	// Submit or level-up a settlement request.
+	// On first call creates a new request; on subsequent calls upgrades an approved settlement.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): attachments is empty; invalid settlement type
+	//   - ALREADY_EXISTS (409): settlement request is already pending
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): storage upload or database failure
 	Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*SubmitResponse, error)
-	// Get settlement by ID
+	// Get settlement by ID.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found
+	//   - INTERNAL (500): database failure
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
+	// Get settlement by user ID.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found for user
+	//   - INTERNAL (500): database failure
 	GetByUserId(ctx context.Context, in *GetByUserIdRequest, opts ...grpc.CallOption) (*GetByUserIdResponse, error)
-	// List all settlements
+	// List all approved settlements.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
-	// List pending settlement requests (requires admin privileges)
+	// List pending settlement requests. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	ListPending(ctx context.Context, in *ListPendingRequest, opts ...grpc.CallOption) (*ListPendingResponse, error)
-	// Approve a settlement request (requires admin privileges)
+	// Approve a settlement request. Requires admin privileges.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement request not found
+	//   - FAILED_PRECONDITION (400): settlement request already approved
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	Approve(ctx context.Context, in *ApproveRequest, opts ...grpc.CallOption) (*ApproveResponse, error)
-	// Reject a settlement request (requires admin privileges)
+	// Reject a settlement request. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	Reject(ctx context.Context, in *RejectRequest, opts ...grpc.CallOption) (*RejectResponse, error)
-	// Get the verification status of a settlement request
+	// Get the verification status of a settlement request for a user.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): no settlement request found for user
+	//   - INTERNAL (500): database failure
 	VerificationStatus(ctx context.Context, in *VerificationStatusRequest, opts ...grpc.CallOption) (*VerificationStatusResponse, error)
-	// Remove a member from a settlement (requires admin privileges)
+	// Remove a member from a settlement. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
-	// Get all invitations to a settlement
+	// Get all pending invitations for a settlement. Caller must be the settlement leader.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): caller is not the settlement leader
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	GetInvitations(ctx context.Context, in *GetInvitationsRequest, opts ...grpc.CallOption) (*GetInvitationsResponse, error)
-	// Get all invitations to a settlement belonging to a user
+	// Get all invitations belonging to a specific user. Caller must match user_id.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): user_id in request does not match authenticated user
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	GetUserInvitations(ctx context.Context, in *GetUserInvitationsRequest, opts ...grpc.CallOption) (*GetUserInvitationsResponse, error)
-	// Accept an invitation to a settlement
+	// Accept an invitation to join a settlement.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): invitation not found
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	AcceptInvitation(ctx context.Context, in *AcceptInvitationRequest, opts ...grpc.CallOption) (*AcceptInvitationResponse, error)
-	// Reject an invitation to a settlement
+	// Reject an invitation to join a settlement.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): invitation not found for authenticated user
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	RejectInvitation(ctx context.Context, in *RejectInvitationRequest, opts ...grpc.CallOption) (*RejectInvitationResponse, error)
-	// Invite a member to a settlement (requires being the settlement leader)
+	// Invite a user to join a settlement. Caller must be the settlement leader.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): caller is not the settlement leader
+	//   - ALREADY_EXISTS (409): user is already a member of the settlement
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	InviteMember(ctx context.Context, in *InviteMemberRequest, opts ...grpc.CallOption) (*InviteMemberResponse, error)
-	// Revoke an invitation to a settlement (requires being the settlement leader)
+	// Revoke a pending invitation. Caller must be the settlement leader.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): caller is not the settlement leader
+	//   - NOT_FOUND (404): invitation not found
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error)
-	// Add a tag to a settlement, require tags:manage privilege
+	// Add a tag to a settlement. Requires tags:manage privilege.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement or tag not found
+	//   - ALREADY_EXISTS (409): settlement already has this tag
+	//   - FAILED_PRECONDITION (400): tag is not active; too many tags limit reached
+	//   - PERMISSION_DENIED (403): requires tags:manage privilege
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	AddTagToSettlement(ctx context.Context, in *AddTagToSettlementRequest, opts ...grpc.CallOption) (*AddTagToSettlementResponse, error)
-	// Remove a tag from a settlement, require tags:manage privilege
+	// Remove a tag from a settlement. Requires tags:manage privilege.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement or tag not found
+	//   - PERMISSION_DENIED (403): requires tags:manage privilege
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	RemoveTagFromSettlement(ctx context.Context, in *RemoveTagFromSettlementRequest, opts ...grpc.CallOption) (*RemoveTagFromSettlementResponse, error)
 }
 
@@ -264,39 +354,129 @@ func (c *settlementServiceClient) RemoveTagFromSettlement(ctx context.Context, i
 //
 // Represents settlement management service
 type SettlementServiceServer interface {
-	// Submit or lvlup a settlement request
-	// Type needed on for initial request
+	// Submit or level-up a settlement request.
+	// On first call creates a new request; on subsequent calls upgrades an approved settlement.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): attachments is empty; invalid settlement type
+	//   - ALREADY_EXISTS (409): settlement request is already pending
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): storage upload or database failure
 	Submit(context.Context, *SubmitRequest) (*SubmitResponse, error)
-	// Get settlement by ID
+	// Get settlement by ID.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found
+	//   - INTERNAL (500): database failure
 	Get(context.Context, *GetRequest) (*GetResponse, error)
+	// Get settlement by user ID.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found for user
+	//   - INTERNAL (500): database failure
 	GetByUserId(context.Context, *GetByUserIdRequest) (*GetByUserIdResponse, error)
-	// List all settlements
+	// List all approved settlements.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	List(context.Context, *ListRequest) (*ListResponse, error)
-	// List pending settlement requests (requires admin privileges)
+	// List pending settlement requests. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	ListPending(context.Context, *ListPendingRequest) (*ListPendingResponse, error)
-	// Approve a settlement request (requires admin privileges)
+	// Approve a settlement request. Requires admin privileges.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement request not found
+	//   - FAILED_PRECONDITION (400): settlement request already approved
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	Approve(context.Context, *ApproveRequest) (*ApproveResponse, error)
-	// Reject a settlement request (requires admin privileges)
+	// Reject a settlement request. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	Reject(context.Context, *RejectRequest) (*RejectResponse, error)
-	// Get the verification status of a settlement request
+	// Get the verification status of a settlement request for a user.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): no settlement request found for user
+	//   - INTERNAL (500): database failure
 	VerificationStatus(context.Context, *VerificationStatusRequest) (*VerificationStatusResponse, error)
-	// Remove a member from a settlement (requires admin privileges)
+	// Remove a member from a settlement. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
-	// Get all invitations to a settlement
+	// Get all pending invitations for a settlement. Caller must be the settlement leader.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): caller is not the settlement leader
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	GetInvitations(context.Context, *GetInvitationsRequest) (*GetInvitationsResponse, error)
-	// Get all invitations to a settlement belonging to a user
+	// Get all invitations belonging to a specific user. Caller must match user_id.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): user_id in request does not match authenticated user
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	GetUserInvitations(context.Context, *GetUserInvitationsRequest) (*GetUserInvitationsResponse, error)
-	// Accept an invitation to a settlement
+	// Accept an invitation to join a settlement.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): invitation not found
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	AcceptInvitation(context.Context, *AcceptInvitationRequest) (*AcceptInvitationResponse, error)
-	// Reject an invitation to a settlement
+	// Reject an invitation to join a settlement.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): invitation not found for authenticated user
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	RejectInvitation(context.Context, *RejectInvitationRequest) (*RejectInvitationResponse, error)
-	// Invite a member to a settlement (requires being the settlement leader)
+	// Invite a user to join a settlement. Caller must be the settlement leader.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): caller is not the settlement leader
+	//   - ALREADY_EXISTS (409): user is already a member of the settlement
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	InviteMember(context.Context, *InviteMemberRequest) (*InviteMemberResponse, error)
-	// Revoke an invitation to a settlement (requires being the settlement leader)
+	// Revoke a pending invitation. Caller must be the settlement leader.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): caller is not the settlement leader
+	//   - NOT_FOUND (404): invitation not found
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error)
-	// Add a tag to a settlement, require tags:manage privilege
+	// Add a tag to a settlement. Requires tags:manage privilege.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement or tag not found
+	//   - ALREADY_EXISTS (409): settlement already has this tag
+	//   - FAILED_PRECONDITION (400): tag is not active; too many tags limit reached
+	//   - PERMISSION_DENIED (403): requires tags:manage privilege
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	AddTagToSettlement(context.Context, *AddTagToSettlementRequest) (*AddTagToSettlementResponse, error)
-	// Remove a tag from a settlement, require tags:manage privilege
+	// Remove a tag from a settlement. Requires tags:manage privilege.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement or tag not found
+	//   - PERMISSION_DENIED (403): requires tags:manage privilege
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	RemoveTagFromSettlement(context.Context, *RemoveTagFromSettlementRequest) (*RemoveTagFromSettlementResponse, error)
 }
 

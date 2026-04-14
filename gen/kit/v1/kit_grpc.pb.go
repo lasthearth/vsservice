@@ -30,11 +30,24 @@ const (
 //
 // Kit service for managing game kit assignment to users
 type KitServiceClient interface {
-	// Get all available kits that can be assigned to users
+	// Get all available kits that can be assigned to users.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	GetAvailableKits(ctx context.Context, in *GetAvailableKitsRequest, opts ...grpc.CallOption) (*GetAvailableKitsResponse, error)
-	// Assign a specific kit to a user
+	// Assign a specific kit to a user. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): validation or database failure
 	AssignKitToUser(ctx context.Context, in *AssignKitToUserRequest, opts ...grpc.CallOption) (*AssignKitToUserResponse, error)
-	// List all kit assignments for a specific user
+	// List all kit assignments for a specific user. Caller must match user_id.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): cannot list assignments for another user
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	ListUserAssignments(ctx context.Context, in *ListUserAssignmentsRequest, opts ...grpc.CallOption) (*ListUserAssignmentsResponse, error)
 }
 
@@ -82,11 +95,24 @@ func (c *kitServiceClient) ListUserAssignments(ctx context.Context, in *ListUser
 //
 // Kit service for managing game kit assignment to users
 type KitServiceServer interface {
-	// Get all available kits that can be assigned to users
+	// Get all available kits that can be assigned to users.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	GetAvailableKits(context.Context, *GetAvailableKitsRequest) (*GetAvailableKitsResponse, error)
-	// Assign a specific kit to a user
+	// Assign a specific kit to a user. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): validation or database failure
 	AssignKitToUser(context.Context, *AssignKitToUserRequest) (*AssignKitToUserResponse, error)
-	// List all kit assignments for a specific user
+	// List all kit assignments for a specific user. Caller must match user_id.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): cannot list assignments for another user
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	ListUserAssignments(context.Context, *ListUserAssignmentsRequest) (*ListUserAssignmentsResponse, error)
 }
 

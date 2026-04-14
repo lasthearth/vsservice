@@ -8,14 +8,22 @@ import "google/api/field_behavior.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
-// Provides methods to manage user notifications
+// Provides server runtime information
 service ServerInfoService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
+  // Get the current in-game world time.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
   rpc WorldTime(WorldTimeRequest) returns (WorldTimeResponse) {
     option (google.api.http) = {get: "/v1/serverinfo/worldtime"};
   }
 
+  // Get the current and maximum player online counts.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
   rpc TotalOnline(TotalOnlineRequest) returns (TotalOnlineResponse) {
     option (google.api.http) = {get: "/v1/serverinfo/totalonline"};
   }

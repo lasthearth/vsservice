@@ -1,8 +1,8 @@
 package ierror
 
-import "errors"
+import "github.com/lasthearth/vsservice/internal/pkg/ierror"
 
 var (
-	ErrEmptyUid = errors.New("user")
-	ErrNotFound = errors.New("kit not found")
+	ErrEmptyUid = ierror.InvalidArgument("user uid is empty")
+	ErrNotFound = ierror.NotFound("kit not found")
 )

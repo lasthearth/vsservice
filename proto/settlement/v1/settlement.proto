@@ -12,8 +12,14 @@ import "settlement/v1/tag.proto";
 service SettlementService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
-  // Submit or lvlup a settlement request
-  // Type needed on for initial request
+  // Submit or level-up a settlement request.
+  // On first call creates a new request; on subsequent calls upgrades an approved settlement.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): attachments is empty; invalid settlement type
+  //   - ALREADY_EXISTS (409): settlement request is already pending
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): storage upload or database failure
   rpc Submit(SubmitRequest) returns (SubmitResponse) {
     option (google.api.http) = {
       post: "/v1/settlements"
@@ -21,26 +27,50 @@ service SettlementService {
     };
   }
 
-  // Get settlement by ID
+  // Get settlement by ID.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - INTERNAL (500): database failure
   rpc Get(GetRequest) returns (GetResponse) {
     option (google.api.http) = {get: "/v1/settlements/{id}"};
   }
 
+  // Get settlement by user ID.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found for user
+  //   - INTERNAL (500): database failure
   rpc GetByUserId(GetByUserIdRequest) returns (GetByUserIdResponse) {
     option (google.api.http) = {get: "/v1/users/{user_id}/settlements"};
   }
 
-  // List all settlements
+  // List all approved settlements.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
   rpc List(ListRequest) returns (ListResponse) {
     option (google.api.http) = {get: "/v1/settlements"};
   }
 
-  // List pending settlement requests (requires admin privileges)
+  // List pending settlement requests. Requires admin privileges.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
   rpc ListPending(ListPendingRequest) returns (ListPendingResponse) {
     option (google.api.http) = {get: "/v1/settlements/verifications"};
   }
 
-  // Approve a settlement request (requires admin privileges)
+  // Approve a settlement request. Requires admin privileges.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement request not found
+  //   - FAILED_PRECONDITION (400): settlement request already approved
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
   rpc Approve(ApproveRequest) returns (ApproveResponse) {
     option (google.api.http) = {
       post: "/v1/settlements/{id}/verification:approve"
@@ -48,7 +78,12 @@ service SettlementService {
     };
   }
 
-  // Reject a settlement request (requires admin privileges)
+  // Reject a settlement request. Requires admin privileges.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
   rpc Reject(RejectRequest) returns (RejectResponse) {
     option (google.api.http) = {
       post: "/v1/settlements/{id}/verification:reject"
@@ -56,37 +91,72 @@ service SettlementService {
     };
   }
 
-  // Get the verification status of a settlement request
+  // Get the verification status of a settlement request for a user.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no settlement request found for user
+  //   - INTERNAL (500): database failure
   rpc VerificationStatus(VerificationStatusRequest) returns (VerificationStatusResponse) {
     option (google.api.http) = {get: "/v1/users/{user_id}/settlements/verification:status"};
   }
 
-  // Remove a member from a settlement (requires admin privileges)
+  // Remove a member from a settlement. Requires admin privileges.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
   rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse) {
     option (google.api.http) = {delete: "/v1/settlements/{settlement_id}/members/{user_id}"};
   }
 
-  // Get all invitations to a settlement
+  // Get all pending invitations for a settlement. Caller must be the settlement leader.
+  //
+  // Errors:
+  //   - PERMISSION_DENIED (403): caller is not the settlement leader
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc GetInvitations(GetInvitationsRequest) returns (GetInvitationsResponse) {
     option (google.api.http) = {get: "/v1/settlements/{settlement_id}/invitations"};
   }
 
-  // Get all invitations to a settlement belonging to a user
+  // Get all invitations belonging to a specific user. Caller must match user_id.
+  //
+  // Errors:
+  //   - PERMISSION_DENIED (403): user_id in request does not match authenticated user
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc GetUserInvitations(GetUserInvitationsRequest) returns (GetUserInvitationsResponse) {
     option (google.api.http) = {get: "/v1/users/{user_id}/settlements/invitations"};
   }
 
-  // Accept an invitation to a settlement
+  // Accept an invitation to join a settlement.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): invitation not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc AcceptInvitation(AcceptInvitationRequest) returns (AcceptInvitationResponse) {
     option (google.api.http) = {post: "/v1/settlements/invitations/{invitation_id}:accept"};
   }
 
-  // Reject an invitation to a settlement
+  // Reject an invitation to join a settlement.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): invitation not found for authenticated user
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc RejectInvitation(RejectInvitationRequest) returns (RejectInvitationResponse) {
     option (google.api.http) = {post: "/v1/settlements/invitations/{invitation_id}:reject"};
   }
 
-  // Invite a member to a settlement (requires being the settlement leader)
+  // Invite a user to join a settlement. Caller must be the settlement leader.
+  //
+  // Errors:
+  //   - PERMISSION_DENIED (403): caller is not the settlement leader
+  //   - ALREADY_EXISTS (409): user is already a member of the settlement
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc InviteMember(InviteMemberRequest) returns (InviteMemberResponse) {
     option (google.api.http) = {
       post: "/v1/settlements/{settlement_id}/invitations"
@@ -94,7 +164,13 @@ service SettlementService {
     };
   }
 
-  // Revoke an invitation to a settlement (requires being the settlement leader)
+  // Revoke a pending invitation. Caller must be the settlement leader.
+  //
+  // Errors:
+  //   - PERMISSION_DENIED (403): caller is not the settlement leader
+  //   - NOT_FOUND (404): invitation not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc RevokeInvitation(RevokeInvitationRequest) returns (RevokeInvitationResponse) {
     option (google.api.http) = {
       post: "/v1/settlements/{settlement_id}/invitations/{invitation_id}:revoke"
@@ -102,9 +178,15 @@ service SettlementService {
     };
   }
 
-  // Tag-related methods:
-
-  // Add a tag to a settlement, require tags:manage privilege
+  // Add a tag to a settlement. Requires tags:manage privilege.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement or tag not found
+  //   - ALREADY_EXISTS (409): settlement already has this tag
+  //   - FAILED_PRECONDITION (400): tag is not active; too many tags limit reached
+  //   - PERMISSION_DENIED (403): requires tags:manage privilege
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc AddTagToSettlement(AddTagToSettlementRequest) returns (AddTagToSettlementResponse) {
     option (google.api.http) = {
       post: "/v1/settlements/{settlement_id}/tags"
@@ -112,7 +194,13 @@ service SettlementService {
     };
   }
 
-  // Remove a tag from a settlement, require tags:manage privilege
+  // Remove a tag from a settlement. Requires tags:manage privilege.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement or tag not found
+  //   - PERMISSION_DENIED (403): requires tags:manage privilege
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc RemoveTagFromSettlement(RemoveTagFromSettlementRequest) returns (RemoveTagFromSettlementResponse) {
     option (google.api.http) = {delete: "/v1/settlements/{settlement_id}/tags/{tag_id}"};
   }

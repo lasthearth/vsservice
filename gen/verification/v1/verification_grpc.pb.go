@@ -34,19 +34,58 @@ const (
 //
 // Represents verification service
 type VerificationServiceClient interface {
-	// Returns verification requests from users, need admin privelege
+	// List all pending verification requests. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
-	// Submit user verification request
+	// Submit a verification request for the authenticated user.
+	// If a previous request exists and is re-submittable, it will be updated.
+	//
+	// Errors:
+	//   - ALREADY_EXISTS (409): user is already verified
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database or SSO failure
 	Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*SubmitResponse, error)
-	// Approve user verification request, need admin privelege
+	// Approve a user's verification request. Requires admin privileges.
+	// Grants the "player" role to the user in SSO.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): verification request not found
+	//   - ALREADY_EXISTS (409): user is already verified
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database or SSO failure
 	Approve(ctx context.Context, in *ApproveRequest, opts ...grpc.CallOption) (*ApproveResponse, error)
-	// Reject user verification request, need admin privelege
+	// Reject a user's verification request. Requires admin privileges.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): verification request not found
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	Reject(ctx context.Context, in *RejectRequest, opts ...grpc.CallOption) (*RejectResponse, error)
-	// Get user verification details
-	// Possible statuses: pending, approved, rejected, verified
+	// Get verification details for the authenticated user.
+	// Possible statuses: pending, approved, rejected, verified.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): no verification request found for user
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	Details(ctx context.Context, in *DetailsRequest, opts ...grpc.CallOption) (*DetailsResponse, error)
-	// Get user verification status
+	// Get verification status for a user by ID.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): verification request not found
+	//   - INTERNAL (500): database failure
 	VerificationStatus(ctx context.Context, in *VerifyStatusRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error)
+	// Get verification status for a user by in-game name.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): user with given game name not found
+	//   - INTERNAL (500): database failure
 	VerifyStatusByName(ctx context.Context, in *VerifyStatusByNameRequest, opts ...grpc.CallOption) (*VerifyStatusResponse, error)
 }
 
@@ -134,19 +173,58 @@ func (c *verificationServiceClient) VerifyStatusByName(ctx context.Context, in *
 //
 // Represents verification service
 type VerificationServiceServer interface {
-	// Returns verification requests from users, need admin privelege
+	// List all pending verification requests. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	List(context.Context, *ListRequest) (*ListResponse, error)
-	// Submit user verification request
+	// Submit a verification request for the authenticated user.
+	// If a previous request exists and is re-submittable, it will be updated.
+	//
+	// Errors:
+	//   - ALREADY_EXISTS (409): user is already verified
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database or SSO failure
 	Submit(context.Context, *SubmitRequest) (*SubmitResponse, error)
-	// Approve user verification request, need admin privelege
+	// Approve a user's verification request. Requires admin privileges.
+	// Grants the "player" role to the user in SSO.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): verification request not found
+	//   - ALREADY_EXISTS (409): user is already verified
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database or SSO failure
 	Approve(context.Context, *ApproveRequest) (*ApproveResponse, error)
-	// Reject user verification request, need admin privelege
+	// Reject a user's verification request. Requires admin privileges.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): verification request not found
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
 	Reject(context.Context, *RejectRequest) (*RejectResponse, error)
-	// Get user verification details
-	// Possible statuses: pending, approved, rejected, verified
+	// Get verification details for the authenticated user.
+	// Possible statuses: pending, approved, rejected, verified.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): no verification request found for user
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	Details(context.Context, *DetailsRequest) (*DetailsResponse, error)
-	// Get user verification status
+	// Get verification status for a user by ID.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): verification request not found
+	//   - INTERNAL (500): database failure
 	VerificationStatus(context.Context, *VerifyStatusRequest) (*VerifyStatusResponse, error)
+	// Get verification status for a user by in-game name.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): user with given game name not found
+	//   - INTERNAL (500): database failure
 	VerifyStatusByName(context.Context, *VerifyStatusByNameRequest) (*VerifyStatusResponse, error)
 }
 

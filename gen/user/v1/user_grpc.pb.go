@@ -32,9 +32,36 @@ const (
 //
 // Represents user specific actions
 type UserServiceClient interface {
+	// Update the avatar for a user. Caller must match user_id.
+	// Avatar must be at most 3MB and exactly 512x512 pixels; converted to WebP internally.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): avatar is empty; exceeds 3MB; invalid dimensions (must be 512x512)
+	//   - PERMISSION_DENIED (403): cannot update another user's avatar
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): image processing, storage, or SSO failure
 	UpdateAvatar(ctx context.Context, in *UpdateAvatarRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Get user profile by ID.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): user not found
+	//   - INTERNAL (500): database failure
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*User, error)
+	// Search users by query string.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	SearchUsers(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error)
+	// Change in-game nickname for a user. Caller must match user_id.
+	// Nickname must be 1-15 alphanumeric/underscore/dash characters.
+	// Change is subject to a 6-month cooldown per user.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): invalid nickname format; new nickname same as current
+	//   - PERMISSION_DENIED (403): cannot change another user's nickname
+	//   - FAILED_PRECONDITION (400): nickname change on cooldown; response includes next allowed date
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	ChangeNickname(ctx context.Context, in *ChangeNicknameRequest, opts ...grpc.CallOption) (*ChangeNicknameResponse, error)
 }
 
@@ -92,9 +119,36 @@ func (c *userServiceClient) ChangeNickname(ctx context.Context, in *ChangeNickna
 //
 // Represents user specific actions
 type UserServiceServer interface {
+	// Update the avatar for a user. Caller must match user_id.
+	// Avatar must be at most 3MB and exactly 512x512 pixels; converted to WebP internally.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): avatar is empty; exceeds 3MB; invalid dimensions (must be 512x512)
+	//   - PERMISSION_DENIED (403): cannot update another user's avatar
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): image processing, storage, or SSO failure
 	UpdateAvatar(context.Context, *UpdateAvatarRequest) (*emptypb.Empty, error)
+	// Get user profile by ID.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): user not found
+	//   - INTERNAL (500): database failure
 	GetUser(context.Context, *GetUserRequest) (*User, error)
+	// Search users by query string.
+	//
+	// Errors:
+	//   - INTERNAL (500): database failure
 	SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error)
+	// Change in-game nickname for a user. Caller must match user_id.
+	// Nickname must be 1-15 alphanumeric/underscore/dash characters.
+	// Change is subject to a 6-month cooldown per user.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): invalid nickname format; new nickname same as current
+	//   - PERMISSION_DENIED (403): cannot change another user's nickname
+	//   - FAILED_PRECONDITION (400): nickname change on cooldown; response includes next allowed date
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
 	ChangeNickname(context.Context, *ChangeNicknameRequest) (*ChangeNicknameResponse, error)
 }
 
