@@ -27,3 +27,6 @@ go.work.sum
 **/.idea
 /mongo
 **/rabbitmq
+
+# Git worktrees
+.worktrees/
