@@ -70,24 +70,37 @@ func New(
 	}
 }
 
-// Approve approves the verification.
-func (v *Verification) Approve() {
+// Approve transitions pending → approved. Returns ErrInvalidTransition if not pending.
+func (v *Verification) Approve() error {
+	if v.Status != VerificationStatusPending {
+		return ErrInvalidTransition
+	}
 	v.Status = VerificationStatusApproved
 	v.UpdatedAt = time.Now()
+	return nil
 }
 
-// Reject rejects the verification.
-func (v *Verification) Reject(reason string) {
+// Reject transitions pending → rejected. Returns ErrInvalidTransition if not pending.
+func (v *Verification) Reject(reason string) error {
+	if v.Status != VerificationStatusPending {
+		return ErrInvalidTransition
+	}
 	v.Status = VerificationStatusRejected
 	v.RejectionReason = reason
 	v.UpdatedAt = time.Now()
+	return nil
 }
 
-// Verify verifies the verification.
-func (v *Verification) Verify(code string) {
+// Verify transitions approved → verified. Returns ErrInvalidTransition if not approved,
+// ErrInvalidVerificationCode if code does not match.
+func (v *Verification) Verify(code string) error {
+	if v.Status != VerificationStatusApproved {
+		return ErrInvalidTransition
+	}
 	if code != v.VerificationCode {
-		return
+		return ErrInvalidVerificationCode
 	}
 	v.Status = VerificationStatusVerified
 	v.UpdatedAt = time.Now()
+	return nil
 }

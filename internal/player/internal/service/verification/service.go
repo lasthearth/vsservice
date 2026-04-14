@@ -13,6 +13,7 @@ import (
 	playerierror "github.com/lasthearth/vsservice/internal/player/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/player/internal/model/verification"
 	"github.com/lasthearth/vsservice/internal/player/internal/repository/verification/repository/repoerr"
+	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -57,7 +58,9 @@ func (s *Service) Approve(ctx context.Context, req *verificationv1.ApproveReques
 		return nil, err
 	}
 
-	v.Approve()
+	if err := v.Approve(); err != nil {
+		return nil, ierror.FailedPrecondition(err.Error())
+	}
 
 	err = s.dbRepo.Update(ctx, req.UserId, *v)
 	if err != nil {
@@ -79,7 +82,9 @@ func (s *Service) Reject(ctx context.Context, req *verificationv1.RejectRequest)
 		return nil, err
 	}
 
-	v.Reject(req.RejectionReason.RejectionReason)
+	if err := v.Reject(req.RejectionReason.RejectionReason); err != nil {
+		return nil, ierror.FailedPrecondition(err.Error())
+	}
 
 	err = s.dbRepo.Update(ctx, req.UserId, *v)
 	if err != nil {

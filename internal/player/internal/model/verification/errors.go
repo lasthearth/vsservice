@@ -1,12 +1,12 @@
 package verification
 
-import (
-	"errors"
-)
+import "errors"
 
 var (
-	ErrQuestionRequired    = errors.New("question is required")
-	ErrAlreadyVerified     = errors.New("user is already verified")
-	ErrPermissionDenied    = errors.New("user does not have required permissions")
-	ErrVerificationPending = errors.New("verification request is already under review")
+	ErrQuestionRequired        = errors.New("question is required")
+	ErrAlreadyVerified         = errors.New("user is already verified")
+	ErrPermissionDenied        = errors.New("user does not have required permissions")
+	ErrVerificationPending     = errors.New("verification request is already under review")
+	ErrInvalidTransition       = errors.New("invalid status transition")
+	ErrInvalidVerificationCode = errors.New("invalid verification code")
 )
