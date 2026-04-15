@@ -18,9 +18,10 @@ service KitService {
   // Assign a specific kit to a user. Requires admin privileges.
   //
   // Errors:
+  //   - INVALID_ARGUMENT (400): missing required fields or invalid timestamps
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - PERMISSION_DENIED (403): insufficient privileges
-  //   - INTERNAL (500): validation or database failure
+  //   - INTERNAL (500): database failure
   rpc AssignKitToUser(AssignKitToUserRequest) returns (AssignKitToUserResponse) {
     option (google.api.http) = {
       post: "/v1/kits/{kit_name}:assign"

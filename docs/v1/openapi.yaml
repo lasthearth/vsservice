@@ -63,9 +63,10 @@ paths:
                 Assign a specific kit to a user. Requires admin privileges.
 
                  Errors:
+                   - INVALID_ARGUMENT (400): missing required fields or invalid timestamps
                    - UNAUTHENTICATED (401): missing or invalid auth token
                    - PERMISSION_DENIED (403): insufficient privileges
-                   - INTERNAL (500): validation or database failure
+                   - INTERNAL (500): database failure
             operationId: KitService_AssignKitToUser
             parameters:
                 - name: kit_name
@@ -1429,6 +1430,7 @@ paths:
                  If a previous request exists and is re-submittable, it will be updated.
 
                  Errors:
+                   - FAILED_PRECONDITION (400): verification is pending or already approved/verified
                    - ALREADY_EXISTS (409): user is already verified
                    - UNAUTHENTICATED (401): missing or invalid auth token
                    - INTERNAL (500): database or SSO failure
@@ -1487,6 +1489,7 @@ paths:
                  Grants the "player" role to the user in SSO.
 
                  Errors:
+                   - FAILED_PRECONDITION (400): verification is not in pending state
                    - NOT_FOUND (404): verification request not found
                    - ALREADY_EXISTS (409): user is already verified
                    - UNAUTHENTICATED (401): missing or invalid auth token
@@ -1520,6 +1523,7 @@ paths:
                 Reject a user's verification request. Requires admin privileges.
 
                  Errors:
+                   - FAILED_PRECONDITION (400): verification is not in pending state
                    - NOT_FOUND (404): verification request not found
                    - UNAUTHENTICATED (401): missing or invalid auth token
                    - PERMISSION_DENIED (403): insufficient privileges

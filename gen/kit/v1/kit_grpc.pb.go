@@ -38,9 +38,10 @@ type KitServiceClient interface {
 	// Assign a specific kit to a user. Requires admin privileges.
 	//
 	// Errors:
+	//   - INVALID_ARGUMENT (400): missing required fields or invalid timestamps
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - PERMISSION_DENIED (403): insufficient privileges
-	//   - INTERNAL (500): validation or database failure
+	//   - INTERNAL (500): database failure
 	AssignKitToUser(ctx context.Context, in *AssignKitToUserRequest, opts ...grpc.CallOption) (*AssignKitToUserResponse, error)
 	// List all kit assignments for a specific user. Caller must match user_id.
 	//
@@ -103,9 +104,10 @@ type KitServiceServer interface {
 	// Assign a specific kit to a user. Requires admin privileges.
 	//
 	// Errors:
+	//   - INVALID_ARGUMENT (400): missing required fields or invalid timestamps
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - PERMISSION_DENIED (403): insufficient privileges
-	//   - INTERNAL (500): validation or database failure
+	//   - INTERNAL (500): database failure
 	AssignKitToUser(context.Context, *AssignKitToUserRequest) (*AssignKitToUserResponse, error)
 	// List all kit assignments for a specific user. Caller must match user_id.
 	//

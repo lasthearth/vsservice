@@ -25,6 +25,7 @@ service VerificationService {
   // If a previous request exists and is re-submittable, it will be updated.
   //
   // Errors:
+  //   - FAILED_PRECONDITION (400): verification is pending or already approved/verified
   //   - ALREADY_EXISTS (409): user is already verified
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database or SSO failure
@@ -39,6 +40,7 @@ service VerificationService {
   // Grants the "player" role to the user in SSO.
   //
   // Errors:
+  //   - FAILED_PRECONDITION (400): verification is not in pending state
   //   - NOT_FOUND (404): verification request not found
   //   - ALREADY_EXISTS (409): user is already verified
   //   - UNAUTHENTICATED (401): missing or invalid auth token
@@ -51,6 +53,7 @@ service VerificationService {
   // Reject a user's verification request. Requires admin privileges.
   //
   // Errors:
+  //   - FAILED_PRECONDITION (400): verification is not in pending state
   //   - NOT_FOUND (404): verification request not found
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - PERMISSION_DENIED (403): insufficient privileges

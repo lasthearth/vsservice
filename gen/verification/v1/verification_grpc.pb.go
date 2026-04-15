@@ -45,6 +45,7 @@ type VerificationServiceClient interface {
 	// If a previous request exists and is re-submittable, it will be updated.
 	//
 	// Errors:
+	//   - FAILED_PRECONDITION (400): verification is pending or already approved/verified
 	//   - ALREADY_EXISTS (409): user is already verified
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database or SSO failure
@@ -53,6 +54,7 @@ type VerificationServiceClient interface {
 	// Grants the "player" role to the user in SSO.
 	//
 	// Errors:
+	//   - FAILED_PRECONDITION (400): verification is not in pending state
 	//   - NOT_FOUND (404): verification request not found
 	//   - ALREADY_EXISTS (409): user is already verified
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
@@ -62,6 +64,7 @@ type VerificationServiceClient interface {
 	// Reject a user's verification request. Requires admin privileges.
 	//
 	// Errors:
+	//   - FAILED_PRECONDITION (400): verification is not in pending state
 	//   - NOT_FOUND (404): verification request not found
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - PERMISSION_DENIED (403): insufficient privileges
@@ -184,6 +187,7 @@ type VerificationServiceServer interface {
 	// If a previous request exists and is re-submittable, it will be updated.
 	//
 	// Errors:
+	//   - FAILED_PRECONDITION (400): verification is pending or already approved/verified
 	//   - ALREADY_EXISTS (409): user is already verified
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database or SSO failure
@@ -192,6 +196,7 @@ type VerificationServiceServer interface {
 	// Grants the "player" role to the user in SSO.
 	//
 	// Errors:
+	//   - FAILED_PRECONDITION (400): verification is not in pending state
 	//   - NOT_FOUND (404): verification request not found
 	//   - ALREADY_EXISTS (409): user is already verified
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
@@ -201,6 +206,7 @@ type VerificationServiceServer interface {
 	// Reject a user's verification request. Requires admin privileges.
 	//
 	// Errors:
+	//   - FAILED_PRECONDITION (400): verification is not in pending state
 	//   - NOT_FOUND (404): verification request not found
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - PERMISSION_DENIED (403): insufficient privileges
