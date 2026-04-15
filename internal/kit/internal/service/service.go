@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
 	"github.com/lasthearth/vsservice/internal/kit/internal/model"
@@ -80,9 +81,9 @@ func (s *Service) AssignKitToUser(ctx context.Context, req *kitv1.AssignKitToUse
 		requesterID,
 	)
 
-	if err := newAssignment.Validate(); err != nil {
+	if err := newAssignment.Validate(time.Now()); err != nil {
 		l.Error("assignment validation failed", zap.Error(err))
-		return nil, status.Error(codes.Internal, "assignment validation failed")
+		return nil, status.Error(codes.InvalidArgument, "assignment validation failed")
 	}
 	l.Info("assignment validation passed")
 

@@ -31,7 +31,7 @@ func NewKitAssignment(userId, userGameName, kitName, assignedBy string) *KitAssi
 }
 
 // Validate validates assignment data according to specification
-func (ka *KitAssignment) Validate() error {
+func (ka *KitAssignment) Validate(now time.Time) error {
 	if ka.UserId == "" {
 		return errors.New("user ID cannot be empty")
 	}
@@ -52,7 +52,7 @@ func (ka *KitAssignment) Validate() error {
 		return errors.New("invalid assignment status")
 	}
 
-	if ka.AssignedAt.After(time.Now()) {
+	if ka.AssignedAt.After(now) {
 		return errors.New("assigned at cannot be in the future")
 	}
 
