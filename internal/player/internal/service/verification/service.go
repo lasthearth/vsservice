@@ -139,9 +139,8 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 		return nil, err
 	}
 
-	err = existVerification.CanSubmit()
-	if err != nil {
-		return nil, err
+	if err := existVerification.CanSubmit(); err != nil {
+		return nil, ierror.FailedPrecondition(err.Error())
 	}
 
 	if err := s.dbRepo.Update(ctx, userId, *v); err != nil {
