@@ -13,6 +13,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
@@ -88,6 +89,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	notificationv1.RegisterNotificationServiceServer(srv, s.notificationV1)
 	newsv1.RegisterNewsServiceServer(srv, s.newsV1)
 	kitv1.RegisterKitServiceServer(srv, s.kitV1)
+	donatev1.RegisterDonateServiceServer(srv, s.donateV1)
 	serverinfov1.RegisterServerInfoServiceServer(srv, s.serverInfoV1)
 	reflection.Register(srv)
 
@@ -135,6 +137,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := kitv1.RegisterKitServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register kit service handler")
+	}
+
+	if err := donatev1.RegisterDonateServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register donate service handler")
 	}
 
 	if err := serverinfov1.RegisterServerInfoServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
