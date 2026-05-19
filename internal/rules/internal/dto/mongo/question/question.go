@@ -4,5 +4,6 @@ import "github.com/lasthearth/vsservice/internal/pkg/mongox"
 
 type Question struct {
 	mongox.Model `bson:",inline"`
-	Question     string
+	Question     string `bson:"question"`
+	CreatedBy    string `bson:"created_by"`
 }

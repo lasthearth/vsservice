@@ -6,6 +6,7 @@ import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 // Represents rules service
 service RuleService {
@@ -33,6 +34,27 @@ service RuleService {
       body: "*"
     };
   }
+
+  // Returns all rule questions. Requires admin privileges.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc ListQuestions(ListQuestionsRequest) returns (ListQuestionsResponse) {
+    option (google.api.http) = {get: "/v1/rules/questions/list"};
+  }
+
+  // Deletes a rule question by ID. Requires admin privileges.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - NOT_FOUND (404): question not found
+  //   - INTERNAL (500): database failure
+  rpc DeleteQuestion(DeleteQuestionRequest) returns (DeleteQuestionResponse) {
+    option (google.api.http) = {delete: "/v1/rules/question/{id}"};
+  }
 }
 
 message GetRandomQuestionsRequest {
@@ -55,3 +77,23 @@ message CreateQuestionRequest {
 }
 
 message CreateQuestionResponse {}
+
+message ListQuestionsRequest {}
+
+message ListQuestionsResponse {
+  repeated Question questions = 1;
+
+  // Represents a question about rules with admin details
+  message Question {
+    string id = 1;
+    string question = 2;
+    string created_by = 3;
+    google.protobuf.Timestamp created_at = 4;
+  }
+}
+
+message DeleteQuestionRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteQuestionResponse {}

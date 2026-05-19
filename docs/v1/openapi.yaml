@@ -771,6 +771,38 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/rules/question/{id}:
+        delete:
+            tags:
+                - RuleService
+            description: |-
+                Deletes a rule question by ID. Requires admin privileges.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - NOT_FOUND (404): question not found
+                   - INTERNAL (500): database failure
+            operationId: RuleService_DeleteQuestion
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DeleteQuestionResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/rules/questions:
         get:
             tags:
@@ -796,6 +828,31 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetRandomQuestionsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/rules/questions/list:
+        get:
+            tags:
+                - RuleService
+            description: |-
+                Returns all rule questions. Requires admin privileges.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: RuleService_ListQuestions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListQuestionsResponse'
                 default:
                     description: Default error response
                     content:
@@ -2351,6 +2408,9 @@ components:
             properties:
                 coins:
                     type: string
+        DeleteQuestionResponse:
+            type: object
+            properties: {}
         DeleteShopItemResponse:
             type: object
             properties: {}
@@ -2533,6 +2593,26 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Settlement'
+        ListQuestionsResponse:
+            type: object
+            properties:
+                questions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ListQuestionsResponse_Question'
+        ListQuestionsResponse_Question:
+            type: object
+            properties:
+                id:
+                    type: string
+                question:
+                    type: string
+                created_by:
+                    type: string
+                created_at:
+                    type: string
+                    format: date-time
+            description: Represents a question about rules with admin details
         ListResponse:
             type: object
             properties:

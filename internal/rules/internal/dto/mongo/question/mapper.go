@@ -9,6 +9,7 @@ func (m *Question) ToModel() *model.Question {
 	return &model.Question{
 		ID:        m.Id.Hex(),
 		Question:  m.Question,
+		CreatedBy: m.CreatedBy,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
@@ -16,7 +17,8 @@ func (m *Question) ToModel() *model.Question {
 
 func FromModel(question *model.Question) *Question {
 	return &Question{
-		Model:    mongox.NewModel(),
-		Question: question.Question,
+		Model:     mongox.NewModel(),
+		Question:  question.Question,
+		CreatedBy: question.CreatedBy,
 	}
 }

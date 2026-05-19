@@ -21,6 +21,8 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	RuleService_GetRandomQuestions_FullMethodName = "/rules.v1.RuleService/GetRandomQuestions"
 	RuleService_CreateQuestion_FullMethodName     = "/rules.v1.RuleService/CreateQuestion"
+	RuleService_ListQuestions_FullMethodName      = "/rules.v1.RuleService/ListQuestions"
+	RuleService_DeleteQuestion_FullMethodName     = "/rules.v1.RuleService/DeleteQuestion"
 )
 
 // RuleServiceClient is the client API for RuleService service.
@@ -43,6 +45,21 @@ type RuleServiceClient interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): database failure
 	CreateQuestion(ctx context.Context, in *CreateQuestionRequest, opts ...grpc.CallOption) (*CreateQuestionResponse, error)
+	// Returns all rule questions. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	ListQuestions(ctx context.Context, in *ListQuestionsRequest, opts ...grpc.CallOption) (*ListQuestionsResponse, error)
+	// Deletes a rule question by ID. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - NOT_FOUND (404): question not found
+	//   - INTERNAL (500): database failure
+	DeleteQuestion(ctx context.Context, in *DeleteQuestionRequest, opts ...grpc.CallOption) (*DeleteQuestionResponse, error)
 }
 
 type ruleServiceClient struct {
@@ -73,6 +90,26 @@ func (c *ruleServiceClient) CreateQuestion(ctx context.Context, in *CreateQuesti
 	return out, nil
 }
 
+func (c *ruleServiceClient) ListQuestions(ctx context.Context, in *ListQuestionsRequest, opts ...grpc.CallOption) (*ListQuestionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListQuestionsResponse)
+	err := c.cc.Invoke(ctx, RuleService_ListQuestions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *ruleServiceClient) DeleteQuestion(ctx context.Context, in *DeleteQuestionRequest, opts ...grpc.CallOption) (*DeleteQuestionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteQuestionResponse)
+	err := c.cc.Invoke(ctx, RuleService_DeleteQuestion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RuleServiceServer is the server API for RuleService service.
 // All implementations should embed UnimplementedRuleServiceServer
 // for forward compatibility.
@@ -93,6 +130,21 @@ type RuleServiceServer interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): database failure
 	CreateQuestion(context.Context, *CreateQuestionRequest) (*CreateQuestionResponse, error)
+	// Returns all rule questions. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	ListQuestions(context.Context, *ListQuestionsRequest) (*ListQuestionsResponse, error)
+	// Deletes a rule question by ID. Requires admin privileges.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - NOT_FOUND (404): question not found
+	//   - INTERNAL (500): database failure
+	DeleteQuestion(context.Context, *DeleteQuestionRequest) (*DeleteQuestionResponse, error)
 }
 
 // UnimplementedRuleServiceServer should be embedded to have
@@ -107,6 +159,12 @@ func (UnimplementedRuleServiceServer) GetRandomQuestions(context.Context, *GetRa
 }
 func (UnimplementedRuleServiceServer) CreateQuestion(context.Context, *CreateQuestionRequest) (*CreateQuestionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateQuestion not implemented")
+}
+func (UnimplementedRuleServiceServer) ListQuestions(context.Context, *ListQuestionsRequest) (*ListQuestionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListQuestions not implemented")
+}
+func (UnimplementedRuleServiceServer) DeleteQuestion(context.Context, *DeleteQuestionRequest) (*DeleteQuestionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteQuestion not implemented")
 }
 func (UnimplementedRuleServiceServer) testEmbeddedByValue() {}
 
@@ -164,6 +222,42 @@ func _RuleService_CreateQuestion_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RuleService_ListQuestions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListQuestionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuleServiceServer).ListQuestions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RuleService_ListQuestions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuleServiceServer).ListQuestions(ctx, req.(*ListQuestionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RuleService_DeleteQuestion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteQuestionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RuleServiceServer).DeleteQuestion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RuleService_DeleteQuestion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RuleServiceServer).DeleteQuestion(ctx, req.(*DeleteQuestionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RuleService_ServiceDesc is the grpc.ServiceDesc for RuleService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -178,6 +272,14 @@ var RuleService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateQuestion",
 			Handler:    _RuleService_CreateQuestion_Handler,
+		},
+		{
+			MethodName: "ListQuestions",
+			Handler:    _RuleService_ListQuestions_Handler,
+		},
+		{
+			MethodName: "DeleteQuestion",
+			Handler:    _RuleService_DeleteQuestion_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
