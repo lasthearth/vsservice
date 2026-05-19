@@ -1,0 +1,170 @@
+syntax = "proto3";
+
+package donate.v1;
+
+import "google/api/annotations.proto";
+import "donate/v1/wallet.proto";
+import "donate/v1/shop_item.proto";
+import "donate/v1/purchase.proto";
+import "donate/v1/transaction.proto";
+
+// Donate service — player wallet, shop, and manual coin management.
+service DonateService {
+  // Admin: manually credit coins to a player's wallet.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): amount must be positive
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc AddCoins(AddCoinsRequest) returns (AddCoinsResponse) {
+    option (google.api.http) = {
+      post: "/v1/donate/players/{player_id}/coins:add"
+      body: "*"
+    };
+  }
+
+  // Admin: manually deduct coins from a player's wallet.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): amount must be positive
+  //   - NOT_FOUND (404): wallet not found
+  //   - FAILED_PRECONDITION (412): insufficient funds
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc DeductCoins(DeductCoinsRequest) returns (DeductCoinsResponse) {
+    option (google.api.http) = {
+      post: "/v1/donate/players/{player_id}/coins:deduct"
+      body: "*"
+    };
+  }
+
+  // Admin: create a new shop item.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): missing or invalid fields
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc CreateShopItem(CreateShopItemRequest) returns (CreateShopItemResponse) {
+    option (google.api.http) = {
+      post: "/v1/donate/shop/items"
+      body: "*"
+    };
+  }
+
+  // Admin: update an existing shop item.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): missing or invalid fields
+  //   - NOT_FOUND (404): item not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc UpdateShopItem(UpdateShopItemRequest) returns (UpdateShopItemResponse) {
+    option (google.api.http) = {
+      put: "/v1/donate/shop/items/{id}"
+      body: "*"
+    };
+  }
+
+  // Admin: delete a shop item.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): item not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc DeleteShopItem(DeleteShopItemRequest) returns (DeleteShopItemResponse) {
+    option (google.api.http) = {
+      delete: "/v1/donate/shop/items/{id}"
+    };
+  }
+
+  // Admin: refund a purchase — restores coins to the player's wallet.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): purchase not found
+  //   - FAILED_PRECONDITION (412): already refunded
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc Refund(RefundRequest) returns (RefundResponse) {
+    option (google.api.http) = {
+      post: "/v1/donate/purchases/{purchase_id}:refund"
+      body: "*"
+    };
+  }
+
+  // Admin: list all coin transactions for a player.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/donate/players/{player_id}/transactions"
+    };
+  }
+
+  // Admin: list all purchases for a player.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc AdminListPurchases(AdminListPurchasesRequest) returns (AdminListPurchasesResponse) {
+    option (google.api.http) = {
+      get: "/v1/donate/players/{player_id}/purchases"
+    };
+  }
+
+  // Player: get the caller's current coin balance.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc GetMyBalance(GetMyBalanceRequest) returns (GetMyBalanceResponse) {
+    option (google.api.http) = {
+      get: "/v1/donate/me/balance"
+    };
+  }
+
+  // Player: list all available shop items.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ListShopItems(ListShopItemsRequest) returns (ListShopItemsResponse) {
+    option (google.api.http) = {
+      get: "/v1/donate/shop/items"
+    };
+  }
+
+  // Player: purchase a shop item using coins.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): item not found or unavailable
+  //   - FAILED_PRECONDITION (412): insufficient coins
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc BuyItem(BuyItemRequest) returns (BuyItemResponse) {
+    option (google.api.http) = {
+      post: "/v1/donate/shop/items/{item_id}:buy"
+      body: "*"
+    };
+  }
+
+  // Player: list the caller's own purchases.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ListMyPurchases(ListMyPurchasesRequest) returns (ListMyPurchasesResponse) {
+    option (google.api.http) = {
+      get: "/v1/donate/me/purchases"
+    };
+  }
+}

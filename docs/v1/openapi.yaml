@@ -8,6 +8,396 @@ info:
 servers:
     - url: https://api.lasthearth.ru
 paths:
+    /v1/donate/me/balance:
+        get:
+            tags:
+                - DonateService
+            description: |-
+                Player: get the caller's current coin balance.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
+            operationId: DonateService_GetMyBalance
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetMyBalanceResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/donate/me/purchases:
+        get:
+            tags:
+                - DonateService
+            description: |-
+                Player: list the caller's own purchases.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
+            operationId: DonateService_ListMyPurchases
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListMyPurchasesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/donate/players/{player_id}/coins:add:
+        post:
+            tags:
+                - DonateService
+            description: |-
+                Admin: manually credit coins to a player's wallet.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): amount must be positive
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: DonateService_AddCoins
+            parameters:
+                - name: player_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AddCoinsRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AddCoinsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/donate/players/{player_id}/coins:deduct:
+        post:
+            tags:
+                - DonateService
+            description: |-
+                Admin: manually deduct coins from a player's wallet.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): amount must be positive
+                   - NOT_FOUND (404): wallet not found
+                   - FAILED_PRECONDITION (412): insufficient funds
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: DonateService_DeductCoins
+            parameters:
+                - name: player_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/DeductCoinsRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DeductCoinsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/donate/players/{player_id}/purchases:
+        get:
+            tags:
+                - DonateService
+            description: |-
+                Admin: list all purchases for a player.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: DonateService_AdminListPurchases
+            parameters:
+                - name: player_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminListPurchasesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/donate/players/{player_id}/transactions:
+        get:
+            tags:
+                - DonateService
+            description: |-
+                Admin: list all coin transactions for a player.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: DonateService_ListTransactions
+            parameters:
+                - name: player_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListTransactionsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/donate/purchases/{purchase_id}:refund:
+        post:
+            tags:
+                - DonateService
+            description: |-
+                Admin: refund a purchase — restores coins to the player's wallet.
+
+                 Errors:
+                   - NOT_FOUND (404): purchase not found
+                   - FAILED_PRECONDITION (412): already refunded
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: DonateService_Refund
+            parameters:
+                - name: purchase_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RefundRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RefundResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/donate/shop/items:
+        get:
+            tags:
+                - DonateService
+            description: |-
+                Player: list all available shop items.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
+            operationId: DonateService_ListShopItems
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListShopItemsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - DonateService
+            description: |-
+                Admin: create a new shop item.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): missing or invalid fields
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: DonateService_CreateShopItem
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateShopItemRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateShopItemResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/donate/shop/items/{id}:
+        put:
+            tags:
+                - DonateService
+            description: |-
+                Admin: update an existing shop item.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): missing or invalid fields
+                   - NOT_FOUND (404): item not found
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: DonateService_UpdateShopItem
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateShopItemRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UpdateShopItemResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        delete:
+            tags:
+                - DonateService
+            description: |-
+                Admin: delete a shop item.
+
+                 Errors:
+                   - NOT_FOUND (404): item not found
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: DonateService_DeleteShopItem
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DeleteShopItemResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/donate/shop/items/{item_id}:buy:
+        post:
+            tags:
+                - DonateService
+            description: |-
+                Player: purchase a shop item using coins.
+
+                 Errors:
+                   - NOT_FOUND (404): item not found or unavailable
+                   - FAILED_PRECONDITION (412): insufficient coins
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - INTERNAL (500): database failure
+            operationId: DonateService_BuyItem
+            parameters:
+                - name: item_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/BuyItemRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BuyItemResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/items:
         post:
             tags:
@@ -1609,6 +1999,22 @@ components:
         AcceptInvitationResponse:
             type: object
             properties: {}
+        AddCoinsRequest:
+            type: object
+            properties:
+                player_id:
+                    type: string
+                player_name:
+                    type: string
+                amount:
+                    type: string
+                reason:
+                    type: string
+        AddCoinsResponse:
+            type: object
+            properties:
+                coins:
+                    type: string
         AddTagToSettlementRequest:
             type: object
             properties:
@@ -1623,6 +2029,13 @@ components:
                 settlement:
                     $ref: '#/components/schemas/Settlement'
             description: Response from adding a tag to a settlement
+        AdminListPurchasesResponse:
+            type: object
+            properties:
+                purchases:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Purchase'
         ApproveRequest:
             required:
                 - id
@@ -1693,6 +2106,16 @@ components:
                     type: string
                 url:
                     type: string
+        BuyItemRequest:
+            type: object
+            properties:
+                item_id:
+                    type: string
+        BuyItemResponse:
+            type: object
+            properties:
+                purchase:
+                    $ref: '#/components/schemas/Purchase'
         ChangeNicknameRequest:
             required:
                 - user_id
@@ -1895,6 +2318,42 @@ components:
             properties:
                 id:
                     type: string
+        CreateShopItemRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+                description:
+                    type: string
+                image:
+                    type: string
+                    format: bytes
+                price:
+                    type: string
+                code:
+                    type: string
+        CreateShopItemResponse:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/ShopItem'
+        DeductCoinsRequest:
+            type: object
+            properties:
+                player_id:
+                    type: string
+                amount:
+                    type: string
+                reason:
+                    type: string
+        DeductCoinsResponse:
+            type: object
+            properties:
+                coins:
+                    type: string
+        DeleteShopItemResponse:
+            type: object
+            properties: {}
         DetailsResponse:
             type: object
             properties:
@@ -1924,6 +2383,11 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Invitation'
+        GetMyBalanceResponse:
+            type: object
+            properties:
+                coins:
+                    type: string
         GetRandomQuestionsResponse:
             type: object
             properties:
@@ -2031,6 +2495,13 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/LeaderboardEntry'
+        ListMyPurchasesResponse:
+            type: object
+            properties:
+                purchases:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Purchase'
         ListNewsResponse:
             type: object
             properties:
@@ -2069,6 +2540,20 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Settlement'
+        ListShopItemsResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/ShopItem'
+        ListTransactionsResponse:
+            type: object
+            properties:
+                transactions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Transaction'
         ListUserAssignmentsResponse:
             type: object
             properties:
@@ -2140,6 +2625,41 @@ components:
                 players_killed:
                     type: integer
                     format: int32
+        Purchase:
+            type: object
+            properties:
+                id:
+                    type: string
+                player_id:
+                    type: string
+                player_name:
+                    type: string
+                item_id:
+                    type: string
+                item_name:
+                    type: string
+                price_paid:
+                    type: string
+                status:
+                    type: string
+                created_at:
+                    type: string
+                    format: date-time
+                refunded_at:
+                    type: string
+                    format: date-time
+        RefundRequest:
+            type: object
+            properties:
+                purchase_id:
+                    type: string
+                reason:
+                    type: string
+        RefundResponse:
+            type: object
+            properties:
+                purchase:
+                    $ref: '#/components/schemas/Purchase'
         RejectInvitationResponse:
             type: object
             properties: {}
@@ -2247,6 +2767,30 @@ components:
                 description:
                     type: string
             description: Representation of a settlement tag.
+        ShopItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                image_url:
+                    type: string
+                price:
+                    type: string
+                is_available:
+                    type: boolean
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+                code:
+                    type: string
+                    description: Unique identifier used to correlate the item with in-game assets.
         Status:
             type: object
             properties:
@@ -2319,6 +2863,24 @@ components:
                 max_online:
                     type: integer
                     format: int32
+        Transaction:
+            type: object
+            properties:
+                id:
+                    type: string
+                player_id:
+                    type: string
+                amount:
+                    type: string
+                type:
+                    type: string
+                reason:
+                    type: string
+                purchase_id:
+                    type: string
+                created_at:
+                    type: string
+                    format: date-time
         UpdateAvatarRequest:
             required:
                 - avatar
@@ -2330,6 +2892,30 @@ components:
                     format: bytes
                 user_id:
                     type: string
+        UpdateShopItemRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                image:
+                    type: string
+                    description: Leave empty to keep the existing image.
+                    format: bytes
+                price:
+                    type: string
+                is_available:
+                    type: boolean
+                code:
+                    type: string
+        UpdateShopItemResponse:
+            type: object
+            properties:
+                item:
+                    $ref: '#/components/schemas/ShopItem'
         User:
             type: object
             properties:
@@ -2381,6 +2967,8 @@ components:
                 time:
                     type: string
 tags:
+    - name: DonateService
+      description: Donate service — player wallet, shop, and manual coin management.
     - name: KitService
       description: Kit service for managing game kit assignment to users
     - name: LeaderboardService

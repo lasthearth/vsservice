@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package donate.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message Transaction {
+  string id = 1;
+  string player_id = 2;
+  int64 amount = 3;
+  string type = 4;
+  string reason = 5;
+  string purchase_id = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message ListTransactionsRequest {
+  string player_id = 1;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction transactions = 1;
+}

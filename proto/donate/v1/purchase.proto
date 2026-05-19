@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package donate.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message Purchase {
+  string id = 1;
+  string player_id = 2;
+  string player_name = 3;
+  string item_id = 4;
+  string item_name = 5;
+  int64 price_paid = 6;
+  string status = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp refunded_at = 9;
+}
+
+message BuyItemRequest {
+  string item_id = 1;
+}
+
+message BuyItemResponse {
+  Purchase purchase = 1;
+}
+
+message RefundRequest {
+  string purchase_id = 1;
+  string reason = 2;
+}
+
+message RefundResponse {
+  Purchase purchase = 1;
+}
+
+message ListMyPurchasesRequest {}
+
+message ListMyPurchasesResponse {
+  repeated Purchase purchases = 1;
+}
+
+message AdminListPurchasesRequest {
+  string player_id = 1;
+}
+
+message AdminListPurchasesResponse {
+  repeated Purchase purchases = 1;
+}

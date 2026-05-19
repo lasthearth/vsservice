@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package donate.v1;
+
+message AddCoinsRequest {
+  string player_id = 1;
+  string player_name = 2;
+  int64 amount = 3;
+  string reason = 4;
+}
+
+message AddCoinsResponse {
+  int64 coins = 1;
+}
+
+message DeductCoinsRequest {
+  string player_id = 1;
+  int64 amount = 2;
+  string reason = 3;
+}
+
+message DeductCoinsResponse {
+  int64 coins = 1;
+}
+
+message GetMyBalanceRequest {}
+
+message GetMyBalanceResponse {
+  int64 coins = 1;
+}
