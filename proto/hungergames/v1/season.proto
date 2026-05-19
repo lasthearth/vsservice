@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package hungergames.v1;
+
+import "google/api/field_behavior.proto";
+import "google/protobuf/timestamp.proto";
+
+message SeasonInfo {
+  string id = 1;
+  int32 number = 2;
+  google.protobuf.Timestamp started_at = 3;
+  // Absent if the season is still active.
+  google.protobuf.Timestamp ended_at = 4;
+}
+
+// SeasonReward maps a leaderboard rank to a coin reward amount.
+message SeasonReward {
+  // 1-based rank (1 = first place)
+  int32 rank = 1 [(google.api.field_behavior) = REQUIRED];
+  int64 coins = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ResetSeasonRequest {
+  repeated SeasonReward rewards = 1;
+}
+
+message ResetSeasonResponse {}
+
+message CreateSeasonRequest {}
+
+message CreateSeasonResponse {
+  SeasonInfo season = 1;
+}
+
+message ListSeasonsRequest {
+  // Cursor from a previous response for pagination.
+  string next = 1;
+  // Maximum number of seasons. Defaults to 20.
+  int32 limit = 2;
+}
+
+message ListSeasonsResponse {
+  repeated SeasonInfo seasons = 1;
+  // Cursor for the next page; empty when no more results.
+  string next = 2;
+}
+
+message GetSeasonLeaderboardRequest {
+  string season_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// SeasonResultEntry is the archived standing of a player at the end of a season.
+message SeasonResultEntry {
+  string player_id = 1;
+  string player_name = 2;
+  int32 elo = 3;
+  int32 wins = 4;
+  int32 kills = 5;
+  int32 rank = 6;
+  int64 reward_coins = 7;
+}
+
+message GetSeasonLeaderboardResponse {
+  repeated SeasonResultEntry entries = 1;
+}
+
+message GetPlayerStatsRequest {
+  string season_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string player_id = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetPlayerStatsResponse {
+  SeasonResultEntry stats = 1;
+}

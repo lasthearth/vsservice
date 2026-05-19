@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package hungergames.v1;
+
+import "google/api/field_behavior.proto";
+
+// PlayerMatchResult represents a single player's result in a match.
+message PlayerMatchResult {
+  string player_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string player_name = 2 [(google.api.field_behavior) = REQUIRED];
+  // 1-based placement; 1 = winner
+  int32 place = 3 [(google.api.field_behavior) = REQUIRED];
+  // Kills scored during the match
+  int32 kills = 4;
+}
+
+message RecordMatchRequest {
+  repeated PlayerMatchResult players = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message RecordMatchResponse {}

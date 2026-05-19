@@ -398,6 +398,236 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/hungergames/leaderboard:
+        get:
+            tags:
+                - HungerGamesService
+            description: |-
+                Returns the current season leaderboard sorted by ELO descending.
+
+                 Errors:
+                   - INTERNAL (500): database failure
+            operationId: HungerGamesService_ListLeaderboard
+            parameters:
+                - name: limit
+                  in: query
+                  description: Maximum number of entries. Defaults to 25.
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListLeaderboardResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/hungergames/match:
+        post:
+            tags:
+                - HungerGamesService
+            description: |-
+                Records a match result and recalculates ELO for all participants.
+                 Requires an active season.
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): fewer than 2 players, duplicate places, or no active season
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: HungerGamesService_RecordMatch
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RecordMatchRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/RecordMatchResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/hungergames/season:
+        post:
+            tags:
+                - HungerGamesService
+            description: |-
+                Creates a new season. Fails if a season is already active.
+
+                 Errors:
+                   - ALREADY_EXISTS (409): active season already exists
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: HungerGamesService_CreateSeason
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateSeasonRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateSeasonResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/hungergames/season/reset:
+        post:
+            tags:
+                - HungerGamesService
+            description: |-
+                Distributes season rewards to top-N players, archives the leaderboard,
+                 and closes the current season. Does NOT create a new season.
+
+                 Errors:
+                   - NOT_FOUND (404): no active season
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: HungerGamesService_ResetSeason
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ResetSeasonRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ResetSeasonResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/hungergames/seasons:
+        get:
+            tags:
+                - HungerGamesService
+            description: |-
+                Returns a paginated list of all seasons, newest first.
+
+                 Errors:
+                   - INTERNAL (500): database failure
+            operationId: HungerGamesService_ListSeasons
+            parameters:
+                - name: next
+                  in: query
+                  description: Cursor from a previous response for pagination.
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  description: Maximum number of seasons. Defaults to 20.
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListSeasonsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/hungergames/seasons/{season_id}/leaderboard:
+        get:
+            tags:
+                - HungerGamesService
+            description: |-
+                Returns the top 10 archived results for a specific past season.
+
+                 Errors:
+                   - NOT_FOUND (404): season not found
+                   - INTERNAL (500): database failure
+            operationId: HungerGamesService_GetSeasonLeaderboard
+            parameters:
+                - name: season_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetSeasonLeaderboardResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/hungergames/seasons/{season_id}/players/{player_id}:
+        get:
+            tags:
+                - HungerGamesService
+            description: |-
+                Returns a player's stats for a specific season.
+                 For an active season returns current live stats (rank = 0).
+                 For a completed season returns the archived result including rank and reward.
+
+                 Errors:
+                   - NOT_FOUND (404): season or player stats not found
+                   - INTERNAL (500): database failure
+            operationId: HungerGamesService_GetPlayerStats
+            parameters:
+                - name: season_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: player_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetPlayerStatsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/items:
         post:
             tags:
@@ -2375,6 +2605,14 @@ components:
             properties:
                 id:
                     type: string
+        CreateSeasonRequest:
+            type: object
+            properties: {}
+        CreateSeasonResponse:
+            type: object
+            properties:
+                season:
+                    $ref: '#/components/schemas/SeasonInfo'
         CreateShopItemRequest:
             type: object
             properties:
@@ -2448,6 +2686,11 @@ components:
             properties:
                 coins:
                     type: string
+        GetPlayerStatsResponse:
+            type: object
+            properties:
+                stats:
+                    $ref: '#/components/schemas/SeasonResultEntry'
         GetRandomQuestionsResponse:
             type: object
             properties:
@@ -2468,6 +2711,13 @@ components:
             properties:
                 settlement:
                     $ref: '#/components/schemas/Settlement'
+        GetSeasonLeaderboardResponse:
+            type: object
+            properties:
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SeasonResultEntry'
         GetTagsByIdsRequest:
             required:
                 - tag_ids
@@ -2555,6 +2805,13 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/LeaderboardEntry'
+        ListLeaderboardResponse:
+            type: object
+            properties:
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/LeaderboardEntry'
         ListMyPurchasesResponse:
             type: object
             properties:
@@ -2620,6 +2877,16 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Settlement'
+        ListSeasonsResponse:
+            type: object
+            properties:
+                seasons:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SeasonInfo'
+                next:
+                    type: string
+                    description: Cursor for the next page; empty when no more results.
         ListShopItemsResponse:
             type: object
             properties:
@@ -2689,6 +2956,26 @@ components:
                 count:
                     type: integer
                     format: int32
+        PlayerMatchResult:
+            required:
+                - player_id
+                - player_name
+                - place
+            type: object
+            properties:
+                player_id:
+                    type: string
+                player_name:
+                    type: string
+                place:
+                    type: integer
+                    description: 1-based placement; 1 = winner
+                    format: int32
+                kills:
+                    type: integer
+                    description: Kills scored during the match
+                    format: int32
+            description: PlayerMatchResult represents a single player's result in a match.
         PlayerStatsResponse:
             type: object
             properties:
@@ -2728,6 +3015,18 @@ components:
                 refunded_at:
                     type: string
                     format: date-time
+        RecordMatchRequest:
+            required:
+                - players
+            type: object
+            properties:
+                players:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/PlayerMatchResult'
+        RecordMatchResponse:
+            type: object
+            properties: {}
         RefundRequest:
             type: object
             properties:
@@ -2770,6 +3069,16 @@ components:
                 settlement:
                     $ref: '#/components/schemas/Settlement'
             description: Response from removing a tag from a settlement
+        ResetSeasonRequest:
+            type: object
+            properties:
+                rewards:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/SeasonReward'
+        ResetSeasonResponse:
+            type: object
+            properties: {}
         RevokeInvitationRequest:
             required:
                 - settlement_id
@@ -2794,6 +3103,56 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/User'
+        SeasonInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                number:
+                    type: integer
+                    format: int32
+                started_at:
+                    type: string
+                    format: date-time
+                ended_at:
+                    type: string
+                    description: Absent if the season is still active.
+                    format: date-time
+        SeasonResultEntry:
+            type: object
+            properties:
+                player_id:
+                    type: string
+                player_name:
+                    type: string
+                elo:
+                    type: integer
+                    format: int32
+                wins:
+                    type: integer
+                    format: int32
+                kills:
+                    type: integer
+                    format: int32
+                rank:
+                    type: integer
+                    format: int32
+                reward_coins:
+                    type: string
+            description: SeasonResultEntry is the archived standing of a player at the end of a season.
+        SeasonReward:
+            required:
+                - rank
+                - coins
+            type: object
+            properties:
+                rank:
+                    type: integer
+                    description: 1-based rank (1 = first place)
+                    format: int32
+                coins:
+                    type: string
+            description: SeasonReward maps a leaderboard rank to a coin reward amount.
         Settlement:
             type: object
             properties:
@@ -3049,6 +3408,10 @@ components:
 tags:
     - name: DonateService
       description: Donate service — player wallet, shop, and manual coin management.
+    - name: HungerGamesService
+      description: |-
+        HungerGamesService manages the Hunger Games game mode: ELO ratings,
+         season lifecycle, leaderboard, and reward distribution.
     - name: KitService
       description: Kit service for managing game kit assignment to users
     - name: LeaderboardService

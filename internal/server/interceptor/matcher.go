@@ -18,6 +18,14 @@ func AuthMatcher(ctx context.Context, c interceptors.CallMeta, cfg config.Config
 		return false
 	case "/leaderboard.v1.LeaderboardService/ListEntries":
 		return false
+	case "/hungergames.v1.HungerGamesService/ListLeaderboard":
+		return false
+	case "/hungergames.v1.HungerGamesService/ListSeasons":
+		return false
+	case "/hungergames.v1.HungerGamesService/GetSeasonLeaderboard":
+		return false
+	case "/hungergames.v1.HungerGamesService/GetPlayerStats":
+		return false
 	case "/verification.v1.VerificationService/VerifyCode":
 		return false
 	case "/verification.v1.VerificationService/VerifyStatusByName":

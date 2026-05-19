@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package hungergames.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "hungergames/v1/match.proto";
+import "hungergames/v1/leaderboard.proto";
+import "hungergames/v1/season.proto";
+
+// HungerGamesService manages the Hunger Games game mode: ELO ratings,
+// season lifecycle, leaderboard, and reward distribution.
+service HungerGamesService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Records a match result and recalculates ELO for all participants.
+  // Requires an active season.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): fewer than 2 players, duplicate places, or no active season
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc RecordMatch(RecordMatchRequest) returns (RecordMatchResponse) {
+    option (google.api.http) = {
+      post: "/v1/hungergames/match"
+      body: "*"
+    };
+  }
+
+  // Returns the current season leaderboard sorted by ELO descending.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
+  rpc ListLeaderboard(ListLeaderboardRequest) returns (ListLeaderboardResponse) {
+    option (google.api.http) = {get: "/v1/hungergames/leaderboard"};
+  }
+
+  // Distributes season rewards to top-N players, archives the leaderboard,
+  // and closes the current season. Does NOT create a new season.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no active season
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc ResetSeason(ResetSeasonRequest) returns (ResetSeasonResponse) {
+    option (google.api.http) = {
+      post: "/v1/hungergames/season/reset"
+      body: "*"
+    };
+  }
+
+  // Creates a new season. Fails if a season is already active.
+  //
+  // Errors:
+  //   - ALREADY_EXISTS (409): active season already exists
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc CreateSeason(CreateSeasonRequest) returns (CreateSeasonResponse) {
+    option (google.api.http) = {
+      post: "/v1/hungergames/season"
+      body: "*"
+    };
+  }
+
+  // Returns a paginated list of all seasons, newest first.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
+  rpc ListSeasons(ListSeasonsRequest) returns (ListSeasonsResponse) {
+    option (google.api.http) = {get: "/v1/hungergames/seasons"};
+  }
+
+  // Returns the top 10 archived results for a specific past season.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): season not found
+  //   - INTERNAL (500): database failure
+  rpc GetSeasonLeaderboard(GetSeasonLeaderboardRequest) returns (GetSeasonLeaderboardResponse) {
+    option (google.api.http) = {get: "/v1/hungergames/seasons/{season_id}/leaderboard"};
+  }
+
+  // Returns a player's stats for a specific season.
+  // For an active season returns current live stats (rank = 0).
+  // For a completed season returns the archived result including rank and reward.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): season or player stats not found
+  //   - INTERNAL (500): database failure
+  rpc GetPlayerStats(GetPlayerStatsRequest) returns (GetPlayerStatsResponse) {
+    option (google.api.http) = {get: "/v1/hungergames/seasons/{season_id}/players/{player_id}"};
+  }
+}

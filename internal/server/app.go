@@ -6,6 +6,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/webhook"
 
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
+	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
 	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
@@ -41,6 +42,7 @@ type Opts struct {
 	NewsV1          newsv1.NewsServiceServer
 	KitV1           kitv1.KitServiceServer
 	DonateV1        donatev1.DonateServiceServer
+	HungerGamesV1   hgv1.HungerGamesServiceServer
 	ServerInfoV1    serverinfov1.ServerInfoServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
@@ -60,6 +62,7 @@ type Server struct {
 	newsV1              newsv1.NewsServiceServer
 	kitV1               kitv1.KitServiceServer
 	donateV1            donatev1.DonateServiceServer
+	hungerGamesV1       hgv1.HungerGamesServiceServer
 	serverInfoV1        serverinfov1.ServerInfoServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
@@ -84,6 +87,7 @@ func New(opts Opts) *Server {
 		newsV1:              opts.NewsV1,
 		kitV1:               opts.KitV1,
 		donateV1:            opts.DonateV1,
+		hungerGamesV1:       opts.HungerGamesV1,
 		serverInfoV1:        opts.ServerInfoV1,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,

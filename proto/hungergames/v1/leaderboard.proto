@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package hungergames.v1;
+
+message LeaderboardEntry {
+  string player_id = 1;
+  string player_name = 2;
+  int32 elo = 3;
+  int32 wins = 4;
+  int32 kills = 5;
+  int32 rank = 6;
+}
+
+message ListLeaderboardRequest {
+  // Maximum number of entries. Defaults to 25.
+  int32 limit = 1;
+}
+
+message ListLeaderboardResponse {
+  repeated LeaderboardEntry entries = 1;
+}
