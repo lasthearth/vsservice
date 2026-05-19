@@ -83,7 +83,7 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 		return nil, status.Error(codes.Internal, "failed to upload image")
 	}
 
-	item := model.NewShopItem(req.Name, req.Description, imageURL, req.Price)
+	item := model.NewShopItem(req.Code, req.Name, req.Description, imageURL, req.Price)
 	if err := item.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -115,7 +115,7 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 		if newImageURL != "" {
 			imageURL = newImageURL
 		}
-		item.Update(req.Name, req.Description, imageURL, req.Price, req.IsAvailable)
+		item.Update(req.Code, req.Name, req.Description, imageURL, req.Price, req.IsAvailable)
 		if err := item.Validate(); err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}

@@ -47,7 +47,7 @@ func New(opts Opts) *Repository {
 	shopColl := opts.Database.Collection(shopItemCollName)
 	purchColl := opts.Database.Collection(purchaseCollName)
 	txColl := opts.Database.Collection(transactionCollName)
-	setupIndexes(walletColl, purchColl, txColl)
+	setupIndexes(walletColl, shopColl, purchColl, txColl)
 	return &Repository{
 		log:        log,
 		client:     opts.Client,
@@ -58,12 +58,16 @@ func New(opts Opts) *Repository {
 	}
 }
 
-func setupIndexes(walletColl, purchColl, txColl *mgo.Collection) {
+func setupIndexes(walletColl, shopColl, purchColl, txColl *mgo.Collection) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	walletColl.Indexes().CreateOne(ctx, mgo.IndexModel{
-		Keys:    bson.D{{Key: "player_id", Value: 1}},
+		Keys:    bson.D{{Key: "player_id", Value: 1}, {Key: "player_name", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+	shopColl.Indexes().CreateOne(ctx, mgo.IndexModel{
+		Keys:    bson.D{{Key: "code", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
 	purchColl.Indexes().CreateOne(ctx, mgo.IndexModel{
@@ -88,6 +92,7 @@ func walletFromDTO(d dto.Wallet) *model.Wallet {
 func shopItemFromDTO(d dto.ShopItem) *model.ShopItem {
 	return &model.ShopItem{
 		Id:          d.Model.Id.Hex(),
+		Code:        d.Code,
 		Name:        d.Name,
 		Description: d.Description,
 		ImageURL:    d.ImageURL,
@@ -100,6 +105,7 @@ func shopItemFromDTO(d dto.ShopItem) *model.ShopItem {
 
 func shopItemToDTO(m *model.ShopItem) dto.ShopItem {
 	d := dto.ShopItem{
+		Code:        m.Code,
 		Name:        m.Name,
 		Description: m.Description,
 		ImageURL:    m.ImageURL,

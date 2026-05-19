@@ -24,6 +24,7 @@ func (m *MapperImpl) ToShopItemProto(s *model.ShopItem) *donatev1.ShopItem {
 	}
 	return &donatev1.ShopItem{
 		Id:          s.Id,
+		Code:        s.Code,
 		Name:        s.Name,
 		Description: s.Description,
 		ImageUrl:    s.ImageURL,

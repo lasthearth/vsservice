@@ -7,8 +7,11 @@ import (
 )
 
 func TestNewShopItem(t *testing.T) {
-	item := model.NewShopItem("Skin", "Cool skin", "https://cdn/skin.png", 500)
+	item := model.NewShopItem("skin_default", "Skin", "Cool skin", "https://cdn/skin.png", 500)
 
+	if item.Code != "skin_default" {
+		t.Errorf("Code = %v, want skin_default", item.Code)
+	}
 	if item.Name != "Skin" {
 		t.Errorf("Name = %v, want Skin", item.Name)
 	}
@@ -28,22 +31,27 @@ func TestShopItem_Validate(t *testing.T) {
 	}{
 		{
 			"valid item",
-			func() *model.ShopItem { return model.NewShopItem("Skin", "desc", "url", 100) },
+			func() *model.ShopItem { return model.NewShopItem("skin_a", "Skin", "desc", "url", 100) },
 			false,
 		},
 		{
+			"empty code",
+			func() *model.ShopItem { return model.NewShopItem("", "Skin", "desc", "url", 100) },
+			true,
+		},
+		{
 			"empty name",
-			func() *model.ShopItem { return model.NewShopItem("", "desc", "url", 100) },
+			func() *model.ShopItem { return model.NewShopItem("skin_a", "", "desc", "url", 100) },
 			true,
 		},
 		{
 			"zero price",
-			func() *model.ShopItem { return model.NewShopItem("Skin", "desc", "url", 0) },
+			func() *model.ShopItem { return model.NewShopItem("skin_a", "Skin", "desc", "url", 0) },
 			true,
 		},
 		{
 			"negative price",
-			func() *model.ShopItem { return model.NewShopItem("Skin", "desc", "url", -1) },
+			func() *model.ShopItem { return model.NewShopItem("skin_a", "Skin", "desc", "url", -1) },
 			true,
 		},
 	}
@@ -58,9 +66,12 @@ func TestShopItem_Validate(t *testing.T) {
 }
 
 func TestShopItem_Update(t *testing.T) {
-	item := model.NewShopItem("Old", "old desc", "old-url", 100)
-	item.Update("New", "new desc", "new-url", 200, false)
+	item := model.NewShopItem("old_code", "Old", "old desc", "old-url", 100)
+	item.Update("new_code", "New", "new desc", "new-url", 200, false)
 
+	if item.Code != "new_code" {
+		t.Errorf("Code = %v, want new_code", item.Code)
+	}
 	if item.Name != "New" {
 		t.Errorf("Name = %v, want New", item.Name)
 	}
