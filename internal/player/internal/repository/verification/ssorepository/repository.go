@@ -34,7 +34,7 @@ func (r *Repository) GetUserRoles(ctx context.Context, userId string) ([]httpdto
 		r.logger.Error("HTTP request failed", zap.Error(err), zap.String("url", existingRolesUrl))
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	r.logger.Debug("received HTTP response", zap.Int("status_code", resp.StatusCode))
 
@@ -84,7 +84,7 @@ func (r *Repository) GetRoles(ctx context.Context) ([]httpdto.Role, error) {
 		r.logger.Error("HTTP request failed", zap.Error(err), zap.String("url", getRolesUrl))
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	r.logger.Debug("received HTTP response", zap.Int("status_code", resp.StatusCode))
 
@@ -148,7 +148,7 @@ func (r *Repository) UpdateUserRoles(ctx context.Context, userId string, roleIds
 		r.logger.Error("HTTP request failed", zap.Error(err), zap.String("url", updateRolesUrl))
 		return ErrHTTPRequestFailed
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	r.logger.Debug("received HTTP response", zap.Int("status_code", resp.StatusCode))
 
@@ -214,7 +214,7 @@ func (r *Repository) UpdateUserProfileNick(ctx context.Context, userID, nickname
 		r.logger.Error("HTTP request failed", zap.Error(err), zap.String("url", url))
 		return ErrHTTPRequestFailed
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	r.logger.Debug("received HTTP response", zap.Int("status_code", resp.StatusCode))
 

@@ -97,12 +97,14 @@ func (s *Service) AssignKitToUser(ctx context.Context, req *kitv1.AssignKitToUse
 
 	l.Info("publishing assignment notification event")
 
-	s.bus.kitGrantedPub.Publish(ctx, KitGrantedEvent{
+	if err := s.bus.kitGrantedPub.Publish(ctx, KitGrantedEvent{
 		AssignmentID: created.Id,
 		KitName:      req.KitName,
 		UserGameName: created.UserGameName,
 		UserID:       req.UserId,
-	})
+	}); err != nil {
+		l.Error("failed to publish kit granted event", zap.Error(err))
+	}
 
 	l.Info("kit assignment completed successfully")
 

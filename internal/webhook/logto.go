@@ -126,7 +126,9 @@ func (s *LogtoWebhookService) handleUserSignedIn(
 	s.log.Info("Processing PostSignIn event", zap.String("user_id", user.Id))
 	s.log.Debug("avatar", zap.String("avatar", user.Avatar))
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "User sign-in event processed successfully")
+	if _, err := fmt.Fprintf(w, "User sign-in event processed successfully"); err != nil {
+		s.log.Error("failed to write response", zap.Error(err))
+	}
 }
 
 // ValidateSignature validates the webhook request signature using HMAC-SHA256

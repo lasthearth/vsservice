@@ -55,7 +55,7 @@ func (r *Repository) UpdateUserAvatar(ctx context.Context, userID, avatar string
 		l.Error("HTTP request failed", zap.Error(err), zap.String("url", url))
 		return ErrHTTPRequestFailed
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	l.Debug("received HTTP response", zap.Int("status_code", resp.StatusCode))
 
@@ -97,7 +97,7 @@ func (r *Repository) getRoles(ctx context.Context) ([]httpdto.Role, error) {
 		r.logger.Error("HTTP request failed", zap.Error(err), zap.String("url", getRolesUrl))
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	r.logger.Debug("received HTTP response", zap.Int("status_code", resp.StatusCode))
 
@@ -163,7 +163,7 @@ func (r *Repository) GetAdminUsers(ctx context.Context) ([]string, error) {
 		l.Error("HTTP request failed", zap.Error(err), zap.String("url", url))
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	l.Debug("received HTTP response", zap.Int("status_code", resp.StatusCode))
 

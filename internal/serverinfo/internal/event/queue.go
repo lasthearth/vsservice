@@ -31,8 +31,12 @@ func (b *Bus) Subscribe() {
 }
 
 func (b *Bus) Unsubscribe() {
-	b.worldTime.Unsubscribe()
-	b.totalOnline.Unsubscribe()
+	if err := b.worldTime.Unsubscribe(); err != nil {
+		b.log.Error("failed to unsubscribe worldTime", zap.Error(err))
+	}
+	if err := b.totalOnline.Unsubscribe(); err != nil {
+		b.log.Error("failed to unsubscribe totalOnline", zap.Error(err))
+	}
 }
 
 func (b *Bus) onWorldTime(ctx context.Context, event WorldTimeEvent) error {

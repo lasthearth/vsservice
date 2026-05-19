@@ -14,6 +14,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
+	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
 	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
@@ -90,6 +91,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	newsv1.RegisterNewsServiceServer(srv, s.newsV1)
 	kitv1.RegisterKitServiceServer(srv, s.kitV1)
 	donatev1.RegisterDonateServiceServer(srv, s.donateV1)
+	hgv1.RegisterHungerGamesServiceServer(srv, s.hungerGamesV1)
 	serverinfov1.RegisterServerInfoServiceServer(srv, s.serverInfoV1)
 	reflection.Register(srv)
 
@@ -143,6 +145,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 		return errors.Wrap(err, "register donate service handler")
 	}
 
+	if err := hgv1.RegisterHungerGamesServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register hunger games service handler")
+	}
+
 	if err := serverinfov1.RegisterServerInfoServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register server info service handler")
 	}
@@ -169,9 +175,11 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 	}).Handler(mux)
 
 	// Register the Logto webhook endpoint
-	mux.HandlePath("POST", "/logtohook", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+	if err := mux.HandlePath("POST", "/logtohook", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 		s.logtoWebhookService.HandleWebhook(w, r)
-	})
+	}); err != nil {
+		return errors.Wrap(err, "register logto webhook handler")
+	}
 
 	wshandler := wsproxy.WebsocketProxy(handler)
 

@@ -16,6 +16,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
 const (
@@ -78,7 +79,7 @@ func New(opts Opts) *Repository {
 	srColl := opts.Database.Collection(settlementReqCollName)
 	siColl := opts.Database.Collection(settlementInvitationCollName)
 	logger := opts.Log.WithComponent("settlement-mongo-repository")
-	setupIndexes(sColl, srColl, siColl)
+	setupIndexes(logger, sColl, srColl, siColl)
 	return &Repository{
 		log:        logger,
 		cfg:        opts.Cfg,
@@ -91,6 +92,7 @@ func New(opts Opts) *Repository {
 }
 
 func setupIndexes(
+	log logger.Logger,
 	setColl *mongo.Collection,
 	setReqColl *mongo.Collection,
 	setInvColl *mongo.Collection,
@@ -98,41 +100,30 @@ func setupIndexes(
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	scIdx := mongo.IndexModel{
-		Keys: bson.D{
-			{
-				Key:   "leader.user_id",
-				Value: 1,
-			},
-			{
-				Key:   "members.user_id",
-				Value: 1,
-			},
-		},
-		Options: options.Index().SetUnique(true),
+	createIndex := func(coll *mongo.Collection, model mongo.IndexModel) {
+		if _, err := coll.Indexes().CreateOne(ctx, model); err != nil {
+			log.Error("failed to create index", zap.String("collection", coll.Name()), zap.Error(err))
+		}
 	}
-	setColl.Indexes().CreateOne(ctx, scIdx)
 
-	srIdx := mongo.IndexModel{
+	createIndex(setColl, mongo.IndexModel{
 		Keys: bson.D{
-			{Key: "leader.user_id", Value: -1},
+			{Key: "leader.user_id", Value: 1},
+			{Key: "members.user_id", Value: 1},
 		},
 		Options: options.Index().SetUnique(true),
-	}
-	setReqColl.Indexes().CreateOne(ctx, srIdx)
+	})
 
-	siIdx := mongo.IndexModel{
+	createIndex(setReqColl, mongo.IndexModel{
+		Keys:    bson.D{{Key: "leader.user_id", Value: -1}},
+		Options: options.Index().SetUnique(true),
+	})
+
+	createIndex(setInvColl, mongo.IndexModel{
 		Keys: bson.D{
-			{
-				Key:   "user_id",
-				Value: 1,
-			},
-			{
-				Key:   "settlement_id",
-				Value: 1,
-			},
+			{Key: "user_id", Value: 1},
+			{Key: "settlement_id", Value: 1},
 		},
 		Options: options.Index().SetUnique(true),
-	}
-	setInvColl.Indexes().CreateOne(ctx, siIdx)
+	})
 }

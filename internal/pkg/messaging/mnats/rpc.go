@@ -88,7 +88,11 @@ func (r *rpcResponder[Req, Resp]) Respond(handler func(ctx context.Context, req 
 		if err != nil {
 			return
 		}
-		r.nc.Publish(m.Reply, data)
+		if err := r.nc.Publish(m.Reply, data); err != nil {
+			if r.log != nil {
+				r.log.Error("publish response failed", zap.Error(err))
+			}
+		}
 	}
 
 	var err error

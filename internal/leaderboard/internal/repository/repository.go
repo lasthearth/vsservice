@@ -29,35 +29,35 @@ func (r *Repository) listEntries(
 ) ([]*model.Entry, error) {
 	pipeline := bson.A{
 		bson.D{
-			{"$group",
-				bson.D{
-					{"_id", "$user_game_name"},
-					{"total_hours", bson.D{{"$sum", "$hours_played"}}},
-					{"total_deaths", bson.D{{"$sum", "$death_count"}}},
-					{"total_kills", bson.D{{"$sum", "$players_killed"}}},
-				},
-			},
+			{Key: "$group", Value: bson.D{
+				{Key: "_id", Value: "$user_game_name"},
+				{Key: "total_hours", Value: bson.D{{Key: "$sum", Value: "$hours_played"}}},
+				{Key: "total_deaths", Value: bson.D{{Key: "$sum", Value: "$death_count"}}},
+				{Key: "total_kills", Value: bson.D{{Key: "$sum", Value: "$players_killed"}}},
+			}},
 		},
 		bson.D{
-			{"$project",
-				bson.D{
-					{"_id", 0},
-					{"user_game_name", "$_id"},
-					{"total_hours", 1},
-					{"total_deaths", 1},
-					{"total_kills", 1},
-				},
-			},
+			{Key: "$project", Value: bson.D{
+				{Key: "_id", Value: 0},
+				{Key: "user_game_name", Value: "$_id"},
+				{Key: "total_hours", Value: 1},
+				{Key: "total_deaths", Value: 1},
+				{Key: "total_kills", Value: 1},
+			}},
 		},
-		bson.D{{"$sort", bson.D{{filter, -1}}}},
-		bson.D{{"$limit", limit}},
+		bson.D{{Key: "$sort", Value: bson.D{{Key: filter, Value: -1}}}},
+		bson.D{{Key: "$limit", Value: limit}},
 	}
 	cursor, err := r.coll.Aggregate(ctx, pipeline)
 	if err != nil {
 		r.log.Error("aggregation error", zap.Error(err))
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			r.log.Error("cursor close failed", zap.Error(err))
+		}
+	}()
 
 	var rawEntries []*mongodto.Entry
 	if err = cursor.All(ctx, &rawEntries); err != nil {

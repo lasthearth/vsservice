@@ -30,7 +30,7 @@ func (r *Repository) GetTagsByIds(ctx context.Context, ids []string) ([]model.Ta
 		return nil, err
 	}
 
-	defer cursor.Close(ctx)
+	defer func() { _ = cursor.Close(ctx) }()
 	err = cursor.All(ctx, &dtos)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (r *Repository) GetTags(ctx context.Context) ([]model.Tag, error) {
 		return nil, err
 	}
 
-	defer cursor.Close(ctx)
+	defer func() { _ = cursor.Close(ctx) }()
 	err = cursor.All(ctx, &dtos)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func (r *Repository) GetAllTags(ctx context.Context, onlyActive bool) ([]*model.
 	if err != nil {
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() { _ = cursor.Close(ctx) }()
 
 	var tags []*model.Tag
 	if err = cursor.All(ctx, &tags); err != nil {

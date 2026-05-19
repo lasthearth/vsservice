@@ -112,7 +112,9 @@ func Find[T Identifiable](
 ) (*Response[[]T], error) {
 	pgOpts := defaultOptions()
 	for _, opt := range opts {
-		opt(&pgOpts)
+		if err := opt(&pgOpts); err != nil {
+			return nil, err
+		}
 	}
 
 	findOpts := options.Find().SetSort(pgOpts.sort).SetLimit(int64(pgOpts.limit))
@@ -120,7 +122,7 @@ func Find[T Identifiable](
 	if err != nil {
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() { _ = cursor.Close(ctx) }()
 
 	var datas []T
 	if err := cursor.All(ctx, &datas); err != nil {

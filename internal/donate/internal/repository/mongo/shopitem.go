@@ -134,7 +134,11 @@ func (r *Repository) ListShopItems(ctx context.Context, availableOnly bool) ([]*
 		l.Error("failed to find shop items", zap.Error(err))
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			l.Error("cursor close failed", zap.Error(err))
+		}
+	}()
 
 	var dtos []dto.ShopItem
 	if err := cursor.All(ctx, &dtos); err != nil {

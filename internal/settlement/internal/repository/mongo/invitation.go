@@ -30,7 +30,11 @@ func (r *Repository) GetUserInvitations(ctx context.Context, userID string) ([]m
 		l.Error("failed to get user invitations", zap.Error(err))
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			l.Error("cursor close failed", zap.Error(err))
+		}
+	}()
 
 	var invitations []invitationdto.Invitation
 	if err := cursor.All(ctx, &invitations); err != nil {
@@ -135,7 +139,11 @@ func (r *Repository) GetInvitations(ctx context.Context, settlementID string) ([
 		l.Error("failed to get invitations", zap.Error(err))
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			l.Error("cursor close failed", zap.Error(err))
+		}
+	}()
 
 	var invitations []invitationdto.Invitation
 	if err := cursor.All(ctx, &invitations); err != nil {

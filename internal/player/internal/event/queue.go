@@ -47,9 +47,15 @@ func (b *Bus) Subscribe() {
 }
 
 func (b *Bus) Unsubscribe() {
-	b.playerTryJoin.Unsubscribe()
-	b.playerJoin.Unsubscribe()
-	b.playerLeave.Unsubscribe()
+	if err := b.playerTryJoin.Unsubscribe(); err != nil {
+		b.log.Error("failed to unsubscribe playerTryJoin", zap.Error(err))
+	}
+	if err := b.playerJoin.Unsubscribe(); err != nil {
+		b.log.Error("failed to unsubscribe playerJoin", zap.Error(err))
+	}
+	if err := b.playerLeave.Unsubscribe(); err != nil {
+		b.log.Error("failed to unsubscribe playerLeave", zap.Error(err))
+	}
 }
 
 func (b *Bus) onPlayerTryJoin(ctx context.Context, data PlayerTryJoinReqEvent) (PlayerTryJoinRespEvent, error) {

@@ -110,7 +110,11 @@ func (r *Repository) ListPurchasesByPlayerID(ctx context.Context, playerID strin
 		l.Error("failed to find purchases", zap.Error(err))
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			l.Error("cursor close failed", zap.Error(err))
+		}
+	}()
 
 	var dtos []dto.Purchase
 	if err := cursor.All(ctx, &dtos); err != nil {

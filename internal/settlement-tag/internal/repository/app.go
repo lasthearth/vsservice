@@ -72,19 +72,19 @@ func setupIndexes(tagsColl, settlementsColl *mongo.Collection) {
 		},
 		Options: options.Index().SetUnique(true),
 	}
-	tagsColl.Indexes().CreateOne(ctx, tagNameIdx)
+	_, _ = tagsColl.Indexes().CreateOne(ctx, tagNameIdx)
 
 	tagActiveIdx := mongo.IndexModel{
 		Keys: bson.D{
 			{Key: "is_active", Value: 1},
 		},
 	}
-	tagsColl.Indexes().CreateOne(ctx, tagActiveIdx)
+	_, _ = tagsColl.Indexes().CreateOne(ctx, tagActiveIdx)
 
 	settlementTagIdx := mongo.IndexModel{
 		Keys: bson.D{
 			{Key: "tag_ids", Value: 1},
 		},
 	}
-	settlementsColl.Indexes().CreateOne(ctx, settlementTagIdx)
+	_, _ = settlementsColl.Indexes().CreateOne(ctx, settlementTagIdx)
 }

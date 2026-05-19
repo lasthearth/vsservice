@@ -54,7 +54,11 @@ func (r *Repository) GetRandomQuestions(ctx context.Context, count int) ([]*mode
 		r.log.Error("aggregate error", zap.Error(err), zap.Int("requested_count", count))
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if err := cur.Close(ctx); err != nil {
+			r.log.Error("cursor close failed", zap.Error(err))
+		}
+	}()
 
 	var questions []questiondto.Question
 	if err := cur.All(ctx, &questions); err != nil {
@@ -83,7 +87,11 @@ func (r *Repository) ListQuestions(ctx context.Context) ([]*model.Question, erro
 		r.log.Error("find error", zap.Error(err))
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if err := cur.Close(ctx); err != nil {
+			r.log.Error("cursor close failed", zap.Error(err))
+		}
+	}()
 
 	var questions []questiondto.Question
 	if err := cur.All(ctx, &questions); err != nil {

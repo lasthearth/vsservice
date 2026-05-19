@@ -96,7 +96,7 @@ func (r *Repository) SearchUsers(
 	if err != nil {
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() { _ = cursor.Close(ctx) }()
 
 	var dtos []dto.Player
 	if err := cursor.All(ctx, &dtos); err != nil {

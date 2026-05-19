@@ -90,9 +90,9 @@ func (r *Repository) UpdateWallet(
 		"player_id":   updated.PlayerID,
 		"player_name": updated.PlayerName,
 		"coins":       updated.Coins,
-		"created_at":  d.Model.CreatedAt,
+		"created_at":  d.CreatedAt,
 		"updated_at":  updated.UpdatedAt,
-		"_id":         d.Model.Id,
+		"_id":         d.Id,
 	})
 	if err != nil {
 		l.Error("failed to replace wallet", zap.Error(err))

@@ -58,17 +58,25 @@ func (s *Subscriber[T]) Subscribe(handler func(ctx context.Context, event T) err
 			if s.log != nil {
 				s.log.Error("unmarshal failed", zap.Error(err))
 			}
-			msg.Nak()
+			if nakErr := msg.Nak(); nakErr != nil && s.log != nil {
+				s.log.Error("msg nak failed", zap.Error(nakErr))
+			}
+			return
 		}
 
 		if err := handler(ctx, event); err != nil {
 			if s.log != nil {
 				s.log.Error("handler failed", zap.Error(err))
 			}
-			msg.Nak()
+			if nakErr := msg.Nak(); nakErr != nil && s.log != nil {
+				s.log.Error("msg nak failed", zap.Error(nakErr))
+			}
+			return
 		}
 
-		msg.Ack()
+		if ackErr := msg.Ack(); ackErr != nil && s.log != nil {
+			s.log.Error("msg ack failed", zap.Error(ackErr))
+		}
 	})
 	if err != nil {
 		return err

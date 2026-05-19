@@ -157,7 +157,11 @@ func (r *Repository) GetVerificationRequests(ctx context.Context) ([]verificatio
 		l.Error("find error", zap.Error(err))
 		return nil, err
 	}
-	defer finded.Close(ctx)
+	defer func() {
+		if err := finded.Close(ctx); err != nil {
+			l.Error("cursor close failed", zap.Error(err))
+		}
+	}()
 
 	var verifications []verificationdto.Verification
 	if err := finded.All(ctx, &verifications); err != nil {
@@ -187,7 +191,10 @@ func (r *Repository) Update(ctx context.Context, userId string, v verification.V
 	// compute fields needed for update
 	dtoBytes, _ := bson.Marshal(dto)
 	var dtoMap bson.M
-	bson.Unmarshal(dtoBytes, &dtoMap)
+	if err := bson.Unmarshal(dtoBytes, &dtoMap); err != nil {
+		l.Error("failed to unmarshal dto", zap.Error(err))
+		return err
+	}
 	delete(dtoMap, "_id")
 	delete(dtoMap, "created_at")
 	dtoMap["updated_at"] = time.Now()

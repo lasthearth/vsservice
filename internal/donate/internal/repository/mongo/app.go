@@ -13,6 +13,7 @@ import (
 	mgo "go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
 const (
@@ -47,7 +48,7 @@ func New(opts Opts) *Repository {
 	shopColl := opts.Database.Collection(shopItemCollName)
 	purchColl := opts.Database.Collection(purchaseCollName)
 	txColl := opts.Database.Collection(transactionCollName)
-	setupIndexes(walletColl, shopColl, purchColl, txColl)
+	setupIndexes(log, walletColl, shopColl, purchColl, txColl)
 	return &Repository{
 		log:        log,
 		client:     opts.Client,
@@ -58,48 +59,54 @@ func New(opts Opts) *Repository {
 	}
 }
 
-func setupIndexes(walletColl, shopColl, purchColl, txColl *mgo.Collection) {
+func setupIndexes(log logger.Logger, walletColl, shopColl, purchColl, txColl *mgo.Collection) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	walletColl.Indexes().CreateOne(ctx, mgo.IndexModel{
+	createIndex := func(coll *mgo.Collection, model mgo.IndexModel) {
+		if _, err := coll.Indexes().CreateOne(ctx, model); err != nil {
+			log.Error("failed to create index", zap.String("collection", coll.Name()), zap.Error(err))
+		}
+	}
+
+	createIndex(walletColl, mgo.IndexModel{
 		Keys:    bson.D{{Key: "player_id", Value: 1}, {Key: "player_name", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
-	shopColl.Indexes().CreateOne(ctx, mgo.IndexModel{
+	createIndex(shopColl, mgo.IndexModel{
 		Keys:    bson.D{{Key: "code", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
-	purchColl.Indexes().CreateOne(ctx, mgo.IndexModel{
+	createIndex(purchColl, mgo.IndexModel{
 		Keys: bson.D{{Key: "player_id", Value: 1}},
 	})
-	txColl.Indexes().CreateOne(ctx, mgo.IndexModel{
+	createIndex(txColl, mgo.IndexModel{
 		Keys: bson.D{{Key: "player_id", Value: 1}},
 	})
 }
 
 func walletFromDTO(d dto.Wallet) *model.Wallet {
 	return &model.Wallet{
-		Id:         d.Model.Id.Hex(),
+		Id:         d.Id.Hex(),
 		PlayerID:   d.PlayerID,
 		PlayerName: d.PlayerName,
 		Coins:      d.Coins,
-		CreatedAt:  d.Model.CreatedAt,
-		UpdatedAt:  d.Model.UpdatedAt,
+		CreatedAt:  d.CreatedAt,
+		UpdatedAt:  d.UpdatedAt,
 	}
 }
 
 func shopItemFromDTO(d dto.ShopItem) *model.ShopItem {
 	return &model.ShopItem{
-		Id:          d.Model.Id.Hex(),
+		Id:          d.Id.Hex(),
 		Code:        d.Code,
 		Name:        d.Name,
 		Description: d.Description,
 		ImageURL:    d.ImageURL,
 		Price:       d.Price,
 		IsAvailable: d.IsAvailable,
-		CreatedAt:   d.Model.CreatedAt,
-		UpdatedAt:   d.Model.UpdatedAt,
+		CreatedAt:   d.CreatedAt,
+		UpdatedAt:   d.UpdatedAt,
 	}
 }
 
@@ -114,36 +121,36 @@ func shopItemToDTO(m *model.ShopItem) dto.ShopItem {
 	}
 	if m.Id != "" {
 		if oid, err := mongox.ParseObjectID(m.Id); err == nil {
-			d.Model.Id = oid
+			d.Id = oid
 		}
 	}
-	d.Model.CreatedAt = m.CreatedAt
-	d.Model.UpdatedAt = m.UpdatedAt
+	d.CreatedAt = m.CreatedAt
+	d.UpdatedAt = m.UpdatedAt
 	return d
 }
 
 func purchaseFromDTO(d dto.Purchase) *model.Purchase {
 	return &model.Purchase{
-		Id:         d.Model.Id.Hex(),
+		Id:         d.Id.Hex(),
 		PlayerID:   d.PlayerID,
 		PlayerName: d.PlayerName,
 		ItemID:     d.ItemID,
 		ItemName:   d.ItemName,
 		PricePaid:  d.PricePaid,
 		Status:     model.PurchaseStatus(d.Status),
-		CreatedAt:  d.Model.CreatedAt,
+		CreatedAt:  d.CreatedAt,
 		RefundedAt: d.RefundedAt,
 	}
 }
 
 func txFromDTO(d dto.Transaction) *model.Transaction {
 	return &model.Transaction{
-		Id:         d.Model.Id.Hex(),
+		Id:         d.Id.Hex(),
 		PlayerID:   d.PlayerID,
 		Amount:     d.Amount,
 		Type:       model.TxType(d.Type),
 		Reason:     d.Reason,
 		PurchaseID: d.PurchaseID,
-		CreatedAt:  d.Model.CreatedAt,
+		CreatedAt:  d.CreatedAt,
 	}
 }

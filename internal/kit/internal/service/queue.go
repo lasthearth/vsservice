@@ -22,7 +22,9 @@ func (b *Bus) Subscribe() {
 }
 
 func (b *Bus) Unsubscribe() {
-	b.kitClaimedSub.Unsubscribe()
+	if err := b.kitClaimedSub.Unsubscribe(); err != nil {
+		b.log.Error("failed to unsubscribe from kit claimed queue", zap.Error(err))
+	}
 }
 
 func (b *Bus) onKitReceived(ctx context.Context, data KitClaimedEvent) error {

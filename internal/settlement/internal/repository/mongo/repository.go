@@ -196,7 +196,11 @@ func (r *Repository) GetAllSettlements(ctx context.Context) ([]model.Settlement,
 		r.log.Error("find error", zap.Error(err))
 		return nil, err
 	}
-	defer found.Close(ctx)
+	defer func() {
+		if err := found.Close(ctx); err != nil {
+			r.log.Error("cursor close failed", zap.Error(err))
+		}
+	}()
 
 	var settlements []settlementdto.Settlement
 	if err := found.All(ctx, &settlements); err != nil {

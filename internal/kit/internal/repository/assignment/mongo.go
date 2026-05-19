@@ -132,7 +132,11 @@ func (r *Repository) GetAssignmentsByUserID(ctx context.Context, userID string) 
 		l.Error("failed to find assignments", zap.Error(err))
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			l.Error("cursor close failed", zap.Error(err))
+		}
+	}()
 
 	var dtos []dto.Assignment
 	if err := cursor.All(ctx, &dtos); err != nil {
