@@ -10,6 +10,7 @@ import (
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	"github.com/lasthearth/vsservice/internal/news/internal/model"
 	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
+	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -41,11 +42,17 @@ func (s *Service) CreateNews(ctx context.Context, req *newsv1.CreateNewsRequest)
 		return nil, err
 	}
 
+	userID, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	url := fmt.Sprintf("%s/%s/%s", s.config.CdnUrl, bucketName, path)
 	news := &model.News{
-		Title:   req.Title,
-		Content: req.Content,
-		Preview: url,
+		Title:     req.Title,
+		Content:   req.Content,
+		Preview:   url,
+		CreatedBy: userID,
 	}
 
 	err = s.validator.Struct(news)
@@ -95,12 +102,17 @@ func (s *Service) ListNews(ctx context.Context, req *newsv1.ListNewsRequest) (*n
 
 // DeleteNews implements newsv1.NewsServiceServer.
 func (s *Service) DeleteNews(ctx context.Context, req *newsv1.DeleteNewsRequest) (*emptypb.Empty, error) {
-	_, err := s.repo.GetNewsById(ctx, req.Id)
+	userID, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.repo.DeleteNews(ctx, req.Id)
+	_, err = s.repo.GetNewsById(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.repo.SoftDeleteNews(ctx, req.Id, userID)
 	if err != nil {
 		return nil, err
 	}
