@@ -11,6 +11,8 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
+//go:generate goverter gen github.com/lasthearth/vsservice/internal/news/internal/service
+
 // goverter:converter
 // goverter:output:file sermapper/mapper.go
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTimestamp

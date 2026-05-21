@@ -17,6 +17,7 @@ func (c *MapperImpl) ToProto(source model.News) *v1.News {
 	newsv1News.Title = source.Title
 	newsv1News.Content = source.Content
 	newsv1News.Preview = source.Preview
+	newsv1News.ViewCount = source.ViewCount
 	newsv1News.CreatedAt = goverter.TimeToTimestamp(source.CreatedAt)
 	newsv1News.CreatedBy = source.CreatedBy
 	return &newsv1News
