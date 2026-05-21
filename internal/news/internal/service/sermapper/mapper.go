@@ -6,6 +6,7 @@ package sermapper
 import (
 	v1 "github.com/lasthearth/vsservice/gen/news/v1"
 	model "github.com/lasthearth/vsservice/internal/news/internal/model"
+	goverter "github.com/lasthearth/vsservice/internal/pkg/goverter"
 )
 
 type MapperImpl struct{}
@@ -16,6 +17,8 @@ func (c *MapperImpl) ToProto(source model.News) *v1.News {
 	newsv1News.Title = source.Title
 	newsv1News.Content = source.Content
 	newsv1News.Preview = source.Preview
+	newsv1News.CreatedAt = goverter.TimeToTimestamp(source.CreatedAt)
+	newsv1News.CreatedBy = source.CreatedBy
 	return &newsv1News
 }
 func (c *MapperImpl) ToProtos(source []model.News) []*v1.News {

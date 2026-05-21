@@ -4,6 +4,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/lasthearth/vsservice/internal/news/internal/dto"
 	"github.com/lasthearth/vsservice/internal/news/internal/ierror"
@@ -82,6 +83,7 @@ func (r *Repository) ListNews(
 		ctx,
 		r.coll,
 		pagination.WithLimit(15),
+		pagination.WithFilter(bson.M{"deleted_at": bson.M{"$exists": false}}),
 	)
 	if err != nil {
 		l.Error("failed to list news", zap.Error(err))
@@ -108,7 +110,7 @@ func (r *Repository) GetNewsById(ctx context.Context, id string) (*model.News, e
 		return nil, ierror.ErrNotFound
 	}
 
-	finded := r.coll.FindOne(ctx, bson.M{"_id": objID})
+	finded := r.coll.FindOne(ctx, bson.M{"_id": objID, "deleted_at": bson.M{"$exists": false}})
 	err = finded.Err()
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -130,13 +132,13 @@ func (r *Repository) GetNewsById(ctx context.Context, id string) (*model.News, e
 	return &newsModel, nil
 }
 
-// DeleteNews implements service.Repository.
-func (r *Repository) DeleteNews(ctx context.Context, id string) error {
+// SoftDeleteNews implements service.Repository.
+func (r *Repository) SoftDeleteNews(ctx context.Context, id string, deletedBy string) error {
 	l := r.logger.
-		WithMethod("delete").
-		With(zap.String("id", id))
+		WithMethod("soft_delete").
+		With(zap.String("id", id), zap.String("deleted_by", deletedBy))
 
-	l.Info("deleting news")
+	l.Info("soft deleting news")
 
 	objID, err := bson.ObjectIDFromHex(id)
 	if err != nil {
@@ -144,18 +146,21 @@ func (r *Repository) DeleteNews(ctx context.Context, id string) error {
 		return ierror.ErrNotFound
 	}
 
-	result, err := r.coll.DeleteOne(ctx, bson.M{"_id": objID})
+	now := time.Now()
+	update := bson.M{"$set": bson.M{"deleted_at": now, "deleted_by": deletedBy}}
+
+	result, err := r.coll.UpdateOne(ctx, bson.M{"_id": objID}, update)
 	if err != nil {
-		l.Error("failed to delete news", zap.Error(err))
+		l.Error("failed to soft delete news", zap.Error(err))
 		return err
 	}
 
-	if result.DeletedCount == 0 {
-		l.Warn("news not found for deletion")
+	if result.MatchedCount == 0 {
+		l.Warn("news not found for soft deletion")
 		return ierror.ErrNotFound
 	}
 
-	l.Info("news deleted successfully", zap.Int64("deleted_count", result.DeletedCount))
+	l.Info("news soft deleted successfully")
 	return nil
 }
 

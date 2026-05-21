@@ -2929,6 +2929,11 @@ components:
                     type: string
                 view_count:
                     type: string
+                created_at:
+                    type: string
+                    format: date-time
+                created_by:
+                    type: string
         Notification:
             required:
                 - user_id

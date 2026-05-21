@@ -8,5 +8,8 @@ type News struct {
 	Preview   string
 	Content   string `validate:"required"`
 	CreatedAt time.Time
+	CreatedBy string
+	DeletedAt *time.Time
+	DeletedBy *string
 	ViewCount int64
 }
