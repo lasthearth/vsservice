@@ -88,9 +88,12 @@ func (s *Service) ListNews(ctx context.Context, req *newsv1.ListNewsRequest) (*n
 		return nil, err
 	}
 
+	userID, _ := interceptor.GetUserID(ctx)
 	for _, v := range news {
-		if err := s.repo.IncrementViewCount(ctx, v.Id); err != nil {
-			s.logger.Error("failed to increment view count", zap.Error(err))
+		if userID != "" {
+			if err := s.repo.IncrementViewCount(ctx, v.Id, userID); err != nil {
+				s.logger.Error("failed to increment view count", zap.Error(err))
+			}
 		}
 	}
 
@@ -122,8 +125,10 @@ func (s *Service) DeleteNews(ctx context.Context, req *newsv1.DeleteNewsRequest)
 
 // GetNews implements newsv1.NewsServiceServer.
 func (s *Service) GetNews(ctx context.Context, req *newsv1.GetNewsRequest) (*newsv1.News, error) {
-	if err := s.repo.IncrementViewCount(ctx, req.Id); err != nil {
-		s.logger.Error("failed to increment view count", zap.Error(err))
+	if userID, err := interceptor.GetUserID(ctx); err == nil {
+		if err := s.repo.IncrementViewCount(ctx, req.Id, userID); err != nil {
+			s.logger.Error("failed to increment view count", zap.Error(err))
+		}
 	}
 
 	news, err := s.repo.GetNewsById(ctx, req.Id)

@@ -16,6 +16,7 @@ type News struct {
 	DeletedAt *time.Time   `bson:"deleted_at,omitempty"`
 	DeletedBy *string      `bson:"deleted_by,omitempty"`
 	ViewCount int64        `bson:"view_count"`
+	ViewerIDs []string     `bson:"viewer_ids,omitempty"`
 }
 
 func (n News) Id() bson.ObjectID {

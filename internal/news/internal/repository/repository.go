@@ -21,7 +21,7 @@ import (
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTime
 type Mapper interface {
 	FromModels([]model.News) []dto.News
-	// goverter:ignore Model
+	// goverter:ignore Model ViewerIDs
 	FromModel(model.News) dto.News
 
 	ToModels(dto []dto.News) []model.News
@@ -165,10 +165,10 @@ func (r *Repository) SoftDeleteNews(ctx context.Context, id string, deletedBy st
 }
 
 // IncrementViewCount implements service.Repository.
-func (r *Repository) IncrementViewCount(ctx context.Context, id string) error {
+func (r *Repository) IncrementViewCount(ctx context.Context, id string, userID string) error {
 	l := r.logger.
 		WithMethod("increment_view_count").
-		With(zap.String("id", id))
+		With(zap.String("id", id), zap.String("user_id", userID))
 
 	l.Info("incrementing view count")
 
@@ -178,8 +178,14 @@ func (r *Repository) IncrementViewCount(ctx context.Context, id string) error {
 		return ierror.ErrNotFound
 	}
 
-	filter := bson.M{"_id": objID}
-	update := bson.M{"$inc": bson.M{"view_count": 1}}
+	filter := bson.M{
+		"_id":        objID,
+		"viewer_ids": bson.M{"$ne": userID},
+	}
+	update := bson.M{
+		"$addToSet": bson.M{"viewer_ids": userID},
+		"$inc":      bson.M{"view_count": 1},
+	}
 
 	_, err = r.coll.UpdateOne(ctx, filter, update)
 	if err != nil {
