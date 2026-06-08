@@ -9,6 +9,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/news/internal/dto"
 	"github.com/lasthearth/vsservice/internal/news/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/news/internal/model"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox/pagination"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -39,7 +40,7 @@ func (r *Repository) CreateNews(ctx context.Context, news *model.News) (*model.N
 	l.Info("creating news")
 
 	ndto := r.mapper.FromModel(*news)
-
+	ndto.Model = mongox.NewModel()
 	ins, err := r.coll.InsertOne(ctx, ndto)
 	if err != nil {
 		return nil, err
