@@ -30,6 +30,10 @@ func AuthMatcher(ctx context.Context, c interceptors.CallMeta, cfg config.Config
 		return false
 	case "/verification.v1.VerificationService/VerifyStatusByName":
 		return false
+	case "/news.v1.NewsService/ListNews":
+		return false
+	case "/news.v1.NewsService/GetNews":
+		return false
 	case "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo":
 		return false
 	default:
