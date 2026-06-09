@@ -47,6 +47,10 @@ func (m *MapperImpl) ToPurchaseProto(p *model.Purchase) *donatev1.Purchase {
 	if p == nil {
 		return nil
 	}
+	issuedBy := ""
+	if p.IssuedBy != nil {
+		issuedBy = *p.IssuedBy
+	}
 	return &donatev1.Purchase{
 		Id:         p.Id,
 		PlayerId:   p.PlayerID,
@@ -57,6 +61,8 @@ func (m *MapperImpl) ToPurchaseProto(p *model.Purchase) *donatev1.Purchase {
 		Status:     string(p.Status),
 		CreatedAt:  goverter.TimeToTimestamp(p.CreatedAt),
 		RefundedAt: goverter.TimePtrToTimestamp(p.RefundedAt),
+		IssuedAt:   goverter.TimePtrToTimestamp(p.IssuedAt),
+		IssuedBy:   issuedBy,
 	}
 }
 

@@ -335,6 +335,80 @@ func local_request_DonateService_AdminListPurchases_0(ctx context.Context, marsh
 	return msg, metadata, err
 }
 
+var filter_DonateService_AdminListPendingPurchases_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+
+func request_DonateService_AdminListPendingPurchases_0(ctx context.Context, marshaler runtime.Marshaler, client DonateServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq AdminListPendingPurchasesRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_DonateService_AdminListPendingPurchases_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := client.AdminListPendingPurchases(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_DonateService_AdminListPendingPurchases_0(ctx context.Context, marshaler runtime.Marshaler, server DonateServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq AdminListPendingPurchasesRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_DonateService_AdminListPendingPurchases_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.AdminListPendingPurchases(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_DonateService_MarkPurchaseIssued_0(ctx context.Context, marshaler runtime.Marshaler, client DonateServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq MarkPurchaseIssuedRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	val, ok := pathParams["purchase_id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "purchase_id")
+	}
+	protoReq.PurchaseId, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "purchase_id", err)
+	}
+	msg, err := client.MarkPurchaseIssued(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_DonateService_MarkPurchaseIssued_0(ctx context.Context, marshaler runtime.Marshaler, server DonateServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq MarkPurchaseIssuedRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	val, ok := pathParams["purchase_id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "purchase_id")
+	}
+	protoReq.PurchaseId, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "purchase_id", err)
+	}
+	msg, err := server.MarkPurchaseIssued(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 func request_DonateService_GetMyBalance_0(ctx context.Context, marshaler runtime.Marshaler, client DonateServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq GetMyBalanceRequest
@@ -597,6 +671,46 @@ func RegisterDonateServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 		forward_DonateService_AdminListPurchases_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_DonateService_AdminListPendingPurchases_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/donate.v1.DonateService/AdminListPendingPurchases", runtime.WithHTTPPathPattern("/v1/donate/purchases/pending"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_DonateService_AdminListPendingPurchases_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_DonateService_AdminListPendingPurchases_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_DonateService_MarkPurchaseIssued_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/donate.v1.DonateService/MarkPurchaseIssued", runtime.WithHTTPPathPattern("/v1/donate/purchases/{purchase_id}:mark-issued"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_DonateService_MarkPurchaseIssued_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_DonateService_MarkPurchaseIssued_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodGet, pattern_DonateService_GetMyBalance_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -853,6 +967,40 @@ func RegisterDonateServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 		forward_DonateService_AdminListPurchases_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_DonateService_AdminListPendingPurchases_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/donate.v1.DonateService/AdminListPendingPurchases", runtime.WithHTTPPathPattern("/v1/donate/purchases/pending"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_DonateService_AdminListPendingPurchases_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_DonateService_AdminListPendingPurchases_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_DonateService_MarkPurchaseIssued_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/donate.v1.DonateService/MarkPurchaseIssued", runtime.WithHTTPPathPattern("/v1/donate/purchases/{purchase_id}:mark-issued"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_DonateService_MarkPurchaseIssued_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_DonateService_MarkPurchaseIssued_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodGet, pattern_DonateService_GetMyBalance_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -925,31 +1073,35 @@ func RegisterDonateServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 }
 
 var (
-	pattern_DonateService_AddCoins_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "donate", "players", "player_id", "coins"}, "add"))
-	pattern_DonateService_DeductCoins_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "donate", "players", "player_id", "coins"}, "deduct"))
-	pattern_DonateService_CreateShopItem_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "shop", "items"}, ""))
-	pattern_DonateService_UpdateShopItem_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "donate", "shop", "items", "id"}, ""))
-	pattern_DonateService_DeleteShopItem_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "donate", "shop", "items", "id"}, ""))
-	pattern_DonateService_Refund_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "donate", "purchases", "purchase_id"}, "refund"))
-	pattern_DonateService_ListTransactions_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "donate", "players", "player_id", "transactions"}, ""))
-	pattern_DonateService_AdminListPurchases_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "donate", "players", "player_id", "purchases"}, ""))
-	pattern_DonateService_GetMyBalance_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "me", "balance"}, ""))
-	pattern_DonateService_ListShopItems_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "shop", "items"}, ""))
-	pattern_DonateService_BuyItem_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "donate", "shop", "items", "item_id"}, "buy"))
-	pattern_DonateService_ListMyPurchases_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "me", "purchases"}, ""))
+	pattern_DonateService_AddCoins_0                  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "donate", "players", "player_id", "coins"}, "add"))
+	pattern_DonateService_DeductCoins_0               = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "donate", "players", "player_id", "coins"}, "deduct"))
+	pattern_DonateService_CreateShopItem_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "shop", "items"}, ""))
+	pattern_DonateService_UpdateShopItem_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "donate", "shop", "items", "id"}, ""))
+	pattern_DonateService_DeleteShopItem_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "donate", "shop", "items", "id"}, ""))
+	pattern_DonateService_Refund_0                    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "donate", "purchases", "purchase_id"}, "refund"))
+	pattern_DonateService_ListTransactions_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "donate", "players", "player_id", "transactions"}, ""))
+	pattern_DonateService_AdminListPurchases_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"v1", "donate", "players", "player_id", "purchases"}, ""))
+	pattern_DonateService_AdminListPendingPurchases_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "purchases", "pending"}, ""))
+	pattern_DonateService_MarkPurchaseIssued_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "donate", "purchases", "purchase_id"}, "mark-issued"))
+	pattern_DonateService_GetMyBalance_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "me", "balance"}, ""))
+	pattern_DonateService_ListShopItems_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "shop", "items"}, ""))
+	pattern_DonateService_BuyItem_0                   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "donate", "shop", "items", "item_id"}, "buy"))
+	pattern_DonateService_ListMyPurchases_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "me", "purchases"}, ""))
 )
 
 var (
-	forward_DonateService_AddCoins_0           = runtime.ForwardResponseMessage
-	forward_DonateService_DeductCoins_0        = runtime.ForwardResponseMessage
-	forward_DonateService_CreateShopItem_0     = runtime.ForwardResponseMessage
-	forward_DonateService_UpdateShopItem_0     = runtime.ForwardResponseMessage
-	forward_DonateService_DeleteShopItem_0     = runtime.ForwardResponseMessage
-	forward_DonateService_Refund_0             = runtime.ForwardResponseMessage
-	forward_DonateService_ListTransactions_0   = runtime.ForwardResponseMessage
-	forward_DonateService_AdminListPurchases_0 = runtime.ForwardResponseMessage
-	forward_DonateService_GetMyBalance_0       = runtime.ForwardResponseMessage
-	forward_DonateService_ListShopItems_0      = runtime.ForwardResponseMessage
-	forward_DonateService_BuyItem_0            = runtime.ForwardResponseMessage
-	forward_DonateService_ListMyPurchases_0    = runtime.ForwardResponseMessage
+	forward_DonateService_AddCoins_0                  = runtime.ForwardResponseMessage
+	forward_DonateService_DeductCoins_0               = runtime.ForwardResponseMessage
+	forward_DonateService_CreateShopItem_0            = runtime.ForwardResponseMessage
+	forward_DonateService_UpdateShopItem_0            = runtime.ForwardResponseMessage
+	forward_DonateService_DeleteShopItem_0            = runtime.ForwardResponseMessage
+	forward_DonateService_Refund_0                    = runtime.ForwardResponseMessage
+	forward_DonateService_ListTransactions_0          = runtime.ForwardResponseMessage
+	forward_DonateService_AdminListPurchases_0        = runtime.ForwardResponseMessage
+	forward_DonateService_AdminListPendingPurchases_0 = runtime.ForwardResponseMessage
+	forward_DonateService_MarkPurchaseIssued_0        = runtime.ForwardResponseMessage
+	forward_DonateService_GetMyBalance_0              = runtime.ForwardResponseMessage
+	forward_DonateService_ListShopItems_0             = runtime.ForwardResponseMessage
+	forward_DonateService_BuyItem_0                   = runtime.ForwardResponseMessage
+	forward_DonateService_ListMyPurchases_0           = runtime.ForwardResponseMessage
 )

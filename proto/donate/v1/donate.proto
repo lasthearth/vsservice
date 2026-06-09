@@ -121,6 +121,35 @@ service DonateService {
     };
   }
 
+  // Admin: list purchases that have not been marked as issued yet (pending manual delivery).
+  // Returns only active (non-refunded) purchases.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc AdminListPendingPurchases(AdminListPendingPurchasesRequest) returns (AdminListPendingPurchasesResponse) {
+    option (google.api.http) = {
+      get: "/v1/donate/purchases/pending"
+    };
+  }
+
+  // Admin: mark a purchase as manually issued by the calling admin.
+  // Idempotent — calling on an already-issued purchase returns the existing record unchanged.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): purchase not found
+  //   - FAILED_PRECONDITION (412): purchase is refunded
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc MarkPurchaseIssued(MarkPurchaseIssuedRequest) returns (MarkPurchaseIssuedResponse) {
+    option (google.api.http) = {
+      post: "/v1/donate/purchases/{purchase_id}:mark-issued"
+      body: "*"
+    };
+  }
+
   // Player: get the caller's current coin balance.
   //
   // Errors:

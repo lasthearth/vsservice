@@ -11,6 +11,10 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
+// ErrNoData is returned by Find when the query produced no documents.
+// Callers can branch on this with errors.Is to treat an empty page as a non-error result.
+var ErrNoData = errors.New("no data found")
+
 type Options struct {
 	limit  int64
 	sort   bson.D
@@ -130,7 +134,7 @@ func Find[T Identifiable](
 	}
 
 	if len(datas) == 0 {
-		return nil, errors.New("no data found")
+		return nil, ErrNoData
 	}
 
 	next := ""

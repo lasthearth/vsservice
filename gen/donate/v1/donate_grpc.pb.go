@@ -19,18 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	DonateService_AddCoins_FullMethodName           = "/donate.v1.DonateService/AddCoins"
-	DonateService_DeductCoins_FullMethodName        = "/donate.v1.DonateService/DeductCoins"
-	DonateService_CreateShopItem_FullMethodName     = "/donate.v1.DonateService/CreateShopItem"
-	DonateService_UpdateShopItem_FullMethodName     = "/donate.v1.DonateService/UpdateShopItem"
-	DonateService_DeleteShopItem_FullMethodName     = "/donate.v1.DonateService/DeleteShopItem"
-	DonateService_Refund_FullMethodName             = "/donate.v1.DonateService/Refund"
-	DonateService_ListTransactions_FullMethodName   = "/donate.v1.DonateService/ListTransactions"
-	DonateService_AdminListPurchases_FullMethodName = "/donate.v1.DonateService/AdminListPurchases"
-	DonateService_GetMyBalance_FullMethodName       = "/donate.v1.DonateService/GetMyBalance"
-	DonateService_ListShopItems_FullMethodName      = "/donate.v1.DonateService/ListShopItems"
-	DonateService_BuyItem_FullMethodName            = "/donate.v1.DonateService/BuyItem"
-	DonateService_ListMyPurchases_FullMethodName    = "/donate.v1.DonateService/ListMyPurchases"
+	DonateService_AddCoins_FullMethodName                  = "/donate.v1.DonateService/AddCoins"
+	DonateService_DeductCoins_FullMethodName               = "/donate.v1.DonateService/DeductCoins"
+	DonateService_CreateShopItem_FullMethodName            = "/donate.v1.DonateService/CreateShopItem"
+	DonateService_UpdateShopItem_FullMethodName            = "/donate.v1.DonateService/UpdateShopItem"
+	DonateService_DeleteShopItem_FullMethodName            = "/donate.v1.DonateService/DeleteShopItem"
+	DonateService_Refund_FullMethodName                    = "/donate.v1.DonateService/Refund"
+	DonateService_ListTransactions_FullMethodName          = "/donate.v1.DonateService/ListTransactions"
+	DonateService_AdminListPurchases_FullMethodName        = "/donate.v1.DonateService/AdminListPurchases"
+	DonateService_AdminListPendingPurchases_FullMethodName = "/donate.v1.DonateService/AdminListPendingPurchases"
+	DonateService_MarkPurchaseIssued_FullMethodName        = "/donate.v1.DonateService/MarkPurchaseIssued"
+	DonateService_GetMyBalance_FullMethodName              = "/donate.v1.DonateService/GetMyBalance"
+	DonateService_ListShopItems_FullMethodName             = "/donate.v1.DonateService/ListShopItems"
+	DonateService_BuyItem_FullMethodName                   = "/donate.v1.DonateService/BuyItem"
+	DonateService_ListMyPurchases_FullMethodName           = "/donate.v1.DonateService/ListMyPurchases"
 )
 
 // DonateServiceClient is the client API for DonateService service.
@@ -105,6 +107,24 @@ type DonateServiceClient interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): database failure
 	AdminListPurchases(ctx context.Context, in *AdminListPurchasesRequest, opts ...grpc.CallOption) (*AdminListPurchasesResponse, error)
+	// Admin: list purchases that have not been marked as issued yet (pending manual delivery).
+	// Returns only active (non-refunded) purchases.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	AdminListPendingPurchases(ctx context.Context, in *AdminListPendingPurchasesRequest, opts ...grpc.CallOption) (*AdminListPendingPurchasesResponse, error)
+	// Admin: mark a purchase as manually issued by the calling admin.
+	// Idempotent — calling on an already-issued purchase returns the existing record unchanged.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): purchase not found
+	//   - FAILED_PRECONDITION (412): purchase is refunded
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	MarkPurchaseIssued(ctx context.Context, in *MarkPurchaseIssuedRequest, opts ...grpc.CallOption) (*MarkPurchaseIssuedResponse, error)
 	// Player: get the caller's current coin balance.
 	//
 	// Errors:
@@ -215,6 +235,26 @@ func (c *donateServiceClient) AdminListPurchases(ctx context.Context, in *AdminL
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AdminListPurchasesResponse)
 	err := c.cc.Invoke(ctx, DonateService_AdminListPurchases_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *donateServiceClient) AdminListPendingPurchases(ctx context.Context, in *AdminListPendingPurchasesRequest, opts ...grpc.CallOption) (*AdminListPendingPurchasesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AdminListPendingPurchasesResponse)
+	err := c.cc.Invoke(ctx, DonateService_AdminListPendingPurchases_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *donateServiceClient) MarkPurchaseIssued(ctx context.Context, in *MarkPurchaseIssuedRequest, opts ...grpc.CallOption) (*MarkPurchaseIssuedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MarkPurchaseIssuedResponse)
+	err := c.cc.Invoke(ctx, DonateService_MarkPurchaseIssued_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -333,6 +373,24 @@ type DonateServiceServer interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): database failure
 	AdminListPurchases(context.Context, *AdminListPurchasesRequest) (*AdminListPurchasesResponse, error)
+	// Admin: list purchases that have not been marked as issued yet (pending manual delivery).
+	// Returns only active (non-refunded) purchases.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	AdminListPendingPurchases(context.Context, *AdminListPendingPurchasesRequest) (*AdminListPendingPurchasesResponse, error)
+	// Admin: mark a purchase as manually issued by the calling admin.
+	// Idempotent — calling on an already-issued purchase returns the existing record unchanged.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): purchase not found
+	//   - FAILED_PRECONDITION (412): purchase is refunded
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	MarkPurchaseIssued(context.Context, *MarkPurchaseIssuedRequest) (*MarkPurchaseIssuedResponse, error)
 	// Player: get the caller's current coin balance.
 	//
 	// Errors:
@@ -391,6 +449,12 @@ func (UnimplementedDonateServiceServer) ListTransactions(context.Context, *ListT
 }
 func (UnimplementedDonateServiceServer) AdminListPurchases(context.Context, *AdminListPurchasesRequest) (*AdminListPurchasesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AdminListPurchases not implemented")
+}
+func (UnimplementedDonateServiceServer) AdminListPendingPurchases(context.Context, *AdminListPendingPurchasesRequest) (*AdminListPendingPurchasesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AdminListPendingPurchases not implemented")
+}
+func (UnimplementedDonateServiceServer) MarkPurchaseIssued(context.Context, *MarkPurchaseIssuedRequest) (*MarkPurchaseIssuedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MarkPurchaseIssued not implemented")
 }
 func (UnimplementedDonateServiceServer) GetMyBalance(context.Context, *GetMyBalanceRequest) (*GetMyBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMyBalance not implemented")
@@ -568,6 +632,42 @@ func _DonateService_AdminListPurchases_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DonateService_AdminListPendingPurchases_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdminListPendingPurchasesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DonateServiceServer).AdminListPendingPurchases(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DonateService_AdminListPendingPurchases_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DonateServiceServer).AdminListPendingPurchases(ctx, req.(*AdminListPendingPurchasesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DonateService_MarkPurchaseIssued_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarkPurchaseIssuedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DonateServiceServer).MarkPurchaseIssued(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DonateService_MarkPurchaseIssued_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DonateServiceServer).MarkPurchaseIssued(ctx, req.(*MarkPurchaseIssuedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DonateService_GetMyBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMyBalanceRequest)
 	if err := dec(in); err != nil {
@@ -678,6 +778,14 @@ var DonateService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AdminListPurchases",
 			Handler:    _DonateService_AdminListPurchases_Handler,
+		},
+		{
+			MethodName: "AdminListPendingPurchases",
+			Handler:    _DonateService_AdminListPendingPurchases_Handler,
+		},
+		{
+			MethodName: "MarkPurchaseIssued",
+			Handler:    _DonateService_MarkPurchaseIssued_Handler,
 		},
 		{
 			MethodName: "GetMyBalance",

@@ -80,6 +80,12 @@ func setupIndexes(log logger.Logger, walletColl, shopColl, purchColl, txColl *mg
 	createIndex(purchColl, mgo.IndexModel{
 		Keys: bson.D{{Key: "player_id", Value: 1}},
 	})
+	createIndex(purchColl, mgo.IndexModel{
+		Keys: bson.D{{Key: "status", Value: 1}, {Key: "_id", Value: -1}},
+		Options: options.Index().SetPartialFilterExpression(bson.M{
+			"issued_at": bson.M{"$exists": false},
+		}),
+	})
 	createIndex(txColl, mgo.IndexModel{
 		Keys: bson.D{{Key: "player_id", Value: 1}},
 	})
@@ -131,7 +137,7 @@ func shopItemToDTO(m *model.ShopItem) dto.ShopItem {
 
 func purchaseFromDTO(d dto.Purchase) *model.Purchase {
 	return &model.Purchase{
-		Id:         d.Id.Hex(),
+		Id:         d.Model.Id.Hex(),
 		PlayerID:   d.PlayerID,
 		PlayerName: d.PlayerName,
 		ItemID:     d.ItemID,
@@ -140,6 +146,24 @@ func purchaseFromDTO(d dto.Purchase) *model.Purchase {
 		Status:     model.PurchaseStatus(d.Status),
 		CreatedAt:  d.CreatedAt,
 		RefundedAt: d.RefundedAt,
+		IssuedAt:   d.IssuedAt,
+		IssuedBy:   d.IssuedBy,
+	}
+}
+
+// purchaseToDTO builds a BSON-ready Purchase DTO from a domain model, reusing the supplied mongox.Model envelope.
+func purchaseToDTO(m mongox.Model, p *model.Purchase) dto.Purchase {
+	return dto.Purchase{
+		Model:      m,
+		PlayerID:   p.PlayerID,
+		PlayerName: p.PlayerName,
+		ItemID:     p.ItemID,
+		ItemName:   p.ItemName,
+		PricePaid:  p.PricePaid,
+		Status:     string(p.Status),
+		RefundedAt: p.RefundedAt,
+		IssuedAt:   p.IssuedAt,
+		IssuedBy:   p.IssuedBy,
 	}
 }
 

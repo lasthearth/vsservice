@@ -20,6 +20,8 @@ type Purchase struct {
 	Status     PurchaseStatus
 	CreatedAt  time.Time
 	RefundedAt *time.Time
+	IssuedAt   *time.Time
+	IssuedBy   *string
 }
 
 func NewPurchase(playerID, playerName, itemID, itemName string, price int64) *Purchase {
@@ -46,4 +48,24 @@ func (p *Purchase) Refund() error {
 
 func (p *Purchase) IsActive() bool {
 	return p.Status == PurchaseStatusActive
+}
+
+func (p *Purchase) IsIssued() bool {
+	return p.IssuedAt != nil
+}
+
+// MarkIssued records that an admin manually delivered this purchase to the player.
+// Idempotent: calling on an already-issued purchase is a no-op and returns nil.
+// Returns errCannotIssueRefunded if the purchase is refunded.
+func (p *Purchase) MarkIssued(adminID string) error {
+	if p.Status == PurchaseStatusRefunded {
+		return errCannotIssueRefunded
+	}
+	if p.IsIssued() {
+		return nil
+	}
+	now := time.Now()
+	p.IssuedAt = &now
+	p.IssuedBy = &adminID
+	return nil
 }

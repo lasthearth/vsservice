@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	dto "github.com/lasthearth/vsservice/internal/donate/internal/dto/mongo"
 	"github.com/lasthearth/vsservice/internal/donate/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox/pagination"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	mgo "go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
@@ -14,16 +16,7 @@ import (
 
 func (r *Repository) createPurchase(ctx context.Context, purchase *model.Purchase) (*model.Purchase, error) {
 	m := mongox.NewModel()
-	d := dto.Purchase{
-		Model:      m,
-		PlayerID:   purchase.PlayerID,
-		PlayerName: purchase.PlayerName,
-		ItemID:     purchase.ItemID,
-		ItemName:   purchase.ItemName,
-		PricePaid:  purchase.PricePaid,
-		Status:     string(purchase.Status),
-		RefundedAt: purchase.RefundedAt,
-	}
+	d := purchaseToDTO(m, purchase)
 
 	result, err := r.purchColl.InsertOne(ctx, d)
 	if err != nil {
@@ -84,16 +77,7 @@ func (r *Repository) updatePurchase(
 		return nil, err
 	}
 
-	updatedDTO := dto.Purchase{
-		Model:      d.Model,
-		PlayerID:   updated.PlayerID,
-		PlayerName: updated.PlayerName,
-		ItemID:     updated.ItemID,
-		ItemName:   updated.ItemName,
-		PricePaid:  updated.PricePaid,
-		Status:     string(updated.Status),
-		RefundedAt: updated.RefundedAt,
-	}
+	updatedDTO := purchaseToDTO(d.Model, updated)
 
 	if _, err := r.purchColl.ReplaceOne(ctx, bson.M{"_id": oid}, updatedDTO); err != nil {
 		return nil, err
@@ -127,4 +111,52 @@ func (r *Repository) ListPurchasesByPlayerID(ctx context.Context, playerID strin
 		result[i] = purchaseFromDTO(d)
 	}
 	return result, nil
+}
+
+// MarkPurchaseIssued marks a purchase as manually delivered by adminID.
+// Idempotent: re-issuing a purchase that's already issued is a no-op.
+// Returns ierror.ErrCannotIssueRefunded if the purchase is refunded.
+func (r *Repository) MarkPurchaseIssued(ctx context.Context, purchaseID, adminID string) (*model.Purchase, error) {
+	return r.updatePurchase(ctx, purchaseID, func(_ context.Context, p *model.Purchase) (*model.Purchase, error) {
+		if err := p.MarkIssued(adminID); err != nil {
+			return nil, ierror.ErrCannotIssueRefunded
+		}
+		return p, nil
+	})
+}
+
+// ListPendingPurchases returns active purchases that have not yet been marked as issued.
+// Cursor-paginated; pass an empty pageToken for the first page.
+func (r *Repository) ListPendingPurchases(ctx context.Context, pageToken string, limit int64) ([]*model.Purchase, string, error) {
+	l := r.log.With(zap.String("method", "ListPendingPurchases"))
+
+	if limit <= 0 {
+		limit = 25
+	}
+
+	opts := []pagination.OptionFn{
+		pagination.WithLimit(limit),
+		pagination.WithFilter(bson.M{
+			"issued_at": bson.M{"$exists": false},
+			"status":    string(model.PurchaseStatusActive),
+		}),
+	}
+	if pageToken != "" {
+		opts = append(opts, pagination.WithNext(pageToken))
+	}
+
+	resp, err := pagination.Find[dto.Purchase](ctx, r.purchColl, opts...)
+	if err != nil {
+		if errors.Is(err, pagination.ErrNoData) || errors.Is(err, mgo.ErrNoDocuments) {
+			return nil, "", nil
+		}
+		l.Error("failed to list pending purchases", zap.Error(err))
+		return nil, "", err
+	}
+
+	result := make([]*model.Purchase, len(resp.Data))
+	for i, d := range resp.Data {
+		result[i] = purchaseFromDTO(d)
+	}
+	return result, resp.Next, nil
 }

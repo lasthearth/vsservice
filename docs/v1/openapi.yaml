@@ -196,6 +196,81 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/donate/purchases/pending:
+        get:
+            tags:
+                - DonateService
+            description: |-
+                Admin: list purchases that have not been marked as issued yet (pending manual delivery).
+                 Returns only active (non-refunded) purchases.
+
+                 Errors:
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: DonateService_AdminListPendingPurchases
+            parameters:
+                - name: limit
+                  in: query
+                  schema:
+                    type: string
+                - name: page_token
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminListPendingPurchasesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/donate/purchases/{purchase_id}:mark-issued:
+        post:
+            tags:
+                - DonateService
+            description: |-
+                Admin: mark a purchase as manually issued by the calling admin.
+                 Idempotent — calling on an already-issued purchase returns the existing record unchanged.
+
+                 Errors:
+                   - NOT_FOUND (404): purchase not found
+                   - FAILED_PRECONDITION (412): purchase is refunded
+                   - UNAUTHENTICATED (401): missing or invalid auth token
+                   - PERMISSION_DENIED (403): insufficient privileges
+                   - INTERNAL (500): database failure
+            operationId: DonateService_MarkPurchaseIssued
+            parameters:
+                - name: purchase_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/MarkPurchaseIssuedRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/MarkPurchaseIssuedResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/donate/purchases/{purchase_id}:refund:
         post:
             tags:
@@ -2316,6 +2391,15 @@ components:
                 settlement:
                     $ref: '#/components/schemas/Settlement'
             description: Response from adding a tag to a settlement
+        AdminListPendingPurchasesResponse:
+            type: object
+            properties:
+                purchases:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Purchase'
+                next_page_token:
+                    type: string
         AdminListPurchasesResponse:
             type: object
             properties:
@@ -2909,6 +2993,16 @@ components:
                     items:
                         $ref: '#/components/schemas/Assignment'
             description: Response containing user assignments list
+        MarkPurchaseIssuedRequest:
+            type: object
+            properties:
+                purchase_id:
+                    type: string
+        MarkPurchaseIssuedResponse:
+            type: object
+            properties:
+                purchase:
+                    $ref: '#/components/schemas/Purchase'
         Member:
             required:
                 - user_id
@@ -3020,6 +3114,11 @@ components:
                 refunded_at:
                     type: string
                     format: date-time
+                issued_at:
+                    type: string
+                    format: date-time
+                issued_by:
+                    type: string
         RecordMatchRequest:
             required:
                 - players

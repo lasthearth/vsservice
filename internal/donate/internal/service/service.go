@@ -176,6 +176,44 @@ func (s *Service) ListTransactions(ctx context.Context, req *donatev1.ListTransa
 	return &donatev1.ListTransactionsResponse{Transactions: s.mapper.ToTransactionsProto(txs)}, nil
 }
 
+func (s *Service) AdminListPendingPurchases(ctx context.Context, req *donatev1.AdminListPendingPurchasesRequest) (*donatev1.AdminListPendingPurchasesResponse, error) {
+	l := s.log.With(zap.String("method", "AdminListPendingPurchases"))
+
+	purchases, next, err := s.repo.ListPendingPurchases(ctx, req.PageToken, req.Limit)
+	if err != nil {
+		l.Error("failed to list pending purchases", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to list pending purchases")
+	}
+
+	return &donatev1.AdminListPendingPurchasesResponse{
+		Purchases:     s.mapper.ToPurchasesProto(purchases),
+		NextPageToken: next,
+	}, nil
+}
+
+func (s *Service) MarkPurchaseIssued(ctx context.Context, req *donatev1.MarkPurchaseIssuedRequest) (*donatev1.MarkPurchaseIssuedResponse, error) {
+	l := s.log.With(zap.String("method", "MarkPurchaseIssued"), zap.String("purchase_id", req.PurchaseId))
+
+	adminID, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	purchase, err := s.repo.MarkPurchaseIssued(ctx, req.PurchaseId, adminID)
+	if err != nil {
+		if isDomainError(err, codes.NotFound) {
+			return nil, status.Error(codes.NotFound, "purchase not found")
+		}
+		if isDomainError(err, codes.FailedPrecondition) {
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		}
+		l.Error("failed to mark purchase issued", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to mark purchase issued")
+	}
+
+	return &donatev1.MarkPurchaseIssuedResponse{Purchase: s.mapper.ToPurchaseProto(purchase)}, nil
+}
+
 func (s *Service) AdminListPurchases(ctx context.Context, req *donatev1.AdminListPurchasesRequest) (*donatev1.AdminListPurchasesResponse, error) {
 	l := s.log.With(zap.String("method", "AdminListPurchases"), zap.String("player_id", req.PlayerId))
 
@@ -193,7 +231,7 @@ func (s *Service) GetMyBalance(ctx context.Context, _ *donatev1.GetMyBalanceRequ
 
 	playerID, err := interceptor.GetUserID(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	wallet, err := s.repo.GetWalletByPlayerID(ctx, playerID)
@@ -225,7 +263,7 @@ func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*d
 
 	playerID, err := interceptor.GetUserID(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	purchase, err := s.repo.BuyItem(ctx, playerID, req.ItemId)
@@ -248,7 +286,7 @@ func (s *Service) ListMyPurchases(ctx context.Context, _ *donatev1.ListMyPurchas
 
 	playerID, err := interceptor.GetUserID(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	purchases, err := s.repo.ListPurchasesByPlayerID(ctx, playerID)

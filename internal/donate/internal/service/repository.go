@@ -64,6 +64,15 @@ type DonateRepository interface {
 	GetPurchase(ctx context.Context, id string) (*model.Purchase, error)
 	ListPurchasesByPlayerID(ctx context.Context, playerID string) ([]*model.Purchase, error)
 
+	// ListPendingPurchases returns active purchases not yet marked as issued, cursor-paginated.
+	// Empty pageToken returns the first page; empty next token means no more pages.
+	ListPendingPurchases(ctx context.Context, pageToken string, limit int64) (purchases []*model.Purchase, nextPageToken string, err error)
+
+	// MarkPurchaseIssued marks a purchase as manually delivered by adminID.
+	// Idempotent on already-issued purchases. Returns ierror.ErrCannotIssueRefunded if refunded,
+	// ierror.ErrNotFound if missing.
+	MarkPurchaseIssued(ctx context.Context, purchaseID, adminID string) (*model.Purchase, error)
+
 	// Transactions
 
 	CreateTransaction(ctx context.Context, tx *model.Transaction) (*model.Transaction, error)

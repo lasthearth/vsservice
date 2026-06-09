@@ -14,5 +14,7 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "Refund"):            manage,
 		interceptor.Method(srvName + "ListTransactions"):  manage,
 		interceptor.Method(srvName + "AdminListPurchases"): manage,
+		interceptor.Method(srvName + "AdminListPendingPurchases"): manage,
+		interceptor.Method(srvName + "MarkPurchaseIssued"):        manage,
 	}
 }
