@@ -1,15 +1,10 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"mime"
 
-	"github.com/google/uuid"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
-	"github.com/lasthearth/vsservice/internal/pkg/image"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
@@ -21,14 +16,12 @@ import (
 
 // Submit implements settlementv1.SettlementServiceServer
 func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (*settlementv1.SubmitResponse, error) {
-	bucketName := "settlementsreq"
-	fileExt := ".webp"
 	userID, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if req.Attachments == nil {
+	if len(req.Attachments) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "attachments cannot be empty")
 	}
 
@@ -50,42 +43,13 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 	}
 
 	attachs := make([]model.Attachment, len(req.Attachments))
-
-	s.log.Debug("attach len", zap.Int("attachments", len(attachs)))
-
 	for i, attachment := range req.Attachments {
-		uid, err := uuid.NewV7()
-		if err != nil {
-			return nil, err
+		if err := s.mediaUrl.Validate(attachment.Url); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid attachment url")
 		}
-
-		webp, err := image.ConvertToWebp(attachment.Data)
-		if err != nil {
-			return nil, err
-		}
-
-		mimeType := mime.TypeByExtension(fileExt)
-		rd := bytes.NewReader(webp)
-
-		filename := fmt.Sprintf("%s%s", uid.String(), fileExt)
-		_, err = s.storage.UploadObject(
-			ctx,
-			bucketName,
-			filename,
-			rd,
-			int64(len(webp)),
-			mimeType,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		url := fmt.Sprintf("%s/%s/%s", s.cfg.CdnUrl, bucketName, filename)
-
 		attachs[i] = model.Attachment{
-			Url:      url,
-			Desc:     attachment.Description,
-			MimeType: mimeType,
+			Url:  attachment.Url,
+			Desc: attachment.Description,
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
 	"go.uber.org/fx"
 )
 
@@ -20,6 +21,7 @@ type Opts struct {
 	Mapper               Mapper
 	Config               config.Config
 	Validator            *validator.Validate
+	MediaURL             *mediaurl.Validator
 }
 
 type Service struct {
@@ -31,6 +33,7 @@ type Service struct {
 	mapper    Mapper
 	config    config.Config
 	validator *validator.Validate
+	mediaUrl  *mediaurl.Validator
 }
 
 func New(opts Opts) *Service {
@@ -43,5 +46,6 @@ func New(opts Opts) *Service {
 		mapper:    opts.Mapper,
 		config:    opts.Config,
 		validator: opts.Validator,
+		mediaUrl:  opts.MediaURL,
 	}
 }

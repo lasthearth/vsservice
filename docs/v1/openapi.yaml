@@ -828,6 +828,39 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/media/upload-urls:
+        post:
+            tags:
+                - MediaService
+            description: |-
+                Returns N presigned POST targets for uploading images. The required scope
+                 depends on the purpose (see the server-side per-purpose config).
+
+                 Errors:
+                   - INVALID_ARGUMENT (400): unknown purpose, count out of [1,20], or unsupported content_type
+                   - UNAUTHENTICATED (401)
+                   - PERMISSION_DENIED (403)
+                   - INTERNAL (500)
+            operationId: MediaService_CreateUploadUrls
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateUploadUrlsRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateUploadUrlsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/news:
         get:
             tags:
@@ -2668,7 +2701,6 @@ components:
                     type: string
                 preview:
                     type: string
-                    format: bytes
         CreateQuestionRequest:
             type: object
             properties:
@@ -2704,18 +2736,50 @@ components:
                     type: string
                 description:
                     type: string
-                image:
+                image_url:
                     type: string
-                    format: bytes
                 price:
                     type: string
                 code:
                     type: string
+                item_type:
+                    type: integer
+                    format: enum
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/KitEntry'
+                has_discount:
+                    type: boolean
+                discount_percent:
+                    type: integer
+                    format: int32
         CreateShopItemResponse:
             type: object
             properties:
                 item:
                     $ref: '#/components/schemas/ShopItem'
+        CreateUploadUrlsRequest:
+            type: object
+            properties:
+                purpose:
+                    type: integer
+                    format: enum
+                count:
+                    type: integer
+                    format: int32
+                content_type:
+                    type: string
+                    description: |-
+                        Optional. MIME type of the uploaded file; must be in the list allowed for
+                         the purpose. Empty → any image/* is allowed and the object gets a .webp extension.
+        CreateUploadUrlsResponse:
+            type: object
+            properties:
+                targets:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/UploadTarget'
         DeductCoinsRequest:
             type: object
             properties:
@@ -2866,6 +2930,18 @@ components:
         InviteMemberResponse:
             type: object
             properties: {}
+        KitEntry:
+            type: object
+            properties:
+                name:
+                    type: string
+                description:
+                    type: string
+                image_url:
+                    type: string
+                quantity:
+                    type: integer
+                    format: int32
         LeaderboardEntry:
             type: object
             properties:
@@ -3119,6 +3195,11 @@ components:
                     format: date-time
                 issued_by:
                     type: string
+                base_price:
+                    type: string
+                discount_percent:
+                    type: integer
+                    format: int32
         RecordMatchRequest:
             required:
                 - players
@@ -3334,6 +3415,20 @@ components:
                 code:
                     type: string
                     description: Unique identifier used to correlate the item with in-game assets.
+                item_type:
+                    type: integer
+                    format: enum
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/KitEntry'
+                has_discount:
+                    type: boolean
+                discount_percent:
+                    type: integer
+                    format: int32
+                effective_price:
+                    type: string
         Status:
             type: object
             properties:
@@ -3377,13 +3472,12 @@ components:
                         $ref: '#/components/schemas/SubmitRequest_SubmitAttachment'
         SubmitRequest_SubmitAttachment:
             required:
-                - data
+                - url
                 - description
             type: object
             properties:
-                data:
+                url:
                     type: string
-                    format: bytes
                 description:
                     type: string
         SubmitResponse:
@@ -3444,21 +3538,46 @@ components:
                     type: string
                 description:
                     type: string
-                image:
+                image_url:
                     type: string
                     description: Leave empty to keep the existing image.
-                    format: bytes
                 price:
                     type: string
                 is_available:
                     type: boolean
                 code:
                     type: string
+                item_type:
+                    type: integer
+                    format: enum
+                entries:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/KitEntry'
+                has_discount:
+                    type: boolean
+                discount_percent:
+                    type: integer
+                    format: int32
         UpdateShopItemResponse:
             type: object
             properties:
                 item:
                     $ref: '#/components/schemas/ShopItem'
+        UploadTarget:
+            type: object
+            properties:
+                post_url:
+                    type: string
+                    description: 'POST endpoint: the client sends multipart/form-data (fields + file).'
+                fields:
+                    type: object
+                    additionalProperties:
+                        type: string
+                    description: Form fields to send together with the file (policy, signature, key, ...).
+                public_url:
+                    type: string
+                    description: Public URL of the object after upload — the client passes it to the target domain.
         User:
             type: object
             properties:
@@ -3520,6 +3639,8 @@ tags:
       description: Kit service for managing game kit assignment to users
     - name: LeaderboardService
       description: Represent basic leaderboard
+    - name: MediaService
+      description: MediaService issues presigned POST targets for direct uploads to S3.
     - name: NewsService
       description: Represents news service
     - name: NotificationService

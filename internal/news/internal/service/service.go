@@ -1,45 +1,23 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"mime"
 
-	"github.com/google/uuid"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	"github.com/lasthearth/vsservice/internal/news/internal/model"
 	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // CreateNews implements newsv1.NewsServiceServer.
 func (s *Service) CreateNews(ctx context.Context, req *newsv1.CreateNewsRequest) (*newsv1.News, error) {
-	bucketName := "news"
-	id, err := uuid.NewV7()
-	if err != nil {
-		return nil, err
-	}
-	filename := id.String()
-	fileExt := ".webp"
-
-	rd := bytes.NewReader(req.Preview)
-
-	path := fmt.Sprintf("%s%s", filename, fileExt)
-	ct := mime.TypeByExtension(fileExt)
-
-	_, err = s.storage.UploadObject(
-		ctx,
-		bucketName,
-		path,
-		rd,
-		int64(len(req.Preview)),
-		ct,
-	)
-	if err != nil {
-		return nil, err
+	if err := s.mediaUrl.Validate(req.Preview); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid preview url")
 	}
 
 	userID, err := interceptor.GetUserID(ctx)
@@ -47,16 +25,14 @@ func (s *Service) CreateNews(ctx context.Context, req *newsv1.CreateNewsRequest)
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s/%s/%s", s.config.CdnUrl, bucketName, path)
 	news := &model.News{
 		Title:     req.Title,
 		Content:   req.Content,
-		Preview:   url,
+		Preview:   req.Preview,
 		CreatedBy: userID,
 	}
 
-	err = s.validator.Struct(news)
-	if err != nil {
+	if err := s.validator.Struct(news); err != nil {
 		return nil, err
 	}
 

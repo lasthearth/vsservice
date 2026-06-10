@@ -1,8 +1,6 @@
 package donate
 
 import (
-	"context"
-
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	repository "github.com/lasthearth/vsservice/internal/donate/internal/repository/mongo"
 	"github.com/lasthearth/vsservice/internal/donate/internal/service"
@@ -45,23 +43,5 @@ var App = fx.Options(
 			),
 		),
 
-		fx.Invoke(func(lc fx.Lifecycle, s service.Storage) {
-			lc.Append(fx.Hook{
-				OnStart: func(ctx context.Context) error {
-					const bucket = "donate-shop"
-					exists, err := s.BucketExists(ctx, bucket)
-					if err != nil {
-						return err
-					}
-					if exists {
-						return nil
-					}
-					if err := s.CreateBucket(ctx, bucket); err != nil {
-						return err
-					}
-					return s.MakeBucketPublic(ctx, bucket)
-				},
-			})
-		}),
 	),
 )

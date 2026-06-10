@@ -263,7 +263,7 @@ message SubmitRequest {
   repeated SubmitAttachment attachments = 6 [(google.api.field_behavior) = REQUIRED];
 
   message SubmitAttachment {
-    bytes data = 1 [(google.api.field_behavior) = REQUIRED];
+    string url = 1 [(google.api.field_behavior) = REQUIRED];
     string description = 2 [(google.api.field_behavior) = REQUIRED];
   }
 

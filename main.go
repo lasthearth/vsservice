@@ -8,12 +8,13 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/lasthearth/vsservice/internal/donate"
 	"github.com/lasthearth/vsservice/internal/hungergames"
-	"github.com/lasthearth/vsservice/internal/kit"
 	"github.com/lasthearth/vsservice/internal/leaderboard"
+	"github.com/lasthearth/vsservice/internal/media"
 	"github.com/lasthearth/vsservice/internal/news"
 	"github.com/lasthearth/vsservice/internal/notification"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
 	"github.com/lasthearth/vsservice/internal/pkg/messaging"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
@@ -41,6 +42,7 @@ func main() {
 	a := fx.New(
 		fx.Provide(
 			config.New,
+			mediaurl.New,
 			func(l logger.Logger) *http.Client {
 				retryClient := retryablehttp.NewClient()
 				retryClient.RetryMax = 5
@@ -82,10 +84,10 @@ func main() {
 		notification.App,
 		news.App,
 		webhook.App,
-		kit.App,
 		donate.App,
 		hungergames.App,
 		serverinfo.App,
+		media.App,
 	)
 
 	a.Run()

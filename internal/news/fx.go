@@ -1,8 +1,6 @@
 package news
 
 import (
-	"context"
-
 	"github.com/go-playground/validator/v10"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	"github.com/lasthearth/vsservice/internal/news/internal/repository"
@@ -66,31 +64,5 @@ var App = fx.Options(
 			),
 		),
 
-		fx.Invoke(func(lc fx.Lifecycle, storage service.Storage) {
-			lc.Append(fx.Hook{
-				OnStart: func(context.Context) error {
-					bucketName := "news"
-					exists, err := storage.BucketExists(context.Background(), bucketName)
-					if err != nil {
-						return err
-					}
-					if exists {
-						return nil
-					}
-
-					err = storage.CreateBucket(context.Background(), bucketName)
-					if err != nil {
-						return err
-					}
-
-					err = storage.MakeBucketPublic(context.Background(), bucketName)
-					if err != nil {
-						return err
-					}
-					return nil
-				},
-				OnStop: nil,
-			})
-		}),
 	),
 )

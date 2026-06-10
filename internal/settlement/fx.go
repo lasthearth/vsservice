@@ -1,8 +1,6 @@
 package settlement
 
 import (
-	"context"
-
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/storage"
@@ -60,31 +58,5 @@ var App = fx.Options(
 			),
 		),
 
-		fx.Invoke(func(lc fx.Lifecycle, storage service.Storage) {
-			lc.Append(fx.Hook{
-				OnStart: func(context.Context) error {
-					bucketName := "settlementsreq"
-					exists, err := storage.BucketExists(context.Background(), bucketName)
-					if err != nil {
-						return err
-					}
-					if exists {
-						return nil
-					}
-
-					err = storage.CreateBucket(context.Background(), bucketName)
-					if err != nil {
-						return err
-					}
-
-					err = storage.MakeBucketPublic(context.Background(), bucketName)
-					if err != nil {
-						return err
-					}
-					return nil
-				},
-				OnStop: nil,
-			})
-		}),
 	),
 )

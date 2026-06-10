@@ -28,6 +28,10 @@ type Config struct {
 
 	CdnUrl string `envconfig:"CDN_URL"`
 
+	// MediaAllowedHosts lists external hosts (besides the CDN) that image URLs
+	// may point to, e.g. i.imgur.com.
+	MediaAllowedHosts []string `envconfig:"MEDIA_ALLOWED_HOSTS"`
+
 	SsoUrl       string   `envconfig:"SSO_URL"`
 	ClientID     string   `envconfig:"CLIENT_ID"`
 	ClientSecret string   `envconfig:"CLIENT_SECRET"`

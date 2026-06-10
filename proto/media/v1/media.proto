@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package media.v1;
+
+import "google/api/annotations.proto";
+
+// MediaService issues presigned POST targets for direct uploads to S3.
+service MediaService {
+  // Returns N presigned POST targets for uploading images. The required scope
+  // depends on the purpose (see the server-side per-purpose config).
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): unknown purpose, count out of [1,20], or unsupported content_type
+  //   - UNAUTHENTICATED (401)
+  //   - PERMISSION_DENIED (403)
+  //   - INTERNAL (500)
+  rpc CreateUploadUrls(CreateUploadUrlsRequest) returns (CreateUploadUrlsResponse) {
+    option (google.api.http) = {
+      post: "/v1/media/upload-urls"
+      body: "*"
+    };
+  }
+}
+
+// UploadPurpose maps to a concrete bucket on the server side.
+// The client never passes a bucket name directly (guards against writing to arbitrary buckets).
+enum UploadPurpose {
+  UPLOAD_PURPOSE_UNSPECIFIED = 0;
+  UPLOAD_PURPOSE_DONATE_SHOP = 1;
+  UPLOAD_PURPOSE_SETTLEMENT = 2;
+  UPLOAD_PURPOSE_NEWS = 3;
+}
+
+message CreateUploadUrlsRequest {
+  UploadPurpose purpose = 1;
+  int32 count = 2;
+  // Optional. MIME type of the uploaded file; must be in the list allowed for
+  // the purpose. Empty → any image/* is allowed and the object gets a .webp extension.
+  string content_type = 3;
+}
+
+message UploadTarget {
+  // POST endpoint: the client sends multipart/form-data (fields + file).
+  string post_url = 1;
+  // Form fields to send together with the file (policy, signature, key, ...).
+  map<string, string> fields = 2;
+  // Public URL of the object after upload — the client passes it to the target domain.
+  string public_url = 3;
+}
+
+message CreateUploadUrlsResponse {
+  repeated UploadTarget targets = 1;
+}

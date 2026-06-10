@@ -72,7 +72,7 @@ message News {
 message CreateNewsRequest {
   string title = 1;
   string content = 2;
-  bytes preview = 3;
+  string preview = 3;
 }
 
 message ListNewsRequest {

@@ -7,6 +7,7 @@ import (
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
 	"go.uber.org/fx"
 )
 
@@ -14,33 +15,36 @@ var _ settlementv1.SettlementServiceServer = (*Service)(nil)
 
 type Opts struct {
 	fx.In
-	Client  *http.Client
-	Log     logger.Logger
-	Cfg     config.Config
-	Retrier *retrier.Retrier
-	DbRepo  SettlementRepository
-	Mapper  Mapper
-	Storage Storage
+	Client   *http.Client
+	Log      logger.Logger
+	Cfg      config.Config
+	Retrier  *retrier.Retrier
+	DbRepo   SettlementRepository
+	Mapper   Mapper
+	Storage  Storage
+	MediaURL *mediaurl.Validator
 }
 
 type Service struct {
-	client  *http.Client
-	log     logger.Logger
-	cfg     config.Config
-	dbRepo  SettlementRepository
-	retrier *retrier.Retrier
-	mapper  Mapper
-	storage Storage
+	client   *http.Client
+	log      logger.Logger
+	cfg      config.Config
+	dbRepo   SettlementRepository
+	retrier  *retrier.Retrier
+	mapper   Mapper
+	storage  Storage
+	mediaUrl *mediaurl.Validator
 }
 
 func New(opts Opts) *Service {
 	return &Service{
-		client:  opts.Client,
-		log:     opts.Log,
-		cfg:     opts.Cfg,
-		dbRepo:  opts.DbRepo,
-		retrier: opts.Retrier,
-		mapper:  opts.Mapper,
-		storage: opts.Storage,
+		client:   opts.Client,
+		log:      opts.Log,
+		cfg:      opts.Cfg,
+		dbRepo:   opts.DbRepo,
+		retrier:  opts.Retrier,
+		mapper:   opts.Mapper,
+		storage:  opts.Storage,
+		mediaUrl: opts.MediaURL,
 	}
 }
