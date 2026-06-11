@@ -7,6 +7,7 @@ import (
 	dto "github.com/lasthearth/vsservice/internal/news/internal/dto"
 	model "github.com/lasthearth/vsservice/internal/news/internal/model"
 	goverter "github.com/lasthearth/vsservice/internal/pkg/goverter"
+	"time"
 )
 
 type MapperImpl struct{}
@@ -17,8 +18,11 @@ func (c *MapperImpl) FromModel(source model.News) dto.News {
 	dtoNews.Preview = source.Preview
 	dtoNews.Content = source.Content
 	dtoNews.CreatedBy = source.CreatedBy
-	dtoNews.DeletedAt = source.DeletedAt
-	dtoNews.DeletedBy = source.DeletedBy
+	dtoNews.DeletedAt = c.pTimeTimeToPTimeTime(source.DeletedAt)
+	if source.DeletedBy != nil {
+		xstring := *source.DeletedBy
+		dtoNews.DeletedBy = &xstring
+	}
 	dtoNews.ViewCount = source.ViewCount
 	return dtoNews
 }
@@ -40,8 +44,11 @@ func (c *MapperImpl) ToModel(source dto.News) model.News {
 	modelNews.Content = source.Content
 	modelNews.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
 	modelNews.CreatedBy = source.CreatedBy
-	modelNews.DeletedAt = source.DeletedAt
-	modelNews.DeletedBy = source.DeletedBy
+	modelNews.DeletedAt = c.pTimeTimeToPTimeTime(source.DeletedAt)
+	if source.DeletedBy != nil {
+		xstring := *source.DeletedBy
+		modelNews.DeletedBy = &xstring
+	}
 	modelNews.ViewCount = source.ViewCount
 	return modelNews
 }
@@ -54,4 +61,12 @@ func (c *MapperImpl) ToModels(source []dto.News) []model.News {
 		}
 	}
 	return modelNewsList
+}
+func (c *MapperImpl) pTimeTimeToPTimeTime(source *time.Time) *time.Time {
+	var pTimeTime *time.Time
+	if source != nil {
+		timeTime := goverter.TimeToTime((*source))
+		pTimeTime = &timeTime
+	}
+	return pTimeTime
 }

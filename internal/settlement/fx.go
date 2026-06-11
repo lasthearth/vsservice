@@ -57,6 +57,5 @@ var App = fx.Options(
 				fx.ResultTags(`group:"scopers"`),
 			),
 		),
-
 	),
 )

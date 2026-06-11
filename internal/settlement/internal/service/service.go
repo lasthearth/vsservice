@@ -97,7 +97,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 			zap.String("after", string(found.Type)),
 		)
 	}
-	
+
 	opts.Type = found.Type
 	if err := s.dbRepo.UpdateRequest(ctx, opts); err != nil {
 		s.log.Error("failed to update settlement request", zap.Error(err))

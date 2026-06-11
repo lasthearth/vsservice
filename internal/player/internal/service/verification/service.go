@@ -9,11 +9,11 @@ import (
 	"slices"
 
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
+	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	httpdto "github.com/lasthearth/vsservice/internal/player/internal/dto/http"
 	playerierror "github.com/lasthearth/vsservice/internal/player/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/player/internal/model/verification"
 	"github.com/lasthearth/vsservice/internal/player/internal/repository/verification/repository/repoerr"
-	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/samber/lo"
 	"go.uber.org/zap"

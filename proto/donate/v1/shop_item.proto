@@ -4,6 +4,19 @@ package donate.v1;
 
 import "google/protobuf/timestamp.proto";
 
+enum ItemType {
+  ITEM_TYPE_UNSPECIFIED = 0;
+  ITEM_TYPE_ITEM = 1;
+  ITEM_TYPE_KIT = 2;
+}
+
+message KitEntry {
+  string name = 1;
+  string description = 2;
+  string image_url = 3;
+  int32 quantity = 4;
+}
+
 message ShopItem {
   string id = 1;
   string name = 2;
@@ -15,14 +28,23 @@ message ShopItem {
   google.protobuf.Timestamp updated_at = 8;
   // Unique identifier used to correlate the item with in-game assets.
   string code = 9;
+  ItemType item_type = 10;
+  repeated KitEntry entries = 11;
+  bool has_discount = 12;
+  int32 discount_percent = 13;   // 0..100
+  int64 effective_price = 14;    // вычисляемое, для UI
 }
 
 message CreateShopItemRequest {
   string name = 1;
   string description = 2;
-  bytes image = 3;
+  string image_url = 3;
   int64 price = 4;
   string code = 5;
+  ItemType item_type = 6;
+  repeated KitEntry entries = 7;
+  bool has_discount = 8;
+  int32 discount_percent = 9;
 }
 
 message CreateShopItemResponse {
@@ -34,10 +56,14 @@ message UpdateShopItemRequest {
   string name = 2;
   string description = 3;
   // Leave empty to keep the existing image.
-  bytes image = 4;
+  string image_url = 4;
   int64 price = 5;
   bool is_available = 6;
   string code = 7;
+  ItemType item_type = 8;
+  repeated KitEntry entries = 9;
+  bool has_discount = 10;
+  int32 discount_percent = 11;
 }
 
 message UpdateShopItemResponse {

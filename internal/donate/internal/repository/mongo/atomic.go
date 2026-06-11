@@ -41,9 +41,15 @@ func (r *Repository) BuyItem(ctx context.Context, playerID, itemID string) (*mod
 
 	var purchase *model.Purchase
 
+	eff := item.EffectivePrice()
+	discountPercent := int32(0)
+	if item.HasDiscount {
+		discountPercent = item.DiscountPercent
+	}
+
 	err = mongo.WithSession(ctx, session, func(sc context.Context) error {
 		if err := r.UpdateWallet(sc, playerID, func(sc context.Context, w *model.Wallet) (*model.Wallet, error) {
-			if err := w.Withdraw(item.Price); err != nil {
+			if err := w.Withdraw(eff); err != nil {
 				return nil, ierror.ErrInsufficientFunds
 			}
 			return w, nil
@@ -51,14 +57,14 @@ func (r *Repository) BuyItem(ctx context.Context, playerID, itemID string) (*mod
 			return err
 		}
 
-		p, err := r.createPurchase(sc, model.NewPurchase(playerID, playerName, item.Id, item.Name, item.Price))
+		p, err := r.createPurchase(sc, model.NewPurchase(playerID, playerName, item.Id, item.Name, eff, item.Price, discountPercent))
 		if err != nil {
 			l.Error("failed to create purchase record", zap.Error(err))
 			return err
 		}
 		purchase = p
 
-		tx := model.NewDebitTransaction(playerID, item.Price, "purchase: "+item.Name)
+		tx := model.NewDebitTransaction(playerID, eff, "purchase: "+item.Name)
 		tx.PurchaseID = purchase.Id
 		if _, err := r.CreateTransaction(sc, tx); err != nil {
 			l.Error("failed to record transaction", zap.Error(err))

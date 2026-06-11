@@ -1,98 +1,41 @@
+//go:generate goverter gen github.com/lasthearth/vsservice/internal/donate/internal/service
 package service
 
 import (
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
-	"github.com/lasthearth/vsservice/internal/pkg/goverter"
 )
 
-// Mapper converts domain models to proto messages.
+// goverter:converter
+// goverter:output:file sermapper/mapper.go
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTimestamp
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimePtrToTimestamp
+// goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:ItemTypeModelToProto
+// goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:KitEntryModelToProto
+// goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:PtrStringToString
+// goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:PurchaseStatusToString
+// goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:TxTypeToString
+// goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:ShopItemEffectivePrice
 type Mapper interface {
+	// goverter:ignore state sizeCache unknownFields
+	// goverter:map ImageURL ImageUrl
+	// goverter:map Type ItemType | github.com/lasthearth/vsservice/internal/donate/internal/goverter:ItemTypeModelToProto
+	// goverter:map . EffectivePrice | github.com/lasthearth/vsservice/internal/donate/internal/goverter:ShopItemEffectivePrice
 	ToShopItemProto(*model.ShopItem) *donatev1.ShopItem
 	ToShopItemsProto([]*model.ShopItem) []*donatev1.ShopItem
+
+	// goverter:ignore state sizeCache unknownFields
+	// goverter:map PlayerID PlayerId
+	// goverter:map ItemID ItemId
+	// goverter:map Status Status | github.com/lasthearth/vsservice/internal/donate/internal/goverter:PurchaseStatusToString
+	// goverter:map IssuedBy IssuedBy | github.com/lasthearth/vsservice/internal/donate/internal/goverter:PtrStringToString
 	ToPurchaseProto(*model.Purchase) *donatev1.Purchase
 	ToPurchasesProto([]*model.Purchase) []*donatev1.Purchase
+
+	// goverter:ignore state sizeCache unknownFields
+	// goverter:map PlayerID PlayerId
+	// goverter:map PurchaseID PurchaseId
+	// goverter:map Type Type | github.com/lasthearth/vsservice/internal/donate/internal/goverter:TxTypeToString
 	ToTransactionProto(*model.Transaction) *donatev1.Transaction
 	ToTransactionsProto([]*model.Transaction) []*donatev1.Transaction
-}
-
-type MapperImpl struct{}
-
-func (m *MapperImpl) ToShopItemProto(s *model.ShopItem) *donatev1.ShopItem {
-	if s == nil {
-		return nil
-	}
-	return &donatev1.ShopItem{
-		Id:          s.Id,
-		Code:        s.Code,
-		Name:        s.Name,
-		Description: s.Description,
-		ImageUrl:    s.ImageURL,
-		Price:       s.Price,
-		IsAvailable: s.IsAvailable,
-		CreatedAt:   goverter.TimeToTimestamp(s.CreatedAt),
-		UpdatedAt:   goverter.TimeToTimestamp(s.UpdatedAt),
-	}
-}
-
-func (m *MapperImpl) ToShopItemsProto(items []*model.ShopItem) []*donatev1.ShopItem {
-	result := make([]*donatev1.ShopItem, len(items))
-	for i, item := range items {
-		result[i] = m.ToShopItemProto(item)
-	}
-	return result
-}
-
-func (m *MapperImpl) ToPurchaseProto(p *model.Purchase) *donatev1.Purchase {
-	if p == nil {
-		return nil
-	}
-	issuedBy := ""
-	if p.IssuedBy != nil {
-		issuedBy = *p.IssuedBy
-	}
-	return &donatev1.Purchase{
-		Id:         p.Id,
-		PlayerId:   p.PlayerID,
-		PlayerName: p.PlayerName,
-		ItemId:     p.ItemID,
-		ItemName:   p.ItemName,
-		PricePaid:  p.PricePaid,
-		Status:     string(p.Status),
-		CreatedAt:  goverter.TimeToTimestamp(p.CreatedAt),
-		RefundedAt: goverter.TimePtrToTimestamp(p.RefundedAt),
-		IssuedAt:   goverter.TimePtrToTimestamp(p.IssuedAt),
-		IssuedBy:   issuedBy,
-	}
-}
-
-func (m *MapperImpl) ToPurchasesProto(purchases []*model.Purchase) []*donatev1.Purchase {
-	result := make([]*donatev1.Purchase, len(purchases))
-	for i, p := range purchases {
-		result[i] = m.ToPurchaseProto(p)
-	}
-	return result
-}
-
-func (m *MapperImpl) ToTransactionProto(t *model.Transaction) *donatev1.Transaction {
-	if t == nil {
-		return nil
-	}
-	return &donatev1.Transaction{
-		Id:         t.Id,
-		PlayerId:   t.PlayerID,
-		Amount:     t.Amount,
-		Type:       string(t.Type),
-		Reason:     t.Reason,
-		PurchaseId: t.PurchaseID,
-		CreatedAt:  goverter.TimeToTimestamp(t.CreatedAt),
-	}
-}
-
-func (m *MapperImpl) ToTransactionsProto(txs []*model.Transaction) []*donatev1.Transaction {
-	result := make([]*donatev1.Transaction, len(txs))
-	for i, tx := range txs {
-		result[i] = m.ToTransactionProto(tx)
-	}
-	return result
 }

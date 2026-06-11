@@ -7,8 +7,8 @@ import (
 
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
-	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
+	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
 	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
@@ -40,10 +40,10 @@ type Opts struct {
 	SettlementTagV1 settlementv1.SettlementTagServiceServer
 	NotificationV1  notificationv1.NotificationServiceServer
 	NewsV1          newsv1.NewsServiceServer
-	KitV1           kitv1.KitServiceServer
 	DonateV1        donatev1.DonateServiceServer
 	HungerGamesV1   hgv1.HungerGamesServiceServer
 	ServerInfoV1    serverinfov1.ServerInfoServiceServer
+	MediaV1         mediav1.MediaServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -60,10 +60,10 @@ type Server struct {
 	settlementTagV1     settlementv1.SettlementTagServiceServer
 	notificationV1      notificationv1.NotificationServiceServer
 	newsV1              newsv1.NewsServiceServer
-	kitV1               kitv1.KitServiceServer
 	donateV1            donatev1.DonateServiceServer
 	hungerGamesV1       hgv1.HungerGamesServiceServer
 	serverInfoV1        serverinfov1.ServerInfoServiceServer
+	mediaV1             mediav1.MediaServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -85,10 +85,10 @@ func New(opts Opts) *Server {
 		settlementTagV1:     opts.SettlementTagV1,
 		notificationV1:      opts.NotificationV1,
 		newsV1:              opts.NewsV1,
-		kitV1:               opts.KitV1,
 		donateV1:            opts.DonateV1,
 		hungerGamesV1:       opts.HungerGamesV1,
 		serverInfoV1:        opts.ServerInfoV1,
+		mediaV1:             opts.MediaV1,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}

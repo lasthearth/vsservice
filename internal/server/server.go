@@ -15,8 +15,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
-	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
+	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
@@ -89,10 +89,10 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	settlementv1.RegisterSettlementTagServiceServer(srv, s.settlementTagV1)
 	notificationv1.RegisterNotificationServiceServer(srv, s.notificationV1)
 	newsv1.RegisterNewsServiceServer(srv, s.newsV1)
-	kitv1.RegisterKitServiceServer(srv, s.kitV1)
 	donatev1.RegisterDonateServiceServer(srv, s.donateV1)
 	hgv1.RegisterHungerGamesServiceServer(srv, s.hungerGamesV1)
 	serverinfov1.RegisterServerInfoServiceServer(srv, s.serverInfoV1)
+	mediav1.RegisterMediaServiceServer(srv, s.mediaV1)
 	reflection.Register(srv)
 
 	s.grpcSrv = srv
@@ -137,10 +137,6 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 		return errors.Wrap(err, "register news service handler")
 	}
 
-	if err := kitv1.RegisterKitServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
-		return errors.Wrap(err, "register kit service handler")
-	}
-
 	if err := donatev1.RegisterDonateServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register donate service handler")
 	}
@@ -151,6 +147,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := serverinfov1.RegisterServerInfoServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register server info service handler")
+	}
+
+	if err := mediav1.RegisterMediaServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register media service handler")
 	}
 
 	handler := cors.New(cors.Options{

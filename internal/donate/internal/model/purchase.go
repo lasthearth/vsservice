@@ -11,27 +11,31 @@ const (
 
 // Purchase records a player's completed shop transaction.
 type Purchase struct {
-	Id         string
-	PlayerID   string
-	PlayerName string
-	ItemID     string
-	ItemName   string
-	PricePaid  int64
-	Status     PurchaseStatus
-	CreatedAt  time.Time
-	RefundedAt *time.Time
-	IssuedAt   *time.Time
-	IssuedBy   *string
+	Id              string
+	PlayerID        string
+	PlayerName      string
+	ItemID          string
+	ItemName        string
+	PricePaid       int64
+	BasePrice       int64
+	DiscountPercent int32
+	Status          PurchaseStatus
+	CreatedAt       time.Time
+	RefundedAt      *time.Time
+	IssuedAt        *time.Time
+	IssuedBy        *string
 }
 
-func NewPurchase(playerID, playerName, itemID, itemName string, price int64) *Purchase {
+func NewPurchase(playerID, playerName, itemID, itemName string, pricePaid, basePrice int64, discountPercent int32) *Purchase {
 	return &Purchase{
-		PlayerID:   playerID,
-		PlayerName: playerName,
-		ItemID:     itemID,
-		ItemName:   itemName,
-		PricePaid:  price,
-		Status:     PurchaseStatusActive,
+		PlayerID:        playerID,
+		PlayerName:      playerName,
+		ItemID:          itemID,
+		ItemName:        itemName,
+		PricePaid:       pricePaid,
+		BasePrice:       basePrice,
+		DiscountPercent: discountPercent,
+		Status:          PurchaseStatusActive,
 	}
 }
 

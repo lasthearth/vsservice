@@ -16,6 +16,8 @@ message Purchase {
   google.protobuf.Timestamp refunded_at = 9;
   google.protobuf.Timestamp issued_at = 10;
   string issued_by = 11;
+  int64 base_price = 12;
+  int32 discount_percent = 13;
 }
 
 message BuyItemRequest {

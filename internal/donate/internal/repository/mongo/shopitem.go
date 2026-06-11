@@ -16,16 +16,10 @@ import (
 func (r *Repository) CreateShopItem(ctx context.Context, item *model.ShopItem) (*model.ShopItem, error) {
 	l := r.log.With(zap.String("method", "CreateShopItem"))
 
-	model := mongox.NewModel()
-	now := model.CreatedAt
-	d := dto.ShopItem{
-		Model:       model,
-		Name:        item.Name,
-		Description: item.Description,
-		ImageURL:    item.ImageURL,
-		Price:       item.Price,
-		IsAvailable: item.IsAvailable,
-	}
+	m := mongox.NewModel()
+	now := m.CreatedAt
+	d := shopItemToDTO(item)
+	d.Model = m
 
 	result, err := r.shopColl.InsertOne(ctx, d)
 	if err != nil {

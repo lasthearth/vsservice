@@ -22,11 +22,11 @@ func TestNewWallet(t *testing.T) {
 
 func TestWallet_Deposit(t *testing.T) {
 	tests := []struct {
-		name       string
-		initial    int64
-		amount     int64
-		wantCoins  int64
-		wantErr    bool
+		name      string
+		initial   int64
+		amount    int64
+		wantCoins int64
+		wantErr   bool
 	}{
 		{"positive amount credits coins", 100, 50, 150, false},
 		{"deposit from zero", 0, 1, 1, false},

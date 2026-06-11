@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewPurchase(t *testing.T) {
-	p := model.NewPurchase("user-1", "Player1", "item-1", "Cool Skin", 500)
+	p := model.NewPurchase("user-1", "Player1", "item-1", "Cool Skin", 400, 500, 20)
 
 	if p.PlayerID != "user-1" {
 		t.Errorf("PlayerID = %v, want user-1", p.PlayerID)
@@ -15,14 +15,34 @@ func TestNewPurchase(t *testing.T) {
 	if p.ItemName != "Cool Skin" {
 		t.Errorf("ItemName = %v, want Cool Skin", p.ItemName)
 	}
-	if p.PricePaid != 500 {
-		t.Errorf("PricePaid = %v, want 500", p.PricePaid)
+	if p.PricePaid != 400 {
+		t.Errorf("PricePaid = %v, want 400", p.PricePaid)
+	}
+	if p.BasePrice != 500 {
+		t.Errorf("BasePrice = %v, want 500", p.BasePrice)
+	}
+	if p.DiscountPercent != 20 {
+		t.Errorf("DiscountPercent = %v, want 20", p.DiscountPercent)
 	}
 	if p.Status != model.PurchaseStatusActive {
 		t.Errorf("Status = %v, want active", p.Status)
 	}
 	if p.RefundedAt != nil {
 		t.Errorf("RefundedAt should be nil on creation")
+	}
+}
+
+func TestNewPurchase_NoDiscount(t *testing.T) {
+	p := model.NewPurchase("user-1", "Player1", "item-1", "Cool Skin", 500, 500, 0)
+
+	if p.PricePaid != 500 {
+		t.Errorf("PricePaid = %v, want 500", p.PricePaid)
+	}
+	if p.BasePrice != 500 {
+		t.Errorf("BasePrice = %v, want 500", p.BasePrice)
+	}
+	if p.DiscountPercent != 0 {
+		t.Errorf("DiscountPercent = %v, want 0", p.DiscountPercent)
 	}
 }
 
@@ -34,13 +54,13 @@ func TestPurchase_Refund(t *testing.T) {
 	}{
 		{
 			"active purchase can be refunded",
-			func() *model.Purchase { return model.NewPurchase("u", "p", "i", "item", 100) },
+			func() *model.Purchase { return model.NewPurchase("u", "p", "i", "item", 100, 100, 0) },
 			false,
 		},
 		{
 			"already refunded purchase returns error",
 			func() *model.Purchase {
-				p := model.NewPurchase("u", "p", "i", "item", 100)
+				p := model.NewPurchase("u", "p", "i", "item", 100, 100, 0)
 				_ = p.Refund()
 				return p
 			},

@@ -8,35 +8,35 @@ import (
 
 func TestCalculateELO_TwoPlayers(t *testing.T) {
 	tests := []struct {
-		name       string
-		p1ELO      int
-		p2ELO      int
-		p1Place    int
-		p2Place    int
-		wantP1Up   bool // p1 ELO should increase
-		wantP2Up   bool // p2 ELO should increase
+		name     string
+		p1ELO    int
+		p2ELO    int
+		p1Place  int
+		p2Place  int
+		wantP1Up bool // p1 ELO should increase
+		wantP2Up bool // p2 ELO should increase
 	}{
 		{
-			name:     "equal players, p1 wins — p1 gains, p2 loses",
-			p1ELO:    1000, p2ELO: 1000,
+			name:  "equal players, p1 wins — p1 gains, p2 loses",
+			p1ELO: 1000, p2ELO: 1000,
 			p1Place: 1, p2Place: 2,
 			wantP1Up: true, wantP2Up: false,
 		},
 		{
-			name:     "equal players, p2 wins — p2 gains, p1 loses",
-			p1ELO:    1000, p2ELO: 1000,
+			name:  "equal players, p2 wins — p2 gains, p1 loses",
+			p1ELO: 1000, p2ELO: 1000,
 			p1Place: 2, p2Place: 1,
 			wantP1Up: false, wantP2Up: true,
 		},
 		{
-			name:     "favourite wins — smaller gain than underdog win",
-			p1ELO:    1200, p2ELO: 800,
+			name:  "favourite wins — smaller gain than underdog win",
+			p1ELO: 1200, p2ELO: 800,
 			p1Place: 1, p2Place: 2,
 			wantP1Up: true, wantP2Up: false,
 		},
 		{
-			name:     "underdog wins — larger gain",
-			p1ELO:    800, p2ELO: 1200,
+			name:  "underdog wins — larger gain",
+			p1ELO: 800, p2ELO: 1200,
 			p1Place: 1, p2Place: 2,
 			wantP1Up: true, wantP2Up: false,
 		},

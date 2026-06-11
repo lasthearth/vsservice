@@ -77,13 +77,36 @@ func (s *Service) DeductCoins(ctx context.Context, req *donatev1.DeductCoinsRequ
 func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopItemRequest) (*donatev1.CreateShopItemResponse, error) {
 	l := s.log.With(zap.String("method", "CreateShopItem"))
 
-	imageURL, err := s.uploadImage(ctx, req.Image)
-	if err != nil {
-		l.Error("failed to upload image", zap.Error(err))
-		return nil, status.Error(codes.Internal, "failed to upload image")
+	if err := s.validateImageURL(req.ImageUrl); err != nil {
+		return nil, err
 	}
 
-	item := model.NewShopItem(req.Code, req.Name, req.Description, imageURL, req.Price)
+	var item *model.ShopItem
+	if req.ItemType == donatev1.ItemType_ITEM_TYPE_KIT {
+		entries, err := protoEntriesToModel(req.Entries)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		item = model.NewKitShopItem(req.Code, req.Name, req.Description, req.ImageUrl, req.Price, entries)
+	} else {
+		item = model.NewShopItem(req.Code, req.Name, req.Description, req.ImageUrl, req.Price)
+	}
+
+	if req.HasDiscount {
+		if err := item.SetDiscount(req.DiscountPercent); err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+	}
+
+	// Validate entry image URLs for kit
+	for _, e := range req.Entries {
+		if e.ImageUrl != "" {
+			if err := s.validateImageURL(e.ImageUrl); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if err := item.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -100,22 +123,55 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopItemRequest) (*donatev1.UpdateShopItemResponse, error) {
 	l := s.log.With(zap.String("method", "UpdateShopItem"), zap.String("id", req.Id))
 
-	var newImageURL string
-	if len(req.Image) > 0 {
-		url, err := s.uploadImage(ctx, req.Image)
-		if err != nil {
-			l.Error("failed to upload image", zap.Error(err))
-			return nil, status.Error(codes.Internal, "failed to upload image")
+	if req.ImageUrl != "" {
+		if err := s.validateImageURL(req.ImageUrl); err != nil {
+			return nil, err
 		}
-		newImageURL = url
+	}
+
+	// Validate entry image URLs
+	for _, e := range req.Entries {
+		if e.ImageUrl != "" {
+			if err := s.validateImageURL(e.ImageUrl); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	entries, err := protoEntriesToModel(req.Entries)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	updated, err := s.repo.UpdateShopItem(ctx, req.Id, func(_ context.Context, item *model.ShopItem) (*model.ShopItem, error) {
 		imageURL := item.ImageURL
-		if newImageURL != "" {
-			imageURL = newImageURL
+		if req.ImageUrl != "" {
+			imageURL = req.ImageUrl
 		}
-		item.Update(req.Code, req.Name, req.Description, imageURL, req.Price, req.IsAvailable)
+
+		itemType := model.ItemType(itemTypeFromProto(req.ItemType))
+		if itemType == "" {
+			itemType = item.Type
+		}
+
+		u := model.ShopItemUpdate{
+			Code:            req.Code,
+			Name:            req.Name,
+			Description:     req.Description,
+			ImageURL:        imageURL,
+			Price:           req.Price,
+			IsAvailable:     req.IsAvailable,
+			Type:            itemType,
+			Entries:         entries,
+			HasDiscount:     req.HasDiscount,
+			DiscountPercent: req.DiscountPercent,
+		}
+		item.Apply(u)
+
+		if !req.HasDiscount {
+			item.ClearDiscount()
+		}
+
 		if err := item.Validate(); err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
@@ -301,4 +357,30 @@ func (s *Service) ListMyPurchases(ctx context.Context, _ *donatev1.ListMyPurchas
 func isDomainError(err error, code codes.Code) bool {
 	var de *pkgerr.DomainError
 	return errors.As(err, &de) && de.Code == code
+}
+
+// protoEntriesToModel converts proto KitEntry slice to model KitEntry slice.
+func protoEntriesToModel(entries []*donatev1.KitEntry) ([]model.KitEntry, error) {
+	result := make([]model.KitEntry, len(entries))
+	for i, e := range entries {
+		result[i] = model.KitEntry{
+			Name:        e.Name,
+			Description: e.Description,
+			ImageURL:    e.ImageUrl,
+			Quantity:    e.Quantity,
+		}
+	}
+	return result, nil
+}
+
+// itemTypeFromProto converts a proto ItemType to the string used in the model.
+func itemTypeFromProto(t donatev1.ItemType) string {
+	switch t {
+	case donatev1.ItemType_ITEM_TYPE_KIT:
+		return string(model.ItemTypeKit)
+	case donatev1.ItemType_ITEM_TYPE_ITEM:
+		return string(model.ItemTypeItem)
+	default:
+		return ""
+	}
 }
