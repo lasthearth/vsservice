@@ -805,7 +805,11 @@ paths:
                   in: query
                   description: Leaderboard filter. Service will return entries sorted by provided filter.
                   schema:
-                    type: integer
+                    enum:
+                        - LEADERBOARD_FILTER_DEATHS
+                        - LEADERBOARD_FILTER_KILLS
+                        - LEADERBOARD_FILTER_ONLINE
+                    type: string
                     format: enum
                 - name: limit
                   in: query
@@ -1869,7 +1873,11 @@ paths:
                   in: query
                   description: Stats filter. Service will return count sorted by provided filter.
                   schema:
-                    type: integer
+                    enum:
+                        - UNSPECIFIED
+                        - HOURS
+                        - DAY
+                    type: string
                     format: enum
                 - name: started_at
                   in: query
@@ -2743,7 +2751,11 @@ components:
                 code:
                     type: string
                 item_type:
-                    type: integer
+                    enum:
+                        - ITEM_TYPE_UNSPECIFIED
+                        - ITEM_TYPE_ITEM
+                        - ITEM_TYPE_KIT
+                    type: string
                     format: enum
                 entries:
                     type: array
@@ -2763,7 +2775,12 @@ components:
             type: object
             properties:
                 purpose:
-                    type: integer
+                    enum:
+                        - UPLOAD_PURPOSE_UNSPECIFIED
+                        - UPLOAD_PURPOSE_DONATE_SHOP
+                        - UPLOAD_PURPOSE_SETTLEMENT
+                        - UPLOAD_PURPOSE_NEWS
+                    type: string
                     format: enum
                 count:
                     type: integer
@@ -3120,7 +3137,11 @@ components:
                 message:
                     type: string
                 state:
-                    type: integer
+                    enum:
+                        - STATE_UNSPECIFIED
+                        - UNREAD
+                        - READ
+                    type: string
                     format: enum
                 created_at:
                     type: string
@@ -3346,7 +3367,14 @@ components:
                 name:
                     type: string
                 type:
-                    type: integer
+                    enum:
+                        - SETTLEMENT_TYPE_UNSPECIFIED
+                        - CAMP
+                        - VILLAGE
+                        - TOWNSHIP
+                        - CITY
+                        - PROVINCE
+                    type: string
                     format: enum
                 description:
                     type: string
@@ -3416,7 +3444,11 @@ components:
                     type: string
                     description: Unique identifier used to correlate the item with in-game assets.
                 item_type:
-                    type: integer
+                    enum:
+                        - ITEM_TYPE_UNSPECIFIED
+                        - ITEM_TYPE_ITEM
+                        - ITEM_TYPE_KIT
+                    type: string
                     format: enum
                 entries:
                     type: array
@@ -3456,7 +3488,10 @@ components:
             type: object
             properties:
                 type:
-                    type: integer
+                    enum:
+                        - TYPE_UNSPECIFIED
+                        - CAMP
+                    type: string
                     format: enum
                 name:
                     type: string
@@ -3548,7 +3583,11 @@ components:
                 code:
                     type: string
                 item_type:
-                    type: integer
+                    enum:
+                        - ITEM_TYPE_UNSPECIFIED
+                        - ITEM_TYPE_ITEM
+                        - ITEM_TYPE_KIT
+                    type: string
                     format: enum
                 entries:
                     type: array
