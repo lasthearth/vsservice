@@ -26,12 +26,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetMyBalanceResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/me/purchases:
         get:
             tags:
@@ -50,12 +44,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListMyPurchasesResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/players/{player_id}/coins:add:
         post:
             tags:
@@ -88,12 +76,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/AddCoinsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/players/{player_id}/coins:deduct:
         post:
             tags:
@@ -128,12 +110,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/DeductCoinsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/players/{player_id}/purchases:
         get:
             tags:
@@ -159,12 +135,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/AdminListPurchasesResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/players/{player_id}/transactions:
         get:
             tags:
@@ -190,12 +160,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListTransactionsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/purchases/pending:
         get:
             tags:
@@ -225,12 +189,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/AdminListPendingPurchasesResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/purchases/{purchase_id}:mark-issued:
         post:
             tags:
@@ -265,12 +223,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/MarkPurchaseIssuedResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/purchases/{purchase_id}:refund:
         post:
             tags:
@@ -304,12 +256,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/RefundResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/shop/items:
         get:
             tags:
@@ -328,12 +274,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListShopItemsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
         post:
             tags:
                 - DonateService
@@ -359,12 +299,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/CreateShopItemResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/shop/items/{id}:
         put:
             tags:
@@ -398,12 +332,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/UpdateShopItemResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
         delete:
             tags:
                 - DonateService
@@ -429,12 +357,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/DeleteShopItemResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/donate/shop/items/{item_id}:buy:
         post:
             tags:
@@ -467,12 +389,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/BuyItemResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/hungergames/leaderboard:
         get:
             tags:
@@ -497,12 +413,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListLeaderboardResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/hungergames/match:
         post:
             tags:
@@ -530,12 +440,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/RecordMatchResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/hungergames/season:
         post:
             tags:
@@ -562,12 +466,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/CreateSeasonResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/hungergames/season/reset:
         post:
             tags:
@@ -595,12 +493,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ResetSeasonResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/hungergames/seasons:
         get:
             tags:
@@ -630,12 +522,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListSeasonsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/hungergames/seasons/{season_id}/leaderboard:
         get:
             tags:
@@ -660,12 +546,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetSeasonLeaderboardResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/hungergames/seasons/{season_id}/players/{player_id}:
         get:
             tags:
@@ -697,12 +577,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetPlayerStatsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/items:
         post:
             tags:
@@ -721,12 +595,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/CreateResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/kits:
         get:
             tags:
@@ -744,12 +612,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetAvailableKitsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/kits/{kit_name}:assign:
         post:
             tags:
@@ -782,12 +644,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/AssignKitToUserResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/leaderboard:
         get:
             tags:
@@ -826,12 +682,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/LeaderboardResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/media/upload-urls:
         post:
             tags:
@@ -859,12 +709,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/CreateUploadUrlsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/news:
         get:
             tags:
@@ -904,12 +748,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListNewsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
         post:
             tags:
                 - NewsService
@@ -935,12 +773,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/News'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/news/{id}:
         get:
             tags:
@@ -966,12 +798,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/News'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
         delete:
             tags:
                 - NewsService
@@ -995,12 +821,6 @@ paths:
                 "200":
                     description: OK
                     content: {}
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/notifications:
         get:
             tags:
@@ -1044,12 +864,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListNotificationsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/notifications/{id}:markAsRead:
         post:
             tags:
@@ -1075,12 +889,6 @@ paths:
                 "200":
                     description: OK
                     content: {}
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/rules/question:
         post:
             tags:
@@ -1107,12 +915,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/CreateQuestionResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/rules/question/{id}:
         delete:
             tags:
@@ -1139,12 +941,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/DeleteQuestionResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/rules/questions:
         get:
             tags:
@@ -1170,12 +966,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetRandomQuestionsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/rules/questions/list:
         get:
             tags:
@@ -1195,12 +985,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListQuestionsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/serverinfo/totalonline:
         get:
             tags:
@@ -1218,12 +1002,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/TotalOnlineResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/serverinfo/worldtime:
         get:
             tags:
@@ -1241,12 +1019,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/WorldTimeResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements:
         get:
             tags:
@@ -1264,12 +1036,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
         post:
             tags:
                 - SettlementService
@@ -1296,12 +1062,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/SubmitResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/invitations/{invitation_id}:accept:
         post:
             tags:
@@ -1327,12 +1087,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/AcceptInvitationResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/invitations/{invitation_id}:reject:
         post:
             tags:
@@ -1358,12 +1112,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/RejectInvitationResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/tags:
         get:
             tags:
@@ -1381,12 +1129,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetTagsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
         post:
             tags:
                 - SettlementTagService
@@ -1412,12 +1154,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/SettlementTag'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/tags/{tag_id}:
         get:
             tags:
@@ -1443,12 +1179,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/SettlementTag'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
         delete:
             tags:
                 - SettlementTagService
@@ -1472,12 +1202,6 @@ paths:
                 "200":
                     description: OK
                     content: {}
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/tags:batch:
         post:
             tags:
@@ -1501,12 +1225,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetTagsByIdsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/verifications:
         get:
             tags:
@@ -1526,12 +1244,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListPendingResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/{id}:
         get:
             tags:
@@ -1556,12 +1268,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/{id}/verification:approve:
         post:
             tags:
@@ -1595,12 +1301,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ApproveResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/{id}/verification:reject:
         post:
             tags:
@@ -1632,12 +1332,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/RejectResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/{settlement_id}/invitations:
         get:
             tags:
@@ -1663,12 +1357,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetInvitationsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
         post:
             tags:
                 - SettlementService
@@ -1700,12 +1388,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/InviteMemberResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/{settlement_id}/invitations/{invitation_id}:revoke:
         post:
             tags:
@@ -1743,12 +1425,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/RevokeInvitationResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/{settlement_id}/members/{user_id}:
         delete:
             tags:
@@ -1779,12 +1455,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/RemoveMemberResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/{settlement_id}/tags:
         post:
             tags:
@@ -1819,12 +1489,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/AddTagToSettlementResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/settlements/{settlement_id}/tags/{tag_id}:
         delete:
             tags:
@@ -1856,12 +1520,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/RemoveTagFromSettlementResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/stats:
         get:
             tags:
@@ -1891,12 +1549,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/OnlineStatsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/user/verify/{user_game_name}/status:
         get:
             tags:
@@ -1921,12 +1573,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/VerifyStatusResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/users/search:
         get:
             tags:
@@ -1949,12 +1595,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/SearchUsersResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/users/{user_id}:
         get:
             tags:
@@ -1979,12 +1619,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/User'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/users/{user_id}/avatar:
         post:
             tags:
@@ -2015,12 +1649,6 @@ paths:
                 "200":
                     description: OK
                     content: {}
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/users/{user_id}/kits/assignments:
         get:
             tags:
@@ -2046,12 +1674,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListUserAssignmentsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/users/{user_id}/nickname:
         put:
             tags:
@@ -2087,12 +1709,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ChangeNicknameResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/users/{user_id}/settlements:
         get:
             tags:
@@ -2117,12 +1733,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetByUserIdResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/users/{user_id}/settlements/invitations:
         get:
             tags:
@@ -2148,12 +1758,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/GetUserInvitationsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/users/{user_id}/settlements/verification:status:
         get:
             tags:
@@ -2178,12 +1782,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/VerificationStatusResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/users/{user_id}/verification:status:
         get:
             tags:
@@ -2208,12 +1806,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/VerifyStatusResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/verification:
         post:
             tags:
@@ -2241,12 +1833,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/SubmitResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/verification/details:
         get:
             tags:
@@ -2267,12 +1853,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/DetailsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/verification/{user_id}/approve:
         post:
             tags:
@@ -2302,12 +1882,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ApproveResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/verification/{user_id}/reject:
         post:
             tags:
@@ -2341,12 +1915,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/RejectResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/verifications:
         get:
             tags:
@@ -2366,12 +1934,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
     /v1/{name}/stats:
         get:
             tags:
@@ -2391,12 +1953,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/PlayerStatsResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
 components:
     schemas:
         AcceptInvitationResponse:
@@ -2917,14 +2473,6 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Invitation'
-        GoogleProtobufAny:
-            type: object
-            properties:
-                '@type':
-                    type: string
-                    description: The type of the serialized message.
-            additionalProperties: true
-            description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
         Invitation:
             type: object
             properties:
@@ -3461,22 +3009,6 @@ components:
                     format: int32
                 effective_price:
                     type: string
-        Status:
-            type: object
-            properties:
-                code:
-                    type: integer
-                    description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-                    format: int32
-                message:
-                    type: string
-                    description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-                details:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/GoogleProtobufAny'
-                    description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
-            description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
         SubmitRequest:
             required:
                 - type

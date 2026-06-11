@@ -1,13 +1,9 @@
-﻿services:
-  swagger-ui:
-    image: swaggerapi/swagger-ui
-    container_name: "swagger-ui-container"
+services:
+  scalar:
+    image: nginx:alpine
+    container_name: "scalar-docs-container"
     ports:
-      - "8888:8080"
+      - "8888:80"
     volumes:
-      - ./docs/v1/openapi.yaml:/v1.openapi.yaml
-    environment:
-      SWAGGER_JSON: /v1.openapi.yaml
-      URLS: "[
-        { url: 'v1.openapi.yaml', name: 'API Version 1.0'},
-      ]"
+      - ./docs/scalar/index.html:/usr/share/nginx/html/index.html:ro
+      - ./docs/v1/openapi.yaml:/usr/share/nginx/html/v1.openapi.yaml:ro
