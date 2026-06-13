@@ -13,6 +13,7 @@ service SettlementService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
   // Submit or level-up a settlement request.
+  //
   // On first call creates a new request; on subsequent calls upgrades an approved settlement.
   //
   // Errors:

@@ -5,6 +5,8 @@ modules:
     name: buf.build/lasthearth/vsservice
 deps:
   - buf.build/googleapis/googleapis
+  - buf.build/bufbuild/protovalidate
+  - buf.build/gnostic/gnostic
 lint:
   except:
     - FIELD_NOT_REQUIRED

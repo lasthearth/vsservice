@@ -42,6 +42,7 @@ type VerificationServiceClient interface {
 	//   - INTERNAL (500): database failure
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
 	// Submit a verification request for the authenticated user.
+	//
 	// If a previous request exists and is re-submittable, it will be updated.
 	//
 	// Errors:
@@ -51,6 +52,7 @@ type VerificationServiceClient interface {
 	//   - INTERNAL (500): database or SSO failure
 	Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*SubmitResponse, error)
 	// Approve a user's verification request. Requires admin privileges.
+	//
 	// Grants the "player" role to the user in SSO.
 	//
 	// Errors:
@@ -71,6 +73,7 @@ type VerificationServiceClient interface {
 	//   - INTERNAL (500): database failure
 	Reject(ctx context.Context, in *RejectRequest, opts ...grpc.CallOption) (*RejectResponse, error)
 	// Get verification details for the authenticated user.
+	//
 	// Possible statuses: pending, approved, rejected, verified.
 	//
 	// Errors:
@@ -184,6 +187,7 @@ type VerificationServiceServer interface {
 	//   - INTERNAL (500): database failure
 	List(context.Context, *ListRequest) (*ListResponse, error)
 	// Submit a verification request for the authenticated user.
+	//
 	// If a previous request exists and is re-submittable, it will be updated.
 	//
 	// Errors:
@@ -193,6 +197,7 @@ type VerificationServiceServer interface {
 	//   - INTERNAL (500): database or SSO failure
 	Submit(context.Context, *SubmitRequest) (*SubmitResponse, error)
 	// Approve a user's verification request. Requires admin privileges.
+	//
 	// Grants the "player" role to the user in SSO.
 	//
 	// Errors:
@@ -213,6 +218,7 @@ type VerificationServiceServer interface {
 	//   - INTERNAL (500): database failure
 	Reject(context.Context, *RejectRequest) (*RejectResponse, error)
 	// Get verification details for the authenticated user.
+	//
 	// Possible statuses: pending, approved, rejected, verified.
 	//
 	// Errors:

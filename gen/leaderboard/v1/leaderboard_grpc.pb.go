@@ -29,6 +29,7 @@ const (
 // Represent basic leaderboard
 type LeaderboardServiceClient interface {
 	// List leaderboard entries sorted by the specified filter.
+	//
 	// Defaults to 25 entries if limit is not specified.
 	//
 	// Errors:
@@ -62,6 +63,7 @@ func (c *leaderboardServiceClient) ListEntries(ctx context.Context, in *Leaderbo
 // Represent basic leaderboard
 type LeaderboardServiceServer interface {
 	// List leaderboard entries sorted by the specified filter.
+	//
 	// Defaults to 25 entries if limit is not specified.
 	//
 	// Errors:

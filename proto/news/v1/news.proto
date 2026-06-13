@@ -13,6 +13,7 @@ service NewsService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
   // Create a news entry. Requires admin privileges.
+  //
   // Preview image is stored as WebP. Broadcasts a notification to all users.
   //
   // Errors:
@@ -28,6 +29,7 @@ service NewsService {
   }
 
   // List news with pagination. View count is incremented for each item returned.
+  //
   // Default page size is 15, maximum is 50.
   //
   // Errors:

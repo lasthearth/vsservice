@@ -28,8 +28,9 @@ const (
 //
 // MediaService issues presigned POST targets for direct uploads to S3.
 type MediaServiceClient interface {
-	// Returns N presigned POST targets for uploading images. The required scope
-	// depends on the purpose (see the server-side per-purpose config).
+	// Returns N presigned POST targets for uploading images.
+	//
+	// The required scope depends on the purpose (see the server-side per-purpose config).
 	//
 	// Errors:
 	//   - INVALID_ARGUMENT (400): unknown purpose, count out of [1,20], or unsupported content_type
@@ -63,8 +64,9 @@ func (c *mediaServiceClient) CreateUploadUrls(ctx context.Context, in *CreateUpl
 //
 // MediaService issues presigned POST targets for direct uploads to S3.
 type MediaServiceServer interface {
-	// Returns N presigned POST targets for uploading images. The required scope
-	// depends on the purpose (see the server-side per-purpose config).
+	// Returns N presigned POST targets for uploading images.
+	//
+	// The required scope depends on the purpose (see the server-side per-purpose config).
 	//
 	// Errors:
 	//   - INVALID_ARGUMENT (400): unknown purpose, count out of [1,20], or unsupported content_type

@@ -2,12 +2,43 @@ syntax = "proto3";
 
 package media.v1;
 
+import "buf/validate/validate.proto";
+import "gnostic/openapi/v3/annotations.proto";
 import "google/api/annotations.proto";
+
+// Document-level OpenAPI metadata (title, version, auth scheme) for the whole API.
+// Lives here so it ships with the generated OpenAPI spec; applies to all services.
+option (gnostic.openapi.v3.document) = {
+  info: {
+    title: "VS Service API"
+    version: "1.0"
+    description: "gRPC service with a REST gateway (grpc-gateway) for the LastHearth backend. A single protobuf source generates both the gRPC and REST APIs."
+    contact: {name: "lasthearth"}
+  }
+  components: {
+    security_schemes: {
+      additional_properties: [
+        {
+          name: "bearerAuth"
+          value: {
+            security_scheme: {
+              type: "http"
+              scheme: "bearer"
+              bearer_format: "JWT"
+              description: "Logto-issued JWT. Send as `Authorization: Bearer <token>`."
+            }
+          }
+        }
+      ]
+    }
+  }
+};
 
 // MediaService issues presigned POST targets for direct uploads to S3.
 service MediaService {
-  // Returns N presigned POST targets for uploading images. The required scope
-  // depends on the purpose (see the server-side per-purpose config).
+  // Returns N presigned POST targets for uploading images.
+  //
+  // The required scope depends on the purpose (see the server-side per-purpose config).
   //
   // Errors:
   //   - INVALID_ARGUMENT (400): unknown purpose, count out of [1,20], or unsupported content_type
@@ -32,8 +63,16 @@ enum UploadPurpose {
 }
 
 message CreateUploadUrlsRequest {
-  UploadPurpose purpose = 1;
-  int32 count = 2;
+  // Must be a defined purpose other than UNSPECIFIED.
+  UploadPurpose purpose = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  // Number of presigned targets to issue. Allowed range: [1, 20].
+  int32 count = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 20
+  }];
   // Optional. MIME type of the uploaded file; must be in the list allowed for
   // the purpose. Empty → any image/* is allowed and the object gets a .webp extension.
   string content_type = 3;

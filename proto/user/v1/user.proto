@@ -13,6 +13,7 @@ service UserService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
   // Update the avatar for a user. Caller must match user_id.
+  //
   // Avatar must be at most 3MB and exactly 512x512 pixels; converted to WebP internally.
   //
   // Errors:
@@ -45,6 +46,7 @@ service UserService {
   }
 
   // Change in-game nickname for a user. Caller must match user_id.
+  //
   // Nickname must be 1-15 alphanumeric/underscore/dash characters.
   // Change is subject to a 6-month cooldown per user.
   //

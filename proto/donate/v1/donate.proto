@@ -122,6 +122,7 @@ service DonateService {
   }
 
   // Admin: list purchases that have not been marked as issued yet (pending manual delivery).
+  //
   // Returns only active (non-refunded) purchases.
   //
   // Errors:
@@ -135,6 +136,7 @@ service DonateService {
   }
 
   // Admin: mark a purchase as manually issued by the calling admin.
+  //
   // Idempotent — calling on an already-issued purchase returns the existing record unchanged.
   //
   // Errors:

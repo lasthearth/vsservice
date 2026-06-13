@@ -45,6 +45,7 @@ const (
 // Represents settlement management service
 type SettlementServiceClient interface {
 	// Submit or level-up a settlement request.
+	//
 	// On first call creates a new request; on subsequent calls upgrades an approved settlement.
 	//
 	// Errors:
@@ -355,6 +356,7 @@ func (c *settlementServiceClient) RemoveTagFromSettlement(ctx context.Context, i
 // Represents settlement management service
 type SettlementServiceServer interface {
 	// Submit or level-up a settlement request.
+	//
 	// On first call creates a new request; on subsequent calls upgrades an approved settlement.
 	//
 	// Errors:

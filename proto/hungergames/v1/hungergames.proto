@@ -14,6 +14,7 @@ service HungerGamesService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
   // Records a match result and recalculates ELO for all participants.
+  //
   // Requires an active season.
   //
   // Errors:
@@ -36,8 +37,9 @@ service HungerGamesService {
     option (google.api.http) = {get: "/v1/hungergames/leaderboard"};
   }
 
-  // Distributes season rewards to top-N players, archives the leaderboard,
-  // and closes the current season. Does NOT create a new season.
+  // Distributes season rewards to top-N players and closes the current season.
+  //
+  // Archives the leaderboard. Does NOT create a new season.
   //
   // Errors:
   //   - NOT_FOUND (404): no active season
@@ -83,6 +85,7 @@ service HungerGamesService {
   }
 
   // Returns a player's stats for a specific season.
+  //
   // For an active season returns current live stats (rank = 0).
   // For a completed season returns the archived result including rank and reward.
   //

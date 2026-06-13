@@ -22,6 +22,7 @@ service VerificationService {
   }
 
   // Submit a verification request for the authenticated user.
+  //
   // If a previous request exists and is re-submittable, it will be updated.
   //
   // Errors:
@@ -37,6 +38,7 @@ service VerificationService {
   }
 
   // Approve a user's verification request. Requires admin privileges.
+  //
   // Grants the "player" role to the user in SSO.
   //
   // Errors:
@@ -66,6 +68,7 @@ service VerificationService {
   }
 
   // Get verification details for the authenticated user.
+  //
   // Possible statuses: pending, approved, rejected, verified.
   //
   // Errors:

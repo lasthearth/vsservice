@@ -13,6 +13,7 @@ service NotificationService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
   // Lists notifications for the authenticated user with pagination.
+  //
   // Default page size is 15, maximum is 15.
   // Supports order_by: "created_at" or "state" with optional " asc"/" desc" suffix.
   //

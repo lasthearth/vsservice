@@ -32,6 +32,7 @@ const (
 // Represents rules service
 type RuleServiceClient interface {
 	// Returns random questions about server rules.
+	//
 	// Defaults to 5 questions if count is not specified.
 	//
 	// Errors:
@@ -117,6 +118,7 @@ func (c *ruleServiceClient) DeleteQuestion(ctx context.Context, in *DeleteQuesti
 // Represents rules service
 type RuleServiceServer interface {
 	// Returns random questions about server rules.
+	//
 	// Defaults to 5 questions if count is not specified.
 	//
 	// Errors:

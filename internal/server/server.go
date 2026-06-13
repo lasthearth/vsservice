@@ -7,9 +7,11 @@ import (
 
 	"go.uber.org/zap"
 
+	"buf.build/go/protovalidate"
 	"github.com/go-faster/errors"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	protovalidatemw "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -60,6 +62,11 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 		}),
 	}
 
+	validator, err := protovalidate.New()
+	if err != nil {
+		return errors.Wrap(err, "create protovalidate validator")
+	}
+
 	mb := 1024 * 1024
 	srv := grpc.NewServer(
 		grpc.MaxRecvMsgSize(60*mb),
@@ -69,6 +76,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 			})),
 			logging.UnaryServerInterceptor(interceptorLogger(s.log), logOpts...),
 			recovery.UnaryServerInterceptor(recoveryOpts...),
+			protovalidatemw.UnaryServerInterceptor(validator),
 			interceptor.DomainErrorUnaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
@@ -77,6 +85,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 			})),
 			logging.StreamServerInterceptor(interceptorLogger(s.log), logOpts...),
 			recovery.StreamServerInterceptor(recoveryOpts...),
+			protovalidatemw.StreamServerInterceptor(validator),
 			interceptor.DomainErrorStreamInterceptor,
 		),
 	)

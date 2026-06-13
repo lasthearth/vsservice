@@ -7,6 +7,10 @@ managed:
   disable:
     - file_option: go_package_prefix
       module: buf.build/googleapis/googleapis
+    - file_option: go_package_prefix
+      module: buf.build/bufbuild/protovalidate
+    - file_option: go_package_prefix
+      module: buf.build/gnostic/gnostic
 plugins:
   - local: protoc-gen-go
     out: gen
@@ -17,6 +21,11 @@ plugins:
   - local: protoc-gen-grpc-gateway
     out: gen
     opt: paths=source_relative
-  - remote: buf.build/community/google-gnostic-openapi:v0.7.0
+  - remote: buf.build/community/sudorandom-connect-openapi:v0.25.6
     out: docs/v1
-    opt: version=1,naming=proto,enum_type=string,default_response=false
+    opt:
+      - path=openapi.yaml
+      - format=yaml
+      - with-proto-names
+      - short-service-tags
+      - short-operation-ids

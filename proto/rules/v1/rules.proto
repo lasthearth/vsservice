@@ -13,6 +13,7 @@ service RuleService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
   // Returns random questions about server rules.
+  //
   // Defaults to 5 questions if count is not specified.
   //
   // Errors:

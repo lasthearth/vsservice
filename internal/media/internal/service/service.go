@@ -16,10 +16,7 @@ import (
 func (s *Service) CreateUploadUrls(ctx context.Context, req *mediav1.CreateUploadUrlsRequest) (*mediav1.CreateUploadUrlsResponse, error) {
 	l := s.log.With(zap.String("method", "CreateUploadUrls"))
 
-	if req.Count < 1 || req.Count > 20 {
-		return nil, status.Error(codes.InvalidArgument, "count must be between 1 and 20")
-	}
-
+	// count range and purpose enum are enforced by protovalidate (see media.proto).
 	cfg, ok := purposes[req.Purpose]
 	if !ok {
 		return nil, status.Error(codes.InvalidArgument, "unknown upload purpose")

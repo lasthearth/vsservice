@@ -33,6 +33,7 @@ const (
 // Represents news service
 type NewsServiceClient interface {
 	// Create a news entry. Requires admin privileges.
+	//
 	// Preview image is stored as WebP. Broadcasts a notification to all users.
 	//
 	// Errors:
@@ -41,6 +42,7 @@ type NewsServiceClient interface {
 	//   - INTERNAL (500): storage or database failure
 	CreateNews(ctx context.Context, in *CreateNewsRequest, opts ...grpc.CallOption) (*News, error)
 	// List news with pagination. View count is incremented for each item returned.
+	//
 	// Default page size is 15, maximum is 50.
 	//
 	// Errors:
@@ -117,6 +119,7 @@ func (c *newsServiceClient) GetNews(ctx context.Context, in *GetNewsRequest, opt
 // Represents news service
 type NewsServiceServer interface {
 	// Create a news entry. Requires admin privileges.
+	//
 	// Preview image is stored as WebP. Broadcasts a notification to all users.
 	//
 	// Errors:
@@ -125,6 +128,7 @@ type NewsServiceServer interface {
 	//   - INTERNAL (500): storage or database failure
 	CreateNews(context.Context, *CreateNewsRequest) (*News, error)
 	// List news with pagination. View count is incremented for each item returned.
+	//
 	// Default page size is 15, maximum is 50.
 	//
 	// Errors:

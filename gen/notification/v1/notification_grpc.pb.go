@@ -31,6 +31,7 @@ const (
 // Provides methods to manage user notifications
 type NotificationServiceClient interface {
 	// Lists notifications for the authenticated user with pagination.
+	//
 	// Default page size is 15, maximum is 15.
 	// Supports order_by: "created_at" or "state" with optional " asc"/" desc" suffix.
 	//
@@ -83,6 +84,7 @@ func (c *notificationServiceClient) MarkAsRead(ctx context.Context, in *MarkAsRe
 // Provides methods to manage user notifications
 type NotificationServiceServer interface {
 	// Lists notifications for the authenticated user with pagination.
+	//
 	// Default page size is 15, maximum is 15.
 	// Supports order_by: "created_at" or "state" with optional " asc"/" desc" suffix.
 	//

@@ -33,6 +33,7 @@ const (
 // Represents user specific actions
 type UserServiceClient interface {
 	// Update the avatar for a user. Caller must match user_id.
+	//
 	// Avatar must be at most 3MB and exactly 512x512 pixels; converted to WebP internally.
 	//
 	// Errors:
@@ -53,6 +54,7 @@ type UserServiceClient interface {
 	//   - INTERNAL (500): database failure
 	SearchUsers(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error)
 	// Change in-game nickname for a user. Caller must match user_id.
+	//
 	// Nickname must be 1-15 alphanumeric/underscore/dash characters.
 	// Change is subject to a 6-month cooldown per user.
 	//
@@ -120,6 +122,7 @@ func (c *userServiceClient) ChangeNickname(ctx context.Context, in *ChangeNickna
 // Represents user specific actions
 type UserServiceServer interface {
 	// Update the avatar for a user. Caller must match user_id.
+	//
 	// Avatar must be at most 3MB and exactly 512x512 pixels; converted to WebP internally.
 	//
 	// Errors:
@@ -140,6 +143,7 @@ type UserServiceServer interface {
 	//   - INTERNAL (500): database failure
 	SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error)
 	// Change in-game nickname for a user. Caller must match user_id.
+	//
 	// Nickname must be 1-15 alphanumeric/underscore/dash characters.
 	// Change is subject to a 6-month cooldown per user.
 	//

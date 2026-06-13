@@ -36,6 +36,7 @@ const (
 // season lifecycle, leaderboard, and reward distribution.
 type HungerGamesServiceClient interface {
 	// Records a match result and recalculates ELO for all participants.
+	//
 	// Requires an active season.
 	//
 	// Errors:
@@ -49,8 +50,9 @@ type HungerGamesServiceClient interface {
 	// Errors:
 	//   - INTERNAL (500): database failure
 	ListLeaderboard(ctx context.Context, in *ListLeaderboardRequest, opts ...grpc.CallOption) (*ListLeaderboardResponse, error)
-	// Distributes season rewards to top-N players, archives the leaderboard,
-	// and closes the current season. Does NOT create a new season.
+	// Distributes season rewards to top-N players and closes the current season.
+	//
+	// Archives the leaderboard. Does NOT create a new season.
 	//
 	// Errors:
 	//   - NOT_FOUND (404): no active season
@@ -78,6 +80,7 @@ type HungerGamesServiceClient interface {
 	//   - INTERNAL (500): database failure
 	GetSeasonLeaderboard(ctx context.Context, in *GetSeasonLeaderboardRequest, opts ...grpc.CallOption) (*GetSeasonLeaderboardResponse, error)
 	// Returns a player's stats for a specific season.
+	//
 	// For an active season returns current live stats (rank = 0).
 	// For a completed season returns the archived result including rank and reward.
 	//
@@ -173,6 +176,7 @@ func (c *hungerGamesServiceClient) GetPlayerStats(ctx context.Context, in *GetPl
 // season lifecycle, leaderboard, and reward distribution.
 type HungerGamesServiceServer interface {
 	// Records a match result and recalculates ELO for all participants.
+	//
 	// Requires an active season.
 	//
 	// Errors:
@@ -186,8 +190,9 @@ type HungerGamesServiceServer interface {
 	// Errors:
 	//   - INTERNAL (500): database failure
 	ListLeaderboard(context.Context, *ListLeaderboardRequest) (*ListLeaderboardResponse, error)
-	// Distributes season rewards to top-N players, archives the leaderboard,
-	// and closes the current season. Does NOT create a new season.
+	// Distributes season rewards to top-N players and closes the current season.
+	//
+	// Archives the leaderboard. Does NOT create a new season.
 	//
 	// Errors:
 	//   - NOT_FOUND (404): no active season
@@ -215,6 +220,7 @@ type HungerGamesServiceServer interface {
 	//   - INTERNAL (500): database failure
 	GetSeasonLeaderboard(context.Context, *GetSeasonLeaderboardRequest) (*GetSeasonLeaderboardResponse, error)
 	// Returns a player's stats for a specific season.
+	//
 	// For an active season returns current live stats (rank = 0).
 	// For a completed season returns the archived result including rank and reward.
 	//

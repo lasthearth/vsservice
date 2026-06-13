@@ -10,6 +10,7 @@ import "google/protobuf/empty.proto";
 // Represent basic leaderboard
 service LeaderboardService {
   // List leaderboard entries sorted by the specified filter.
+  //
   // Defaults to 25 entries if limit is not specified.
   //
   // Errors:

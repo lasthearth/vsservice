@@ -108,6 +108,7 @@ type DonateServiceClient interface {
 	//   - INTERNAL (500): database failure
 	AdminListPurchases(ctx context.Context, in *AdminListPurchasesRequest, opts ...grpc.CallOption) (*AdminListPurchasesResponse, error)
 	// Admin: list purchases that have not been marked as issued yet (pending manual delivery).
+	//
 	// Returns only active (non-refunded) purchases.
 	//
 	// Errors:
@@ -116,6 +117,7 @@ type DonateServiceClient interface {
 	//   - INTERNAL (500): database failure
 	AdminListPendingPurchases(ctx context.Context, in *AdminListPendingPurchasesRequest, opts ...grpc.CallOption) (*AdminListPendingPurchasesResponse, error)
 	// Admin: mark a purchase as manually issued by the calling admin.
+	//
 	// Idempotent — calling on an already-issued purchase returns the existing record unchanged.
 	//
 	// Errors:
@@ -374,6 +376,7 @@ type DonateServiceServer interface {
 	//   - INTERNAL (500): database failure
 	AdminListPurchases(context.Context, *AdminListPurchasesRequest) (*AdminListPurchasesResponse, error)
 	// Admin: list purchases that have not been marked as issued yet (pending manual delivery).
+	//
 	// Returns only active (non-refunded) purchases.
 	//
 	// Errors:
@@ -382,6 +385,7 @@ type DonateServiceServer interface {
 	//   - INTERNAL (500): database failure
 	AdminListPendingPurchases(context.Context, *AdminListPendingPurchasesRequest) (*AdminListPendingPurchasesResponse, error)
 	// Admin: mark a purchase as manually issued by the calling admin.
+	//
 	// Idempotent — calling on an already-issued purchase returns the existing record unchanged.
 	//
 	// Errors:
