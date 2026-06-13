@@ -31,8 +31,8 @@ func provideClaims(ctx context.Context, payload *jwt.Claims) (context.Context, e
 }
 
 func GetClaims(ctx context.Context) (jwt.Claims, error) {
-	if claims, ok := ctx.Value(ctxKey{"claims"}).(jwt.Claims); ok {
-		return claims, nil
+	if claims, ok := ctx.Value(ctxKey{"claims"}).(*jwt.Claims); ok {
+		return *claims, nil
 	}
 
 	return jwt.Claims{}, ErrGetClaims
