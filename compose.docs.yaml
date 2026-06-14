@@ -5,5 +5,9 @@ services:
     ports:
       - "8888:80"
     volumes:
-      - ./docs/scalar/index.html:/usr/share/nginx/html/index.html:ro
-      - ./docs/v1/openapi.yaml:/usr/share/nginx/html/v1.openapi.yaml:ro
+      # Монтируем директории, а не одиночные файлы: при atomic-rewrite
+      # (buf generate) у файла меняется inode, и single-file bind-mount
+      # остаётся приклеен к старому inode → контейнер отдаёт старьё.
+      # Mount директории резолвит путь при каждом чтении → подхватывает свежий файл.
+      - ./docs/scalar:/usr/share/nginx/html:ro
+      - ./docs/v1:/usr/share/nginx/html/v1:ro
