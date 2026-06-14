@@ -1,6 +1,6 @@
 module github.com/lasthearth/vsservice
 
-go 1.24.6
+go 1.26.4
 
 tool (
 	github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway

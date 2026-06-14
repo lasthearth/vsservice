@@ -298,6 +298,25 @@ func (s *Service) AdminListPurchases(ctx context.Context, req *donatev1.AdminLis
 	return &donatev1.AdminListPurchasesResponse{Purchases: s.mapper.ToPurchasesProto(purchases)}, nil
 }
 
+func (s *Service) AdminGetPlayerBalance(ctx context.Context, req *donatev1.AdminGetPlayerBalanceRequest) (*donatev1.AdminGetPlayerBalanceResponse, error) {
+	l := s.log.With(zap.String("method", "AdminGetPlayerBalance"), zap.String("player_id", req.GetPlayerId()))
+
+	wallet, err := s.repo.GetWalletByPlayerID(ctx, req.GetPlayerId())
+	if err != nil {
+		if isDomainError(err, codes.NotFound) {
+			return &donatev1.AdminGetPlayerBalanceResponse{PlayerId: req.GetPlayerId(), Coins: 0}, nil
+		}
+		l.Error("failed to get balance", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to get balance")
+	}
+
+	return &donatev1.AdminGetPlayerBalanceResponse{
+		PlayerId:   wallet.PlayerID,
+		PlayerName: wallet.PlayerName,
+		Coins:      wallet.Coins,
+	}, nil
+}
+
 func (s *Service) GetMyBalance(ctx context.Context, _ *donatev1.GetMyBalanceRequest) (*donatev1.GetMyBalanceResponse, error) {
 	l := s.log.With(zap.String("method", "GetMyBalance"))
 

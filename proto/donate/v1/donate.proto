@@ -152,6 +152,20 @@ service DonateService {
     };
   }
 
+  // Admin: get a player's current coin balance.
+  //
+  // Returns 0 coins if the wallet does not exist yet.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc AdminGetPlayerBalance(AdminGetPlayerBalanceRequest) returns (AdminGetPlayerBalanceResponse) {
+    option (google.api.http) = {
+      get: "/v1/donate/players/{player_id}/balance"
+    };
+  }
+
   // Player: get the caller's current coin balance.
   //
   // Errors:

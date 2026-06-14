@@ -29,6 +29,7 @@ const (
 	DonateService_AdminListPurchases_FullMethodName        = "/donate.v1.DonateService/AdminListPurchases"
 	DonateService_AdminListPendingPurchases_FullMethodName = "/donate.v1.DonateService/AdminListPendingPurchases"
 	DonateService_MarkPurchaseIssued_FullMethodName        = "/donate.v1.DonateService/MarkPurchaseIssued"
+	DonateService_AdminGetPlayerBalance_FullMethodName     = "/donate.v1.DonateService/AdminGetPlayerBalance"
 	DonateService_GetMyBalance_FullMethodName              = "/donate.v1.DonateService/GetMyBalance"
 	DonateService_ListShopItems_FullMethodName             = "/donate.v1.DonateService/ListShopItems"
 	DonateService_BuyItem_FullMethodName                   = "/donate.v1.DonateService/BuyItem"
@@ -127,6 +128,15 @@ type DonateServiceClient interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): database failure
 	MarkPurchaseIssued(ctx context.Context, in *MarkPurchaseIssuedRequest, opts ...grpc.CallOption) (*MarkPurchaseIssuedResponse, error)
+	// Admin: get a player's current coin balance.
+	//
+	// Returns 0 coins if the wallet does not exist yet.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	AdminGetPlayerBalance(ctx context.Context, in *AdminGetPlayerBalanceRequest, opts ...grpc.CallOption) (*AdminGetPlayerBalanceResponse, error)
 	// Player: get the caller's current coin balance.
 	//
 	// Errors:
@@ -257,6 +267,16 @@ func (c *donateServiceClient) MarkPurchaseIssued(ctx context.Context, in *MarkPu
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MarkPurchaseIssuedResponse)
 	err := c.cc.Invoke(ctx, DonateService_MarkPurchaseIssued_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *donateServiceClient) AdminGetPlayerBalance(ctx context.Context, in *AdminGetPlayerBalanceRequest, opts ...grpc.CallOption) (*AdminGetPlayerBalanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AdminGetPlayerBalanceResponse)
+	err := c.cc.Invoke(ctx, DonateService_AdminGetPlayerBalance_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -395,6 +415,15 @@ type DonateServiceServer interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): database failure
 	MarkPurchaseIssued(context.Context, *MarkPurchaseIssuedRequest) (*MarkPurchaseIssuedResponse, error)
+	// Admin: get a player's current coin balance.
+	//
+	// Returns 0 coins if the wallet does not exist yet.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	AdminGetPlayerBalance(context.Context, *AdminGetPlayerBalanceRequest) (*AdminGetPlayerBalanceResponse, error)
 	// Player: get the caller's current coin balance.
 	//
 	// Errors:
@@ -459,6 +488,9 @@ func (UnimplementedDonateServiceServer) AdminListPendingPurchases(context.Contex
 }
 func (UnimplementedDonateServiceServer) MarkPurchaseIssued(context.Context, *MarkPurchaseIssuedRequest) (*MarkPurchaseIssuedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method MarkPurchaseIssued not implemented")
+}
+func (UnimplementedDonateServiceServer) AdminGetPlayerBalance(context.Context, *AdminGetPlayerBalanceRequest) (*AdminGetPlayerBalanceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AdminGetPlayerBalance not implemented")
 }
 func (UnimplementedDonateServiceServer) GetMyBalance(context.Context, *GetMyBalanceRequest) (*GetMyBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMyBalance not implemented")
@@ -672,6 +704,24 @@ func _DonateService_MarkPurchaseIssued_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DonateService_AdminGetPlayerBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdminGetPlayerBalanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DonateServiceServer).AdminGetPlayerBalance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DonateService_AdminGetPlayerBalance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DonateServiceServer).AdminGetPlayerBalance(ctx, req.(*AdminGetPlayerBalanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DonateService_GetMyBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMyBalanceRequest)
 	if err := dec(in); err != nil {
@@ -790,6 +840,10 @@ var DonateService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MarkPurchaseIssued",
 			Handler:    _DonateService_MarkPurchaseIssued_Handler,
+		},
+		{
+			MethodName: "AdminGetPlayerBalance",
+			Handler:    _DonateService_AdminGetPlayerBalance_Handler,
 		},
 		{
 			MethodName: "GetMyBalance",

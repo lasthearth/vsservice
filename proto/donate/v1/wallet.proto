@@ -28,3 +28,13 @@ message GetMyBalanceRequest {}
 message GetMyBalanceResponse {
   int64 coins = 1;
 }
+
+message AdminGetPlayerBalanceRequest {
+  string player_id = 1;
+}
+
+message AdminGetPlayerBalanceResponse {
+  string player_id = 1;
+  string player_name = 2;
+  int64 coins = 3;
+}

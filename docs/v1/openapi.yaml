@@ -40,6 +40,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/donate.v1.ListMyPurchasesResponse'
+  /v1/donate/players/{player_id}/balance:
+    get:
+      tags:
+        - DonateService
+      summary: 'Admin: get a player''s current coin balance.'
+      description: |-
+        Returns 0 coins if the wallet does not exist yet.
+
+         Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: DonateService_AdminGetPlayerBalance
+      parameters:
+        - name: player_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: player_id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/donate.v1.AdminGetPlayerBalanceResponse'
   /v1/donate/players/{player_id}/coins:add:
     post:
       tags:
@@ -2217,6 +2244,31 @@ components:
           title: coins
           format: int64
       title: AddCoinsResponse
+      additionalProperties: false
+    donate.v1.AdminGetPlayerBalanceRequest:
+      type: object
+      properties:
+        player_id:
+          type: string
+          title: player_id
+      title: AdminGetPlayerBalanceRequest
+      additionalProperties: false
+    donate.v1.AdminGetPlayerBalanceResponse:
+      type: object
+      properties:
+        player_id:
+          type: string
+          title: player_id
+        player_name:
+          type: string
+          title: player_name
+        coins:
+          type:
+            - integer
+            - string
+          title: coins
+          format: int64
+      title: AdminGetPlayerBalanceResponse
       additionalProperties: false
     donate.v1.AdminListPendingPurchasesRequest:
       type: object
