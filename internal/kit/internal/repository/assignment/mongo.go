@@ -37,7 +37,7 @@ func (r *Repository) CreateAssignment(ctx context.Context, assignment *model.Kit
 		return nil, err
 	}
 
-	assignment.Id = oid.Hex()
+	assignment.AssignID(oid.Hex())
 
 	l.Info("successfully created assignment")
 	return assignment, nil

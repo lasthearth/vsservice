@@ -4,6 +4,7 @@ import (
 	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
 	repofx "github.com/lasthearth/vsservice/internal/kit/internal/repository/app"
 	"github.com/lasthearth/vsservice/internal/kit/internal/service"
+	"github.com/lasthearth/vsservice/internal/kit/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/nats-io/nats.go"
@@ -24,6 +25,13 @@ var App = fx.Options(
 
 		fx.Provide(
 			fx.Private,
+
+			fx.Annotate(
+				func() *sermapper.MapperImpl {
+					return &sermapper.MapperImpl{}
+				},
+				fx.As(new(service.Mapper)),
+			),
 
 			func(
 				nc *nats.Conn,

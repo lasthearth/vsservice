@@ -2,6 +2,7 @@ package repofx
 
 import (
 	"github.com/lasthearth/vsservice/internal/kit/internal/repository/assignment"
+	"github.com/lasthearth/vsservice/internal/kit/internal/repository/assignment/repomapper"
 	"github.com/lasthearth/vsservice/internal/kit/internal/repository/kit"
 	"github.com/lasthearth/vsservice/internal/kit/internal/service"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -15,6 +16,13 @@ var App = fx.Options(
 				return db.Collection(assignment.CollectionName)
 			},
 			fx.ResultTags(`name:"kit_assignment_col"`),
+		),
+
+		fx.Annotate(
+			func() *repomapper.MapperImpl {
+				return &repomapper.MapperImpl{}
+			},
+			fx.As(new(assignment.Mapper)),
 		),
 
 		fx.Annotate(

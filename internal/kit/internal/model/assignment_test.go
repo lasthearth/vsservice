@@ -1,14 +1,12 @@
-package model_test
+package model
 
 import (
 	"testing"
 	"time"
-
-	"github.com/lasthearth/vsservice/internal/kit/internal/model"
 )
 
 func TestNewKitAssignment(t *testing.T) {
-	a := model.NewKitAssignment("user1", "Player1", "starter", "admin")
+	a := NewKitAssignment("user1", "Player1", "starter", "admin")
 
 	if a.UserId != "user1" {
 		t.Errorf("UserId = %v, want user1", a.UserId)
@@ -22,7 +20,7 @@ func TestNewKitAssignment(t *testing.T) {
 	if a.AssignedBy != "admin" {
 		t.Errorf("AssignedBy = %v, want admin", a.AssignedBy)
 	}
-	if a.Status != model.AssignmentStatusPending {
+	if a.Status != AssignmentStatusPending {
 		t.Errorf("Status = %v, want PENDING", a.Status)
 	}
 	if a.DeliveredAt != nil {
@@ -36,20 +34,20 @@ func TestNewKitAssignment(t *testing.T) {
 func TestKitAssignment_TransitionTo(t *testing.T) {
 	tests := []struct {
 		name    string
-		from    model.AssignmentStatus
-		to      model.AssignmentStatus
+		from    AssignmentStatus
+		to      AssignmentStatus
 		wantErr bool
 	}{
-		{"pending to delivered is valid", model.AssignmentStatusPending, model.AssignmentStatusDelivered, false},
-		{"delivered to claimed is valid", model.AssignmentStatusDelivered, model.AssignmentStatusClaimed, false},
-		{"pending to claimed is invalid", model.AssignmentStatusPending, model.AssignmentStatusClaimed, true},
-		{"claimed to pending is invalid", model.AssignmentStatusClaimed, model.AssignmentStatusPending, true},
-		{"claimed to delivered is invalid", model.AssignmentStatusClaimed, model.AssignmentStatusDelivered, true},
-		{"delivered to pending is invalid", model.AssignmentStatusDelivered, model.AssignmentStatusPending, true},
+		{"pending to delivered is valid", AssignmentStatusPending, AssignmentStatusDelivered, false},
+		{"delivered to claimed is valid", AssignmentStatusDelivered, AssignmentStatusClaimed, false},
+		{"pending to claimed is invalid", AssignmentStatusPending, AssignmentStatusClaimed, true},
+		{"claimed to pending is invalid", AssignmentStatusClaimed, AssignmentStatusPending, true},
+		{"claimed to delivered is invalid", AssignmentStatusClaimed, AssignmentStatusDelivered, true},
+		{"delivered to pending is invalid", AssignmentStatusDelivered, AssignmentStatusPending, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			a := &model.KitAssignment{Status: tc.from}
+			a := &KitAssignment{Status: tc.from}
 			err := a.TransitionTo(tc.to)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("TransitionTo(%v) error = %v, wantErr %v", tc.to, err, tc.wantErr)
@@ -68,20 +66,20 @@ func TestKitAssignment_Validate(t *testing.T) {
 	delivered := now.Add(-1 * time.Hour)
 	beforeAssigned := now.Add(-3 * time.Hour)
 
-	base := func() *model.KitAssignment {
-		return &model.KitAssignment{
+	base := func() *KitAssignment {
+		return &KitAssignment{
 			UserId:       "user1",
 			UserGameName: "Player1",
 			KitName:      "starter",
 			AssignedBy:   "admin",
-			Status:       model.AssignmentStatusPending,
+			Status:       AssignmentStatusPending,
 			AssignedAt:   past,
 		}
 	}
 
 	tests := []struct {
 		name    string
-		build   func() *model.KitAssignment
+		build   func() *KitAssignment
 		wantErr bool
 	}{
 		{
@@ -91,34 +89,34 @@ func TestKitAssignment_Validate(t *testing.T) {
 		},
 		{
 			"empty UserId",
-			func() *model.KitAssignment { a := base(); a.UserId = ""; return a },
+			func() *KitAssignment { a := base(); a.UserId = ""; return a },
 			true,
 		},
 		{
 			"empty UserGameName",
-			func() *model.KitAssignment { a := base(); a.UserGameName = ""; return a },
+			func() *KitAssignment { a := base(); a.UserGameName = ""; return a },
 			true,
 		},
 		{
 			"empty KitName",
-			func() *model.KitAssignment { a := base(); a.KitName = ""; return a },
+			func() *KitAssignment { a := base(); a.KitName = ""; return a },
 			true,
 		},
 		{
 			"empty AssignedBy",
-			func() *model.KitAssignment { a := base(); a.AssignedBy = ""; return a },
+			func() *KitAssignment { a := base(); a.AssignedBy = ""; return a },
 			true,
 		},
 		{
 			"AssignedAt in future",
-			func() *model.KitAssignment { a := base(); a.AssignedAt = future; return a },
+			func() *KitAssignment { a := base(); a.AssignedAt = future; return a },
 			true,
 		},
 		{
 			"DeliveredAt before AssignedAt",
-			func() *model.KitAssignment {
+			func() *KitAssignment {
 				a := base()
-				a.Status = model.AssignmentStatusDelivered
+				a.Status = AssignmentStatusDelivered
 				a.AssignedAt = delivered        // T-1h
 				a.DeliveredAt = &beforeAssigned // T-3h — impossible
 				return a
@@ -127,9 +125,9 @@ func TestKitAssignment_Validate(t *testing.T) {
 		},
 		{
 			"ClaimedAt before DeliveredAt",
-			func() *model.KitAssignment {
+			func() *KitAssignment {
 				a := base()
-				a.Status = model.AssignmentStatusClaimed
+				a.Status = AssignmentStatusClaimed
 				a.DeliveredAt = &delivered // T-1h
 				a.ClaimedAt = &past        // T-2h — before delivery
 				return a
@@ -138,9 +136,9 @@ func TestKitAssignment_Validate(t *testing.T) {
 		},
 		{
 			"valid delivered assignment",
-			func() *model.KitAssignment {
+			func() *KitAssignment {
 				a := base()
-				a.Status = model.AssignmentStatusDelivered
+				a.Status = AssignmentStatusDelivered
 				a.DeliveredAt = &delivered
 				return a
 			},
@@ -160,16 +158,16 @@ func TestKitAssignment_Validate(t *testing.T) {
 
 func TestKitAssignment_IsDelivered(t *testing.T) {
 	tests := []struct {
-		status model.AssignmentStatus
+		status AssignmentStatus
 		want   bool
 	}{
-		{model.AssignmentStatusPending, false},
-		{model.AssignmentStatusDelivered, true},
-		{model.AssignmentStatusClaimed, true},
+		{AssignmentStatusPending, false},
+		{AssignmentStatusDelivered, true},
+		{AssignmentStatusClaimed, true},
 	}
 	for _, tc := range tests {
 		t.Run(string(tc.status), func(t *testing.T) {
-			a := &model.KitAssignment{Status: tc.status}
+			a := &KitAssignment{Status: tc.status}
 			if got := a.IsDelivered(); got != tc.want {
 				t.Errorf("IsDelivered() = %v, want %v", got, tc.want)
 			}
@@ -179,16 +177,16 @@ func TestKitAssignment_IsDelivered(t *testing.T) {
 
 func TestKitAssignment_IsClaimed(t *testing.T) {
 	tests := []struct {
-		status model.AssignmentStatus
+		status AssignmentStatus
 		want   bool
 	}{
-		{model.AssignmentStatusPending, false},
-		{model.AssignmentStatusDelivered, false},
-		{model.AssignmentStatusClaimed, true},
+		{AssignmentStatusPending, false},
+		{AssignmentStatusDelivered, false},
+		{AssignmentStatusClaimed, true},
 	}
 	for _, tc := range tests {
 		t.Run(string(tc.status), func(t *testing.T) {
-			a := &model.KitAssignment{Status: tc.status}
+			a := &KitAssignment{Status: tc.status}
 			if got := a.IsClaimed(); got != tc.want {
 				t.Errorf("IsClaimed() = %v, want %v", got, tc.want)
 			}

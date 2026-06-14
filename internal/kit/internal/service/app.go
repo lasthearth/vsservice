@@ -2,7 +2,6 @@ package service
 
 import (
 	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
-	"github.com/lasthearth/vsservice/internal/kit/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/messaging"
@@ -36,6 +35,7 @@ type Opts struct {
 	Log            logger.Logger
 	Config         config.Config
 	AssignmentRepo AssignmentRepository
+	Mapper         Mapper
 	Bus            *Bus
 }
 
@@ -46,6 +46,7 @@ func NewFx(opts Opts) *Service {
 		opts.Config,
 		opts.Log,
 		opts.Bus,
+		opts.Mapper,
 	)
 }
 
@@ -55,13 +56,14 @@ func New(
 	cfg config.Config,
 	log logger.Logger,
 	bus *Bus,
+	mapper Mapper,
 ) *Service {
 	return &Service{
 		kitRepo:        kitRepo,
 		assignmentRepo: assignmentRepo,
 		cfg:            cfg,
 		log:            log,
-		mapper:         &sermapper.MapperImpl{},
+		mapper:         mapper,
 		bus:            bus,
 	}
 }

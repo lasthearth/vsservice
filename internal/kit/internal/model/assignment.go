@@ -30,6 +30,9 @@ func NewKitAssignment(userId, userGameName, kitName, assignedBy string) *KitAssi
 	}
 }
 
+// AssignID records the persisted identity.
+func (ka *KitAssignment) AssignID(id string) { ka.Id = id }
+
 // Validate validates assignment data according to specification
 func (ka *KitAssignment) Validate(now time.Time) error {
 	if ka.UserId == "" {
