@@ -1,0 +1,1662 @@
+{
+  "/Users/ripls/Documents/GitHub/vsservice/.claude/settings.local.json": {
+    "mtime": 1781358708.2874718,
+    "ast_hash": "6b112ffcbb0851fe090a815c42ecd14e",
+    "semantic_hash": "6b112ffcbb0851fe090a815c42ecd14e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.qwen/settings.json": {
+    "mtime": 1762443750.3034027,
+    "ast_hash": "22bcdb94d7ba98a250e7bad4f89e2aeb",
+    "semantic_hash": "22bcdb94d7ba98a250e7bad4f89e2aeb"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/scripts/bash/check-prerequisites.sh": {
+    "mtime": 1763375967.9080305,
+    "ast_hash": "a8738d6f126b60481413b0e9ef6ef4ae",
+    "semantic_hash": "a8738d6f126b60481413b0e9ef6ef4ae"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/scripts/bash/common.sh": {
+    "mtime": 1763375967.9075701,
+    "ast_hash": "9221ae87db6704d4d532718f4424dd00",
+    "semantic_hash": "9221ae87db6704d4d532718f4424dd00"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/scripts/bash/create-new-feature.sh": {
+    "mtime": 1763375967.9078305,
+    "ast_hash": "8a9f5c2c984e4d356f5f4e5f77dff079",
+    "semantic_hash": "8a9f5c2c984e4d356f5f4e5f77dff079"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/scripts/bash/setup-plan.sh": {
+    "mtime": 1763375967.9079175,
+    "ast_hash": "4ce206b50f766fbf36a2d69e448356e9",
+    "semantic_hash": "4ce206b50f766fbf36a2d69e448356e9"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/scripts/bash/update-agent-context.sh": {
+    "mtime": 1763375967.9077082,
+    "ast_hash": "c48c4bec3240eed5b6e97e731db34360",
+    "semantic_hash": "c48c4bec3240eed5b6e97e731db34360"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/fx.go": {
+    "mtime": 1781390855.0130155,
+    "ast_hash": "965f984f737fc6609182f745c54c3fee",
+    "semantic_hash": "965f984f737fc6609182f745c54c3fee"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/dto/mongo/purchase.go": {
+    "mtime": 1781179703.9112227,
+    "ast_hash": "3445e0c9100e6531918f4a0e265cf6ad",
+    "semantic_hash": "3445e0c9100e6531918f4a0e265cf6ad"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/dto/mongo/shop_item.go": {
+    "mtime": 1781361663.4709017,
+    "ast_hash": "20d5f2c2e9f29a834a798d293011a3c1",
+    "semantic_hash": "20d5f2c2e9f29a834a798d293011a3c1"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/dto/mongo/transaction.go": {
+    "mtime": 1779185604.8848085,
+    "ast_hash": "aae7f8d8b7edfa5a5d32770b00fb284b",
+    "semantic_hash": "aae7f8d8b7edfa5a5d32770b00fb284b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/dto/mongo/wallet.go": {
+    "mtime": 1779185604.8850014,
+    "ast_hash": "c309f24238bec07cb3d15dfdb89d092e",
+    "semantic_hash": "c309f24238bec07cb3d15dfdb89d092e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/goverter/extend.go": {
+    "mtime": 1781361668.9702349,
+    "ast_hash": "0d38de009b1e330529c5698d683d836b",
+    "semantic_hash": "0d38de009b1e330529c5698d683d836b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/ierror/error.go": {
+    "mtime": 1781180880.396491,
+    "ast_hash": "c0e18baee391a7012b0e312b8a3bbfd8",
+    "semantic_hash": "c0e18baee391a7012b0e312b8a3bbfd8"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/model/errors.go": {
+    "mtime": 1781011743.912153,
+    "ast_hash": "9b64f04488b9964c1353c0e64ba5a199",
+    "semantic_hash": "9b64f04488b9964c1353c0e64ba5a199"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/model/purchase.go": {
+    "mtime": 1781179703.9117227,
+    "ast_hash": "d31975f51f8c364edf993ce710a6448b",
+    "semantic_hash": "d31975f51f8c364edf993ce710a6448b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/model/purchase_test.go": {
+    "mtime": 1781179703.9118924,
+    "ast_hash": "f9301853edd828927326b6949b7bfd37",
+    "semantic_hash": "f9301853edd828927326b6949b7bfd37"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/model/shop_item.go": {
+    "mtime": 1781361634.62835,
+    "ast_hash": "ad31c88e114de59a903c43b9aa201a0a",
+    "semantic_hash": "ad31c88e114de59a903c43b9aa201a0a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/model/shop_item_test.go": {
+    "mtime": 1781179703.9122624,
+    "ast_hash": "5fff8fb1bf6e4495ee33e036dd021ba0",
+    "semantic_hash": "5fff8fb1bf6e4495ee33e036dd021ba0"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/model/transaction.go": {
+    "mtime": 1779185604.8865304,
+    "ast_hash": "040adaf39781050cdd160b1e97f82bba",
+    "semantic_hash": "040adaf39781050cdd160b1e97f82bba"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/model/wallet.go": {
+    "mtime": 1779185604.886651,
+    "ast_hash": "e362e74065217da2f0b75d54cd56b1ff",
+    "semantic_hash": "e362e74065217da2f0b75d54cd56b1ff"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/model/wallet_test.go": {
+    "mtime": 1781180880.3969862,
+    "ast_hash": "9a583669816931a6f81623bdc6d23841",
+    "semantic_hash": "9a583669816931a6f81623bdc6d23841"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/repository/mongo/app.go": {
+    "mtime": 1781361718.3892772,
+    "ast_hash": "d992fd0e07ac1c2ea991b4aed23f6b53",
+    "semantic_hash": "d992fd0e07ac1c2ea991b4aed23f6b53"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/repository/mongo/atomic.go": {
+    "mtime": 1781179703.9126039,
+    "ast_hash": "6a734957b6b98cf1c01e9b97d8704f87",
+    "semantic_hash": "6a734957b6b98cf1c01e9b97d8704f87"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/repository/mongo/purchase.go": {
+    "mtime": 1781012192.4844122,
+    "ast_hash": "5e04672b42950b71aeeef01b9c19cf62",
+    "semantic_hash": "5e04672b42950b71aeeef01b9c19cf62"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/repository/mongo/shopitem.go": {
+    "mtime": 1781179703.9127595,
+    "ast_hash": "55fc9f5d9f8812264c4460089ab79e89",
+    "semantic_hash": "55fc9f5d9f8812264c4460089ab79e89"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/repository/mongo/transaction.go": {
+    "mtime": 1779189703.1429746,
+    "ast_hash": "98717bea94fd37f79d757a513526ab5d",
+    "semantic_hash": "98717bea94fd37f79d757a513526ab5d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/repository/mongo/wallet.go": {
+    "mtime": 1779198422.9125805,
+    "ast_hash": "1b1275fc6cb9d21b9a0939c89d59f7dd",
+    "semantic_hash": "1b1275fc6cb9d21b9a0939c89d59f7dd"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/service/app.go": {
+    "mtime": 1781390844.3915217,
+    "ast_hash": "a3dd1563dd6ae70c92f7b2ab83828e4a",
+    "semantic_hash": "a3dd1563dd6ae70c92f7b2ab83828e4a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/service/mapper.go": {
+    "mtime": 1781363059.0087457,
+    "ast_hash": "0f97d795188e5e7aef87b29d6338f54e",
+    "semantic_hash": "0f97d795188e5e7aef87b29d6338f54e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/service/repository.go": {
+    "mtime": 1781179703.913089,
+    "ast_hash": "86d2f797a77eeeb980ddf44e54acbcee",
+    "semantic_hash": "86d2f797a77eeeb980ddf44e54acbcee"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/service/scope.go": {
+    "mtime": 1781013132.5126255,
+    "ast_hash": "a60a29f5d02db67062e4cad9f351d192",
+    "semantic_hash": "a60a29f5d02db67062e4cad9f351d192"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/service/sermapper/mapper.go": {
+    "mtime": 1781391041.9383612,
+    "ast_hash": "bfa1a0e9ebe5ba38e5510e798f2a0140",
+    "semantic_hash": "bfa1a0e9ebe5ba38e5510e798f2a0140"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/service/service.go": {
+    "mtime": 1781361696.333948,
+    "ast_hash": "49697a1df6530c680ea61250932bab3d",
+    "semantic_hash": "49697a1df6530c680ea61250932bab3d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/donate/internal/service/validate.go": {
+    "mtime": 1781179691.4083498,
+    "ast_hash": "215716ac658eec6d1fa8ebbd6f70abb8",
+    "semantic_hash": "215716ac658eec6d1fa8ebbd6f70abb8"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/fx.go": {
+    "mtime": 1779187541.302079,
+    "ast_hash": "0fff556dea05228a968b83cfbf530e24",
+    "semantic_hash": "0fff556dea05228a968b83cfbf530e24"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/ierror/error.go": {
+    "mtime": 1781180880.4017484,
+    "ast_hash": "cf2f6357ad36c415a879d2702d761036",
+    "semantic_hash": "cf2f6357ad36c415a879d2702d761036"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/model/player_stats.go": {
+    "mtime": 1779187366.5655057,
+    "ast_hash": "947281bd19dc3d7eab9d810a7867092e",
+    "semantic_hash": "947281bd19dc3d7eab9d810a7867092e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/model/player_stats_test.go": {
+    "mtime": 1779189016.1359873,
+    "ast_hash": "1e63c4024448a7c5f3298f84f5c77c53",
+    "semantic_hash": "1e63c4024448a7c5f3298f84f5c77c53"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/model/season.go": {
+    "mtime": 1779187371.059287,
+    "ast_hash": "2f4bdd52e630beda947bdb84c5cce9e8",
+    "semantic_hash": "2f4bdd52e630beda947bdb84c5cce9e8"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/model/season_result.go": {
+    "mtime": 1779187374.6841118,
+    "ast_hash": "4bb04580fe8341cb2d315ecb6f21723b",
+    "semantic_hash": "4bb04580fe8341cb2d315ecb6f21723b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/model/season_test.go": {
+    "mtime": 1779189450.8629165,
+    "ast_hash": "c137f920c6847ad9958b19930ac81e35",
+    "semantic_hash": "c137f920c6847ad9958b19930ac81e35"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/repository/mongo/app.go": {
+    "mtime": 1779189510.7309859,
+    "ast_hash": "256af03dd6f9b53605ee438adfcaa79d",
+    "semantic_hash": "256af03dd6f9b53605ee438adfcaa79d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/repository/mongo/player_stats.go": {
+    "mtime": 1779189682.8426733,
+    "ast_hash": "f67e9a59ab7ae0a8d282880ec1f18140",
+    "semantic_hash": "f67e9a59ab7ae0a8d282880ec1f18140"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/repository/mongo/season.go": {
+    "mtime": 1779187624.0343897,
+    "ast_hash": "bf28baa16d4625ac32519bf403fbea9e",
+    "semantic_hash": "bf28baa16d4625ac32519bf403fbea9e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/repository/mongo/season_result.go": {
+    "mtime": 1779189716.8413968,
+    "ast_hash": "877e7401b63f18120dab39f2ee002602",
+    "semantic_hash": "877e7401b63f18120dab39f2ee002602"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/repository/mongo/wallet.go": {
+    "mtime": 1779187534.7059364,
+    "ast_hash": "b9b58766830fed1ec07b6a482a111d18",
+    "semantic_hash": "b9b58766830fed1ec07b6a482a111d18"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/service/app.go": {
+    "mtime": 1779187417.3679707,
+    "ast_hash": "0c87e0cfb936363e2555f421148de624",
+    "semantic_hash": "0c87e0cfb936363e2555f421148de624"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/service/elo.go": {
+    "mtime": 1779187409.8299682,
+    "ast_hash": "1d08224e8e1e27531be0eb6cb581846b",
+    "semantic_hash": "1d08224e8e1e27531be0eb6cb581846b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/service/elo_test.go": {
+    "mtime": 1781180880.4047275,
+    "ast_hash": "3ee8311e89d07df6b46bc399959ad35e",
+    "semantic_hash": "3ee8311e89d07df6b46bc399959ad35e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/service/leaderboard.go": {
+    "mtime": 1779187589.125585,
+    "ast_hash": "b6b754b7a1a556ad1bd6ca02fe658fcf",
+    "semantic_hash": "b6b754b7a1a556ad1bd6ca02fe658fcf"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/service/match.go": {
+    "mtime": 1779187433.8301086,
+    "ast_hash": "036e32c4a8216e90a894ec58488ff790",
+    "semantic_hash": "036e32c4a8216e90a894ec58488ff790"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/service/repository.go": {
+    "mtime": 1779187397.5856717,
+    "ast_hash": "ef253591e2287172405a079a4cc765d7",
+    "semantic_hash": "ef253591e2287172405a079a4cc765d7"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/service/scope.go": {
+    "mtime": 1779187422.1110172,
+    "ast_hash": "135f427b13ddabb5bdc74c16583a231f",
+    "semantic_hash": "135f427b13ddabb5bdc74c16583a231f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/hungergames/internal/service/season.go": {
+    "mtime": 1779187471.997804,
+    "ast_hash": "956455714c9c673501e73cf58d6021e3",
+    "semantic_hash": "956455714c9c673501e73cf58d6021e3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/fx.go": {
+    "mtime": 1781390879.1662893,
+    "ast_hash": "9a04074f0d6c002cd7b0a8e779732e07",
+    "semantic_hash": "9a04074f0d6c002cd7b0a8e779732e07"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/dto/mongo/assignment.go": {
+    "mtime": 1765470991.1381466,
+    "ast_hash": "122be2db94c1eae56246bdcebbbcbb3a",
+    "semantic_hash": "122be2db94c1eae56246bdcebbbcbb3a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/ierror/error.go": {
+    "mtime": 1776191068.6684945,
+    "ast_hash": "f73a056a47dbeb5c28455b625320ba35",
+    "semantic_hash": "f73a056a47dbeb5c28455b625320ba35"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/model/assignment.go": {
+    "mtime": 1776212784.3993762,
+    "ast_hash": "0f41852277fe80ff6af58d237a17fb78",
+    "semantic_hash": "0f41852277fe80ff6af58d237a17fb78"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/model/assignment_test.go": {
+    "mtime": 1776212784.3996553,
+    "ast_hash": "42cf685142f3199af557d282479dca95",
+    "semantic_hash": "42cf685142f3199af557d282479dca95"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/model/status.go": {
+    "mtime": 1765203841.6404896,
+    "ast_hash": "9982f8b98e42abbf16752c0cb643960e",
+    "semantic_hash": "9982f8b98e42abbf16752c0cb643960e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/repository/app/app.go": {
+    "mtime": 1781390899.907515,
+    "ast_hash": "4734c1e0c3fb8492107f4595efe7e18b",
+    "semantic_hash": "4734c1e0c3fb8492107f4595efe7e18b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/repository/assignment/app.go": {
+    "mtime": 1765383020.5109603,
+    "ast_hash": "529f1ac90a3d65ea138eb0aaff0148bc",
+    "semantic_hash": "529f1ac90a3d65ea138eb0aaff0148bc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/repository/assignment/fx.go": {
+    "mtime": 1781390890.0822012,
+    "ast_hash": "93550404ba9fdeffdf64c692ca7fec2d",
+    "semantic_hash": "93550404ba9fdeffdf64c692ca7fec2d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/repository/assignment/mapper.go": {
+    "mtime": 1781363067.0288687,
+    "ast_hash": "2357bbe1a6e76726a7a32fa6d78ee96d",
+    "semantic_hash": "2357bbe1a6e76726a7a32fa6d78ee96d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/repository/assignment/mongo.go": {
+    "mtime": 1779189657.425782,
+    "ast_hash": "dc068cb410f82750fb8d8bfbc31594ea",
+    "semantic_hash": "dc068cb410f82750fb8d8bfbc31594ea"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/repository/assignment/repomapper/mapper.go": {
+    "mtime": 1781391042.3696501,
+    "ast_hash": "c8d8622f3e40d168aae33ba270eb4477",
+    "semantic_hash": "c8d8622f3e40d168aae33ba270eb4477"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/repository/kit/app.go": {
+    "mtime": 1765383020.511145,
+    "ast_hash": "75ca6892613416c1cee1f93f1c76225c",
+    "semantic_hash": "75ca6892613416c1cee1f93f1c76225c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/repository/kit/mongo.go": {
+    "mtime": 1765383020.5112767,
+    "ast_hash": "c2c7cbefc80bf7d27178a47167143437",
+    "semantic_hash": "c2c7cbefc80bf7d27178a47167143437"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/service/app.go": {
+    "mtime": 1781390867.7879732,
+    "ast_hash": "c402eba2f54a241c0e6b30300f3f1c8a",
+    "semantic_hash": "c402eba2f54a241c0e6b30300f3f1c8a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/service/events.go": {
+    "mtime": 1765383020.5115142,
+    "ast_hash": "7c951ec82860009b5f37a40d3ff6d15e",
+    "semantic_hash": "7c951ec82860009b5f37a40d3ff6d15e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/service/queue.go": {
+    "mtime": 1779189451.8334985,
+    "ast_hash": "af926e4c5f8cc25e2b25e96829ee9d6b",
+    "semantic_hash": "af926e4c5f8cc25e2b25e96829ee9d6b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/service/scope.go": {
+    "mtime": 1781180880.4126534,
+    "ast_hash": "f99708cae976486859409c43bc3ea0d9",
+    "semantic_hash": "f99708cae976486859409c43bc3ea0d9"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/service/sermapper/mapper.go": {
+    "mtime": 1781391042.668038,
+    "ast_hash": "ff4d049c74fae46d0b394e7c6917e04f",
+    "semantic_hash": "ff4d049c74fae46d0b394e7c6917e04f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/kit/internal/service/service.go": {
+    "mtime": 1781363068.427325,
+    "ast_hash": "a2688cd3f41d684c5ad58da7a49e4158",
+    "semantic_hash": "a2688cd3f41d684c5ad58da7a49e4158"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/leaderboard/fx.go": {
+    "mtime": 1762604423.424166,
+    "ast_hash": "6f90a4497db2f1ff17c19e8bdf8f10f4",
+    "semantic_hash": "6f90a4497db2f1ff17c19e8bdf8f10f4"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/leaderboard/internal/dto/mongodto/entry.go": {
+    "mtime": 1776186766.1436555,
+    "ast_hash": "bbce6f50f1dff36aeea9c7a76db1ba8b",
+    "semantic_hash": "bbce6f50f1dff36aeea9c7a76db1ba8b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/leaderboard/internal/model/entry.go": {
+    "mtime": 1776186766.1439695,
+    "ast_hash": "21dc2f960d2107132714fdfdb2cc68f3",
+    "semantic_hash": "21dc2f960d2107132714fdfdb2cc68f3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/leaderboard/internal/repository/app.go": {
+    "mtime": 1762606526.1498773,
+    "ast_hash": "ed600ec7407ca7eead9f94008fc33627",
+    "semantic_hash": "ed600ec7407ca7eead9f94008fc33627"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/leaderboard/internal/repository/repository.go": {
+    "mtime": 1779189481.7209542,
+    "ast_hash": "0f98925d5c9dc40ca4f1b3081aae412c",
+    "semantic_hash": "0f98925d5c9dc40ca4f1b3081aae412c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/leaderboard/internal/service/app.go": {
+    "mtime": 1744382936.6699147,
+    "ast_hash": "bc9c53397775aac09ab9dd71dc375e9f",
+    "semantic_hash": "bc9c53397775aac09ab9dd71dc375e9f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/leaderboard/internal/service/service.go": {
+    "mtime": 1776186766.145024,
+    "ast_hash": "753fb4321e3fb2bdf96caf9e114f818e",
+    "semantic_hash": "753fb4321e3fb2bdf96caf9e114f818e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/media/fx.go": {
+    "mtime": 1781179691.3574057,
+    "ast_hash": "b925e979dbf1c92f51f4c4a61c628d65",
+    "semantic_hash": "b925e979dbf1c92f51f4c4a61c628d65"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/media/internal/service/app.go": {
+    "mtime": 1781179691.4084995,
+    "ast_hash": "c8733457a642f10a2bed9b4a924e54fc",
+    "semantic_hash": "c8733457a642f10a2bed9b4a924e54fc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/media/internal/service/scope.go": {
+    "mtime": 1781179691.4086154,
+    "ast_hash": "d170a56a25c6e06d88eab57b2dfa2054",
+    "semantic_hash": "d170a56a25c6e06d88eab57b2dfa2054"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/media/internal/service/service.go": {
+    "mtime": 1781358305.4381602,
+    "ast_hash": "de66fb6ec6e1c3b004989f35422a14ff",
+    "semantic_hash": "de66fb6ec6e1c3b004989f35422a14ff"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/media/internal/service/service_test.go": {
+    "mtime": 1781179691.3479471,
+    "ast_hash": "731aa1c214445ee6b3d60966b14bb5bc",
+    "semantic_hash": "731aa1c214445ee6b3d60966b14bb5bc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/model/player/count.go": {
+    "mtime": 1762530973.7078407,
+    "ast_hash": "a4924239db1908d02e3c2f9a12eb4e48",
+    "semantic_hash": "a4924239db1908d02e3c2f9a12eb4e48"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/model/player/list.go": {
+    "mtime": 1762530973.7079518,
+    "ast_hash": "946a33ae4ee0d40d5b702d528d414c11",
+    "semantic_hash": "946a33ae4ee0d40d5b702d528d414c11"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/model/worldtime/time.go": {
+    "mtime": 1762530973.708076,
+    "ast_hash": "191a17f0b074a9cfc5dd83139a16d847",
+    "semantic_hash": "191a17f0b074a9cfc5dd83139a16d847"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/fx.go": {
+    "mtime": 1781180880.4166868,
+    "ast_hash": "990de7fc4e9ccd1c2c9223c15a65bf0e",
+    "semantic_hash": "990de7fc4e9ccd1c2c9223c15a65bf0e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/dto/news.go": {
+    "mtime": 1779363355.8214629,
+    "ast_hash": "e831877df348a19135363b9b2eed6661",
+    "semantic_hash": "e831877df348a19135363b9b2eed6661"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/ierror/errors.go": {
+    "mtime": 1776191070.31543,
+    "ast_hash": "7574ce59dcad654d17e49f647e44ef41",
+    "semantic_hash": "7574ce59dcad654d17e49f647e44ef41"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/model/news.go": {
+    "mtime": 1779354820.4422672,
+    "ast_hash": "b48eda80dce243c1c7c6a5c7f7cc946c",
+    "semantic_hash": "b48eda80dce243c1c7c6a5c7f7cc946c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/repository/app.go": {
+    "mtime": 1756209215.4462962,
+    "ast_hash": "5d1954fd1c6834599f78b9c00449e3a7",
+    "semantic_hash": "5d1954fd1c6834599f78b9c00449e3a7"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/repository/repomapper/mapper.go": {
+    "mtime": 1781391042.9782417,
+    "ast_hash": "f890c2c5effd199a401f16e3d86ea956",
+    "semantic_hash": "f890c2c5effd199a401f16e3d86ea956"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/repository/repository.go": {
+    "mtime": 1781363069.837742,
+    "ast_hash": "b49ddfc944ecee9e918a6c2a0a6f700e",
+    "semantic_hash": "b49ddfc944ecee9e918a6c2a0a6f700e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/service/app.go": {
+    "mtime": 1781179691.3878284,
+    "ast_hash": "d6be085a5bd021cfec1a952d412537ab",
+    "semantic_hash": "d6be085a5bd021cfec1a952d412537ab"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/service/interface.go": {
+    "mtime": 1781363071.747101,
+    "ast_hash": "7c2362b7fbe9ed93704cb8b440728e40",
+    "semantic_hash": "7c2362b7fbe9ed93704cb8b440728e40"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/service/scope.go": {
+    "mtime": 1761561447.389998,
+    "ast_hash": "d165c538f0a2729666281387d0350fdf",
+    "semantic_hash": "d165c538f0a2729666281387d0350fdf"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/service/sermapper/mapper.go": {
+    "mtime": 1781391043.3430104,
+    "ast_hash": "84702fc892924c2560b9985c185ca0f1",
+    "semantic_hash": "84702fc892924c2560b9985c185ca0f1"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/news/internal/service/service.go": {
+    "mtime": 1781179691.3880627,
+    "ast_hash": "1f52e19ebea777d475b9e4b0c350602b",
+    "semantic_hash": "1f52e19ebea777d475b9e4b0c350602b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/fx.go": {
+    "mtime": 1756209215.4487004,
+    "ast_hash": "e3955b73a2ef30cdcb6eaba9bfa72bb3",
+    "semantic_hash": "e3955b73a2ef30cdcb6eaba9bfa72bb3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/dto/notification.go": {
+    "mtime": 1762110061.9818897,
+    "ast_hash": "1d87e4dbfe00c95f12fc0505d187530e",
+    "semantic_hash": "1d87e4dbfe00c95f12fc0505d187530e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/model/notification.go": {
+    "mtime": 1761561447.3904307,
+    "ast_hash": "a6f30a8fc0a75acc0fced339e6cc5cb3",
+    "semantic_hash": "a6f30a8fc0a75acc0fced339e6cc5cb3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/model/state.go": {
+    "mtime": 1761561447.3905296,
+    "ast_hash": "0169d0e37cbd7f51913c841af5e7199b",
+    "semantic_hash": "0169d0e37cbd7f51913c841af5e7199b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/repository/app.go": {
+    "mtime": 1749962790.6705687,
+    "ast_hash": "a5b3c1b580b9844a5a2fdeb3ef79e535",
+    "semantic_hash": "a5b3c1b580b9844a5a2fdeb3ef79e535"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/repository/repoerr/errors.go": {
+    "mtime": 1749962790.6708891,
+    "ast_hash": "864731943711a5cee622116fec162a82",
+    "semantic_hash": "864731943711a5cee622116fec162a82"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/repository/repomapper/notification.go": {
+    "mtime": 1761561447.3908193,
+    "ast_hash": "9159c197a6f43e116f8c3c976e5e04d1",
+    "semantic_hash": "9159c197a6f43e116f8c3c976e5e04d1"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/repository/repository.go": {
+    "mtime": 1762110061.497108,
+    "ast_hash": "fcf75347e589d6915e42b1f68d88704c",
+    "semantic_hash": "fcf75347e589d6915e42b1f68d88704c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/service/app.go": {
+    "mtime": 1756209215.4498484,
+    "ast_hash": "0f411f375851b4b9b4e4be7c2d20c82d",
+    "semantic_hash": "0f411f375851b4b9b4e4be7c2d20c82d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/service/goverter.go": {
+    "mtime": 1761561447.3913646,
+    "ast_hash": "ea3ee0f72f8156d4fd2a380a2ccb38a5",
+    "semantic_hash": "ea3ee0f72f8156d4fd2a380a2ccb38a5"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/service/sermapper/notification.go": {
+    "mtime": 1761561447.391709,
+    "ast_hash": "cf2f8b38f7770ea933b48685ccc5ba1b",
+    "semantic_hash": "cf2f8b38f7770ea933b48685ccc5ba1b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/internal/service/service.go": {
+    "mtime": 1762110061.4860253,
+    "ast_hash": "521dcef2a13869a2f7eb30621b6f73e3",
+    "semantic_hash": "521dcef2a13869a2f7eb30621b6f73e3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/notification/notificationuc/create.go": {
+    "mtime": 1761561447.3924875,
+    "ast_hash": "93f286b737e46cf240fba453124cb09c",
+    "semantic_hash": "93f286b737e46cf240fba453124cb09c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/cache/cache.go": {
+    "mtime": 1744033498.2175503,
+    "ast_hash": "75d0da08d915e1cf338e81623bfccef2",
+    "semantic_hash": "75d0da08d915e1cf338e81623bfccef2"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/config/config.go": {
+    "mtime": 1781179691.4087582,
+    "ast_hash": "fcfad2a630bea6cfe1f158a40be108ed",
+    "semantic_hash": "fcfad2a630bea6cfe1f158a40be108ed"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/goverter/extend.go": {
+    "mtime": 1765470991.139653,
+    "ast_hash": "159b2bee8b42fc6dc2404bca3e3d402d",
+    "semantic_hash": "159b2bee8b42fc6dc2404bca3e3d402d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/ierror/error.go": {
+    "mtime": 1776191012.5358744,
+    "ast_hash": "f7a6cd40f279cd931bf420c56a86a310",
+    "semantic_hash": "f7a6cd40f279cd931bf420c56a86a310"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/image/processing.go": {
+    "mtime": 1749962790.6726112,
+    "ast_hash": "161757d6ea94c12e6696a43e89f7511b",
+    "semantic_hash": "161757d6ea94c12e6696a43e89f7511b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/jwt/app.go": {
+    "mtime": 1745503506.8910928,
+    "ast_hash": "b7bc11b715397aa2d7155c1481b99afd",
+    "semantic_hash": "b7bc11b715397aa2d7155c1481b99afd"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/jwt/jwt.go": {
+    "mtime": 1745503506.8912568,
+    "ast_hash": "9a7b76fbd465b05f8408a5adf44d95c6",
+    "semantic_hash": "9a7b76fbd465b05f8408a5adf44d95c6"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/logger/logger.go": {
+    "mtime": 1749962790.6729896,
+    "ast_hash": "8d64ab2987c3895629992b4c7cd7f0bc",
+    "semantic_hash": "8d64ab2987c3895629992b4c7cd7f0bc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/mediaurl/mediaurl.go": {
+    "mtime": 1781393063.9364448,
+    "ast_hash": "47c00711034c0f71256637c1a912523b",
+    "semantic_hash": "47c00711034c0f71256637c1a912523b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/mediaurl/mediaurl_test.go": {
+    "mtime": 1781179691.3231003,
+    "ast_hash": "922f22eb831899479c6ca394a6d18d0b",
+    "semantic_hash": "922f22eb831899479c6ca394a6d18d0b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/messaging/app.go": {
+    "mtime": 1765383020.4982982,
+    "ast_hash": "283875798eac8e128982ac2fa7372107",
+    "semantic_hash": "283875798eac8e128982ac2fa7372107"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/messaging/messaging.go": {
+    "mtime": 1765470991.1399052,
+    "ast_hash": "6d8ac9783bab366a00474dc8abf60d7f",
+    "semantic_hash": "6d8ac9783bab366a00474dc8abf60d7f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/messaging/mjetstream/publisher.go": {
+    "mtime": 1765383020.4985995,
+    "ast_hash": "dbfed67087f0604463aa694d5d3d92a2",
+    "semantic_hash": "dbfed67087f0604463aa694d5d3d92a2"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/messaging/mjetstream/subscriber.go": {
+    "mtime": 1779189473.2922451,
+    "ast_hash": "fc8b4c8941f3153952c92abcfcfc9f93",
+    "semantic_hash": "fc8b4c8941f3153952c92abcfcfc9f93"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/messaging/mjetstream/utils.go": {
+    "mtime": 1765470991.1403627,
+    "ast_hash": "d045bfee396d1d3dcb5c299e276af0d3",
+    "semantic_hash": "d045bfee396d1d3dcb5c299e276af0d3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/messaging/mnats/bus.go": {
+    "mtime": 1766485657.2852254,
+    "ast_hash": "00ac93ec252627cec60a2f00c74d2254",
+    "semantic_hash": "00ac93ec252627cec60a2f00c74d2254"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/messaging/mnats/encode.go": {
+    "mtime": 1765383020.4991174,
+    "ast_hash": "9e7dc925037cd5f856c0b58f42ea83c1",
+    "semantic_hash": "9e7dc925037cd5f856c0b58f42ea83c1"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/messaging/mnats/publisher.go": {
+    "mtime": 1765383020.4992719,
+    "ast_hash": "c40be8d552c09ad6779652a3ae3f0ff0",
+    "semantic_hash": "c40be8d552c09ad6779652a3ae3f0ff0"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/messaging/mnats/rpc.go": {
+    "mtime": 1779189453.43436,
+    "ast_hash": "4a6258751dcbea5b21b55e57e766a535",
+    "semantic_hash": "4a6258751dcbea5b21b55e57e766a535"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/messaging/mnats/subscriber.go": {
+    "mtime": 1765470991.140744,
+    "ast_hash": "dce6303ffed7517fa0d45b129608670b",
+    "semantic_hash": "dce6303ffed7517fa0d45b129608670b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/mongox/compute.go": {
+    "mtime": 1762110318.9722002,
+    "ast_hash": "40009ecb468ebb926556b4e298b31afb",
+    "semantic_hash": "40009ecb468ebb926556b4e298b31afb"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/mongox/connect.go": {
+    "mtime": 1762110061.5103397,
+    "ast_hash": "fa6bc1c9d7f4b249ca46fa56ac02ea75",
+    "semantic_hash": "fa6bc1c9d7f4b249ca46fa56ac02ea75"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/mongox/errors.go": {
+    "mtime": 1762110115.1801288,
+    "ast_hash": "3f56d6d5432aec9c9c9515e0e2b9e1ba",
+    "semantic_hash": "3f56d6d5432aec9c9c9515e0e2b9e1ba"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/mongox/model.go": {
+    "mtime": 1763050391.091301,
+    "ast_hash": "2cced0220d2584fd413b286bfc9a9557",
+    "semantic_hash": "2cced0220d2584fd413b286bfc9a9557"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/mongox/orderby/orderby.go": {
+    "mtime": 1756209215.4520328,
+    "ast_hash": "bf13be2fefdcc438b79262cf26d56d0c",
+    "semantic_hash": "bf13be2fefdcc438b79262cf26d56d0c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/mongox/pagination/pagination.go": {
+    "mtime": 1781012187.3796241,
+    "ast_hash": "1f47472df05e2e76c1343aabe3a42776",
+    "semantic_hash": "1f47472df05e2e76c1343aabe3a42776"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/storage/app.go": {
+    "mtime": 1749962790.6735005,
+    "ast_hash": "36f05241713f308dbc12abc74c2da907",
+    "semantic_hash": "36f05241713f308dbc12abc74c2da907"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/storage/storage.go": {
+    "mtime": 1781179691.3378103,
+    "ast_hash": "2d6f43e8e6f844dacda78734b253b534",
+    "semantic_hash": "2d6f43e8e6f844dacda78734b253b534"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/tokenmanager/manager.go": {
+    "mtime": 1779189454.062698,
+    "ast_hash": "b4fd3bf129fd28ea5ccbcfdb6d470ba6",
+    "semantic_hash": "b4fd3bf129fd28ea5ccbcfdb6d470ba6"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/pkg/tokenmanager/transport.go": {
+    "mtime": 1745588796.1081903,
+    "ast_hash": "6319acf38603415d5711814eedd29175",
+    "semantic_hash": "6319acf38603415d5711814eedd29175"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/fx.go": {
+    "mtime": 1762097737.938413,
+    "ast_hash": "3c10725ec3f88d0be4e2968626e38266",
+    "semantic_hash": "3c10725ec3f88d0be4e2968626e38266"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/app/playerevfx/fx.go": {
+    "mtime": 1762098345.7121525,
+    "ast_hash": "a6efe79c27480cb39f88e18fb0be5982",
+    "semantic_hash": "a6efe79c27480cb39f88e18fb0be5982"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/app/playerfx/fx.go": {
+    "mtime": 1761561447.3932295,
+    "ast_hash": "cbc63ea1babb5dbebeab8db04e47356d",
+    "semantic_hash": "cbc63ea1babb5dbebeab8db04e47356d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/app/verificationfx/fx.go": {
+    "mtime": 1765812533.8936903,
+    "ast_hash": "d9736610602083b1e2d0bad7197ab750",
+    "semantic_hash": "d9736610602083b1e2d0bad7197ab750"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/dto/http/role.go": {
+    "mtime": 1761561447.39381,
+    "ast_hash": "cd753c9be7b65d9de8ac5f7dcc783b2f",
+    "semantic_hash": "cd753c9be7b65d9de8ac5f7dcc783b2f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/dto/mongo/player.go": {
+    "mtime": 1762531339.842605,
+    "ast_hash": "f2078b712f124ee71978582e3a68ddde",
+    "semantic_hash": "f2078b712f124ee71978582e3a68ddde"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/dto/mongo/stats/death.go": {
+    "mtime": 1756209215.4535508,
+    "ast_hash": "01c3c461353a34793ddd9f92e93c0a9f",
+    "semantic_hash": "01c3c461353a34793ddd9f92e93c0a9f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/dto/mongo/stats/stats.go": {
+    "mtime": 1756209215.4536557,
+    "ast_hash": "94d11637056e055aa3559d10a14726ab",
+    "semantic_hash": "94d11637056e055aa3559d10a14726ab"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/dto/mongo/verification/answer.go": {
+    "mtime": 1756209215.4537942,
+    "ast_hash": "70a6ade01859152a21731dcffeb1263d",
+    "semantic_hash": "70a6ade01859152a21731dcffeb1263d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/dto/mongo/verification/verification.go": {
+    "mtime": 1762110061.481739,
+    "ast_hash": "7c9d08867773ad4980465b95d44c168f",
+    "semantic_hash": "7c9d08867773ad4980465b95d44c168f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/event/app.go": {
+    "mtime": 1765383020.5002418,
+    "ast_hash": "202a6de73e5c86a3fd57bddb2a338543",
+    "semantic_hash": "202a6de73e5c86a3fd57bddb2a338543"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/event/events.go": {
+    "mtime": 1776186766.1454525,
+    "ast_hash": "1e1723d8e6df8f3dff41b859ffebab75",
+    "semantic_hash": "1e1723d8e6df8f3dff41b859ffebab75"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/event/queue.go": {
+    "mtime": 1779189463.9841042,
+    "ast_hash": "2015587448628bbc7b0aade2472b7806",
+    "semantic_hash": "2015587448628bbc7b0aade2472b7806"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/ierror/error.go": {
+    "mtime": 1776191753.2693644,
+    "ast_hash": "e03731f3c8c22719d1a749a96683e832",
+    "semantic_hash": "e03731f3c8c22719d1a749a96683e832"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/model/player.go": {
+    "mtime": 1762532255.8518515,
+    "ast_hash": "b4d9852a75db876931646cf1a0a2c90c",
+    "semantic_hash": "b4d9852a75db876931646cf1a0a2c90c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/model/stats/death.go": {
+    "mtime": 1756209215.45415,
+    "ast_hash": "f602d1d4297c7aac3642858f056eba93",
+    "semantic_hash": "f602d1d4297c7aac3642858f056eba93"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/model/stats/stats.go": {
+    "mtime": 1756209215.4543157,
+    "ast_hash": "3899a9e39e005e7cb3eec84fd18bee34",
+    "semantic_hash": "3899a9e39e005e7cb3eec84fd18bee34"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/model/update.go": {
+    "mtime": 1762531299.4725325,
+    "ast_hash": "880539185a9385951c6847b840ccc1e2",
+    "semantic_hash": "880539185a9385951c6847b840ccc1e2"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/model/verification/answer.go": {
+    "mtime": 1756209215.4544456,
+    "ast_hash": "7e9b5bd106ab6f61bb3ff202aa0cf031",
+    "semantic_hash": "7e9b5bd106ab6f61bb3ff202aa0cf031"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/model/verification/errors.go": {
+    "mtime": 1776212784.4006543,
+    "ast_hash": "bf3d3da41c5a309dd78348a43af95613",
+    "semantic_hash": "bf3d3da41c5a309dd78348a43af95613"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/model/verification/verification.go": {
+    "mtime": 1776212784.4012134,
+    "ast_hash": "a7e31833cd65ddb3dd00517e6368e53c",
+    "semantic_hash": "a7e31833cd65ddb3dd00517e6368e53c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/model/verification/verification_test.go": {
+    "mtime": 1776212784.401567,
+    "ast_hash": "a43f6147a519ee33916598f73f6d7394",
+    "semantic_hash": "a43f6147a519ee33916598f73f6d7394"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/player/repository/app.go": {
+    "mtime": 1762611400.6237197,
+    "ast_hash": "6868819a318d80f2d2705efb9d130059",
+    "semantic_hash": "6868819a318d80f2d2705efb9d130059"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/player/repository/goverter.go": {
+    "mtime": 1762611792.821376,
+    "ast_hash": "97a8c9d1595cb6071c9437c9f2fef976",
+    "semantic_hash": "97a8c9d1595cb6071c9437c9f2fef976"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/player/repository/repomapper/mapper.go": {
+    "mtime": 1781391043.7341566,
+    "ast_hash": "6af5875f8389ddcf9b09faf277af25e8",
+    "semantic_hash": "6af5875f8389ddcf9b09faf277af25e8"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/player/repository/repository.go": {
+    "mtime": 1781363073.1995647,
+    "ast_hash": "1092a5ad22969bcbe9617792973fb5d7",
+    "semantic_hash": "1092a5ad22969bcbe9617792973fb5d7"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/player/sso/app.go": {
+    "mtime": 1761561447.39546,
+    "ast_hash": "cdbaec94956d43ecd2aa1f2ef6a7f34d",
+    "semantic_hash": "cdbaec94956d43ecd2aa1f2ef6a7f34d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/player/sso/errors.go": {
+    "mtime": 1756209215.4562473,
+    "ast_hash": "b49a5b34cbb28c3bcab6a943b868e086",
+    "semantic_hash": "b49a5b34cbb28c3bcab6a943b868e086"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/player/sso/repository.go": {
+    "mtime": 1779189667.588064,
+    "ast_hash": "77dbdafb3c1fc83f909aff2aa278ae84",
+    "semantic_hash": "77dbdafb3c1fc83f909aff2aa278ae84"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/verification/repository/app.go": {
+    "mtime": 1765812533.8940396,
+    "ast_hash": "452f3dc14ecc93be62de32ee31717188",
+    "semantic_hash": "452f3dc14ecc93be62de32ee31717188"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/verification/repository/repoerr/errors.go": {
+    "mtime": 1776191741.8283079,
+    "ast_hash": "fa52adc8a0febdcdcdba4dae5f8f9043",
+    "semantic_hash": "fa52adc8a0febdcdcdba4dae5f8f9043"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/verification/repository/repomapper/mapper.go": {
+    "mtime": 1781391044.0604227,
+    "ast_hash": "85380995b016c85ce34f5e83a61f5236",
+    "semantic_hash": "85380995b016c85ce34f5e83a61f5236"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/verification/repository/repository.go": {
+    "mtime": 1781363074.549851,
+    "ast_hash": "a77d6bb77653220edb217b84621cf7af",
+    "semantic_hash": "a77d6bb77653220edb217b84621cf7af"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/verification/ssorepository/app.go": {
+    "mtime": 1765812533.8946893,
+    "ast_hash": "ddeefe5688a6b505ef1947c846fe7362",
+    "semantic_hash": "ddeefe5688a6b505ef1947c846fe7362"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/verification/ssorepository/errors.go": {
+    "mtime": 1756209215.4576175,
+    "ast_hash": "1c848d4dc4b6e218e878dc27223664eb",
+    "semantic_hash": "1c848d4dc4b6e218e878dc27223664eb"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/repository/verification/ssorepository/repository.go": {
+    "mtime": 1779189571.7210798,
+    "ast_hash": "5136ce728e260a2fedc845d5ba36b955",
+    "semantic_hash": "5136ce728e260a2fedc845d5ba36b955"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/service/player/app.go": {
+    "mtime": 1761561447.3959157,
+    "ast_hash": "96364af2f04a6b81f133b4402980ee82",
+    "semantic_hash": "96364af2f04a6b81f133b4402980ee82"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/service/player/sermapper/mapper.go": {
+    "mtime": 1781391044.4400136,
+    "ast_hash": "4d72fa6c69862bf4bada5fb6068e982c",
+    "semantic_hash": "4d72fa6c69862bf4bada5fb6068e982c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/service/player/service.go": {
+    "mtime": 1781363075.9636593,
+    "ast_hash": "d07576e6648ae4fd48220f43492b0a2e",
+    "semantic_hash": "d07576e6648ae4fd48220f43492b0a2e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/service/verification/app.go": {
+    "mtime": 1765812533.8950455,
+    "ast_hash": "175aa9805b942251b419b2e898978eaa",
+    "semantic_hash": "175aa9805b942251b419b2e898978eaa"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/service/verification/scope.go": {
+    "mtime": 1765812533.8952281,
+    "ast_hash": "aaf8977dd063b07feb78813624585406",
+    "semantic_hash": "aaf8977dd063b07feb78813624585406"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/player/internal/service/verification/service.go": {
+    "mtime": 1781180880.4166582,
+    "ast_hash": "958366cff6e23a554e337a6e937c2e8d",
+    "semantic_hash": "958366cff6e23a554e337a6e937c2e8d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/fx.go": {
+    "mtime": 1761561447.397248,
+    "ast_hash": "3b4058ec50c85f1754bac7cecc90af4f",
+    "semantic_hash": "3b4058ec50c85f1754bac7cecc90af4f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/internal/dto/http/role.go": {
+    "mtime": 1745503506.8928177,
+    "ast_hash": "30d58e5ece6ef8f5663fb67cfe41dff2",
+    "semantic_hash": "30d58e5ece6ef8f5663fb67cfe41dff2"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/internal/dto/mongo/question/mapper.go": {
+    "mtime": 1779186009.0824172,
+    "ast_hash": "3d2e10471b00f325067ddd4ab45b4364",
+    "semantic_hash": "3d2e10471b00f325067ddd4ab45b4364"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/internal/dto/mongo/question/question.go": {
+    "mtime": 1779185999.436164,
+    "ast_hash": "fb1ca098700e9e8ee3451f8d0414ace3",
+    "semantic_hash": "fb1ca098700e9e8ee3451f8d0414ace3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/internal/repository/mongo/app.go": {
+    "mtime": 1762110919.401007,
+    "ast_hash": "5d883aa95ae24f019c8ba1ceb64b4f07",
+    "semantic_hash": "5d883aa95ae24f019c8ba1ceb64b4f07"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/internal/repository/mongo/errors.go": {
+    "mtime": 1745503506.8938692,
+    "ast_hash": "db5ee427f15436058343d3546b12c095",
+    "semantic_hash": "db5ee427f15436058343d3546b12c095"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/internal/repository/mongo/repository.go": {
+    "mtime": 1779189578.6299307,
+    "ast_hash": "e478d92db247be831e540686385860ef",
+    "semantic_hash": "e478d92db247be831e540686385860ef"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/internal/service/app.go": {
+    "mtime": 1747069648.176443,
+    "ast_hash": "d88d61631b598c95501d95ec3bcb310c",
+    "semantic_hash": "d88d61631b598c95501d95ec3bcb310c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/internal/service/errors.go": {
+    "mtime": 1779186020.1195207,
+    "ast_hash": "76585cf3774defd7d62806afa5f6eed4",
+    "semantic_hash": "76585cf3774defd7d62806afa5f6eed4"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/internal/service/scope.go": {
+    "mtime": 1779186027.2680423,
+    "ast_hash": "7af2588140d3b91ead135e7c3b7dfb96",
+    "semantic_hash": "7af2588140d3b91ead135e7c3b7dfb96"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/internal/service/service.go": {
+    "mtime": 1779186062.1068366,
+    "ast_hash": "f2e976b1d8b4438d67f075b243cdbbe0",
+    "semantic_hash": "f2e976b1d8b4438d67f075b243cdbbe0"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/rules/model/question.go": {
+    "mtime": 1779185992.5694673,
+    "ast_hash": "72b740e1436c5eb4c8002402e0986c40",
+    "semantic_hash": "72b740e1436c5eb4c8002402e0986c40"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/server/app.go": {
+    "mtime": 1781179703.9137108,
+    "ast_hash": "83fd9018de587ee61b2336d2ee715835",
+    "semantic_hash": "83fd9018de587ee61b2336d2ee715835"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/server/interceptor/app.go": {
+    "mtime": 1761573612.6494946,
+    "ast_hash": "be698a8f7d26e3055bc9c93f06c51ac7",
+    "semantic_hash": "be698a8f7d26e3055bc9c93f06c51ac7"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/server/interceptor/auth.go": {
+    "mtime": 1781014489.5940604,
+    "ast_hash": "f3be6b683d80fbeba8599e9332ffc4a8",
+    "semantic_hash": "f3be6b683d80fbeba8599e9332ffc4a8"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/server/interceptor/context.go": {
+    "mtime": 1781358534.9421115,
+    "ast_hash": "bdc77eb4c4ccb10e56cbd111f1418eb3",
+    "semantic_hash": "bdc77eb4c4ccb10e56cbd111f1418eb3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/server/interceptor/domain_error.go": {
+    "mtime": 1776191035.6685615,
+    "ast_hash": "4ee1dd491c462077af1853728cdbc21f",
+    "semantic_hash": "4ee1dd491c462077af1853728cdbc21f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/server/interceptor/errors.go": {
+    "mtime": 1761561447.397934,
+    "ast_hash": "3427a7e82e57277430b03560bbc08d3a",
+    "semantic_hash": "3427a7e82e57277430b03560bbc08d3a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/server/interceptor/matcher.go": {
+    "mtime": 1781014528.641611,
+    "ast_hash": "fb9dd1c540c612d528180881ddae715a",
+    "semantic_hash": "fb9dd1c540c612d528180881ddae715a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/server/interceptor/scoper.go": {
+    "mtime": 1761561447.3981256,
+    "ast_hash": "4c670e1db7177b61e0265b5485b80c73",
+    "semantic_hash": "4c670e1db7177b61e0265b5485b80c73"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/server/invoke.go": {
+    "mtime": 1766485657.2856781,
+    "ast_hash": "17b08711b273c34464343f2ca71d5b09",
+    "semantic_hash": "17b08711b273c34464343f2ca71d5b09"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/server/server.go": {
+    "mtime": 1781358293.0888295,
+    "ast_hash": "5374278993bf30a5b8b3aeb8192707fc",
+    "semantic_hash": "5374278993bf30a5b8b3aeb8192707fc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/fx.go": {
+    "mtime": 1766485657.2861183,
+    "ast_hash": "3ff6d822edbea6e03dee4ea53c1be9bb",
+    "semantic_hash": "3ff6d822edbea6e03dee4ea53c1be9bb"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/dto/serverinfo.go": {
+    "mtime": 1766485657.2864263,
+    "ast_hash": "cc2d3e86283c2162950109bda7f92645",
+    "semantic_hash": "cc2d3e86283c2162950109bda7f92645"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/event/app.go": {
+    "mtime": 1766485657.2868114,
+    "ast_hash": "cf6bcbface71eb778c70564c4a02e056",
+    "semantic_hash": "cf6bcbface71eb778c70564c4a02e056"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/event/events.go": {
+    "mtime": 1766485657.286931,
+    "ast_hash": "a131820573d23f831bb15c595ebf37af",
+    "semantic_hash": "a131820573d23f831bb15c595ebf37af"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/event/queue.go": {
+    "mtime": 1779189574.0795925,
+    "ast_hash": "8ba0e2e00c1a23ab1aa9aa6d1efca2fe",
+    "semantic_hash": "8ba0e2e00c1a23ab1aa9aa6d1efca2fe"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/model/serverinfo.go": {
+    "mtime": 1766488898.3296175,
+    "ast_hash": "cdaf14aceceaf167bde62bd8082cfcfb",
+    "semantic_hash": "cdaf14aceceaf167bde62bd8082cfcfb"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/repository/app/app.go": {
+    "mtime": 1766485657.2875543,
+    "ast_hash": "1e55f6d8addbc8fa363cb9759d0e1e6f",
+    "semantic_hash": "1e55f6d8addbc8fa363cb9759d0e1e6f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/repository/serverinfo/app.go": {
+    "mtime": 1766485657.2877333,
+    "ast_hash": "5e28ce9d8329af49402e2df908e0c8c9",
+    "semantic_hash": "5e28ce9d8329af49402e2df908e0c8c9"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/repository/serverinfo/fx.go": {
+    "mtime": 1766485657.2879899,
+    "ast_hash": "8fbd8dc9977a90021529b6e0db53b3b7",
+    "semantic_hash": "8fbd8dc9977a90021529b6e0db53b3b7"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/repository/serverinfo/repository.go": {
+    "mtime": 1766488911.8200545,
+    "ast_hash": "fea8b3e243eae35fa59d165de026df31",
+    "semantic_hash": "fea8b3e243eae35fa59d165de026df31"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/service/app/fx.go": {
+    "mtime": 1766485657.2888298,
+    "ast_hash": "0b6176ac2205d3b6ac6e1c16f4b0ccdc",
+    "semantic_hash": "0b6176ac2205d3b6ac6e1c16f4b0ccdc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/service/serverinfo/app.go": {
+    "mtime": 1766485657.2891245,
+    "ast_hash": "86648ccfb34c22de998c8c031fe07883",
+    "semantic_hash": "86648ccfb34c22de998c8c031fe07883"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/serverinfo/internal/service/serverinfo/service.go": {
+    "mtime": 1766488903.264875,
+    "ast_hash": "2f4696f3b1f6f6b8d5110d755e54f340",
+    "semantic_hash": "2f4696f3b1f6f6b8d5110d755e54f340"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/fx.go": {
+    "mtime": 1763050391.0919392,
+    "ast_hash": "f3f55218b5ca57ac867c1809f4a99ebc",
+    "semantic_hash": "f3f55218b5ca57ac867c1809f4a99ebc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/dto/tag.go": {
+    "mtime": 1763050391.0921147,
+    "ast_hash": "afcc77e2e6786f59e66a2c110269e1a7",
+    "semantic_hash": "afcc77e2e6786f59e66a2c110269e1a7"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/ierror/error.go": {
+    "mtime": 1776191067.4333954,
+    "ast_hash": "0fbfa81fe8808d270a55ecd86554a4bd",
+    "semantic_hash": "0fbfa81fe8808d270a55ecd86554a4bd"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/model/tag.go": {
+    "mtime": 1763050391.0924628,
+    "ast_hash": "a64a01249131df84acd58bbbd4040310",
+    "semantic_hash": "a64a01249131df84acd58bbbd4040310"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/repository/app.go": {
+    "mtime": 1781363063.728098,
+    "ast_hash": "db0ba080d6bdadcce3c7acfe45b43dfe",
+    "semantic_hash": "db0ba080d6bdadcce3c7acfe45b43dfe"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/repository/repomapper/mapper.go": {
+    "mtime": 1781391045.4922047,
+    "ast_hash": "88d2604a2bb48a9753aad585998468fd",
+    "semantic_hash": "88d2604a2bb48a9753aad585998468fd"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/repository/repository.go": {
+    "mtime": 1779189574.8027067,
+    "ast_hash": "12a4ad643d695f3a0b3638b7a66813a7",
+    "semantic_hash": "12a4ad643d695f3a0b3638b7a66813a7"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/service/app.go": {
+    "mtime": 1781363065.634267,
+    "ast_hash": "374540ccb5b005e051e6179767ece042",
+    "semantic_hash": "374540ccb5b005e051e6179767ece042"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/service/goverter.go": {
+    "mtime": 1763050391.0931814,
+    "ast_hash": "256d1b67b6559e6603e023e402f665ed",
+    "semantic_hash": "256d1b67b6559e6603e023e402f665ed"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/service/scope.go": {
+    "mtime": 1763050391.0932915,
+    "ast_hash": "4678832d59769b1bc428d76feb716b9b",
+    "semantic_hash": "4678832d59769b1bc428d76feb716b9b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/service/sermapper/mapper.go": {
+    "mtime": 1781391045.7883472,
+    "ast_hash": "e9fd637ef028693bacdea1e7aa0f9123",
+    "semantic_hash": "e9fd637ef028693bacdea1e7aa0f9123"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement-tag/internal/service/service.go": {
+    "mtime": 1765383020.5129116,
+    "ast_hash": "24ecda16f740180c6f4eed4cd3c10c85",
+    "semantic_hash": "24ecda16f740180c6f4eed4cd3c10c85"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/fx.go": {
+    "mtime": 1781180880.4164515,
+    "ast_hash": "805cd69cdb3fbd2ae1603a1dbf251bcc",
+    "semantic_hash": "805cd69cdb3fbd2ae1603a1dbf251bcc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/dto/mongo/attachment/attachment.go": {
+    "mtime": 1762874033.018308,
+    "ast_hash": "765012f7868493c47d65854719507a0a",
+    "semantic_hash": "765012f7868493c47d65854719507a0a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/dto/mongo/invitation/invitation.go": {
+    "mtime": 1762874033.0186746,
+    "ast_hash": "6da3ed629e18e1864f6e30591ba4bf2e",
+    "semantic_hash": "6da3ed629e18e1864f6e30591ba4bf2e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/dto/mongo/member/member.go": {
+    "mtime": 1762874033.0191054,
+    "ast_hash": "26158e2b09fadf98a26cb6b13aa1f90d",
+    "semantic_hash": "26158e2b09fadf98a26cb6b13aa1f90d"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/dto/mongo/settlement/settlement.go": {
+    "mtime": 1763050391.0937266,
+    "ast_hash": "96adbf2e327d87227ab9402b10ee2253",
+    "semantic_hash": "96adbf2e327d87227ab9402b10ee2253"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/dto/mongo/vector2/vector2.go": {
+    "mtime": 1762874033.0199974,
+    "ast_hash": "dab75fe13b0097d989099e7c6adf2c86",
+    "semantic_hash": "dab75fe13b0097d989099e7c6adf2c86"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/dto/mongo/verification/verification.go": {
+    "mtime": 1762874033.0203934,
+    "ast_hash": "63a22780d522464b07aa7f1a0129c04b",
+    "semantic_hash": "63a22780d522464b07aa7f1a0129c04b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/ierror/errors.go": {
+    "mtime": 1776191064.9714365,
+    "ast_hash": "d06b55b076843efc1b381b35f01b2246",
+    "semantic_hash": "d06b55b076843efc1b381b35f01b2246"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/repository/mongo/app.go": {
+    "mtime": 1781363060.903132,
+    "ast_hash": "d3af496a53d48a9e61be2173c9a1a55a",
+    "semantic_hash": "d3af496a53d48a9e61be2173c9a1a55a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/repository/mongo/invitation.go": {
+    "mtime": 1779189575.7735941,
+    "ast_hash": "4bb1a2259fe6d339357fc2b8fe128238",
+    "semantic_hash": "4bb1a2259fe6d339357fc2b8fe128238"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/repository/mongo/repomapper/mapper.go": {
+    "mtime": 1781391044.8070514,
+    "ast_hash": "5a5ccd4ef2528c501144af96311e07dc",
+    "semantic_hash": "5a5ccd4ef2528c501144af96311e07dc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/repository/mongo/repository.go": {
+    "mtime": 1779189660.2269502,
+    "ast_hash": "e3fc060e6cb786ee243734295584f78a",
+    "semantic_hash": "e3fc060e6cb786ee243734295584f78a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/repository/mongo/tags.go": {
+    "mtime": 1763050391.0949917,
+    "ast_hash": "717920629085bc2621f493a6daf1a477",
+    "semantic_hash": "717920629085bc2621f493a6daf1a477"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/repository/mongo/verification.go": {
+    "mtime": 1779189661.2283297,
+    "ast_hash": "084cb0f173588da98512e5ffe9461301",
+    "semantic_hash": "084cb0f173588da98512e5ffe9461301"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/service/app.go": {
+    "mtime": 1781179691.3777072,
+    "ast_hash": "b928d40bf7712ad9c03d67dcf5397e78",
+    "semantic_hash": "b928d40bf7712ad9c03d67dcf5397e78"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/service/goverter.go": {
+    "mtime": 1763050391.0953963,
+    "ast_hash": "c6b441b3486079a0c804a8bf9c0fb00f",
+    "semantic_hash": "c6b441b3486079a0c804a8bf9c0fb00f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/service/interface.go": {
+    "mtime": 1781363062.307644,
+    "ast_hash": "e261acc9afa27c86b3e27907d9a79c28",
+    "semantic_hash": "e261acc9afa27c86b3e27907d9a79c28"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/service/opts.go": {
+    "mtime": 1761561447.4015365,
+    "ast_hash": "e5fe3bf568c70ffcbca0f5f3dfc49c09",
+    "semantic_hash": "e5fe3bf568c70ffcbca0f5f3dfc49c09"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/service/scope.go": {
+    "mtime": 1763050469.502256,
+    "ast_hash": "b44afc9da31e6ad1d9db3524087dbd18",
+    "semantic_hash": "b44afc9da31e6ad1d9db3524087dbd18"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/service/sermapper/mapper.go": {
+    "mtime": 1781391045.1700482,
+    "ast_hash": "36188dbecd4adc875640c86429cf71e2",
+    "semantic_hash": "36188dbecd4adc875640c86429cf71e2"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/service/service.go": {
+    "mtime": 1781180880.417715,
+    "ast_hash": "35edad3412cb8960f418aa282f44fde1",
+    "semantic_hash": "35edad3412cb8960f418aa282f44fde1"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/internal/service/tags-service.go": {
+    "mtime": 1763050391.096556,
+    "ast_hash": "1e66888d56756759605201f4815a4e5e",
+    "semantic_hash": "1e66888d56756759605201f4815a4e5e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/model/attachment.go": {
+    "mtime": 1748354714.412447,
+    "ast_hash": "8b4aa762b65ee44c6e6ece8ca4c385ca",
+    "semantic_hash": "8b4aa762b65ee44c6e6ece8ca4c385ca"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/model/invitation.go": {
+    "mtime": 1756157516.5750082,
+    "ast_hash": "ed587e5e56e6149fc3709845ccdd4dee",
+    "semantic_hash": "ed587e5e56e6149fc3709845ccdd4dee"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/model/member.go": {
+    "mtime": 1756157516.5752156,
+    "ast_hash": "41943a1065432e1f445eba03d0128558",
+    "semantic_hash": "41943a1065432e1f445eba03d0128558"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/model/settlement.go": {
+    "mtime": 1763050391.0967834,
+    "ast_hash": "71febbfbdcb21f12b7d887fa4225e63b",
+    "semantic_hash": "71febbfbdcb21f12b7d887fa4225e63b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/model/vector2.go": {
+    "mtime": 1748354714.4127276,
+    "ast_hash": "69f2f0ec83cf710a10bbc968e15b8ab0",
+    "semantic_hash": "69f2f0ec83cf710a10bbc968e15b8ab0"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/settlement/model/verification.go": {
+    "mtime": 1765470954.7751327,
+    "ast_hash": "ab036918bab9138be91d3ed0e6f3e88b",
+    "semantic_hash": "ab036918bab9138be91d3ed0e6f3e88b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/webhook/app.go": {
+    "mtime": 1762444919.636138,
+    "ast_hash": "0b49c70532726fcadfe5f1c6cae58af3",
+    "semantic_hash": "0b49c70532726fcadfe5f1c6cae58af3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/webhook/logto.go": {
+    "mtime": 1779189454.9219143,
+    "ast_hash": "772ef164a90e5c083d1261e82e73b72b",
+    "semantic_hash": "772ef164a90e5c083d1261e82e73b72b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/internal/webhook/observer.go": {
+    "mtime": 1762530476.8079617,
+    "ast_hash": "81bf0c5866c023dc6c51a2b8ab8c98d4",
+    "semantic_hash": "81bf0c5866c023dc6c51a2b8ab8c98d4"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/main.go": {
+    "mtime": 1781179691.3299763,
+    "ast_hash": "ca9e10dcdaf4c2bfdaa4e91f83674f1b",
+    "semantic_hash": "ca9e10dcdaf4c2bfdaa4e91f83674f1b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/skills-lock.json": {
+    "mtime": 1781179703.914265,
+    "ast_hash": "1cc326cd0a9e8b1e7f10ba9e33da22f5",
+    "semantic_hash": "1cc326cd0a9e8b1e7f10ba9e33da22f5"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.agents/skills/council/SKILL.md": {
+    "mtime": 1781179703.9101496,
+    "ast_hash": "355eb540821e4f345d372bc558c9d7f0",
+    "semantic_hash": "355eb540821e4f345d372bc558c9d7f0"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.github/workflows/push-to-registry.yaml": {
+    "mtime": 1759834304.5386934,
+    "ast_hash": "7d4a9ec7ddcab7eaac0c1589fb1e2d84",
+    "semantic_hash": "7d4a9ec7ddcab7eaac0c1589fb1e2d84"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/memory/constitution.md": {
+    "mtime": 1763376006.4525392,
+    "ast_hash": "84cc6cd41908990f3ec172043066d573",
+    "semantic_hash": "84cc6cd41908990f3ec172043066d573"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/templates/agent-file-template.md": {
+    "mtime": 1763375967.9086623,
+    "ast_hash": "b8247a4214e5a2fb2468ad8dcf5fca50",
+    "semantic_hash": "b8247a4214e5a2fb2468ad8dcf5fca50"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/templates/checklist-template.md": {
+    "mtime": 1763375967.908298,
+    "ast_hash": "87c4b390cebe71d15364bcd4690a102f",
+    "semantic_hash": "87c4b390cebe71d15364bcd4690a102f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/templates/plan-template.md": {
+    "mtime": 1763376014.2506866,
+    "ast_hash": "4298cca1bb63922f99b727975882ec53",
+    "semantic_hash": "4298cca1bb63922f99b727975882ec53"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/templates/spec-template.md": {
+    "mtime": 1763376014.2510815,
+    "ast_hash": "eeabb2dcb2dc30595729b17b07962b66",
+    "semantic_hash": "eeabb2dcb2dc30595729b17b07962b66"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/.specify/templates/tasks-template.md": {
+    "mtime": 1763376014.251434,
+    "ast_hash": "d5bac30146ed6b608c21fa6c8c11b8d1",
+    "semantic_hash": "d5bac30146ed6b608c21fa6c8c11b8d1"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/CLAUDE.md": {
+    "mtime": 1776190284.0861506,
+    "ast_hash": "5694595ed79069d38fe7795f137dc7a0",
+    "semantic_hash": "5694595ed79069d38fe7795f137dc7a0"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/QWEN.md": {
+    "mtime": 1765203841.6344254,
+    "ast_hash": "afa54fde066205186eeb625781a644a4",
+    "semantic_hash": "afa54fde066205186eeb625781a644a4"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/README.md": {
+    "mtime": 1749962790.66574,
+    "ast_hash": "db87e36e97734f36a2d9a26f5447ace3",
+    "semantic_hash": "db87e36e97734f36a2d9a26f5447ace3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/buf.gen.yaml": {
+    "mtime": 1781360920.1316104,
+    "ast_hash": "e94f559317d1de397d8a409465773766",
+    "semantic_hash": "e94f559317d1de397d8a409465773766"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/buf.yaml": {
+    "mtime": 1781360608.2494278,
+    "ast_hash": "d4ade4f0e1e0b6d846b353c0c84bb003",
+    "semantic_hash": "d4ade4f0e1e0b6d846b353c0c84bb003"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/compose.dev.yaml": {
+    "mtime": 1762110736.6859496,
+    "ast_hash": "349674779ae00d9b1ac6c9000b99c824",
+    "semantic_hash": "349674779ae00d9b1ac6c9000b99c824"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/compose.docs.yaml": {
+    "mtime": 1781182082.17056,
+    "ast_hash": "6614fbb1adf1209afd0fd3784932d874",
+    "semantic_hash": "6614fbb1adf1209afd0fd3784932d874"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/compose.yaml": {
+    "mtime": 1762110738.7569413,
+    "ast_hash": "b1ef1cee7feada2c805fa80a5db53c5b",
+    "semantic_hash": "b1ef1cee7feada2c805fa80a5db53c5b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/docs/plans/donate-kits-media.md": {
+    "mtime": 1781179703.910608,
+    "ast_hash": "cafee313764aef6fc7c25938b308a41c",
+    "semantic_hash": "cafee313764aef6fc7c25938b308a41c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/docs/scalar/index.html": {
+    "mtime": 1781361325.0875046,
+    "ast_hash": "61f1685b3cebd85bcfa5f9d43b232cbc",
+    "semantic_hash": "61f1685b3cebd85bcfa5f9d43b232cbc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/docs/superpowers/plans/2026-06-11-media-domain-presigned-upload.md": {
+    "mtime": 1781179691.3073277,
+    "ast_hash": "4e09f01dc00fe305928aee89faaa5cfd",
+    "semantic_hash": "4e09f01dc00fe305928aee89faaa5cfd"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/docs/superpowers/specs/2026-06-11-media-domain-presigned-upload-design.md": {
+    "mtime": 1781135783.652886,
+    "ast_hash": "091736f54c4c9ce1726d04599a40918a",
+    "semantic_hash": "091736f54c4c9ce1726d04599a40918a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/docs/v1/openapi.yaml": {
+    "mtime": 1781361725.6620347,
+    "ast_hash": "9f9e8c190ab1acae57e85725fb9c9086",
+    "semantic_hash": "9f9e8c190ab1acae57e85725fb9c9086"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-admin-kit-distribution/checklists/requirements.md": {
+    "mtime": 1765203841.6504562,
+    "ast_hash": "5846b4ecc1a67d1799f6d26dc425c948",
+    "semantic_hash": "5846b4ecc1a67d1799f6d26dc425c948"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-admin-kit-distribution/contracts/kit-service-api.md": {
+    "mtime": 1765203841.6508336,
+    "ast_hash": "48e7ac748b5e6a6ab79a91893b6ff97f",
+    "semantic_hash": "48e7ac748b5e6a6ab79a91893b6ff97f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-admin-kit-distribution/data-model.md": {
+    "mtime": 1765203841.6511514,
+    "ast_hash": "dfb3d20e68bc4a440fa5b5e51c6d8737",
+    "semantic_hash": "dfb3d20e68bc4a440fa5b5e51c6d8737"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-admin-kit-distribution/plan.md": {
+    "mtime": 1765203841.651298,
+    "ast_hash": "3cf01df13d2ee28158cfb2ddf260db6f",
+    "semantic_hash": "3cf01df13d2ee28158cfb2ddf260db6f"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-admin-kit-distribution/quickstart.md": {
+    "mtime": 1765203841.6514368,
+    "ast_hash": "cf63d7476cce9788c3be08f5188ead05",
+    "semantic_hash": "cf63d7476cce9788c3be08f5188ead05"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-admin-kit-distribution/research.md": {
+    "mtime": 1765203841.651574,
+    "ast_hash": "ffebf16a069a2c2a3e0fd35f4b88a480",
+    "semantic_hash": "ffebf16a069a2c2a3e0fd35f4b88a480"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-admin-kit-distribution/spec.md": {
+    "mtime": 1765203841.6517677,
+    "ast_hash": "df043862abe3f4266b9e87563f8bba5b",
+    "semantic_hash": "df043862abe3f4266b9e87563f8bba5b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-admin-kit-distribution/tasks.md": {
+    "mtime": 1765203841.6519182,
+    "ast_hash": "8ddd968aa669d456f59c216ec2ba9221",
+    "semantic_hash": "8ddd968aa669d456f59c216ec2ba9221"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-settlement-tagging/checklists/requirements.md": {
+    "mtime": 1763050391.0981972,
+    "ast_hash": "3fa1647851b7a1ad55aff7efc2e2f3cd",
+    "semantic_hash": "3fa1647851b7a1ad55aff7efc2e2f3cd"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-settlement-tagging/contracts/settlements-tagging-api.yaml": {
+    "mtime": 1763050391.0985327,
+    "ast_hash": "1013bf0a806e6e562796829cab6466b4",
+    "semantic_hash": "1013bf0a806e6e562796829cab6466b4"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-settlement-tagging/data-model.md": {
+    "mtime": 1763050391.0986547,
+    "ast_hash": "e6d8ec6c8aedd68fe45800f094ef0ed3",
+    "semantic_hash": "e6d8ec6c8aedd68fe45800f094ef0ed3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-settlement-tagging/plan.md": {
+    "mtime": 1763050391.0988672,
+    "ast_hash": "998ee2bbb2eb47334248f2a0782bc9c1",
+    "semantic_hash": "998ee2bbb2eb47334248f2a0782bc9c1"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-settlement-tagging/quickstart.md": {
+    "mtime": 1763050391.0990853,
+    "ast_hash": "55c2f1b59852de5cc37199870c5e8dfa",
+    "semantic_hash": "55c2f1b59852de5cc37199870c5e8dfa"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-settlement-tagging/research.md": {
+    "mtime": 1763050391.099282,
+    "ast_hash": "e658e625289d50684faa98380ebf6ff9",
+    "semantic_hash": "e658e625289d50684faa98380ebf6ff9"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-settlement-tagging/spec.md": {
+    "mtime": 1763050391.0994759,
+    "ast_hash": "c120b5e4a86bb5e576b2681b443f238b",
+    "semantic_hash": "c120b5e4a86bb5e576b2681b443f238b"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-settlement-tagging/tasks.md": {
+    "mtime": 1763050391.099685,
+    "ast_hash": "b245c7f17ebe574b5067d5ffa13f5e12",
+    "semantic_hash": "b245c7f17ebe574b5067d5ffa13f5e12"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-submit-settlement/checklists/requirements.md": {
+    "mtime": 1759841915.5983415,
+    "ast_hash": "80ada042d1be33931c00410689e9dd86",
+    "semantic_hash": "80ada042d1be33931c00410689e9dd86"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-submit-settlement/contracts/settlement-submission.yaml": {
+    "mtime": 1759841915.5985482,
+    "ast_hash": "58ceacab050f8c1a11aed85dda1af268",
+    "semantic_hash": "58ceacab050f8c1a11aed85dda1af268"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-submit-settlement/data-model.md": {
+    "mtime": 1759841915.5986807,
+    "ast_hash": "6ee526677f336a42271c936421ac01c8",
+    "semantic_hash": "6ee526677f336a42271c936421ac01c8"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-submit-settlement/plan.md": {
+    "mtime": 1759841915.5988214,
+    "ast_hash": "59ca9b4b17df32007dfbe8dd126d2efc",
+    "semantic_hash": "59ca9b4b17df32007dfbe8dd126d2efc"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-submit-settlement/quickstart.md": {
+    "mtime": 1759841915.59896,
+    "ast_hash": "089f711091863d062d458beed3a25cc3",
+    "semantic_hash": "089f711091863d062d458beed3a25cc3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-submit-settlement/research.md": {
+    "mtime": 1759841915.5991058,
+    "ast_hash": "34a14eb4727c3bf6292156fb9c936a6c",
+    "semantic_hash": "34a14eb4727c3bf6292156fb9c936a6c"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-submit-settlement/spec.md": {
+    "mtime": 1759841915.5992358,
+    "ast_hash": "27e502771c603a0260665fac63d6523e",
+    "semantic_hash": "27e502771c603a0260665fac63d6523e"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/001-submit-settlement/tasks.md": {
+    "mtime": 1759841915.5993934,
+    "ast_hash": "2ff27d119a90e623079ee9f7a2f75077",
+    "semantic_hash": "2ff27d119a90e623079ee9f7a2f75077"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/checklists/api.md": {
+    "mtime": 1759853489.256489,
+    "ast_hash": "ba9c6561ea2e5c7b17485d3fe5352072",
+    "semantic_hash": "ba9c6561ea2e5c7b17485d3fe5352072"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/checklists/requirements.md": {
+    "mtime": 1759853489.2566516,
+    "ast_hash": "182cc0c34cc1f44748939d2565267c14",
+    "semantic_hash": "182cc0c34cc1f44748939d2565267c14"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/checklists/security.md": {
+    "mtime": 1759853489.2568078,
+    "ast_hash": "787dbe37d9ff7ad4e5ec0efb1b177704",
+    "semantic_hash": "787dbe37d9ff7ad4e5ec0efb1b177704"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/contracts/api-contract.md": {
+    "mtime": 1759853489.2570112,
+    "ast_hash": "e1acb74feb6cb9d15252c1644fe5d054",
+    "semantic_hash": "e1acb74feb6cb9d15252c1644fe5d054"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/contracts/news-deletion.yaml": {
+    "mtime": 1759853489.2571723,
+    "ast_hash": "f94085337c7dfedff0966d12e313cd42",
+    "semantic_hash": "f94085337c7dfedff0966d12e313cd42"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/data-model.md": {
+    "mtime": 1759853489.257326,
+    "ast_hash": "1d44839cba243264af82bf27ce4e3bd3",
+    "semantic_hash": "1d44839cba243264af82bf27ce4e3bd3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/plan.md": {
+    "mtime": 1759853489.2574975,
+    "ast_hash": "486e2c46e0997344c4357eb6f6a2c872",
+    "semantic_hash": "486e2c46e0997344c4357eb6f6a2c872"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/quickstart.md": {
+    "mtime": 1759853489.257638,
+    "ast_hash": "5e1d87e73f0a9a8d0f3e97b073be2c41",
+    "semantic_hash": "5e1d87e73f0a9a8d0f3e97b073be2c41"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/research.md": {
+    "mtime": 1759853489.2577853,
+    "ast_hash": "c1daee272c38ad32ebd037a6b52e812a",
+    "semantic_hash": "c1daee272c38ad32ebd037a6b52e812a"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/spec.md": {
+    "mtime": 1759853489.2579494,
+    "ast_hash": "8ffc58ba535fbb4e05f5609a50b00bd1",
+    "semantic_hash": "8ffc58ba535fbb4e05f5609a50b00bd1"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/002-id-scope-news/tasks.md": {
+    "mtime": 1759853489.2585495,
+    "ast_hash": "c4eecaa65abba7cd9ca5a302f88bc7b6",
+    "semantic_hash": "c4eecaa65abba7cd9ca5a302f88bc7b6"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/004-feat-news-view/checklists/requirements.md": {
+    "mtime": 1759868294.771907,
+    "ast_hash": "90e0724e6355882bb119f7715c3179fe",
+    "semantic_hash": "90e0724e6355882bb119f7715c3179fe"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/004-feat-news-view/contracts/news-service.yaml": {
+    "mtime": 1759868294.772085,
+    "ast_hash": "3ced37c435c8c672e1dc126236bf0116",
+    "semantic_hash": "3ced37c435c8c672e1dc126236bf0116"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/004-feat-news-view/data-model.md": {
+    "mtime": 1759868294.7722218,
+    "ast_hash": "15819ebd3a9ecdde0c11d928fcd5edf0",
+    "semantic_hash": "15819ebd3a9ecdde0c11d928fcd5edf0"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/004-feat-news-view/plan.md": {
+    "mtime": 1759868294.7723796,
+    "ast_hash": "6299bc6c108c38defc597d04172f2ff9",
+    "semantic_hash": "6299bc6c108c38defc597d04172f2ff9"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/004-feat-news-view/quickstart.md": {
+    "mtime": 1762110730.5078104,
+    "ast_hash": "92d01dcf234888d387342c57ea061d62",
+    "semantic_hash": "92d01dcf234888d387342c57ea061d62"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/004-feat-news-view/research.md": {
+    "mtime": 1759868294.772654,
+    "ast_hash": "e9c6b958dfdbb1f09770e0ab30d75bfe",
+    "semantic_hash": "e9c6b958dfdbb1f09770e0ab30d75bfe"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/004-feat-news-view/spec.md": {
+    "mtime": 1759868294.772804,
+    "ast_hash": "337e2f2766fefb084d75fb35e9aeb4e3",
+    "semantic_hash": "337e2f2766fefb084d75fb35e9aeb4e3"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/004-feat-news-view/tasks.md": {
+    "mtime": 1759868294.7729664,
+    "ast_hash": "61331cf16be274ddaddfe60b25c45c24",
+    "semantic_hash": "61331cf16be274ddaddfe60b25c45c24"
+  },
+  "/Users/ripls/Documents/GitHub/vsservice/specs/005-feat-nickname-change/spec.md": {
+    "mtime": 1761561447.4035792,
+    "ast_hash": "28e5b0775060118c525abaac5247a274",
+    "semantic_hash": "28e5b0775060118c525abaac5247a274"
+  }
+}
