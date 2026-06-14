@@ -17,40 +17,40 @@ import (
 )
 
 func (s *Service) AddCoins(ctx context.Context, req *donatev1.AddCoinsRequest) (*donatev1.AddCoinsResponse, error) {
-	l := s.log.With(zap.String("method", "AddCoins"), zap.String("player_id", req.PlayerId))
+	l := s.log.With(zap.String("method", "AddCoins"), zap.String("player_id", req.GetPlayerId()))
 
-	if req.Amount <= 0 {
+	if req.GetAmount() <= 0 {
 		return nil, status.Error(codes.InvalidArgument, "amount must be positive")
 	}
-	if req.PlayerName == "" {
+	if req.GetPlayerName() == "" {
 		return nil, status.Error(codes.InvalidArgument, "player_name is required")
 	}
 
-	newCoins, err := s.repo.AddCoinsToWallet(ctx, req.PlayerId, req.PlayerName, req.Amount)
+	newCoins, err := s.repo.AddCoinsToWallet(ctx, req.GetPlayerId(), req.GetPlayerName(), req.GetAmount())
 	if err != nil {
 		l.Error("failed to add coins", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to add coins")
 	}
 
-	tx := model.NewCreditTransaction(req.PlayerId, req.Amount, req.Reason)
+	tx := model.NewCreditTransaction(req.GetPlayerId(), req.GetAmount(), req.GetReason())
 	if _, err := s.repo.CreateTransaction(ctx, tx); err != nil {
 		l.Error("failed to record transaction", zap.Error(err))
 	}
 
-	l.Info("coins added", zap.Int64("amount", req.Amount), zap.Int64("new_coins", newCoins))
+	l.Info("coins added", zap.Int64("amount", req.GetAmount()), zap.Int64("new_coins", newCoins))
 	return &donatev1.AddCoinsResponse{Coins: newCoins}, nil
 }
 
 func (s *Service) DeductCoins(ctx context.Context, req *donatev1.DeductCoinsRequest) (*donatev1.DeductCoinsResponse, error) {
-	l := s.log.With(zap.String("method", "DeductCoins"), zap.String("player_id", req.PlayerId))
+	l := s.log.With(zap.String("method", "DeductCoins"), zap.String("player_id", req.GetPlayerId()))
 
-	if req.Amount <= 0 {
+	if req.GetAmount() <= 0 {
 		return nil, status.Error(codes.InvalidArgument, "amount must be positive")
 	}
 
 	var newCoins int64
-	err := s.repo.UpdateWallet(ctx, req.PlayerId, func(ctx context.Context, w *model.Wallet) (*model.Wallet, error) {
-		if err := w.Withdraw(req.Amount); err != nil {
+	err := s.repo.UpdateWallet(ctx, req.GetPlayerId(), func(ctx context.Context, w *model.Wallet) (*model.Wallet, error) {
+		if err := w.Withdraw(req.GetAmount()); err != nil {
 			return nil, ierror.ErrInsufficientFunds
 		}
 		newCoins = w.Coins
@@ -67,49 +67,49 @@ func (s *Service) DeductCoins(ctx context.Context, req *donatev1.DeductCoinsRequ
 		return nil, status.Error(codes.Internal, "failed to deduct coins")
 	}
 
-	tx := model.NewDebitTransaction(req.PlayerId, req.Amount, req.Reason)
+	tx := model.NewDebitTransaction(req.GetPlayerId(), req.GetAmount(), req.GetReason())
 	if _, err := s.repo.CreateTransaction(ctx, tx); err != nil {
 		l.Error("failed to record transaction", zap.Error(err))
 	}
 
-	l.Info("coins deducted", zap.Int64("amount", req.Amount), zap.Int64("new_coins", newCoins))
+	l.Info("coins deducted", zap.Int64("amount", req.GetAmount()), zap.Int64("new_coins", newCoins))
 	return &donatev1.DeductCoinsResponse{Coins: newCoins}, nil
 }
 
 func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopItemRequest) (*donatev1.CreateShopItemResponse, error) {
 	l := s.log.With(zap.String("method", "CreateShopItem"))
 
-	if err := s.validateImageURL(req.ImageUrl); err != nil {
+	if err := s.validateImageURL(req.GetImageUrl()); err != nil {
 		return nil, err
 	}
 
 	var item *model.ShopItem
-	if req.ItemType == donatev1.ItemType_ITEM_TYPE_KIT {
-		entries, err := protoEntriesToModel(req.Entries)
+	if req.GetItemType() == donatev1.ItemType_ITEM_TYPE_KIT {
+		entries, err := protoEntriesToModel(req.GetEntries())
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
-		item = model.NewKitShopItem(req.Code, req.Name, req.Description, req.ImageUrl, req.Price, entries)
+		item = model.NewKitShopItem(req.GetCode(), req.GetName(), req.GetDescription(), req.GetImageUrl(), req.GetPrice(), entries)
 	} else {
-		item = model.NewShopItem(req.Code, req.Name, req.Description, req.ImageUrl, req.Price)
+		item = model.NewShopItem(req.GetCode(), req.GetName(), req.GetDescription(), req.GetImageUrl(), req.GetPrice())
 	}
 
-	if req.HasDiscount {
-		if err := item.SetDiscount(req.DiscountPercent); err != nil {
+	if req.GetHasDiscount() {
+		if err := item.SetDiscount(req.GetDiscountPercent()); err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 	}
 
-	item.SetPrivileges(protoPrivilegesToModel(req.Privileges))
+	item.SetPrivileges(protoPrivilegesToModel(req.GetPrivileges()))
 	item.SetDiscountWindow(
-		goverter.TimestampToTimePtr(req.DiscountStartsAt),
-		goverter.TimestampToTimePtr(req.DiscountEndsAt),
+		goverter.TimestampToTimePtr(req.GetDiscountStartsAt()),
+		goverter.TimestampToTimePtr(req.GetDiscountEndsAt()),
 	)
 
 	// Validate entry image URLs for kit
-	for _, e := range req.Entries {
-		if e.ImageUrl != "" {
-			if err := s.validateImageURL(e.ImageUrl); err != nil {
+	for _, e := range req.GetEntries() {
+		if e.GetImageUrl() != "" {
+			if err := s.validateImageURL(e.GetImageUrl()); err != nil {
 				return nil, err
 			}
 		}
@@ -131,57 +131,57 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 }
 
 func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopItemRequest) (*donatev1.UpdateShopItemResponse, error) {
-	l := s.log.With(zap.String("method", "UpdateShopItem"), zap.String("id", req.Id))
+	l := s.log.With(zap.String("method", "UpdateShopItem"), zap.String("id", req.GetId()))
 
-	if req.ImageUrl != "" {
-		if err := s.validateImageURL(req.ImageUrl); err != nil {
+	if req.GetImageUrl() != "" {
+		if err := s.validateImageURL(req.GetImageUrl()); err != nil {
 			return nil, err
 		}
 	}
 
 	// Validate entry image URLs
-	for _, e := range req.Entries {
-		if e.ImageUrl != "" {
-			if err := s.validateImageURL(e.ImageUrl); err != nil {
+	for _, e := range req.GetEntries() {
+		if e.GetImageUrl() != "" {
+			if err := s.validateImageURL(e.GetImageUrl()); err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	entries, err := protoEntriesToModel(req.Entries)
+	entries, err := protoEntriesToModel(req.GetEntries())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	updated, err := s.repo.UpdateShopItem(ctx, req.Id, func(_ context.Context, item *model.ShopItem) (*model.ShopItem, error) {
+	updated, err := s.repo.UpdateShopItem(ctx, req.GetId(), func(_ context.Context, item *model.ShopItem) (*model.ShopItem, error) {
 		imageURL := item.ImageURL
-		if req.ImageUrl != "" {
-			imageURL = req.ImageUrl
+		if req.GetImageUrl() != "" {
+			imageURL = req.GetImageUrl()
 		}
 
-		itemType := model.ItemType(itemTypeFromProto(req.ItemType))
+		itemType := model.ItemType(itemTypeFromProto(req.GetItemType()))
 		if itemType == "" {
 			itemType = item.Type
 		}
 
 		u := model.ShopItemUpdate{
-			Code:             req.Code,
-			Name:             req.Name,
-			Description:      req.Description,
+			Code:             req.GetCode(),
+			Name:             req.GetName(),
+			Description:      req.GetDescription(),
 			ImageURL:         imageURL,
-			Price:            req.Price,
-			IsAvailable:      req.IsAvailable,
+			Price:            req.GetPrice(),
+			IsAvailable:      req.GetIsAvailable(),
 			Type:             itemType,
 			Entries:          entries,
-			HasDiscount:      req.HasDiscount,
-			DiscountPercent:  req.DiscountPercent,
-			Privileges:       protoPrivilegesToModel(req.Privileges),
-			DiscountStartsAt: goverter.TimestampToTimePtr(req.DiscountStartsAt),
-			DiscountEndsAt:   goverter.TimestampToTimePtr(req.DiscountEndsAt),
+			HasDiscount:      req.GetHasDiscount(),
+			DiscountPercent:  req.GetDiscountPercent(),
+			Privileges:       protoPrivilegesToModel(req.GetPrivileges()),
+			DiscountStartsAt: goverter.TimestampToTimePtr(req.GetDiscountStartsAt()),
+			DiscountEndsAt:   goverter.TimestampToTimePtr(req.GetDiscountEndsAt()),
 		}
 		item.Apply(u)
 
-		if !req.HasDiscount {
+		if !req.GetHasDiscount() {
 			item.ClearDiscount()
 			item.SetDiscountWindow(nil, nil)
 		}
@@ -205,9 +205,9 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 }
 
 func (s *Service) DeleteShopItem(ctx context.Context, req *donatev1.DeleteShopItemRequest) (*donatev1.DeleteShopItemResponse, error) {
-	l := s.log.With(zap.String("method", "DeleteShopItem"), zap.String("id", req.Id))
+	l := s.log.With(zap.String("method", "DeleteShopItem"), zap.String("id", req.GetId()))
 
-	if err := s.repo.DeleteShopItem(ctx, req.Id); err != nil {
+	if err := s.repo.DeleteShopItem(ctx, req.GetId()); err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "shop item not found")
 		}
@@ -219,9 +219,9 @@ func (s *Service) DeleteShopItem(ctx context.Context, req *donatev1.DeleteShopIt
 }
 
 func (s *Service) Refund(ctx context.Context, req *donatev1.RefundRequest) (*donatev1.RefundResponse, error) {
-	l := s.log.With(zap.String("method", "Refund"), zap.String("purchase_id", req.PurchaseId))
+	l := s.log.With(zap.String("method", "Refund"), zap.String("purchase_id", req.GetPurchaseId()))
 
-	purchase, err := s.repo.Refund(ctx, req.PurchaseId, req.Reason)
+	purchase, err := s.repo.Refund(ctx, req.GetPurchaseId(), req.GetReason())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "purchase not found")
@@ -237,9 +237,9 @@ func (s *Service) Refund(ctx context.Context, req *donatev1.RefundRequest) (*don
 }
 
 func (s *Service) ListTransactions(ctx context.Context, req *donatev1.ListTransactionsRequest) (*donatev1.ListTransactionsResponse, error) {
-	l := s.log.With(zap.String("method", "ListTransactions"), zap.String("player_id", req.PlayerId))
+	l := s.log.With(zap.String("method", "ListTransactions"), zap.String("player_id", req.GetPlayerId()))
 
-	txs, err := s.repo.ListTransactionsByPlayerID(ctx, req.PlayerId)
+	txs, err := s.repo.ListTransactionsByPlayerID(ctx, req.GetPlayerId())
 	if err != nil {
 		l.Error("failed to list transactions", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to list transactions")
@@ -251,7 +251,7 @@ func (s *Service) ListTransactions(ctx context.Context, req *donatev1.ListTransa
 func (s *Service) AdminListPendingPurchases(ctx context.Context, req *donatev1.AdminListPendingPurchasesRequest) (*donatev1.AdminListPendingPurchasesResponse, error) {
 	l := s.log.With(zap.String("method", "AdminListPendingPurchases"))
 
-	purchases, next, err := s.repo.ListPendingPurchases(ctx, req.PageToken, req.Limit)
+	purchases, next, err := s.repo.ListPendingPurchases(ctx, req.GetPageToken(), req.GetLimit())
 	if err != nil {
 		l.Error("failed to list pending purchases", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to list pending purchases")
@@ -264,14 +264,14 @@ func (s *Service) AdminListPendingPurchases(ctx context.Context, req *donatev1.A
 }
 
 func (s *Service) MarkPurchaseIssued(ctx context.Context, req *donatev1.MarkPurchaseIssuedRequest) (*donatev1.MarkPurchaseIssuedResponse, error) {
-	l := s.log.With(zap.String("method", "MarkPurchaseIssued"), zap.String("purchase_id", req.PurchaseId))
+	l := s.log.With(zap.String("method", "MarkPurchaseIssued"), zap.String("purchase_id", req.GetPurchaseId()))
 
 	adminID, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	purchase, err := s.repo.MarkPurchaseIssued(ctx, req.PurchaseId, adminID)
+	purchase, err := s.repo.MarkPurchaseIssued(ctx, req.GetPurchaseId(), adminID)
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "purchase not found")
@@ -287,9 +287,9 @@ func (s *Service) MarkPurchaseIssued(ctx context.Context, req *donatev1.MarkPurc
 }
 
 func (s *Service) AdminListPurchases(ctx context.Context, req *donatev1.AdminListPurchasesRequest) (*donatev1.AdminListPurchasesResponse, error) {
-	l := s.log.With(zap.String("method", "AdminListPurchases"), zap.String("player_id", req.PlayerId))
+	l := s.log.With(zap.String("method", "AdminListPurchases"), zap.String("player_id", req.GetPlayerId()))
 
-	purchases, err := s.repo.ListPurchasesByPlayerID(ctx, req.PlayerId)
+	purchases, err := s.repo.ListPurchasesByPlayerID(ctx, req.GetPlayerId())
 	if err != nil {
 		l.Error("failed to list purchases", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to list purchases")
@@ -336,14 +336,14 @@ func (s *Service) ListShopItems(ctx context.Context, _ *donatev1.ListShopItemsRe
 }
 
 func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*donatev1.BuyItemResponse, error) {
-	l := s.log.With(zap.String("method", "BuyItem"), zap.String("item_id", req.ItemId))
+	l := s.log.With(zap.String("method", "BuyItem"), zap.String("item_id", req.GetItemId()))
 
 	playerID, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	purchase, err := s.repo.BuyItem(ctx, playerID, req.ItemId)
+	purchase, err := s.repo.BuyItem(ctx, playerID, req.GetItemId())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "item not found or unavailable")
@@ -385,8 +385,8 @@ func protoPrivilegesToModel(ps []*donatev1.Privilege) []model.Privilege {
 	result := make([]model.Privilege, len(ps))
 	for i, p := range ps {
 		result[i] = model.Privilege{
-			Text: p.Text,
-			Icon: p.Icon,
+			Text: p.GetText(),
+			Icon: p.GetIcon(),
 		}
 	}
 	return result
@@ -397,10 +397,10 @@ func protoEntriesToModel(entries []*donatev1.KitEntry) ([]model.KitEntry, error)
 	result := make([]model.KitEntry, len(entries))
 	for i, e := range entries {
 		result[i] = model.KitEntry{
-			Name:        e.Name,
-			Description: e.Description,
-			ImageURL:    e.ImageUrl,
-			Quantity:    e.Quantity,
+			Name:        e.GetName(),
+			Description: e.GetDescription(),
+			ImageURL:    e.GetImageUrl(),
+			Quantity:    e.GetQuantity(),
 		}
 	}
 	return result, nil

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	dto "github.com/lasthearth/vsservice/internal/donate/internal/dto/mongo"
@@ -20,7 +21,7 @@ func (r *Repository) GetWalletByPlayerID(ctx context.Context, playerID string) (
 	var d dto.Wallet
 	err := r.walletColl.FindOne(ctx, bson.M{"player_id": playerID}).Decode(&d)
 	if err != nil {
-		if err == mgo.ErrNoDocuments {
+		if errors.Is(err, mgo.ErrNoDocuments) {
 			return nil, ierror.ErrNotFound
 		}
 		l.Error("failed to find wallet", zap.Error(err))
@@ -72,7 +73,7 @@ func (r *Repository) UpdateWallet(
 	var d dto.Wallet
 	err := r.walletColl.FindOne(ctx, bson.M{"player_id": playerID}).Decode(&d)
 	if err != nil {
-		if err == mgo.ErrNoDocuments {
+		if errors.Is(err, mgo.ErrNoDocuments) {
 			return ierror.ErrNotFound
 		}
 		l.Error("failed to find wallet", zap.Error(err))

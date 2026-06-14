@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/lasthearth/vsservice/internal/hungergames/internal/ierror"
@@ -27,7 +28,7 @@ func (r *Repository) GetPlayerStats(ctx context.Context, seasonID, playerID stri
 	var d playerStatsDTO
 	err := r.playerStatsColl.FindOne(ctx, bson.M{"player_id": playerID, "season_id": seasonID}).Decode(&d)
 	if err != nil {
-		if err == mgo.ErrNoDocuments {
+		if errors.Is(err, mgo.ErrNoDocuments) {
 			return nil, ierror.ErrNotFound
 		}
 		r.log.Error("GetPlayerStats: find failed", zap.Error(err))

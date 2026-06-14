@@ -216,10 +216,10 @@ func TestShopItem_DiscountActive(t *testing.T) {
 	}
 
 	tests := []struct {
-		name  string
-		item  *ShopItem
-		now   time.Time
-		want  bool
+		name string
+		item *ShopItem
+		now  time.Time
+		want bool
 	}{
 		{"nil window, discount active", makeItem(50, nil, nil), base, true},
 		{"now before start, inactive", makeItem(50, &future, nil), base, false},

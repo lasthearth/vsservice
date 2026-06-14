@@ -9,7 +9,7 @@ import (
 	"go.uber.org/fx"
 )
 
-var module string = "serverinfo"
+var module = "serverinfo"
 
 var App = fx.Options(
 	fx.Module(

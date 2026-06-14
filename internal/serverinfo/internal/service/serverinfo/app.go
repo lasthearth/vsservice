@@ -9,10 +9,10 @@ var _ = serverinfov1.ServerInfoServiceServer((*Service)(nil))
 
 type Service struct {
 	log  logger.Logger
-	repo ServerInfoRepository
+	repo Repository
 }
 
-func NewService(log logger.Logger, repo ServerInfoRepository) *Service {
+func NewService(log logger.Logger, repo Repository) *Service {
 	return &Service{
 		log:  log,
 		repo: repo,

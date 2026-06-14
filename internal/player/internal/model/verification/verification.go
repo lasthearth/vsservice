@@ -6,13 +6,13 @@ import (
 	"github.com/go-faster/errors"
 )
 
-type VerificationStatus string
+type Status string
 
 const (
-	VerificationStatusPending  VerificationStatus = "pending"
-	VerificationStatusApproved VerificationStatus = "approved"
-	VerificationStatusVerified VerificationStatus = "verified"
-	VerificationStatusRejected VerificationStatus = "rejected"
+	VerificationStatusPending  Status = "pending"
+	VerificationStatusApproved Status = "approved"
+	VerificationStatusVerified Status = "verified"
+	VerificationStatusRejected Status = "rejected"
 )
 
 type Verification struct {
@@ -23,7 +23,7 @@ type Verification struct {
 	UserGameName     string
 	Answers          []Answer
 	Contacts         string
-	Status           VerificationStatus
+	Status           Status
 	RejectionReason  string
 	VerificationCode string
 	UpdatedAt        time.Time

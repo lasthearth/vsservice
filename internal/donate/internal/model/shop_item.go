@@ -244,10 +244,7 @@ func (s *ShopItem) EffectivePriceAt(now time.Time) int64 {
 	if !s.DiscountActive(now) {
 		return s.Price
 	}
-	p := s.Price * int64(100-s.DiscountPercent) / 100
-	if p < 1 {
-		p = 1
-	}
+	p := max(s.Price*int64(100-s.DiscountPercent)/100, 1)
 	return p
 }
 

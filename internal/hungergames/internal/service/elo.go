@@ -42,7 +42,7 @@ func CalculateELO(players []PlayerPlacement) []ELOResult {
 
 	deltas := make(map[string]float64, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		for j := i + 1; j < n; j++ {
 			pi, pj := players[i], players[j]
 
@@ -69,10 +69,7 @@ func CalculateELO(players []PlayerPlacement) []ELOResult {
 	results := make([]ELOResult, n)
 	for i, p := range players {
 		delta := deltas[p.PlayerID] / norm
-		newELO := p.CurrentELO + int(math.Round(delta))
-		if newELO < minELO {
-			newELO = minELO
-		}
+		newELO := max(p.CurrentELO+int(math.Round(delta)), minELO)
 		results[i] = ELOResult{PlayerID: p.PlayerID, NewELO: newELO}
 	}
 	return results

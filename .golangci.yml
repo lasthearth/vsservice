@@ -1,18 +1,100 @@
 version: "2"
 
-# Only the modelguard plugin runs. Build the runner with `make lint-build`
-# (reads .custom-gcl.yml) and invoke it with `make lint`.
+# The modelguard module plugin + a pragmatic set of standard linters.
 #
-# No path exclusions: the rule applies everywhere, including repositories and
-# mappers. Generated code is skipped (it is machine-written and regenerated).
+# Build the runner with `make lint-build` (reads .custom-gcl.yml) and invoke it
+# with `make lint`. The custom binary already bundles ALL standard linters, so
+# enabling them here needs NO rebuild — rebuild is only required when the
+# modelguard plugin source changes.
+#
+# Generated code (protoc + goverter, both carry `// Code generated ... DO NOT
+# EDIT.`) is skipped via `exclusions.generated: lax`.
+formatters:
+  enable:
+    - goimports         # formats code + fixes import statements (add missing / drop unused)
+
 linters:
   default: none
   enable:
-    - modelguard
+    # --- domain rule (custom plugin) ---
+    - modelguard          # models built via New* and mutated via methods
+
+    # --- correctness / bugs ---
+    - errcheck            # unchecked errors
+    - errorlint           # Go 1.13 error wrapping issues
+    - govet               # suspicious constructs
+    - staticcheck         # the big static-analysis suite
+    - ineffassign         # ineffective assignments
+    - unused              # unused consts/vars/funcs/types
+    - protogetter         # read proto fields via getters (proto-heavy codebase)
+    - bodyclose           # HTTP response body closed (retryablehttp client)
+    - noctx               # HTTP request sent without context.Context
+    - nilerr              # returns nil after checking err != nil
+    - nilnesserr          # checks err != nil but returns a different nil err
+    - nilnil              # simultaneous nil error + invalid value
+    - fatcontext          # nested contexts in loops (gRPC/NATS handlers)
+    - durationcheck       # two durations multiplied together
+    - makezero            # non-zero-length slice declared then appended
+    - recvcheck           # receiver type consistency (ptr vs value)
+    - reassign            # reassigning package vars (EOF/Err* by default)
+    - loggercheck         # even key/value pairs in zap structured logging
+    - wastedassign        # wasted assignment statements
+    - gosec               # security problems
+
+    # --- modern Go (1.24) ---
+    - copyloopvar         # detects redundant loop-var copies (1.22+)
+    - intrange            # for-loops that could use integer range (1.22+)
+    - modernize           # suggests modern stdlib/language features
+
+    # --- quality (low-noise) ---
+    - unconvert           # unnecessary type conversions
+    - usestdlibvars       # use stdlib constants instead of literals
+    - perfsprint          # fmt.Sprintf -> faster alternatives
+    - gocritic            # bug/perf/style diagnostics (stable checks)
+    - revive              # configurable style linter (golint replacement)
+
   settings:
     custom:
       modelguard:
         type: module
         description: domain models must be built via New* and mutated via methods
+
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/golang/protobuf
+              desc: use google.golang.org/protobuf instead
+            - pkg: github.com/satori/go.uuid
+              desc: use github.com/google/uuid instead, satori is unmaintained
+
+    gosec:
+      excludes:
+        # int -> int32 conversions of bounded lengths/counts/ranks (proto fields).
+        # Overflow is not reachable here and the check is famously noisy.
+        - G115
+
   exclusions:
     generated: lax
+    rules:
+      # revive noise for this codebase: missing/loose doc comments and the
+      # Id->ID / Url->URL initialisms churn (field names are wired into
+      # goverter/bson — renaming is a separate, deliberate refactor).
+      - linters: [revive]
+        text: "should have a package comment"
+      - linters: [revive]
+        text: 'exported \S+ \S+ should have comment( \(or a comment on this block\))? or be unexported'
+      - linters: [revive]
+        text: "should be of the form"
+      - linters: [revive]
+        text: "var-naming:"
+      # ctx/req unused in interface implementations is a conformance requirement, not a bug.
+      - linters: [revive]
+        text: "unused-parameter:"
+      # Tests get a looser bar.
+      - path: '_test\.go'
+        linters:
+          - errcheck
+          - gosec
+          - bodyclose
+          - noctx

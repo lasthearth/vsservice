@@ -3,6 +3,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -78,13 +79,13 @@ func (r *Repository) Create(ctx context.Context, userId string, v verification.V
 }
 
 // GetVerificationStatusByUserGameName implements service.DbRepository
-func (r *Repository) GetVerificationStatusByUserGameName(ctx context.Context, userGameName string) (verification.VerificationStatus, error) {
+func (r *Repository) GetVerificationStatusByUserGameName(ctx context.Context, userGameName string) (verification.Status, error) {
 	r.log.Debug("checking if verification request exists",
 		zap.String("user_game_name", userGameName))
 
 	res := r.coll.FindOne(ctx, bson.M{"user_game_name": userGameName})
 	if res.Err() != nil {
-		if res.Err() == mongo.ErrNoDocuments {
+		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			return "", nil
 		}
 
@@ -105,7 +106,7 @@ func (r *Repository) GetVerificationStatusByUserGameName(ctx context.Context, us
 	r.log.Debug("verification request exists",
 		zap.String("user_game_name", userGameName))
 
-	return verification.VerificationStatus(dto.Status), nil
+	return verification.Status(dto.Status), nil
 }
 
 // GetVerification implements service.VerificationDbRepository.
@@ -119,7 +120,7 @@ func (r *Repository) GetVerification(ctx context.Context, userId string) (*verif
 	res := r.coll.FindOne(ctx, bson.M{"user_id": userId})
 	err := res.Err()
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, repoerr.ErrNotFound
 		}
 

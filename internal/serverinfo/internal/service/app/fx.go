@@ -9,7 +9,7 @@ import (
 type Opts struct {
 	fx.In
 	Log  logger.Logger
-	Repo serverinfo.ServerInfoRepository
+	Repo serverinfo.Repository
 }
 
 func NewServiceFx(opts Opts) *serverinfo.Service {

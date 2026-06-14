@@ -24,7 +24,7 @@ func (r *Repository) AddTag(ctx context.Context, settlementId, tagId string) err
 		bson.M{"_id": oid},
 	).Decode(&settlement)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return ierror.ErrNotFound
 		}
 		return err

@@ -34,10 +34,10 @@ type Repository interface {
 // ListNotifications implements notificationv1.NotificationServiceServer.
 func (s *Service) ListNotifications(ctx context.Context, req *notificationv1.ListNotificationsRequest) (*notificationv1.ListNotificationsResponse, error) {
 	l := s.log.WithMethod("list_notifications")
-	limit := min(int(req.PageSize), 15)
+	limit := min(int(req.GetPageSize()), 15)
 
-	pageToken := strings.TrimSpace(req.PageToken)
-	orderBy := strings.ToLower(strings.TrimSpace(req.OrderBy))
+	pageToken := strings.TrimSpace(req.GetPageToken())
+	orderBy := strings.ToLower(strings.TrimSpace(req.GetOrderBy()))
 
 	_, err := mongox.ParseObjectID(pageToken)
 	if err != nil {
@@ -76,13 +76,13 @@ func (s *Service) ListNotifications(ctx context.Context, req *notificationv1.Lis
 func (s *Service) MarkAsRead(ctx context.Context, req *notificationv1.MarkAsReadRequest) (*emptypb.Empty, error) {
 	l := s.log.WithMethod("mark_as_read")
 
-	_, err := mongox.ParseObjectID(req.Id)
+	_, err := mongox.ParseObjectID(req.GetId())
 	if err != nil {
 		l.Error("failed to parse notification id", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid notification id")
 	}
 
-	if err := s.repo.MarkNotificationRead(ctx, req.Id); err != nil {
+	if err := s.repo.MarkNotificationRead(ctx, req.GetId()); err != nil {
 		return nil, status.Error(codes.Internal, "failed to mark notification as read")
 	}
 

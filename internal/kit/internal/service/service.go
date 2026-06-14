@@ -68,16 +68,16 @@ func (s *Service) AssignKitToUser(ctx context.Context, req *kitv1.AssignKitToUse
 	l := s.log.With(
 		zap.String("method", "AssignKitToUser"),
 		zap.String("requester_id", requesterID),
-		zap.String("user_id", req.UserId),
-		zap.String("kit_name", req.KitName),
+		zap.String("user_id", req.GetUserId()),
+		zap.String("kit_name", req.GetKitName()),
 	)
 
 	l.Info("assigning kit to user")
 
 	newAssignment := model.NewKitAssignment(
-		req.UserId,
-		req.UserGameName,
-		req.KitName,
+		req.GetUserId(),
+		req.GetUserGameName(),
+		req.GetKitName(),
 		requesterID,
 	)
 
@@ -99,9 +99,9 @@ func (s *Service) AssignKitToUser(ctx context.Context, req *kitv1.AssignKitToUse
 
 	if err := s.bus.kitGrantedPub.Publish(ctx, KitGrantedEvent{
 		AssignmentID: created.Id,
-		KitName:      req.KitName,
+		KitName:      req.GetKitName(),
 		UserGameName: created.UserGameName,
-		UserID:       req.UserId,
+		UserID:       req.GetUserId(),
 	}); err != nil {
 		l.Error("failed to publish kit granted event", zap.Error(err))
 	}
@@ -115,7 +115,7 @@ func (s *Service) AssignKitToUser(ctx context.Context, req *kitv1.AssignKitToUse
 func (s *Service) ListUserAssignments(ctx context.Context, req *kitv1.ListUserAssignmentsRequest) (*kitv1.ListUserAssignmentsResponse, error) {
 	l := s.log.With(
 		zap.String("method", "list-user-assignments"),
-		zap.String("user_id", req.UserId),
+		zap.String("user_id", req.GetUserId()),
 	)
 
 	requesterID, err := interceptor.GetUserID(ctx)
@@ -124,14 +124,14 @@ func (s *Service) ListUserAssignments(ctx context.Context, req *kitv1.ListUserAs
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if requesterID != req.UserId {
+	if requesterID != req.GetUserId() {
 		return nil, status.Error(
 			codes.PermissionDenied,
 			"user cannot list assignments for another user",
 		)
 	}
 
-	assignments, err := s.assignmentRepo.GetAssignmentsByUserID(ctx, req.UserId)
+	assignments, err := s.assignmentRepo.GetAssignmentsByUserID(ctx, req.GetUserId())
 	if err != nil {
 		l.Error("failed to get assignments by user ID", zap.Error(err))
 		return nil, status.Error(codes.Internal, err.Error())

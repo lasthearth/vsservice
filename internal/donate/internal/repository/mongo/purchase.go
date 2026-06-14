@@ -42,7 +42,7 @@ func (r *Repository) GetPurchase(ctx context.Context, id string) (*model.Purchas
 
 	var d dto.Purchase
 	if err := r.purchColl.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
-		if err == mgo.ErrNoDocuments {
+		if errors.Is(err, mgo.ErrNoDocuments) {
 			return nil, ierror.ErrNotFound
 		}
 		l.Error("failed to find purchase", zap.Error(err))
@@ -64,7 +64,7 @@ func (r *Repository) updatePurchase(
 
 	var d dto.Purchase
 	if err := r.purchColl.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
-		if err == mgo.ErrNoDocuments {
+		if errors.Is(err, mgo.ErrNoDocuments) {
 			return nil, ierror.ErrNotFound
 		}
 		return nil, err

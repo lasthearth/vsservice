@@ -56,7 +56,7 @@ func (m *Manager) getToken() error {
 		"scope":      {strings.Join(m.config.Scopes, " ")},
 	}
 
-	req, err := http.NewRequest(http.MethodPost, m.config.TokenUrl, strings.NewReader(v.Encode()))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, m.config.TokenUrl, strings.NewReader(v.Encode()))
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (m *Manager) getToken() error {
 	auth := fmt.Sprintf("%s:%s", m.config.ClientID, m.config.ClientSecret)
 	encoded := base64.StdEncoding.EncodeToString([]byte(auth))
 
-	req.Header.Add("Authorization", fmt.Sprintf("Basic %s", encoded))
+	req.Header.Add("Authorization", "Basic "+encoded)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := m.client.Do(req)

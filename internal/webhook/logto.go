@@ -72,7 +72,7 @@ func (s *LogtoWebhookService) HandleWebhook(w http.ResponseWriter, r *http.Reque
 	}
 
 	var rawMap map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(body), &rawMap); err != nil {
+	if err := json.Unmarshal(body, &rawMap); err != nil {
 		s.log.Error("unmarshal to rawMap", zap.Error(err))
 	}
 	var payload LogtoPayload

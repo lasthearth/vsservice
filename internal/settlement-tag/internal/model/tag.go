@@ -1,7 +1,7 @@
 package model
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"time"
 )
@@ -28,11 +28,11 @@ type Color struct {
 func (t *Tag) Validate() error {
 	name := strings.TrimSpace(t.Name)
 	if name == "" {
-		return fmt.Errorf("tag name cannot be empty")
+		return errors.New("tag name cannot be empty")
 	}
 
 	if len(t.Name) < 1 || len(t.Name) > 50 {
-		return fmt.Errorf("tag name must be between 1 and 50 characters")
+		return errors.New("tag name must be between 1 and 50 characters")
 	}
 
 	return nil

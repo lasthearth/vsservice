@@ -67,7 +67,7 @@ func (c *MapperImpl) ToVerification(source verification1.Verification) verificat
 	verificationVerification.UserGameName = source.UserGameName
 	verificationVerification.Answers = c.ToAnswers(source.Answers)
 	verificationVerification.Contacts = source.Contacts
-	verificationVerification.Status = verification.VerificationStatus(source.Status)
+	verificationVerification.Status = verification.Status(source.Status)
 	verificationVerification.RejectionReason = source.RejectionReason
 	verificationVerification.VerificationCode = source.VerificationCode
 	verificationVerification.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)

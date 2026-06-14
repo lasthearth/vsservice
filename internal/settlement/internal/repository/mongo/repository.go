@@ -23,7 +23,7 @@ func (r *Repository) Create(ctx context.Context, dto settlementdto.Settlement) e
 	r.log.Info("creating new settlement",
 		zap.String("leader_id", dto.Leader.UserId),
 		zap.String("settlement_name", dto.Name),
-		zap.String("settlement_type", string(dto.Type)))
+		zap.String("settlement_type", dto.Type))
 
 	r.log.Debug("inserting settlement into database",
 		zap.String("leader_id", dto.Leader.UserId),
@@ -125,7 +125,7 @@ func (r *Repository) GetSettlement(ctx context.Context, id string) (*model.Settl
 
 	res := r.setColl.FindOne(ctx, bson.M{"_id": objectID})
 	if res.Err() != nil {
-		if res.Err() == mongo.ErrNoDocuments {
+		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			return nil, repoerr.ErrNotFound
 		}
 

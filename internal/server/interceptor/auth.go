@@ -85,9 +85,8 @@ func (interceptor *Auth) authorize(ctx context.Context, method string) (context.
 			claimScopes := strings.Split(claims.Scope, " ")
 			if slices.Contains(claimScopes, string(requiredScope)) {
 				return ctx, nil
-			} else {
-				return ctx, status.Errorf(codes.PermissionDenied, "no permission to access this resource")
 			}
+			return ctx, status.Errorf(codes.PermissionDenied, "no permission to access this resource")
 		}
 	}
 

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/lasthearth/vsservice/internal/hungergames/internal/ierror"
@@ -81,7 +82,7 @@ func (r *Repository) GetPlayerSeasonResult(ctx context.Context, seasonID, player
 	var d seasonResultDTO
 	err := r.seasonResultColl.FindOne(ctx, bson.M{"season_id": seasonID, "player_id": playerID}).Decode(&d)
 	if err != nil {
-		if err == mgo.ErrNoDocuments {
+		if errors.Is(err, mgo.ErrNoDocuments) {
 			return nil, ierror.ErrNotFound
 		}
 		r.log.Error("GetPlayerSeasonResult: find failed", zap.Error(err))

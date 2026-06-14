@@ -18,7 +18,7 @@ var App = fx.Options(
 
 		fx.Annotate(
 			serverinfo.NewFx,
-			fx.As(new(serverinfosrv.ServerInfoRepository)),
+			fx.As(new(serverinfosrv.Repository)),
 		),
 	),
 )

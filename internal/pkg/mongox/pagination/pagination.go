@@ -121,7 +121,7 @@ func Find[T Identifiable](
 		}
 	}
 
-	findOpts := options.Find().SetSort(pgOpts.sort).SetLimit(int64(pgOpts.limit))
+	findOpts := options.Find().SetSort(pgOpts.sort).SetLimit(pgOpts.limit)
 	cursor, err := coll.Find(ctx, pgOpts.filter, findOpts)
 	if err != nil {
 		return nil, err

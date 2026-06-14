@@ -25,17 +25,17 @@ func (s *Service) ListEntries(ctx context.Context, req *leaderboardv1.Leaderboar
 		err     error
 	)
 
-	if req.Limit <= 0 {
+	if req.GetLimit() <= 0 {
 		req.Limit = entriesLimit
 	}
 
-	switch req.Filter {
+	switch req.GetFilter() {
 	case leaderboardv1.LeaderboardRequest_LEADERBOARD_FILTER_DEATHS:
-		entries, err = s.repo.ListEntriesSortByDeath(ctx, int(req.Limit))
+		entries, err = s.repo.ListEntriesSortByDeath(ctx, int(req.GetLimit()))
 	case leaderboardv1.LeaderboardRequest_LEADERBOARD_FILTER_KILLS:
-		entries, err = s.repo.ListEntriesSortByKills(ctx, int(req.Limit))
+		entries, err = s.repo.ListEntriesSortByKills(ctx, int(req.GetLimit()))
 	case leaderboardv1.LeaderboardRequest_LEADERBOARD_FILTER_ONLINE:
-		entries, err = s.repo.ListEntriesSortByOnline(ctx, int(req.Limit))
+		entries, err = s.repo.ListEntriesSortByOnline(ctx, int(req.GetLimit()))
 	default:
 		return nil, errors.New("unknown filter")
 	}

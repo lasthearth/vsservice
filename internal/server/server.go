@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -39,7 +40,8 @@ import (
 )
 
 func (s *Server) Run(ctx context.Context, network, address string) error {
-	l, err := net.Listen(network, address)
+	var lc net.ListenConfig
+	l, err := lc.Listen(ctx, network, address)
 	if err != nil {
 		return err
 	}
@@ -194,8 +196,9 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 	wshandler := wsproxy.WebsocketProxy(handler)
 
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: wshandler,
+		Addr:              addr,
+		Handler:           wshandler,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {

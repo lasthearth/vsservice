@@ -14,7 +14,7 @@ import (
 
 // GetTag implements settlementv1.SettlementTagServiceServer.
 func (s *Service) GetTag(ctx context.Context, req *settlementv1.GetTagRequest) (*settlementv1.SettlementTag, error) {
-	tag, err := s.repo.GetTagById(ctx, req.TagId)
+	tag, err := s.repo.GetTagById(ctx, req.GetTagId())
 	if err != nil {
 		if errors.Is(err, ierror.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
@@ -48,7 +48,7 @@ func (s *Service) GetTags(ctx context.Context, req *settlementv1.GetTagsRequest)
 
 // GetTagsByIds implements settlementv1.SettlementTagServiceServer.
 func (s *Service) GetTagsByIds(ctx context.Context, req *settlementv1.GetTagsByIdsRequest) (*settlementv1.GetTagsByIdsResponse, error) {
-	tags, err := s.repo.GetTagsByIds(ctx, req.TagIds)
+	tags, err := s.repo.GetTagsByIds(ctx, req.GetTagIds())
 	if err != nil {
 		if errors.Is(err, ierror.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
@@ -67,14 +67,14 @@ func (s *Service) GetTagsByIds(ctx context.Context, req *settlementv1.GetTagsByI
 // CreateTag implements settlementv1.SettlementTagServiceServer.
 func (s *Service) CreateTag(ctx context.Context, req *settlementv1.SettlementTag) (*settlementv1.SettlementTag, error) {
 	color := model.Color{
-		Red:   req.Color.Red,
-		Green: req.Color.Green,
-		Blue:  req.Color.Blue,
-		Alpha: req.Color.Alpha.Value,
+		Red:   req.GetColor().GetRed(),
+		Green: req.GetColor().GetGreen(),
+		Blue:  req.GetColor().GetBlue(),
+		Alpha: req.GetColor().GetAlpha().GetValue(),
 	}
 	m, err := model.NewTag(
-		req.Name,
-		req.Description,
+		req.GetName(),
+		req.GetDescription(),
 		color,
 	)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *Service) CreateTag(ctx context.Context, req *settlementv1.SettlementTag
 
 // DeleteTag implements settlementv1.SettlementTagServiceServer.
 func (s *Service) DeleteTag(ctx context.Context, req *settlementv1.DeleteTagRequest) (*emptypb.Empty, error) {
-	err := s.repo.SoftDeleteTag(ctx, req.TagId)
+	err := s.repo.SoftDeleteTag(ctx, req.GetTagId())
 	if err != nil {
 		if errors.Is(err, ierror.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())

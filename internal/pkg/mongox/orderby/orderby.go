@@ -1,6 +1,7 @@
 package orderby
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -15,7 +16,7 @@ const (
 	Desc Direction = -1
 )
 
-type OrderByInfo struct {
+type Info struct {
 	Field      string
 	Direction  Direction
 	MongoField string
@@ -28,18 +29,18 @@ var orderByRegex = regexp.MustCompile(`^([a-z_]+)(?:\s+(asc|desc))?$`)
 func Parse(
 	orderBy string,
 	allowedSortFields map[string]string,
-	defaultOrder *OrderByInfo,
-) (*OrderByInfo, error) {
+	defaultOrder *Info,
+) (*Info, error) {
 	if orderBy == "" {
 		return defaultOrder, nil
 	}
 
 	if allowedSortFields == nil {
-		return nil, fmt.Errorf("allowed sort fields is nil")
+		return nil, errors.New("allowed sort fields is nil")
 	}
 
 	if len(allowedSortFields) == 0 {
-		return nil, fmt.Errorf("allowed sort fields is empty")
+		return nil, errors.New("allowed sort fields is empty")
 	}
 
 	matches := orderByRegex.FindStringSubmatch(orderBy)
@@ -60,14 +61,14 @@ func Parse(
 		sortDirection = Desc
 	}
 
-	return &OrderByInfo{
+	return &Info{
 		Field:      fieldName,
 		Direction:  sortDirection,
 		MongoField: mongoField,
 	}, nil
 }
 
-func BuildSortOptions(orderInfo *OrderByInfo) bson.D {
+func BuildSortOptions(orderInfo *Info) bson.D {
 	sort := bson.D{}
 	sort = slices.Insert(sort, 0, bson.E{Key: "_id", Value: Desc})
 	if orderInfo == nil {

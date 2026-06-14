@@ -2,6 +2,7 @@ package assignment
 
 import (
 	"context"
+	"errors"
 
 	dto "github.com/lasthearth/vsservice/internal/kit/internal/dto/mongo"
 	"github.com/lasthearth/vsservice/internal/kit/internal/ierror"
@@ -55,7 +56,7 @@ func (r *Repository) GetAssignment(ctx context.Context, assignmentID string) (*m
 	var dtoObj dto.Assignment
 	err := r.coll.FindOne(ctx, bson.M{"_id": assignmentID}).Decode(&dtoObj)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			l.Info("assignment not found", zap.String("assignment_id", assignmentID))
 			return nil, ierror.ErrNotFound
 		}
@@ -85,7 +86,7 @@ func (r *Repository) UpdateAssignment(
 	var dtoObj dto.Assignment
 	err := r.coll.FindOne(ctx, bson.M{"_id": assignmentID}).Decode(&dtoObj)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			l.Info("assignment not found", zap.String("assignment_id", assignmentID))
 			return ierror.ErrNotFound
 		}

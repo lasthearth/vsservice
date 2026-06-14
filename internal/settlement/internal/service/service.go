@@ -21,49 +21,49 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		return nil, err
 	}
 
-	if len(req.Attachments) == 0 {
+	if len(req.GetAttachments()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "attachments cannot be empty")
 	}
 
 	s.log.Info("submitting settlement request",
 		zap.String("leader_id", userID),
-		zap.String("settlement_name", req.Name),
-		zap.Int("attachments", len(req.Attachments)))
+		zap.String("settlement_name", req.GetName()),
+		zap.Int("attachments", len(req.GetAttachments())))
 
-	stype, err := TypeFromReqProto(req.Type)
+	stype, err := TypeFromReqProto(req.GetType())
 	if err != nil {
 		return nil, err
 	}
 
 	if err := s.dbRepo.IsMemberOrLeader(ctx, "", userID); err != nil {
 		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", userID))
-		if err != ierror.ErrAlreadyMember {
+		if !errors.Is(err, ierror.ErrAlreadyMember) {
 			return nil, err
 		}
 	}
 
-	attachs := make([]model.Attachment, len(req.Attachments))
-	for i, attachment := range req.Attachments {
-		if err := s.mediaUrl.Validate(attachment.Url); err != nil {
+	attachs := make([]model.Attachment, len(req.GetAttachments()))
+	for i, attachment := range req.GetAttachments() {
+		if err := s.mediaUrl.Validate(attachment.GetUrl()); err != nil {
 			return nil, status.Error(codes.InvalidArgument, "invalid attachment url")
 		}
 		attachs[i] = model.Attachment{
-			Url:  attachment.Url,
-			Desc: attachment.Description,
+			Url:  attachment.GetUrl(),
+			Desc: attachment.GetDescription(),
 		}
 	}
 
 	opts := SettlementOpts{
-		Name: req.Name,
+		Name: req.GetName(),
 		Type: *stype,
 		Leader: model.Member{
 			UserId: userID,
 		},
-		Description: req.Description,
-		Diplomacy:   req.Diplomacy,
+		Description: req.GetDescription(),
+		Diplomacy:   req.GetDiplomacy(),
 		Coordinates: model.Vector2{
-			X: int(req.Coordinates.X),
-			Y: int(req.Coordinates.Y),
+			X: int(req.GetCoordinates().GetX()),
+			Y: int(req.GetCoordinates().GetY()),
 		},
 		Attachments: attachs,
 	}
@@ -111,9 +111,9 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 // Get implements settlementv1.SettlementServiceServer
 func (s *Service) Get(ctx context.Context, req *settlementv1.GetRequest) (*settlementv1.GetResponse, error) {
-	s.log.Info("getting settlement details", zap.String("settlement_id", req.Id))
+	s.log.Info("getting settlement details", zap.String("settlement_id", req.GetId()))
 
-	settlement, err := s.dbRepo.GetSettlement(ctx, req.Id)
+	settlement, err := s.dbRepo.GetSettlement(ctx, req.GetId())
 	if err != nil {
 		s.log.Error("failed to get settlement", zap.Error(err))
 		return nil, err
@@ -160,9 +160,9 @@ func (s *Service) ListPending(ctx context.Context, req *settlementv1.ListPending
 
 // Approve implements settlementv1.SettlementServiceServer
 func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest) (*settlementv1.ApproveResponse, error) {
-	s.log.Info("approving settlement request", zap.String("settlement_id", req.Id))
+	s.log.Info("approving settlement request", zap.String("settlement_id", req.GetId()))
 
-	settlement, err := s.dbRepo.GetSettlementRequest(ctx, req.Id)
+	settlement, err := s.dbRepo.GetSettlementRequest(ctx, req.GetId())
 	if err != nil {
 		s.log.Error("failed to get settlement", zap.Error(err))
 		return nil, err
@@ -176,7 +176,7 @@ func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest)
 		return nil, ierror.ErrAlreadyApproved
 	}
 
-	if err := s.dbRepo.Approve(ctx, req.Id); err != nil {
+	if err := s.dbRepo.Approve(ctx, req.GetId()); err != nil {
 		s.log.Error("failed to approve settlement", zap.Error(err))
 		return nil, err
 	}
@@ -187,10 +187,10 @@ func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest)
 // Reject implements settlementv1.SettlementServiceServer
 func (s *Service) Reject(ctx context.Context, req *settlementv1.RejectRequest) (*settlementv1.RejectResponse, error) {
 	s.log.Info("rejecting settlement request",
-		zap.String("settlement_id", req.Id),
-		zap.String("rejection_reason", req.RejectionReason))
+		zap.String("settlement_id", req.GetId()),
+		zap.String("rejection_reason", req.GetRejectionReason()))
 
-	if err := s.dbRepo.Reject(ctx, req.Id, req.RejectionReason); err != nil {
+	if err := s.dbRepo.Reject(ctx, req.GetId(), req.GetRejectionReason()); err != nil {
 		s.log.Error("failed to reject settlement", zap.Error(err))
 		return nil, err
 	}
@@ -201,10 +201,10 @@ func (s *Service) Reject(ctx context.Context, req *settlementv1.RejectRequest) (
 // RemoveMember implements settlementv1.SettlementServiceServer
 func (s *Service) RemoveMember(ctx context.Context, req *settlementv1.RemoveMemberRequest) (*settlementv1.RemoveMemberResponse, error) {
 	s.log.Info("removing member from settlement",
-		zap.String("settlement_id", req.SettlementId),
-		zap.String("user_id", req.UserId))
+		zap.String("settlement_id", req.GetSettlementId()),
+		zap.String("user_id", req.GetUserId()))
 
-	if err := s.dbRepo.RemoveMember(ctx, req.SettlementId, req.UserId); err != nil {
+	if err := s.dbRepo.RemoveMember(ctx, req.GetSettlementId(), req.GetUserId()); err != nil {
 		s.log.Error("failed to remove member", zap.Error(err))
 		return nil, err
 	}
@@ -215,8 +215,8 @@ func (s *Service) RemoveMember(ctx context.Context, req *settlementv1.RemoveMemb
 // InviteMember implements settlementv1.SettlementServiceServer
 func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemberRequest) (*settlementv1.InviteMemberResponse, error) {
 	s.log.Info("inviting member to settlement",
-		zap.String("settlement_id", req.SettlementId),
-		zap.String("user_id", req.UserId))
+		zap.String("settlement_id", req.GetSettlementId()),
+		zap.String("user_id", req.GetUserId()))
 
 	uid, err := interceptor.GetUserID(ctx)
 	if err != nil {
@@ -224,19 +224,19 @@ func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemb
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.SettlementId, uid); err != nil {
+	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.GetSettlementId(), uid); err != nil {
 		s.log.Error("failed to check if user is leader", zap.Error(err))
 		return nil, status.Error(codes.PermissionDenied, "user is not leader")
 	}
 
-	if err := s.dbRepo.IsMemberOrLeader(ctx, req.SettlementId, req.UserId); err != nil {
-		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", req.UserId))
-		if err != ierror.ErrAlreadyMember {
+	if err := s.dbRepo.IsMemberOrLeader(ctx, req.GetSettlementId(), req.GetUserId()); err != nil {
+		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", req.GetUserId()))
+		if !errors.Is(err, ierror.ErrAlreadyMember) {
 			return nil, err
 		}
 	}
 
-	if err := s.dbRepo.CreateInvitation(ctx, req.SettlementId, req.UserId); err != nil {
+	if err := s.dbRepo.CreateInvitation(ctx, req.GetSettlementId(), req.GetUserId()); err != nil {
 		s.log.Error("failed to add member", zap.Error(err))
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -247,7 +247,7 @@ func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemb
 // GetInvitations implements settlementv1.SettlementServiceServer.
 func (s *Service) GetInvitations(ctx context.Context, req *settlementv1.GetInvitationsRequest) (*settlementv1.GetInvitationsResponse, error) {
 	l := s.log.
-		With(zap.String("settlement_id", req.SettlementId)).
+		With(zap.String("settlement_id", req.GetSettlementId())).
 		WithMethod("get_invitations")
 
 	uid, err := interceptor.GetUserID(ctx)
@@ -257,12 +257,12 @@ func (s *Service) GetInvitations(ctx context.Context, req *settlementv1.GetInvit
 	}
 	l = l.With(zap.String("user_id", uid))
 
-	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.SettlementId, uid); err != nil {
+	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.GetSettlementId(), uid); err != nil {
 		l.Error("failed to check member or leader", zap.Error(err))
 		return nil, err
 	}
 
-	invitations, err := s.dbRepo.GetInvitations(ctx, req.SettlementId)
+	invitations, err := s.dbRepo.GetInvitations(ctx, req.GetSettlementId())
 	if err != nil {
 		l.Error("failed to get invitations", zap.Error(err))
 		return nil, err
@@ -275,7 +275,7 @@ func (s *Service) GetInvitations(ctx context.Context, req *settlementv1.GetInvit
 
 // RevokeInvitation implements settlementv1.SettlementServiceServer.
 func (s *Service) RevokeInvitation(ctx context.Context, req *settlementv1.RevokeInvitationRequest) (*settlementv1.RevokeInvitationResponse, error) {
-	l := s.log.With(zap.String("method", "RevokeInvitation"), zap.String("settlement_id", req.SettlementId), zap.String("invitation_id", req.InvitationId))
+	l := s.log.With(zap.String("method", "RevokeInvitation"), zap.String("settlement_id", req.GetSettlementId()), zap.String("invitation_id", req.GetInvitationId()))
 	uid, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		l.Error("failed to get user id", zap.Error(err))
@@ -283,12 +283,12 @@ func (s *Service) RevokeInvitation(ctx context.Context, req *settlementv1.Revoke
 	}
 	l = l.With(zap.String("user_id", uid))
 
-	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.SettlementId, uid); err != nil {
+	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.GetSettlementId(), uid); err != nil {
 		l.Error("failed to check member or leader", zap.Error(err))
 		return nil, err
 	}
 
-	if err := s.dbRepo.DeleteInvitationForLeader(ctx, req.InvitationId, req.SettlementId); err != nil {
+	if err := s.dbRepo.DeleteInvitationForLeader(ctx, req.GetInvitationId(), req.GetSettlementId()); err != nil {
 		s.log.Error("failed to revoke invitation", zap.Error(err))
 		return nil, err
 	}
@@ -305,7 +305,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, req *settlementv1.Accept
 	}
 
 	// TODO: утекла бизнесуха в репу, придумать как вынести транкзакции и отрефакторить репу
-	if err := s.dbRepo.AcceptInvitation(ctx, req.InvitationId, uid); err != nil {
+	if err := s.dbRepo.AcceptInvitation(ctx, req.GetInvitationId(), uid); err != nil {
 		s.log.Error("failed to accept invitation", zap.Error(err))
 		return nil, err
 	}
@@ -330,11 +330,11 @@ func (s *Service) RejectInvitation(ctx context.Context, req *settlementv1.Reject
 	ids := lo.Map(invs, func(item model.Invitation, _ int) string {
 		return item.Id
 	})
-	if !lo.Contains(ids, req.InvitationId) {
+	if !lo.Contains(ids, req.GetInvitationId()) {
 		return nil, status.Errorf(codes.NotFound, "invitation for user %s not found", uid)
 	}
 
-	if err := s.dbRepo.DeleteInvitationForUser(ctx, req.InvitationId, uid); err != nil {
+	if err := s.dbRepo.DeleteInvitationForUser(ctx, req.GetInvitationId(), uid); err != nil {
 		s.log.Error("failed to delete invitation", zap.Error(err))
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -350,11 +350,11 @@ func (s *Service) GetUserInvitations(ctx context.Context, req *settlementv1.GetU
 		return nil, err
 	}
 
-	if uid != req.UserId {
+	if uid != req.GetUserId() {
 		return nil, status.Errorf(codes.PermissionDenied, "user id mismatch")
 	}
 
-	invitations, err := s.dbRepo.GetUserInvitations(ctx, req.UserId)
+	invitations, err := s.dbRepo.GetUserInvitations(ctx, req.GetUserId())
 	if err != nil {
 		s.log.Error("failed to get user invitations", zap.Error(err))
 		return nil, err
@@ -367,7 +367,7 @@ func (s *Service) GetUserInvitations(ctx context.Context, req *settlementv1.GetU
 
 // GetByUserId implements settlementv1.SettlementServiceServer.
 func (s *Service) GetByUserId(ctx context.Context, req *settlementv1.GetByUserIdRequest) (*settlementv1.GetByUserIdResponse, error) {
-	settlement, err := s.dbRepo.GetSettlementByUserId(ctx, req.UserId)
+	settlement, err := s.dbRepo.GetSettlementByUserId(ctx, req.GetUserId())
 	if err != nil {
 		s.log.Error("failed to get settlements", zap.Error(err))
 		return nil, err
@@ -380,7 +380,7 @@ func (s *Service) GetByUserId(ctx context.Context, req *settlementv1.GetByUserId
 
 // VerificationStatus implements settlementv1.SettlementServiceServer.
 func (s *Service) VerificationStatus(ctx context.Context, req *settlementv1.VerificationStatusRequest) (*settlementv1.VerificationStatusResponse, error) {
-	sreq, err := s.dbRepo.GetSettlementRequestByLeader(ctx, req.UserId)
+	sreq, err := s.dbRepo.GetSettlementRequestByLeader(ctx, req.GetUserId())
 	if err != nil {
 		s.log.Error("failed to get request status", zap.Error(err))
 		return nil, err

@@ -7,11 +7,10 @@ import (
 	"github.com/lasthearth/vsservice/internal/kit/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
-	"github.com/nats-io/nats.go"
 	"go.uber.org/fx"
 )
 
-var module string = "kit"
+var module = "kit"
 
 var App = fx.Options(
 	fx.Module(
@@ -33,13 +32,7 @@ var App = fx.Options(
 				fx.As(new(service.Mapper)),
 			),
 
-			func(
-				nc *nats.Conn,
-				l logger.Logger,
-				assignmentRepo service.AssignmentRepository,
-			) *service.Bus {
-				return service.NewEventManager(nc, l, assignmentRepo)
-			},
+			service.NewEventManager,
 		),
 
 		fx.Provide(

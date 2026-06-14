@@ -7,7 +7,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/serverinfo/internal/model"
 )
 
-type ServerInfoRepository interface {
+type Repository interface {
 	GetServerInfo(ctx context.Context) (*model.ServerInfo, error)
 	Update(
 		ctx context.Context,

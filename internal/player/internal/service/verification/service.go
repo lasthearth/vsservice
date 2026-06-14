@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
@@ -22,7 +23,7 @@ import (
 type DbRepository interface {
 	GetVerification(ctx context.Context, userId string) (*verification.Verification, error)
 	GetVerificationRequests(ctx context.Context) ([]verification.Verification, error)
-	GetVerificationStatusByUserGameName(ctx context.Context, userGameName string) (verification.VerificationStatus, error)
+	GetVerificationStatusByUserGameName(ctx context.Context, userGameName string) (verification.Status, error)
 	Create(ctx context.Context, userId string, v verification.Verification) error
 	Update(ctx context.Context, userId string, v verification.Verification) error
 }
@@ -36,7 +37,7 @@ type SsoRepository interface {
 
 // Approve implements verificationv1.VerificationServiceServer.
 func (s *Service) Approve(ctx context.Context, req *verificationv1.ApproveRequest) (*verificationv1.ApproveResponse, error) {
-	err := s.checkUserRoles(ctx, req.UserId)
+	err := s.checkUserRoles(ctx, req.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +54,7 @@ func (s *Service) Approve(ctx context.Context, req *verificationv1.ApproveReques
 		}
 	}
 
-	v, err := s.dbRepo.GetVerification(ctx, req.UserId)
+	v, err := s.dbRepo.GetVerification(ctx, req.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +63,12 @@ func (s *Service) Approve(ctx context.Context, req *verificationv1.ApproveReques
 		return nil, ierror.FailedPrecondition(err.Error())
 	}
 
-	err = s.dbRepo.Update(ctx, req.UserId, *v)
+	err = s.dbRepo.Update(ctx, req.GetUserId(), *v)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.ssoRepo.UpdateUserRoles(ctx, req.UserId, []string{playerRoleId})
+	err = s.ssoRepo.UpdateUserRoles(ctx, req.GetUserId(), []string{playerRoleId})
 	if err != nil {
 		return nil, err
 	}
@@ -77,16 +78,16 @@ func (s *Service) Approve(ctx context.Context, req *verificationv1.ApproveReques
 
 // Reject implements verificationv1.VerificationServiceServer.
 func (s *Service) Reject(ctx context.Context, req *verificationv1.RejectRequest) (*verificationv1.RejectResponse, error) {
-	v, err := s.dbRepo.GetVerification(ctx, req.UserId)
+	v, err := s.dbRepo.GetVerification(ctx, req.GetUserId())
 	if err != nil {
 		return nil, err
 	}
 
-	if err := v.Reject(req.RejectionReason.RejectionReason); err != nil {
+	if err := v.Reject(req.GetRejectionReason().GetRejectionReason()); err != nil {
 		return nil, ierror.FailedPrecondition(err.Error())
 	}
 
-	err = s.dbRepo.Update(ctx, req.UserId, *v)
+	err = s.dbRepo.Update(ctx, req.GetUserId(), *v)
 	if err != nil {
 		return nil, err
 	}
@@ -97,10 +98,10 @@ func (s *Service) Reject(ctx context.Context, req *verificationv1.RejectRequest)
 // Submit implements verificationv1.VerificationServiceServer.
 func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest) (*verificationv1.SubmitResponse, error) {
 	// TODO: переделать на маппер
-	answers := lo.Map(req.Answers, func(v *verificationv1.Answer, _ int) verification.Answer {
+	answers := lo.Map(req.GetAnswers(), func(v *verificationv1.Answer, _ int) verification.Answer {
 		return verification.Answer{
-			Question: v.Question,
-			Answer:   v.Answer,
+			Question: v.GetQuestion(),
+			Answer:   v.GetAnswer(),
 		}
 	})
 
@@ -109,19 +110,19 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 		return nil, err
 	}
 
-	if err := s.ssoRepo.UpdateUserProfileNick(ctx, userId, req.UserGameName); err != nil {
+	if err := s.ssoRepo.UpdateUserProfileNick(ctx, userId, req.GetUserGameName()); err != nil {
 		return nil, err
 	}
 
 	v := verification.New(
 		userId,
-		req.UserName,
-		req.UserGameName,
+		req.GetUserName(),
+		req.GetUserGameName(),
 		answers,
-		req.Contacts,
+		req.GetContacts(),
 	)
 
-	tgText := fmt.Sprintf("У игрока %s появилась новая анкета.", req.UserGameName)
+	tgText := fmt.Sprintf("У игрока %s появилась новая анкета.", req.GetUserGameName())
 	existVerification, err := s.dbRepo.GetVerification(ctx, userId)
 	if err != nil {
 		if errors.Is(err, repoerr.ErrNotFound) {
@@ -132,7 +133,7 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 				return nil, err
 			}
 
-			_ = s.SendToTelegram(tgText)
+			_ = s.SendToTelegram(ctx, tgText)
 			return &verificationv1.SubmitResponse{}, nil
 		}
 
@@ -149,11 +150,11 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 		}
 		return nil, err
 	}
-	_ = s.SendToTelegram(tgText)
+	_ = s.SendToTelegram(ctx, tgText)
 	return &verificationv1.SubmitResponse{}, nil
 }
 
-func (s *Service) SendToTelegram(text string) error {
+func (s *Service) SendToTelegram(ctx context.Context, text string) error {
 	v := struct {
 		ChatID string `json:"chat_id"`
 		Text   string `json:"text"`
@@ -168,11 +169,18 @@ func (s *Service) SendToTelegram(text string) error {
 		return err
 	}
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", s.cfg.TelegramToken)
-	_, err = s.client.Post(url, "application/json", bytes.NewBuffer(encoded))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(encoded))
+	if err != nil {
+		s.log.Error("failed to create telegram request", zap.Error(err))
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := s.client.Do(req)
 	if err != nil {
 		s.log.Error("failed to send telegram message", zap.Error(err))
 		return err
 	}
+	defer func() { _ = resp.Body.Close() }()
 	return nil
 }
 
@@ -251,7 +259,7 @@ func (s *Service) VerificationStatus(
 	ctx context.Context,
 	req *verificationv1.VerifyStatusRequest,
 ) (*verificationv1.VerifyStatusResponse, error) {
-	v, err := s.dbRepo.GetVerification(ctx, req.UserId)
+	v, err := s.dbRepo.GetVerification(ctx, req.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +271,7 @@ func (s *Service) VerificationStatus(
 
 // VerifyStatusByName implements verificationv1.VerificationServiceServer.
 func (s *Service) VerifyStatusByName(ctx context.Context, req *verificationv1.VerifyStatusByNameRequest) (*verificationv1.VerifyStatusResponse, error) {
-	status, err := s.dbRepo.GetVerificationStatusByUserGameName(ctx, req.UserGameName)
+	status, err := s.dbRepo.GetVerificationStatusByUserGameName(ctx, req.GetUserGameName())
 	if err != nil {
 		return nil, err
 	}

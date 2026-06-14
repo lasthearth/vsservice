@@ -19,7 +19,7 @@ type DbRepository interface {
 
 // CreateQuestion implements rulesv1.RuleServiceServer
 func (s *Service) CreateQuestion(ctx context.Context, req *rulesv1.CreateQuestionRequest) (*rulesv1.CreateQuestionResponse, error) {
-	if req.Question == "" {
+	if req.GetQuestion() == "" {
 		return nil, ErrQuestionRequired
 	}
 
@@ -29,7 +29,7 @@ func (s *Service) CreateQuestion(ctx context.Context, req *rulesv1.CreateQuestio
 	}
 
 	err = s.dbRepo.CreateQuestion(ctx, &model.Question{
-		Question:  req.Question,
+		Question:  req.GetQuestion(),
 		CreatedBy: userID,
 	})
 	if err != nil {
@@ -41,7 +41,7 @@ func (s *Service) CreateQuestion(ctx context.Context, req *rulesv1.CreateQuestio
 
 // GetRandomQuestions implements rulesv1.RuleServiceServer
 func (s *Service) GetRandomQuestions(ctx context.Context, req *rulesv1.GetRandomQuestionsRequest) (*rulesv1.GetRandomQuestionsResponse, error) {
-	questions, err := s.dbRepo.GetRandomQuestions(ctx, int(req.Count))
+	questions, err := s.dbRepo.GetRandomQuestions(ctx, int(req.GetCount()))
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (s *Service) ListQuestions(ctx context.Context, _ *rulesv1.ListQuestionsReq
 
 // DeleteQuestion implements rulesv1.RuleServiceServer
 func (s *Service) DeleteQuestion(ctx context.Context, req *rulesv1.DeleteQuestionRequest) (*rulesv1.DeleteQuestionResponse, error) {
-	err := s.dbRepo.DeleteQuestion(ctx, req.Id)
+	err := s.dbRepo.DeleteQuestion(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}

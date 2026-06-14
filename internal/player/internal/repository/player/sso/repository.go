@@ -39,7 +39,7 @@ func (r *Repository) UpdateUserAvatar(ctx context.Context, userID, avatar string
 	}
 	l.Debug("encoded request payload", zap.String("payload", string(encoded)))
 
-	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(encoded))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, bytes.NewBuffer(encoded))
 	if err != nil {
 		l.Error("failed to create request", zap.Error(err), zap.String("url", url))
 		return ErrFailedCreateReq
@@ -79,10 +79,10 @@ func (r *Repository) UpdateUserAvatar(ctx context.Context, userID, avatar string
 func (r *Repository) getRoles(ctx context.Context) ([]httpdto.Role, error) {
 	r.logger.Info("getting all roles")
 
-	getRolesUrl := fmt.Sprintf("%s/api/roles", r.cfg.SsoUrl)
+	getRolesUrl := r.cfg.SsoUrl + "/api/roles"
 	r.logger.Debug("prepared SSO API URL", zap.String("url", getRolesUrl))
 
-	req, err := http.NewRequest(http.MethodGet, getRolesUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, getRolesUrl, nil)
 	if err != nil {
 		r.logger.Error("failed to create request", zap.Error(err), zap.String("url", getRolesUrl))
 		return nil, err

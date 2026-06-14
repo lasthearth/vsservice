@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/lasthearth/vsservice/internal/hungergames/internal/ierror"
@@ -27,7 +28,7 @@ func (r *Repository) GetActiveSeason(ctx context.Context) (*model.Season, error)
 	var d seasonDTO
 	err := r.seasonsColl.FindOne(ctx, bson.M{"ended_at": bson.M{"$exists": false}}).Decode(&d)
 	if err != nil {
-		if err == mgo.ErrNoDocuments {
+		if errors.Is(err, mgo.ErrNoDocuments) {
 			return nil, ierror.ErrNoActiveSeason
 		}
 		r.log.Error("GetActiveSeason: find failed", zap.Error(err))
@@ -44,7 +45,7 @@ func (r *Repository) GetSeasonByID(ctx context.Context, id string) (*model.Seaso
 
 	var d seasonDTO
 	if err := r.seasonsColl.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
-		if err == mgo.ErrNoDocuments {
+		if errors.Is(err, mgo.ErrNoDocuments) {
 			return nil, ierror.ErrNotFound
 		}
 		r.log.Error("GetSeasonByID: find failed", zap.Error(err))

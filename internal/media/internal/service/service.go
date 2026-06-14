@@ -17,7 +17,7 @@ func (s *Service) CreateUploadUrls(ctx context.Context, req *mediav1.CreateUploa
 	l := s.log.With(zap.String("method", "CreateUploadUrls"))
 
 	// count range and purpose enum are enforced by protovalidate (see media.proto).
-	cfg, ok := purposes[req.Purpose]
+	cfg, ok := purposes[req.GetPurpose()]
 	if !ok {
 		return nil, status.Error(codes.InvalidArgument, "unknown upload purpose")
 	}
@@ -26,15 +26,15 @@ func (s *Service) CreateUploadUrls(ctx context.Context, req *mediav1.CreateUploa
 		return nil, err
 	}
 
-	contentType := req.ContentType
+	contentType := req.GetContentType()
 	if contentType != "" && !slices.Contains(cfg.contentTypes, contentType) {
 		return nil, status.Error(codes.InvalidArgument, "unsupported content_type")
 	}
 	ext := extFromContentType(contentType)
 	cdnBase := strings.TrimRight(s.cfg.CdnUrl, "/")
 
-	targets := make([]*mediav1.UploadTarget, 0, req.Count)
-	for i := int32(0); i < req.Count; i++ {
+	targets := make([]*mediav1.UploadTarget, 0, req.GetCount())
+	for range req.GetCount() {
 		id, err := uuid.NewV7()
 		if err != nil {
 			l.Error("failed to generate uuid", zap.Error(err))

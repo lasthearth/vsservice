@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -25,7 +26,7 @@ func (m *Manager) Verify(accessToken string) (*Claims, error) {
 
 	claims, ok := token.Claims.(*Claims)
 	if !ok {
-		return nil, fmt.Errorf("invalid token claims")
+		return nil, errors.New("invalid token claims")
 	}
 
 	return claims, nil

@@ -1,6 +1,7 @@
 package verification_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/lasthearth/vsservice/internal/player/internal/model/verification"
@@ -9,7 +10,7 @@ import (
 func TestVerification_CanSubmit(t *testing.T) {
 	tests := []struct {
 		name       string
-		status     verification.VerificationStatus
+		status     verification.Status
 		wantErr    error
 		wantNonNil bool
 	}{
@@ -17,7 +18,7 @@ func TestVerification_CanSubmit(t *testing.T) {
 		{"pending blocks resubmit", verification.VerificationStatusPending, verification.ErrVerificationPending, false},
 		{"approved blocks resubmit", verification.VerificationStatusApproved, verification.ErrAlreadyVerified, false},
 		{"verified blocks resubmit", verification.VerificationStatusVerified, verification.ErrAlreadyVerified, false},
-		{"unknown/zero status returns error", verification.VerificationStatus(""), nil, true},
+		{"unknown/zero status returns error", verification.Status(""), nil, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -28,7 +29,7 @@ func TestVerification_CanSubmit(t *testing.T) {
 					t.Errorf("CanSubmit() = nil, want non-nil error")
 				}
 			} else {
-				if err != tc.wantErr {
+				if !errors.Is(err, tc.wantErr) {
 					t.Errorf("CanSubmit() = %v, want %v", err, tc.wantErr)
 				}
 			}
@@ -39,7 +40,7 @@ func TestVerification_CanSubmit(t *testing.T) {
 func TestVerification_Approve(t *testing.T) {
 	tests := []struct {
 		name    string
-		status  verification.VerificationStatus
+		status  verification.Status
 		wantErr error
 	}{
 		{"pending can be approved", verification.VerificationStatusPending, nil},
@@ -51,7 +52,7 @@ func TestVerification_Approve(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			v := &verification.Verification{Status: tc.status}
 			err := v.Approve()
-			if err != tc.wantErr {
+			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Approve() error = %v, want %v", err, tc.wantErr)
 			}
 			if err == nil && v.Status != verification.VerificationStatusApproved {
@@ -64,7 +65,7 @@ func TestVerification_Approve(t *testing.T) {
 func TestVerification_Reject(t *testing.T) {
 	tests := []struct {
 		name    string
-		status  verification.VerificationStatus
+		status  verification.Status
 		reason  string
 		wantErr error
 	}{
@@ -77,7 +78,7 @@ func TestVerification_Reject(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			v := &verification.Verification{Status: tc.status}
 			err := v.Reject(tc.reason)
-			if err != tc.wantErr {
+			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Reject() error = %v, want %v", err, tc.wantErr)
 			}
 			if err == nil {
@@ -95,7 +96,7 @@ func TestVerification_Reject(t *testing.T) {
 func TestVerification_Verify(t *testing.T) {
 	tests := []struct {
 		name      string
-		status    verification.VerificationStatus
+		status    verification.Status
 		stored    string
 		inputCode string
 		wantErr   error
@@ -114,7 +115,7 @@ func TestVerification_Verify(t *testing.T) {
 				VerificationCode: tc.stored,
 			}
 			err := v.Verify(tc.inputCode)
-			if err != tc.wantErr {
+			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Verify() error = %v, want %v", err, tc.wantErr)
 			}
 			if err == nil && v.Status != verification.VerificationStatusVerified {

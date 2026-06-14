@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	"github.com/lasthearth/vsservice/internal/news/internal/model"
@@ -16,7 +15,7 @@ import (
 
 // CreateNews implements newsv1.NewsServiceServer.
 func (s *Service) CreateNews(ctx context.Context, req *newsv1.CreateNewsRequest) (*newsv1.News, error) {
-	if err := s.mediaUrl.Validate(req.Preview); err != nil {
+	if err := s.mediaUrl.Validate(req.GetPreview()); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid preview url")
 	}
 
@@ -26,9 +25,9 @@ func (s *Service) CreateNews(ctx context.Context, req *newsv1.CreateNewsRequest)
 	}
 
 	news := &model.News{
-		Title:     req.Title,
-		Content:   req.Content,
-		Preview:   req.Preview,
+		Title:     req.GetTitle(),
+		Content:   req.GetContent(),
+		Preview:   req.GetPreview(),
 		CreatedBy: userID,
 	}
 
@@ -44,7 +43,7 @@ func (s *Service) CreateNews(ctx context.Context, req *newsv1.CreateNewsRequest)
 	if err := s.cnuc.CreateNotification(
 		ctx,
 		"Новая новость",
-		fmt.Sprintf("Новость: %s", req.Title),
+		"Новость: "+req.GetTitle(),
 		notificationuc.WithBroadcast(),
 	); err != nil {
 		return nil, err
@@ -55,11 +54,11 @@ func (s *Service) CreateNews(ctx context.Context, req *newsv1.CreateNewsRequest)
 
 // ListNews implements newsv1.NewsServiceServer.
 func (s *Service) ListNews(ctx context.Context, req *newsv1.ListNewsRequest) (*newsv1.ListNewsResponse, error) {
-	limit := min(int(req.PageSize), 50)
-	if req.PageSize == 0 {
+	limit := min(int(req.GetPageSize()), 50)
+	if req.GetPageSize() == 0 {
 		limit = 15
 	}
-	news, next, err := s.repo.ListNews(ctx, req.PageToken, limit)
+	news, next, err := s.repo.ListNews(ctx, req.GetPageToken(), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -86,12 +85,12 @@ func (s *Service) DeleteNews(ctx context.Context, req *newsv1.DeleteNewsRequest)
 		return nil, err
 	}
 
-	_, err = s.repo.GetNewsById(ctx, req.Id)
+	_, err = s.repo.GetNewsById(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.repo.SoftDeleteNews(ctx, req.Id, userID)
+	err = s.repo.SoftDeleteNews(ctx, req.GetId(), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -102,12 +101,12 @@ func (s *Service) DeleteNews(ctx context.Context, req *newsv1.DeleteNewsRequest)
 // GetNews implements newsv1.NewsServiceServer.
 func (s *Service) GetNews(ctx context.Context, req *newsv1.GetNewsRequest) (*newsv1.News, error) {
 	if userID, err := interceptor.GetUserID(ctx); err == nil {
-		if err := s.repo.IncrementViewCount(ctx, req.Id, userID); err != nil {
+		if err := s.repo.IncrementViewCount(ctx, req.GetId(), userID); err != nil {
 			s.logger.Error("failed to increment view count", zap.Error(err))
 		}
 	}
 
-	news, err := s.repo.GetNewsById(ctx, req.Id)
+	news, err := s.repo.GetNewsById(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}

@@ -31,9 +31,9 @@ func (s *Service) ResetSeason(ctx context.Context, req *hgv1.ResetSeasonRequest)
 		return nil, status.Error(codes.Internal, "failed to list player stats")
 	}
 
-	rewardMap := make(map[int]int64, len(req.Rewards))
-	for _, r := range req.Rewards {
-		rewardMap[int(r.Rank)] = r.Coins
+	rewardMap := make(map[int]int64, len(req.GetRewards()))
+	for _, r := range req.GetRewards() {
+		rewardMap[int(r.GetRank())] = r.GetCoins()
 	}
 
 	results := make([]*model.SeasonResult, len(allStats))
@@ -114,12 +114,12 @@ func (s *Service) CreateSeason(ctx context.Context, _ *hgv1.CreateSeasonRequest)
 func (s *Service) ListSeasons(ctx context.Context, req *hgv1.ListSeasonsRequest) (*hgv1.ListSeasonsResponse, error) {
 	l := s.log.With(zap.String("method", "ListSeasons"))
 
-	limit := int(req.Limit)
+	limit := int(req.GetLimit())
 	if limit <= 0 {
 		limit = 20
 	}
 
-	seasons, next, err := s.repo.ListSeasons(ctx, req.Next, limit)
+	seasons, next, err := s.repo.ListSeasons(ctx, req.GetNext(), limit)
 	if err != nil {
 		l.Error("failed to list seasons", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to list seasons")
@@ -134,9 +134,9 @@ func (s *Service) ListSeasons(ctx context.Context, req *hgv1.ListSeasonsRequest)
 }
 
 func (s *Service) GetSeasonLeaderboard(ctx context.Context, req *hgv1.GetSeasonLeaderboardRequest) (*hgv1.GetSeasonLeaderboardResponse, error) {
-	l := s.log.With(zap.String("method", "GetSeasonLeaderboard"), zap.String("season_id", req.SeasonId))
+	l := s.log.With(zap.String("method", "GetSeasonLeaderboard"), zap.String("season_id", req.GetSeasonId()))
 
-	if _, err := s.repo.GetSeasonByID(ctx, req.SeasonId); err != nil {
+	if _, err := s.repo.GetSeasonByID(ctx, req.GetSeasonId()); err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "season not found")
 		}
@@ -144,7 +144,7 @@ func (s *Service) GetSeasonLeaderboard(ctx context.Context, req *hgv1.GetSeasonL
 		return nil, status.Error(codes.Internal, "failed to get season")
 	}
 
-	results, err := s.repo.ListSeasonResults(ctx, req.SeasonId)
+	results, err := s.repo.ListSeasonResults(ctx, req.GetSeasonId())
 	if err != nil {
 		l.Error("failed to list season results", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to list season results")
@@ -159,11 +159,11 @@ func (s *Service) GetSeasonLeaderboard(ctx context.Context, req *hgv1.GetSeasonL
 
 func (s *Service) GetPlayerStats(ctx context.Context, req *hgv1.GetPlayerStatsRequest) (*hgv1.GetPlayerStatsResponse, error) {
 	l := s.log.With(zap.String("method", "GetPlayerStats"),
-		zap.String("season_id", req.SeasonId),
-		zap.String("player_id", req.PlayerId),
+		zap.String("season_id", req.GetSeasonId()),
+		zap.String("player_id", req.GetPlayerId()),
 	)
 
-	season, err := s.repo.GetSeasonByID(ctx, req.SeasonId)
+	season, err := s.repo.GetSeasonByID(ctx, req.GetSeasonId())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "season not found")
@@ -174,7 +174,7 @@ func (s *Service) GetPlayerStats(ctx context.Context, req *hgv1.GetPlayerStatsRe
 
 	// Active season: look in current stats
 	if season.IsActive() {
-		st, err := s.repo.GetPlayerStats(ctx, req.SeasonId, req.PlayerId)
+		st, err := s.repo.GetPlayerStats(ctx, req.GetSeasonId(), req.GetPlayerId())
 		if err != nil {
 			if isDomainError(err, codes.NotFound) {
 				return nil, status.Error(codes.NotFound, "player stats not found")
@@ -194,7 +194,7 @@ func (s *Service) GetPlayerStats(ctx context.Context, req *hgv1.GetPlayerStatsRe
 	}
 
 	// Ended season: look in archived results
-	result, err := s.repo.GetPlayerSeasonResult(ctx, req.SeasonId, req.PlayerId)
+	result, err := s.repo.GetPlayerSeasonResult(ctx, req.GetSeasonId(), req.GetPlayerId())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "player stats not found")

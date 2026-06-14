@@ -14,7 +14,7 @@ import (
 func (s *Service) ListLeaderboard(ctx context.Context, req *hgv1.ListLeaderboardRequest) (*hgv1.ListLeaderboardResponse, error) {
 	l := s.log.With(zap.String("method", "ListLeaderboard"))
 
-	limit := int(req.Limit)
+	limit := int(req.GetLimit())
 	if limit <= 0 {
 		limit = defaultLeaderboardLimit
 	}

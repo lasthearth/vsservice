@@ -95,7 +95,7 @@ func (r *Repository) GetTagById(ctx context.Context, id string) (*model.Tag, err
 	filter := bson.M{"_id": oid}
 	err = r.tagsColl.FindOne(ctx, filter).Decode(&dto)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ierror.ErrNotFound
 		}
 		return nil, err
@@ -111,8 +111,9 @@ func (r *Repository) GetTagByName(ctx context.Context, name string) (*model.Tag,
 	filter := bson.M{"name": name}
 	err := r.tagsColl.FindOne(ctx, filter).Decode(&tag)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil // Return nil if not found, not an error
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			//nolint:nilnil // (nil, nil) signals "tag not found" by design; callers branch on the nil result
+			return nil, nil
 		}
 		return nil, err
 	}

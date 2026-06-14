@@ -50,6 +50,7 @@ func NewSubscriber[T any](
 }
 
 func (s *Subscriber[T]) Subscribe(handler func(ctx context.Context, event T) error) error {
+	//nolint:gosec // G118: cancel is stored in s.cancel and invoked by Unsubscribe
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	consCtx, err := s.cons.Consume(func(msg jetstream.Msg) {

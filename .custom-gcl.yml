@@ -3,7 +3,7 @@
 #
 #   make lint-build   -> produces ./custom-gcl
 #   make lint         -> ./custom-gcl run ./...
-version: v2.0.2
+version: v2.12.2
 name: custom-gcl
 destination: .
 plugins:

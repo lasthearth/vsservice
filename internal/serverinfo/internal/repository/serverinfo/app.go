@@ -6,7 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-var _ serverinfo.ServerInfoRepository = (*Repository)(nil)
+var _ serverinfo.Repository = (*Repository)(nil)
 
 const (
 	CollectionName = "serverinfo"

@@ -4,7 +4,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	dto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo"
@@ -189,7 +188,7 @@ func (r *Repository) GetByUserGameName(ctx context.Context, userGameName string)
 	finded := r.coll.FindOne(ctx, bson.M{"user_game_name": userGameName})
 	err := finded.Err()
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ierror.ErrNotFound
 		}
 		return nil, err
@@ -205,5 +204,5 @@ func (r *Repository) GetByUserGameName(ctx context.Context, userGameName string)
 }
 
 func (r *Repository) getAvatarPrefix() string {
-	return fmt.Sprintf("%s/avatars", r.cfg.CdnUrl)
+	return r.cfg.CdnUrl + "/avatars"
 }

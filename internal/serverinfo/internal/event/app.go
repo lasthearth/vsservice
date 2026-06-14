@@ -19,12 +19,12 @@ type Opts struct {
 	fx.In
 	NC   *nats.Conn
 	Log  logger.Logger
-	Repo serverinfo.ServerInfoRepository
+	Repo serverinfo.Repository
 }
 
 type Bus struct {
 	log         logger.Logger
-	repo        serverinfo.ServerInfoRepository
+	repo        serverinfo.Repository
 	worldTime   messaging.Subscriber[WorldTimeEvent]
 	totalOnline messaging.Subscriber[TotalOnlineEvent]
 }
@@ -36,7 +36,7 @@ func NewEventManagerFx(opts Opts) *Bus {
 func NewEventManager(
 	nc *nats.Conn,
 	log logger.Logger,
-	repo serverinfo.ServerInfoRepository,
+	repo serverinfo.Repository,
 ) *Bus {
 	worldTime := mnats.NewEventSubscriber[WorldTimeEvent](
 		nc,

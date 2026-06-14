@@ -75,11 +75,11 @@ func (s *Service) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequ
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if uid != req.UserId {
+	if uid != req.GetUserId() {
 		return nil, status.Error(codes.PermissionDenied, "user id mismatch, you are can't update another user's avatar")
 	}
 
-	file := req.Avatar
+	file := req.GetAvatar()
 	bucketName := "avatars"
 	filename := "avatar"
 	ext := ".webp"
@@ -178,7 +178,7 @@ func (s *Service) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequ
 
 // GetUser implements userv1.UserServiceServer.
 func (s *Service) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*userv1.User, error) {
-	u, err := s.dbRepo.GetUserById(ctx, req.UserId)
+	u, err := s.dbRepo.GetUserById(ctx, req.GetUserId())
 	if err != nil {
 		if errors.Is(err, ierror.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, err.Error())
@@ -194,7 +194,7 @@ func (s *Service) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*use
 
 // SearchUsers implements userv1.UserServiceServer.
 func (s *Service) SearchUsers(ctx context.Context, req *userv1.SearchUsersRequest) (*userv1.SearchUsersResponse, error) {
-	searched, err := s.dbRepo.SearchUsers(ctx, req.Query)
+	searched, err := s.dbRepo.SearchUsers(ctx, req.GetQuery())
 	if err != nil {
 		return nil, err
 	}
@@ -213,23 +213,23 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if uid != req.UserId {
+	if uid != req.GetUserId() {
 		return nil, status.Error(
 			codes.PermissionDenied,
 			"you can only change your own nickname",
 		)
 	}
 
-	if !isValidNickname(req.NewNickname) {
+	if !isValidNickname(req.GetNewNickname()) {
 		return nil, status.Error(codes.InvalidArgument, "invalid nickname format")
 	}
 
-	player, err := s.dbRepo.GetUserById(ctx, req.UserId)
+	player, err := s.dbRepo.GetUserById(ctx, req.GetUserId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if player.UserGameName == req.NewNickname {
+	if player.UserGameName == req.GetNewNickname() {
 		return nil, status.Error(
 			codes.InvalidArgument,
 			"new nickname must be different from the current one",
@@ -245,10 +245,7 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 	if now.Before(nextChangeAllowed) {
 		return nil, status.Error(
 			codes.FailedPrecondition,
-			fmt.Sprintf(
-				"nickname change is on cooldown, try again after: %s",
-				nextChangeAllowed.Format(time.RFC3339),
-			),
+			"nickname change is on cooldown, try again after: "+nextChangeAllowed.Format(time.RFC3339),
 		)
 	}
 
@@ -256,8 +253,8 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 
 	err = s.dbRepo.UpdatePlayerNickname(
 		ctx,
-		req.UserId,
-		req.NewNickname,
+		req.GetUserId(),
+		req.GetNewNickname(),
 		oldNickname,
 		now,
 	)
@@ -265,19 +262,19 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	go func() {
+	go func() { //nolint:gosec // G118: deliberate — the notification must outlive the request scope
 		bctx := context.Background()
 
 		nerr := s.sendAdminNotification(
 			bctx,
 			oldNickname,
-			req.NewNickname,
+			req.GetNewNickname(),
 		)
 		if nerr != nil {
 			s.log.Error("Failed to send admin notification for nickname change",
-				zap.String("player_id", req.UserId),
+				zap.String("player_id", req.GetUserId()),
 				zap.String("old_nickname", oldNickname),
-				zap.String("new_nickname", req.NewNickname),
+				zap.String("new_nickname", req.GetNewNickname()),
 				zap.Error(nerr),
 			)
 		}
@@ -285,7 +282,7 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 
 	return &userv1.ChangeNicknameResponse{
 		OldNickname: oldNickname,
-		NewNickname: req.NewNickname,
+		NewNickname: req.GetNewNickname(),
 	}, nil
 }
 

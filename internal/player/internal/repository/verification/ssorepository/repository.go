@@ -19,7 +19,7 @@ func (r *Repository) GetUserRoles(ctx context.Context, userId string) ([]httpdto
 	existingRolesUrl := fmt.Sprintf("%s/api/users/%s/roles", r.cfg.SsoUrl, userId)
 	r.logger.Debug("prepared SSO API URL", zap.String("url", existingRolesUrl))
 
-	req, err := http.NewRequest(http.MethodGet, existingRolesUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, existingRolesUrl, nil)
 	if err != nil {
 		r.logger.Error("failed to create request", zap.Error(err), zap.String("url", existingRolesUrl))
 		return nil, err
@@ -66,10 +66,10 @@ func (r *Repository) GetUserRoles(ctx context.Context, userId string) ([]httpdto
 func (r *Repository) GetRoles(ctx context.Context) ([]httpdto.Role, error) {
 	r.logger.Info("getting all roles")
 
-	getRolesUrl := fmt.Sprintf("%s/api/roles", r.cfg.SsoUrl)
+	getRolesUrl := r.cfg.SsoUrl + "/api/roles"
 	r.logger.Debug("prepared SSO API URL", zap.String("url", getRolesUrl))
 
-	req, err := http.NewRequest(http.MethodGet, getRolesUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, getRolesUrl, nil)
 	if err != nil {
 		r.logger.Error("failed to create request", zap.Error(err), zap.String("url", getRolesUrl))
 		return nil, err
@@ -132,7 +132,7 @@ func (r *Repository) UpdateUserRoles(ctx context.Context, userId string, roleIds
 	}
 	r.logger.Debug("encoded request payload", zap.String("payload", string(encoded)))
 
-	req, err := http.NewRequest(http.MethodPut, updateRolesUrl, bytes.NewBuffer(encoded))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, updateRolesUrl, bytes.NewBuffer(encoded))
 	if err != nil {
 		r.logger.Error("failed to create request", zap.Error(err), zap.String("url", updateRolesUrl))
 		return ErrFailedCreateReq
@@ -198,7 +198,7 @@ func (r *Repository) UpdateUserProfileNick(ctx context.Context, userID, nickname
 	}
 	r.logger.Debug("encoded request payload", zap.String("payload", string(encoded)))
 
-	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(encoded))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, bytes.NewBuffer(encoded))
 	if err != nil {
 		r.logger.Error("failed to create request", zap.Error(err), zap.String("url", url))
 		return ErrFailedCreateReq

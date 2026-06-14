@@ -71,7 +71,7 @@ func (r *Repository) ListNotifications(ctx context.Context, limit int, userID, n
 	orderInfo, err := orderby.Parse(
 		orderBy,
 		allowedSortFields,
-		&orderby.OrderByInfo{
+		&orderby.Info{
 			Field:      "created_at",
 			Direction:  orderby.Desc,
 			MongoField: "created_at",

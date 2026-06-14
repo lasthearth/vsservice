@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	dto "github.com/lasthearth/vsservice/internal/donate/internal/dto/mongo"
@@ -46,7 +47,7 @@ func (r *Repository) GetShopItem(ctx context.Context, id string) (*model.ShopIte
 
 	var d dto.ShopItem
 	if err := r.shopColl.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
-		if err == mgo.ErrNoDocuments {
+		if errors.Is(err, mgo.ErrNoDocuments) {
 			return nil, ierror.ErrNotFound
 		}
 		l.Error("failed to find shop item", zap.Error(err))
@@ -70,7 +71,7 @@ func (r *Repository) UpdateShopItem(
 
 	var d dto.ShopItem
 	if err := r.shopColl.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
-		if err == mgo.ErrNoDocuments {
+		if errors.Is(err, mgo.ErrNoDocuments) {
 			return nil, ierror.ErrNotFound
 		}
 		l.Error("failed to find shop item", zap.Error(err))
