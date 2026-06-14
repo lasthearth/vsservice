@@ -146,17 +146,9 @@ func (r *Repository) DeleteAllPlayerStats(ctx context.Context) error {
 }
 
 func playerStatsFromDTO(d playerStatsDTO) *model.PlayerStats {
-	return &model.PlayerStats{
-		ID:         d.Id.Hex(),
-		PlayerID:   d.PlayerID,
-		PlayerName: d.PlayerName,
-		Elo:        d.Elo,
-		Wins:       d.Wins,
-		Kills:      d.Kills,
-		SeasonID:   d.SeasonID,
-		CreatedAt:  d.CreatedAt,
-		UpdatedAt:  d.UpdatedAt,
-	}
+	return model.ReconstitutePlayerStats(
+		d.Id.Hex(), d.PlayerID, d.PlayerName, d.Elo, d.Wins, d.Kills, d.SeasonID, d.CreatedAt, d.UpdatedAt,
+	)
 }
 
 func playerStatsSliceFromDTOs(dtos []playerStatsDTO) []*model.PlayerStats {

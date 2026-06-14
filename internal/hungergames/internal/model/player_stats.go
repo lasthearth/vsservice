@@ -33,6 +33,21 @@ func NewPlayerStats(playerID, playerName, seasonID string) *PlayerStats {
 	}
 }
 
+// ReconstitutePlayerStats rebuilds PlayerStats from persisted state. Repository use only.
+func ReconstitutePlayerStats(id, playerID, playerName string, elo, wins, kills int, seasonID string, createdAt, updatedAt time.Time) *PlayerStats {
+	return &PlayerStats{
+		ID:         id,
+		PlayerID:   playerID,
+		PlayerName: playerName,
+		Elo:        elo,
+		Wins:       wins,
+		Kills:      kills,
+		SeasonID:   seasonID,
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
+	}
+}
+
 // SetELO updates the player's ELO, enforcing the minimum.
 func (p *PlayerStats) SetELO(newELO int) {
 	if newELO < MinELO {

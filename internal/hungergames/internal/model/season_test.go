@@ -1,15 +1,13 @@
-package model_test
+package model
 
 import (
 	"testing"
 	"time"
-
-	"github.com/lasthearth/vsservice/internal/hungergames/internal/model"
 )
 
 func TestNewSeason(t *testing.T) {
 	before := time.Now()
-	s := model.NewSeason(3)
+	s := NewSeason(3)
 	after := time.Now()
 
 	if s.Number != 3 {
@@ -35,7 +33,7 @@ func TestSeason_IsActive(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			s := &model.Season{EndedAt: tc.endedAt}
+			s := &Season{EndedAt: tc.endedAt}
 			if got := s.IsActive(); got != tc.want {
 				t.Errorf("IsActive() = %v, want %v", got, tc.want)
 			}
@@ -44,7 +42,7 @@ func TestSeason_IsActive(t *testing.T) {
 }
 
 func TestSeason_End(t *testing.T) {
-	s := model.NewSeason(1)
+	s := NewSeason(1)
 
 	if !s.IsActive() {
 		t.Fatal("season should be active before End()")
@@ -66,7 +64,7 @@ func TestSeason_End(t *testing.T) {
 }
 
 func TestSeason_End_Idempotent(t *testing.T) {
-	s := model.NewSeason(1)
+	s := NewSeason(1)
 	s.End()
 
 	time.Sleep(time.Millisecond)

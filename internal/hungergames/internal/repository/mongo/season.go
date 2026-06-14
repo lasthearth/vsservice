@@ -66,7 +66,7 @@ func (r *Repository) CreateSeason(ctx context.Context, season *model.Season) (*m
 		return nil, err
 	}
 
-	season.ID = m.Id.Hex()
+	season.AssignID(m.Id.Hex())
 	return season, nil
 }
 
@@ -124,11 +124,5 @@ func (r *Repository) ListSeasons(ctx context.Context, next string, limit int) ([
 }
 
 func seasonFromDTO(d seasonDTO) *model.Season {
-	s := &model.Season{
-		ID:        d.Model.Id.Hex(),
-		Number:    d.Number,
-		StartedAt: d.StartedAt,
-		EndedAt:   d.EndedAt,
-	}
-	return s
+	return model.ReconstituteSeason(d.Model.Id.Hex(), d.Number, d.StartedAt, d.EndedAt)
 }

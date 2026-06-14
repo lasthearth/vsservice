@@ -17,6 +17,19 @@ func NewSeason(number int) *Season {
 	}
 }
 
+// ReconstituteSeason rebuilds a Season from persisted state. Repository use only.
+func ReconstituteSeason(id string, number int, startedAt time.Time, endedAt *time.Time) *Season {
+	return &Season{
+		ID:        id,
+		Number:    number,
+		StartedAt: startedAt,
+		EndedAt:   endedAt,
+	}
+}
+
+// AssignID records the persisted identity.
+func (s *Season) AssignID(id string) { s.ID = id }
+
 // End closes the season by recording the end timestamp.
 func (s *Season) End() {
 	now := time.Now()
