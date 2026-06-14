@@ -1,0 +1,18 @@
+version: "2"
+
+# Only the modelguard plugin runs. Build the runner with `make lint-build`
+# (reads .custom-gcl.yml) and invoke it with `make lint`.
+#
+# No path exclusions: the rule applies everywhere, including repositories and
+# mappers. Generated code is skipped (it is machine-written and regenerated).
+linters:
+  default: none
+  enable:
+    - modelguard
+  settings:
+    custom:
+      modelguard:
+        type: module
+        description: domain models must be built via New* and mutated via methods
+  exclusions:
+    generated: lax

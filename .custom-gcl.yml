@@ -1,0 +1,11 @@
+# Build config for the custom golangci-lint binary that bundles the local
+# `modelguard` module plugin. Built and run via the Makefile:
+#
+#   make lint-build   -> produces ./custom-gcl
+#   make lint         -> ./custom-gcl run ./...
+version: v2.0.2
+name: custom-gcl
+destination: .
+plugins:
+  - module: github.com/lasthearth/vsservice/tools/modelguard
+    path: ./tools/modelguard

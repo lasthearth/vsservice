@@ -1,0 +1,9 @@
+#!/bin/sh
+# modelguard: enforce domain-model discipline on every commit.
+# Builds the plugin-bundled linter on first use (via Makefile), then runs it.
+#
+# Enable once per clone:  make hooks
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+exec make lint
