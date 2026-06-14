@@ -61,7 +61,6 @@ func (r *Repository) CreateNews(ctx context.Context, news *model.News) (*model.N
 	}
 
 	createdNews := r.mapper.ToModel(created)
-
 	return &createdNews, nil
 }
 

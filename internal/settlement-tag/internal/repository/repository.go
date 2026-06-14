@@ -79,7 +79,7 @@ func (r *Repository) CreateTag(ctx context.Context, tag *model.Tag) (*model.Tag,
 	if err != nil {
 		return nil, err
 	}
-	tag.Id = oid.Hex()
+	tag.AssignID(oid.Hex())
 
 	return tag, nil
 }

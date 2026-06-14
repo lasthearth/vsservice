@@ -13,3 +13,6 @@ type Notification struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+// SetUserId sets the notification recipient.
+func (n *Notification) SetUserId(userId string) { n.UserId = userId }

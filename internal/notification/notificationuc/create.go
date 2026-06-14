@@ -67,12 +67,12 @@ func (uc *Create) CreateNotification(
 
 func WithUserId(userId string) NotificationOpts {
 	return func(n *model.Notification) {
-		n.UserId = userId
+		n.SetUserId(userId)
 	}
 }
 
 func WithBroadcast() NotificationOpts {
 	return func(n *model.Notification) {
-		n.UserId = model.BroadcastUserId
+		n.SetUserId(model.BroadcastUserId)
 	}
 }

@@ -49,7 +49,7 @@ func (b *Bus) onWorldTime(ctx context.Context, event WorldTimeEvent) error {
 			ctx context.Context,
 			update *model.ServerInfo,
 		) (*model.ServerInfo, error) {
-			update.WorldTime = event.Time
+			update.SetWorldTime(event.Time)
 			return update, nil
 		},
 	)
@@ -65,7 +65,7 @@ func (b *Bus) onTotalOnline(ctx context.Context, event TotalOnlineEvent) error {
 			ctx context.Context,
 			update *model.ServerInfo,
 		) (*model.ServerInfo, error) {
-			update.TotalOnline = event.Count
+			update.SetTotalOnline(event.Count)
 			return update, nil
 		},
 	)

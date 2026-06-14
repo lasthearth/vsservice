@@ -27,6 +27,7 @@ func New(cfg config.Config) *Validator {
 	return &Validator{allowedHosts: hosts}
 }
 
+// Validate пропускает http(s) URL, чей хост — CDN или из allowlist.
 func (v *Validator) Validate(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {

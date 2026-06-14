@@ -55,3 +55,6 @@ func NewTag(name, description string, color Color) (*Tag, error) {
 
 	return tag, nil
 }
+
+// AssignID records the persisted identity.
+func (t *Tag) AssignID(id string) { t.Id = id }

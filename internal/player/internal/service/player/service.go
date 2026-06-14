@@ -141,12 +141,7 @@ func (s *Service) UpdateAvatar(ctx context.Context, req *userv1.UpdateAvatarRequ
 			fileName,
 		}, "/")
 
-		if height == 96 {
-			avatar.X96 = path
-		}
-		if height == 48 {
-			avatar.X48 = path
-		}
+		avatar.SetVariant(height, path)
 
 		imgs[path] = img
 	}

@@ -33,3 +33,13 @@ type Avatar struct {
 	X96      string
 	X48      string
 }
+
+// SetVariant sets the avatar URL for a rendered size (px height).
+func (a *Avatar) SetVariant(height int, path string) {
+	switch height {
+	case 96:
+		a.X96 = path
+	case 48:
+		a.X48 = path
+	}
+}
