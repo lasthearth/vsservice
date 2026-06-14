@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/lasthearth/vsservice/internal/donate/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
@@ -41,9 +42,10 @@ func (r *Repository) BuyItem(ctx context.Context, playerID, itemID string) (*mod
 
 	var purchase *model.Purchase
 
-	eff := item.EffectivePrice()
+	now := time.Now()
+	eff := item.EffectivePriceAt(now)
 	discountPercent := int32(0)
-	if item.HasDiscount {
+	if item.DiscountActive(now) {
 		discountPercent = item.DiscountPercent
 	}
 
@@ -65,7 +67,7 @@ func (r *Repository) BuyItem(ctx context.Context, playerID, itemID string) (*mod
 		purchase = p
 
 		tx := model.NewDebitTransaction(playerID, eff, "purchase: "+item.Name)
-		tx.PurchaseID = purchase.Id
+		tx.AttachPurchase(purchase.Id)
 		if _, err := r.CreateTransaction(sc, tx); err != nil {
 			l.Error("failed to record transaction", zap.Error(err))
 			return err
@@ -114,7 +116,7 @@ func (r *Repository) Refund(ctx context.Context, purchaseID, reason string) (*mo
 		}
 
 		tx := model.NewCreditTransaction(p.PlayerID, p.PricePaid, reason)
-		tx.PurchaseID = purchaseID
+		tx.AttachPurchase(purchaseID)
 		if _, err := r.CreateTransaction(sc, tx); err != nil {
 			l.Error("failed to record refund transaction", zap.Error(err))
 			return err

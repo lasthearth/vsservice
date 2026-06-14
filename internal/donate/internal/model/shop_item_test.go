@@ -1,13 +1,12 @@
-package model_test
+package model
 
 import (
 	"testing"
-
-	"github.com/lasthearth/vsservice/internal/donate/internal/model"
+	"time"
 )
 
 func TestNewShopItem(t *testing.T) {
-	item := model.NewShopItem("skin_default", "Skin", "Cool skin", "https://cdn/skin.png", 500)
+	item := NewShopItem("skin_default", "Skin", "Cool skin", "https://cdn/skin.png", 500)
 
 	if item.Code != "skin_default" {
 		t.Errorf("Code = %v, want skin_default", item.Code)
@@ -21,7 +20,7 @@ func TestNewShopItem(t *testing.T) {
 	if !item.IsAvailable {
 		t.Errorf("IsAvailable should be true on creation")
 	}
-	if item.Type != model.ItemTypeItem {
+	if item.Type != ItemTypeItem {
 		t.Errorf("Type = %v, want item", item.Type)
 	}
 }
@@ -29,45 +28,45 @@ func TestNewShopItem(t *testing.T) {
 func TestShopItem_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		build   func() *model.ShopItem
+		build   func() *ShopItem
 		wantErr bool
 	}{
 		{
 			"valid item",
-			func() *model.ShopItem { return model.NewShopItem("skin_a", "Skin", "desc", "url", 100) },
+			func() *ShopItem { return NewShopItem("skin_a", "Skin", "desc", "url", 100) },
 			false,
 		},
 		{
 			"empty code",
-			func() *model.ShopItem { return model.NewShopItem("", "Skin", "desc", "url", 100) },
+			func() *ShopItem { return NewShopItem("", "Skin", "desc", "url", 100) },
 			true,
 		},
 		{
 			"empty name",
-			func() *model.ShopItem { return model.NewShopItem("skin_a", "", "desc", "url", 100) },
+			func() *ShopItem { return NewShopItem("skin_a", "", "desc", "url", 100) },
 			true,
 		},
 		{
 			"zero price",
-			func() *model.ShopItem { return model.NewShopItem("skin_a", "Skin", "desc", "url", 0) },
+			func() *ShopItem { return NewShopItem("skin_a", "Skin", "desc", "url", 0) },
 			true,
 		},
 		{
 			"negative price",
-			func() *model.ShopItem { return model.NewShopItem("skin_a", "Skin", "desc", "url", -1) },
+			func() *ShopItem { return NewShopItem("skin_a", "Skin", "desc", "url", -1) },
 			true,
 		},
 		{
 			"kit with empty entries",
-			func() *model.ShopItem {
-				return model.NewKitShopItem("kit_a", "Kit", "desc", "url", 100, []model.KitEntry{})
+			func() *ShopItem {
+				return NewKitShopItem("kit_a", "Kit", "desc", "url", 100, []KitEntry{})
 			},
 			true,
 		},
 		{
 			"kit with valid entries",
-			func() *model.ShopItem {
-				return model.NewKitShopItem("kit_a", "Kit", "desc", "url", 100, []model.KitEntry{
+			func() *ShopItem {
+				return NewKitShopItem("kit_a", "Kit", "desc", "url", 100, []KitEntry{
 					{Name: "Sword", Quantity: 1},
 				})
 			},
@@ -75,8 +74,8 @@ func TestShopItem_Validate(t *testing.T) {
 		},
 		{
 			"kit entry quantity zero",
-			func() *model.ShopItem {
-				return model.NewKitShopItem("kit_a", "Kit", "desc", "url", 100, []model.KitEntry{
+			func() *ShopItem {
+				return NewKitShopItem("kit_a", "Kit", "desc", "url", 100, []KitEntry{
 					{Name: "Sword", Quantity: 0},
 				})
 			},
@@ -84,8 +83,8 @@ func TestShopItem_Validate(t *testing.T) {
 		},
 		{
 			"discount percent 101",
-			func() *model.ShopItem {
-				item := model.NewShopItem("skin_a", "Skin", "desc", "url", 100)
+			func() *ShopItem {
+				item := NewShopItem("skin_a", "Skin", "desc", "url", 100)
 				item.HasDiscount = true
 				item.DiscountPercent = 101
 				return item
@@ -104,15 +103,15 @@ func TestShopItem_Validate(t *testing.T) {
 }
 
 func TestShopItem_Apply(t *testing.T) {
-	item := model.NewShopItem("old_code", "Old", "old desc", "old-url", 100)
-	item.Apply(model.ShopItemUpdate{
+	item := NewShopItem("old_code", "Old", "old desc", "old-url", 100)
+	item.Apply(ShopItemUpdate{
 		Code:        "new_code",
 		Name:        "New",
 		Description: "new desc",
 		ImageURL:    "new-url",
 		Price:       200,
 		IsAvailable: false,
-		Type:        model.ItemTypeItem,
+		Type:        ItemTypeItem,
 	})
 
 	if item.Code != "new_code" {
@@ -152,7 +151,7 @@ func TestShopItem_EffectivePrice(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			item := model.NewShopItem("code", "Name", "desc", "url", tc.price)
+			item := NewShopItem("code", "Name", "desc", "url", tc.price)
 			if tc.discount {
 				if err := item.SetDiscount(tc.percent); err != nil {
 					t.Fatalf("SetDiscount failed: %v", err)
@@ -167,7 +166,7 @@ func TestShopItem_EffectivePrice(t *testing.T) {
 }
 
 func TestShopItem_SetDiscount(t *testing.T) {
-	item := model.NewShopItem("code", "Name", "desc", "url", 100)
+	item := NewShopItem("code", "Name", "desc", "url", 100)
 
 	if err := item.SetDiscount(0); err != nil {
 		t.Errorf("SetDiscount(0) unexpected error: %v", err)
@@ -190,7 +189,7 @@ func TestShopItem_SetDiscount(t *testing.T) {
 }
 
 func TestShopItem_ClearDiscount(t *testing.T) {
-	item := model.NewShopItem("code", "Name", "desc", "url", 100)
+	item := NewShopItem("code", "Name", "desc", "url", 100)
 	_ = item.SetDiscount(50)
 	item.ClearDiscount()
 
@@ -200,4 +199,110 @@ func TestShopItem_ClearDiscount(t *testing.T) {
 	if item.DiscountPercent != 0 {
 		t.Errorf("DiscountPercent = %v, want 0", item.DiscountPercent)
 	}
+}
+
+func TestShopItem_DiscountActive(t *testing.T) {
+	base := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
+	past := base.Add(-time.Hour)
+	future := base.Add(time.Hour)
+
+	makeItem := func(percent int32, start, end *time.Time) *ShopItem {
+		item := NewShopItem("code", "Name", "desc", "url", 100)
+		if percent > 0 {
+			_ = item.SetDiscount(percent)
+		}
+		item.SetDiscountWindow(start, end)
+		return item
+	}
+
+	tests := []struct {
+		name  string
+		item  *ShopItem
+		now   time.Time
+		want  bool
+	}{
+		{"nil window, discount active", makeItem(50, nil, nil), base, true},
+		{"now before start, inactive", makeItem(50, &future, nil), base, false},
+		{"now in window", makeItem(50, &past, &future), base, true},
+		{"now == end, exclusive, inactive", makeItem(50, &past, &base), base, false},
+		{"now after end, inactive", makeItem(50, &past, &past), base, false},
+		{"HasDiscount=false, window set, inactive", func() *ShopItem {
+			item := NewShopItem("code", "Name", "desc", "url", 100)
+			item.SetDiscountWindow(&past, &future)
+			return item
+		}(), base, false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.item.DiscountActive(tc.now)
+			if got != tc.want {
+				t.Errorf("DiscountActive() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestShopItem_EffectivePriceAt(t *testing.T) {
+	base := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
+	past := base.Add(-time.Hour)
+	future := base.Add(time.Hour)
+
+	tests := []struct {
+		name    string
+		price   int64
+		percent int32
+		start   *time.Time
+		end     *time.Time
+		now     time.Time
+		want    int64
+	}{
+		{"in window, 50%", 100, 50, &past, &future, base, 50},
+		{"before window, full price", 100, 50, &future, nil, base, 100},
+		{"after window (now==end), full price", 100, 50, &past, &base, base, 100},
+		{"nil window, 50%", 100, 50, nil, nil, base, 50},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			item := NewShopItem("code", "Name", "desc", "url", tc.price)
+			_ = item.SetDiscount(tc.percent)
+			item.SetDiscountWindow(tc.start, tc.end)
+			got := item.EffectivePriceAt(tc.now)
+			if got != tc.want {
+				t.Errorf("EffectivePriceAt() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestShopItem_Validate_DiscountWindow(t *testing.T) {
+	t.Run("end before start returns error", func(t *testing.T) {
+		item := NewShopItem("code", "Name", "desc", "url", 100)
+		start := time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)
+		end := time.Date(2026, 1, 10, 0, 0, 0, 0, time.UTC)
+		item.SetDiscountWindow(&start, &end)
+		if err := item.Validate(); err == nil {
+			t.Error("expected error for end <= start, got nil")
+		}
+	})
+
+	t.Run("end == start returns error", func(t *testing.T) {
+		item := NewShopItem("code", "Name", "desc", "url", 100)
+		ts := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+		item.SetDiscountWindow(&ts, &ts)
+		if err := item.Validate(); err == nil {
+			t.Error("expected error for end == start, got nil")
+		}
+	})
+
+	t.Run("end after start is valid", func(t *testing.T) {
+		item := NewShopItem("code", "Name", "desc", "url", 100)
+		start := time.Date(2026, 1, 10, 0, 0, 0, 0, time.UTC)
+		end := time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)
+		item.SetDiscountWindow(&start, &end)
+		if err := item.Validate(); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 }

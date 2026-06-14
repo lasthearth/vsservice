@@ -410,6 +410,17 @@ paths:
                   type: integer
                   title: discount_percent
                   format: int32
+                privileges:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/donate.v1.Privilege'
+                  title: privileges
+                discount_starts_at:
+                  title: discount_starts_at
+                  $ref: '#/components/schemas/google.protobuf.Timestamp'
+                discount_ends_at:
+                  title: discount_ends_at
+                  $ref: '#/components/schemas/google.protobuf.Timestamp'
               title: UpdateShopItemRequest
               additionalProperties: false
         required: true
@@ -2304,6 +2315,17 @@ components:
           type: integer
           title: discount_percent
           format: int32
+        privileges:
+          type: array
+          items:
+            $ref: '#/components/schemas/donate.v1.Privilege'
+          title: privileges
+        discount_starts_at:
+          title: discount_starts_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        discount_ends_at:
+          title: discount_ends_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: CreateShopItemRequest
       additionalProperties: false
     donate.v1.CreateShopItemResponse:
@@ -2456,6 +2478,18 @@ components:
           $ref: '#/components/schemas/donate.v1.Purchase'
       title: MarkPurchaseIssuedResponse
       additionalProperties: false
+    donate.v1.Privilege:
+      type: object
+      properties:
+        text:
+          type: string
+          title: text
+        icon:
+          type: string
+          title: icon
+      title: Privilege
+      additionalProperties: false
+      description: Privilege describes a perk granted by the item (e.g. colored nick, Discord role).
     donate.v1.Purchase:
       type: object
       properties:
@@ -2583,6 +2617,23 @@ components:
           title: effective_price
           format: int64
           description: вычисляемое, для UI
+        privileges:
+          type: array
+          items:
+            $ref: '#/components/schemas/donate.v1.Privilege'
+          title: privileges
+        discount_starts_at:
+          title: discount_starts_at
+          description: nil = открыто слева
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        discount_ends_at:
+          title: discount_ends_at
+          description: nil = открыто справа
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        discount_active:
+          type: boolean
+          title: discount_active
+          description: вычисляемое по now(), для UI-бейджа
       title: ShopItem
       additionalProperties: false
     donate.v1.Transaction:
@@ -2657,6 +2708,17 @@ components:
           type: integer
           title: discount_percent
           format: int32
+        privileges:
+          type: array
+          items:
+            $ref: '#/components/schemas/donate.v1.Privilege'
+          title: privileges
+        discount_starts_at:
+          title: discount_starts_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        discount_ends_at:
+          title: discount_ends_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: UpdateShopItemRequest
       additionalProperties: false
     donate.v1.UpdateShopItemResponse:

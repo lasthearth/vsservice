@@ -28,8 +28,7 @@ func (r *Repository) createPurchase(ctx context.Context, purchase *model.Purchas
 		return nil, err
 	}
 
-	purchase.Id = oid.Hex()
-	purchase.CreatedAt = m.CreatedAt
+	purchase.MarkCreated(oid.Hex(), m.CreatedAt)
 	return purchase, nil
 }
 

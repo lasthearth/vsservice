@@ -39,6 +39,39 @@ func NewPurchase(playerID, playerName, itemID, itemName string, pricePaid, baseP
 	}
 }
 
+// ReconstitutePurchase rebuilds a Purchase from persisted state. Repository use only.
+func ReconstitutePurchase(
+	id, playerID, playerName, itemID, itemName string,
+	pricePaid, basePrice int64,
+	discountPercent int32,
+	status PurchaseStatus,
+	createdAt time.Time,
+	refundedAt, issuedAt *time.Time,
+	issuedBy *string,
+) *Purchase {
+	return &Purchase{
+		Id:              id,
+		PlayerID:        playerID,
+		PlayerName:      playerName,
+		ItemID:          itemID,
+		ItemName:        itemName,
+		PricePaid:       pricePaid,
+		BasePrice:       basePrice,
+		DiscountPercent: discountPercent,
+		Status:          status,
+		CreatedAt:       createdAt,
+		RefundedAt:      refundedAt,
+		IssuedAt:        issuedAt,
+		IssuedBy:        issuedBy,
+	}
+}
+
+// MarkCreated records the persisted identity and creation time.
+func (p *Purchase) MarkCreated(id string, createdAt time.Time) {
+	p.Id = id
+	p.CreatedAt = createdAt
+}
+
 // Refund marks the purchase as refunded. Returns an error if already refunded.
 func (p *Purchase) Refund() error {
 	if p.Status == PurchaseStatusRefunded {

@@ -4,6 +4,7 @@ import (
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	repository "github.com/lasthearth/vsservice/internal/donate/internal/repository/mongo"
 	"github.com/lasthearth/vsservice/internal/donate/internal/service"
+	"github.com/lasthearth/vsservice/internal/donate/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	pkgstorage "github.com/lasthearth/vsservice/internal/pkg/storage"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
@@ -23,6 +24,12 @@ var App = fx.Options(
 
 		fx.Provide(
 			fx.Private,
+			fx.Annotate(
+				func() *sermapper.MapperImpl {
+					return &sermapper.MapperImpl{}
+				},
+				fx.As(new(service.Mapper)),
+			),
 			fx.Annotate(
 				repository.New,
 				fx.As(new(service.DonateRepository)),

@@ -12,12 +12,13 @@ import (
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimePtrToTimestamp
 // goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:ItemTypeModelToProto
 // goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:KitEntryModelToProto
+// goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:PrivilegeModelToProto
 // goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:PtrStringToString
 // goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:PurchaseStatusToString
 // goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:TxTypeToString
 // goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:ShopItemEffectivePrice
 type Mapper interface {
-	// goverter:ignore state sizeCache unknownFields
+	// goverter:ignore state sizeCache unknownFields DiscountActive
 	// goverter:map ImageURL ImageUrl
 	// goverter:map Type ItemType | github.com/lasthearth/vsservice/internal/donate/internal/goverter:ItemTypeModelToProto
 	// goverter:map . EffectivePrice | github.com/lasthearth/vsservice/internal/donate/internal/goverter:ShopItemEffectivePrice

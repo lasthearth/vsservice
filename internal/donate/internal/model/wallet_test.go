@@ -1,13 +1,11 @@
-package model_test
+package model
 
 import (
 	"testing"
-
-	"github.com/lasthearth/vsservice/internal/donate/internal/model"
 )
 
 func TestNewWallet(t *testing.T) {
-	w := model.NewWallet("user-1", "Player1")
+	w := NewWallet("user-1", "Player1")
 
 	if w.PlayerID != "user-1" {
 		t.Errorf("PlayerID = %v, want user-1", w.PlayerID)
@@ -35,7 +33,7 @@ func TestWallet_Deposit(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			w := &model.Wallet{Coins: tc.initial}
+			w := &Wallet{Coins: tc.initial}
 			err := w.Deposit(tc.amount)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("Deposit(%v) error = %v, wantErr %v", tc.amount, err, tc.wantErr)
@@ -64,7 +62,7 @@ func TestWallet_Withdraw(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			w := &model.Wallet{Coins: tc.initial}
+			w := &Wallet{Coins: tc.initial}
 			err := w.Withdraw(tc.amount)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("Withdraw(%v) error = %v, wantErr %v", tc.amount, err, tc.wantErr)

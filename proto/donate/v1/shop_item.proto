@@ -17,6 +17,12 @@ message KitEntry {
   int32 quantity = 4;
 }
 
+// Privilege describes a perk granted by the item (e.g. colored nick, Discord role).
+message Privilege {
+  string text = 1;
+  string icon = 2;
+}
+
 message ShopItem {
   string id = 1;
   string name = 2;
@@ -33,6 +39,10 @@ message ShopItem {
   bool has_discount = 12;
   int32 discount_percent = 13;   // 0..100
   int64 effective_price = 14;    // вычисляемое, для UI
+  repeated Privilege privileges = 15;
+  google.protobuf.Timestamp discount_starts_at = 16; // nil = открыто слева
+  google.protobuf.Timestamp discount_ends_at = 17;   // nil = открыто справа
+  bool discount_active = 18;                          // вычисляемое по now(), для UI-бейджа
 }
 
 message CreateShopItemRequest {
@@ -45,6 +55,9 @@ message CreateShopItemRequest {
   repeated KitEntry entries = 7;
   bool has_discount = 8;
   int32 discount_percent = 9;
+  repeated Privilege privileges = 10;
+  google.protobuf.Timestamp discount_starts_at = 11;
+  google.protobuf.Timestamp discount_ends_at = 12;
 }
 
 message CreateShopItemResponse {
@@ -64,6 +77,9 @@ message UpdateShopItemRequest {
   repeated KitEntry entries = 9;
   bool has_discount = 10;
   int32 discount_percent = 11;
+  repeated Privilege privileges = 12;
+  google.protobuf.Timestamp discount_starts_at = 13;
+  google.protobuf.Timestamp discount_ends_at = 14;
 }
 
 message UpdateShopItemResponse {

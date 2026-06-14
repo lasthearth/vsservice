@@ -66,6 +66,14 @@ func (c *MapperImpl) ToShopItemProto(source *model.ShopItem) *v1.ShopItem {
 		donatev1ShopItem.HasDiscount = (*source).HasDiscount
 		donatev1ShopItem.DiscountPercent = (*source).DiscountPercent
 		donatev1ShopItem.EffectivePrice = goverter.ShopItemEffectivePrice(source)
+		if (*source).Privileges != nil {
+			donatev1ShopItem.Privileges = make([]*v1.Privilege, len((*source).Privileges))
+			for j := 0; j < len((*source).Privileges); j++ {
+				donatev1ShopItem.Privileges[j] = goverter.PrivilegeModelToProto((*source).Privileges[j])
+			}
+		}
+		donatev1ShopItem.DiscountStartsAt = goverter1.TimePtrToTimestamp((*source).DiscountStartsAt)
+		donatev1ShopItem.DiscountEndsAt = goverter1.TimePtrToTimestamp((*source).DiscountEndsAt)
 		pDonatev1ShopItem = &donatev1ShopItem
 	}
 	return pDonatev1ShopItem

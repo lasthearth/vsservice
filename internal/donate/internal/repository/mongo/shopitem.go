@@ -32,9 +32,7 @@ func (r *Repository) CreateShopItem(ctx context.Context, item *model.ShopItem) (
 		return nil, err
 	}
 
-	item.Id = oid.Hex()
-	item.CreatedAt = now
-	item.UpdatedAt = now
+	item.MarkCreated(oid.Hex(), now)
 	return item, nil
 }
 
@@ -85,7 +83,7 @@ func (r *Repository) UpdateShopItem(
 		return nil, err
 	}
 
-	updated.UpdatedAt = time.Now()
+	updated.Touch(time.Now())
 	updatedDTO := shopItemToDTO(updated)
 
 	if _, err := r.shopColl.ReplaceOne(ctx, bson.M{"_id": oid}, updatedDTO); err != nil {

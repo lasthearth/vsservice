@@ -92,14 +92,7 @@ func setupIndexes(log logger.Logger, walletColl, shopColl, purchColl, txColl *mg
 }
 
 func walletFromDTO(d dto.Wallet) *model.Wallet {
-	return &model.Wallet{
-		Id:         d.Id.Hex(),
-		PlayerID:   d.PlayerID,
-		PlayerName: d.PlayerName,
-		Coins:      d.Coins,
-		CreatedAt:  d.CreatedAt,
-		UpdatedAt:  d.UpdatedAt,
-	}
+	return model.ReconstituteWallet(d.Id.Hex(), d.PlayerID, d.PlayerName, d.Coins, d.CreatedAt, d.UpdatedAt)
 }
 
 func shopItemFromDTO(d dto.ShopItem) *model.ShopItem {
@@ -118,21 +111,20 @@ func shopItemFromDTO(d dto.ShopItem) *model.ShopItem {
 		}
 	}
 
-	return &model.ShopItem{
-		Id:              d.Id.Hex(),
-		Code:            d.Code,
-		Name:            d.Name,
-		Description:     d.Description,
-		ImageURL:        d.ImageURL,
-		Price:           d.Price,
-		IsAvailable:     d.IsAvailable,
-		Type:            t,
-		Entries:         entries,
-		HasDiscount:     d.HasDiscount,
-		DiscountPercent: d.DiscountPercent,
-		CreatedAt:       d.CreatedAt,
-		UpdatedAt:       d.UpdatedAt,
+	privileges := make([]model.Privilege, len(d.Privileges))
+	for i, p := range d.Privileges {
+		privileges[i] = model.Privilege{
+			Text: p.Text,
+			Icon: p.Icon,
+		}
 	}
+
+	return model.ReconstituteShopItem(
+		d.Id.Hex(), d.Code, d.Name, d.Description, d.ImageURL,
+		d.Price, d.IsAvailable, t, entries,
+		d.HasDiscount, d.DiscountPercent, privileges,
+		d.DiscountStartsAt, d.DiscountEndsAt, d.CreatedAt, d.UpdatedAt,
+	)
 }
 
 func shopItemToDTO(m *model.ShopItem) dto.ShopItem {
@@ -151,17 +143,28 @@ func shopItemToDTO(m *model.ShopItem) dto.ShopItem {
 		}
 	}
 
+	privileges := make([]dto.PrivilegeDTO, len(m.Privileges))
+	for i, p := range m.Privileges {
+		privileges[i] = dto.PrivilegeDTO{
+			Text: p.Text,
+			Icon: p.Icon,
+		}
+	}
+
 	d := dto.ShopItem{
-		Code:            m.Code,
-		Name:            m.Name,
-		Description:     m.Description,
-		ImageURL:        m.ImageURL,
-		Price:           m.Price,
-		IsAvailable:     m.IsAvailable,
-		Type:            itemType,
-		Entries:         entries,
-		HasDiscount:     m.HasDiscount,
-		DiscountPercent: m.DiscountPercent,
+		Code:             m.Code,
+		Name:             m.Name,
+		Description:      m.Description,
+		ImageURL:         m.ImageURL,
+		Price:            m.Price,
+		IsAvailable:      m.IsAvailable,
+		Type:             itemType,
+		Entries:          entries,
+		HasDiscount:      m.HasDiscount,
+		DiscountPercent:  m.DiscountPercent,
+		Privileges:       privileges,
+		DiscountStartsAt: m.DiscountStartsAt,
+		DiscountEndsAt:   m.DiscountEndsAt,
 	}
 	if m.Id != "" {
 		if oid, err := mongox.ParseObjectID(m.Id); err == nil {
@@ -174,21 +177,11 @@ func shopItemToDTO(m *model.ShopItem) dto.ShopItem {
 }
 
 func purchaseFromDTO(d dto.Purchase) *model.Purchase {
-	return &model.Purchase{
-		Id:              d.Model.Id.Hex(),
-		PlayerID:        d.PlayerID,
-		PlayerName:      d.PlayerName,
-		ItemID:          d.ItemID,
-		ItemName:        d.ItemName,
-		PricePaid:       d.PricePaid,
-		BasePrice:       d.BasePrice,
-		DiscountPercent: d.DiscountPercent,
-		Status:          model.PurchaseStatus(d.Status),
-		CreatedAt:       d.CreatedAt,
-		RefundedAt:      d.RefundedAt,
-		IssuedAt:        d.IssuedAt,
-		IssuedBy:        d.IssuedBy,
-	}
+	return model.ReconstitutePurchase(
+		d.Model.Id.Hex(), d.PlayerID, d.PlayerName, d.ItemID, d.ItemName,
+		d.PricePaid, d.BasePrice, d.DiscountPercent,
+		model.PurchaseStatus(d.Status), d.CreatedAt, d.RefundedAt, d.IssuedAt, d.IssuedBy,
+	)
 }
 
 // purchaseToDTO builds a BSON-ready Purchase DTO from a domain model, reusing the supplied mongox.Model envelope.
@@ -210,13 +203,5 @@ func purchaseToDTO(m mongox.Model, p *model.Purchase) dto.Purchase {
 }
 
 func txFromDTO(d dto.Transaction) *model.Transaction {
-	return &model.Transaction{
-		Id:         d.Id.Hex(),
-		PlayerID:   d.PlayerID,
-		Amount:     d.Amount,
-		Type:       model.TxType(d.Type),
-		Reason:     d.Reason,
-		PurchaseID: d.PurchaseID,
-		CreatedAt:  d.CreatedAt,
-	}
+	return model.ReconstituteTransaction(d.Id.Hex(), d.PlayerID, d.Amount, model.TxType(d.Type), d.Reason, d.PurchaseID, d.CreatedAt)
 }

@@ -34,8 +34,7 @@ func (r *Repository) CreateTransaction(ctx context.Context, tx *model.Transactio
 		return nil, err
 	}
 
-	tx.Id = oid.Hex()
-	tx.CreatedAt = m.CreatedAt
+	tx.MarkCreated(oid.Hex(), m.CreatedAt)
 	return tx, nil
 }
 

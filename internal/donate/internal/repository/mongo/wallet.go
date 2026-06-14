@@ -85,7 +85,7 @@ func (r *Repository) UpdateWallet(
 		return err
 	}
 
-	updated.UpdatedAt = time.Now()
+	updated.Touch(time.Now())
 	_, err = r.walletColl.ReplaceOne(ctx, bson.M{"player_id": playerID}, bson.M{
 		"player_id":   updated.PlayerID,
 		"player_name": updated.PlayerName,

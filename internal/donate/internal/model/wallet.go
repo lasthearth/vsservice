@@ -23,6 +23,21 @@ func NewWallet(playerID, playerName string) *Wallet {
 	}
 }
 
+// ReconstituteWallet rebuilds a Wallet from persisted state. Repository use only.
+func ReconstituteWallet(id, playerID, playerName string, coins int64, createdAt, updatedAt time.Time) *Wallet {
+	return &Wallet{
+		Id:         id,
+		PlayerID:   playerID,
+		PlayerName: playerName,
+		Coins:      coins,
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
+	}
+}
+
+// Touch records the wallet's last modification time.
+func (w *Wallet) Touch(now time.Time) { w.UpdatedAt = now }
+
 // Deposit adds amount to the wallet. Amount must be positive.
 func (w *Wallet) Deposit(amount int64) error {
 	if amount <= 0 {

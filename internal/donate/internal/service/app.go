@@ -2,7 +2,6 @@ package service
 
 import (
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
-	"github.com/lasthearth/vsservice/internal/donate/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
@@ -27,6 +26,7 @@ type Opts struct {
 	Storage  Storage
 	Config   config.Config
 	Logger   logger.Logger
+	Mapper   Mapper
 	MediaURL *mediaurl.Validator
 }
 
@@ -36,7 +36,7 @@ func New(opts Opts) *Service {
 		storage:  opts.Storage,
 		cfg:      opts.Config,
 		log:      opts.Logger,
-		mapper:   &sermapper.MapperImpl{},
+		mapper:   opts.Mapper,
 		mediaUrl: opts.MediaURL,
 	}
 }

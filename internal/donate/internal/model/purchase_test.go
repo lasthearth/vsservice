@@ -1,13 +1,11 @@
-package model_test
+package model
 
 import (
 	"testing"
-
-	"github.com/lasthearth/vsservice/internal/donate/internal/model"
 )
 
 func TestNewPurchase(t *testing.T) {
-	p := model.NewPurchase("user-1", "Player1", "item-1", "Cool Skin", 400, 500, 20)
+	p := NewPurchase("user-1", "Player1", "item-1", "Cool Skin", 400, 500, 20)
 
 	if p.PlayerID != "user-1" {
 		t.Errorf("PlayerID = %v, want user-1", p.PlayerID)
@@ -24,7 +22,7 @@ func TestNewPurchase(t *testing.T) {
 	if p.DiscountPercent != 20 {
 		t.Errorf("DiscountPercent = %v, want 20", p.DiscountPercent)
 	}
-	if p.Status != model.PurchaseStatusActive {
+	if p.Status != PurchaseStatusActive {
 		t.Errorf("Status = %v, want active", p.Status)
 	}
 	if p.RefundedAt != nil {
@@ -33,7 +31,7 @@ func TestNewPurchase(t *testing.T) {
 }
 
 func TestNewPurchase_NoDiscount(t *testing.T) {
-	p := model.NewPurchase("user-1", "Player1", "item-1", "Cool Skin", 500, 500, 0)
+	p := NewPurchase("user-1", "Player1", "item-1", "Cool Skin", 500, 500, 0)
 
 	if p.PricePaid != 500 {
 		t.Errorf("PricePaid = %v, want 500", p.PricePaid)
@@ -49,18 +47,18 @@ func TestNewPurchase_NoDiscount(t *testing.T) {
 func TestPurchase_Refund(t *testing.T) {
 	tests := []struct {
 		name    string
-		build   func() *model.Purchase
+		build   func() *Purchase
 		wantErr bool
 	}{
 		{
 			"active purchase can be refunded",
-			func() *model.Purchase { return model.NewPurchase("u", "p", "i", "item", 100, 100, 0) },
+			func() *Purchase { return NewPurchase("u", "p", "i", "item", 100, 100, 0) },
 			false,
 		},
 		{
 			"already refunded purchase returns error",
-			func() *model.Purchase {
-				p := model.NewPurchase("u", "p", "i", "item", 100, 100, 0)
+			func() *Purchase {
+				p := NewPurchase("u", "p", "i", "item", 100, 100, 0)
 				_ = p.Refund()
 				return p
 			},
@@ -75,7 +73,7 @@ func TestPurchase_Refund(t *testing.T) {
 				t.Errorf("Refund() error = %v, wantErr %v", err, tc.wantErr)
 			}
 			if err == nil {
-				if p.Status != model.PurchaseStatusRefunded {
+				if p.Status != PurchaseStatusRefunded {
 					t.Errorf("Status = %v, want refunded", p.Status)
 				}
 				if p.RefundedAt == nil {
@@ -88,15 +86,15 @@ func TestPurchase_Refund(t *testing.T) {
 
 func TestPurchase_IsActive(t *testing.T) {
 	tests := []struct {
-		status model.PurchaseStatus
+		status PurchaseStatus
 		want   bool
 	}{
-		{model.PurchaseStatusActive, true},
-		{model.PurchaseStatusRefunded, false},
+		{PurchaseStatusActive, true},
+		{PurchaseStatusRefunded, false},
 	}
 	for _, tc := range tests {
 		t.Run(string(tc.status), func(t *testing.T) {
-			p := &model.Purchase{Status: tc.status}
+			p := &Purchase{Status: tc.status}
 			if got := p.IsActive(); got != tc.want {
 				t.Errorf("IsActive() = %v, want %v", got, tc.want)
 			}

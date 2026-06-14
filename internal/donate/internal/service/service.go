@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
 
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
+	"github.com/lasthearth/vsservice/internal/donate/internal/goverter"
 	"github.com/lasthearth/vsservice/internal/donate/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
 	pkgerr "github.com/lasthearth/vsservice/internal/pkg/ierror"
@@ -98,6 +100,12 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 		}
 	}
 
+	item.SetPrivileges(protoPrivilegesToModel(req.Privileges))
+	item.SetDiscountWindow(
+		goverter.TimestampToTimePtr(req.DiscountStartsAt),
+		goverter.TimestampToTimePtr(req.DiscountEndsAt),
+	)
+
 	// Validate entry image URLs for kit
 	for _, e := range req.Entries {
 		if e.ImageUrl != "" {
@@ -117,7 +125,9 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 		return nil, status.Error(codes.Internal, "failed to create shop item")
 	}
 
-	return &donatev1.CreateShopItemResponse{Item: s.mapper.ToShopItemProto(created)}, nil
+	pb := s.mapper.ToShopItemProto(created)
+	s.fillNowFields(pb, created)
+	return &donatev1.CreateShopItemResponse{Item: pb}, nil
 }
 
 func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopItemRequest) (*donatev1.UpdateShopItemResponse, error) {
@@ -155,21 +165,25 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 		}
 
 		u := model.ShopItemUpdate{
-			Code:            req.Code,
-			Name:            req.Name,
-			Description:     req.Description,
-			ImageURL:        imageURL,
-			Price:           req.Price,
-			IsAvailable:     req.IsAvailable,
-			Type:            itemType,
-			Entries:         entries,
-			HasDiscount:     req.HasDiscount,
-			DiscountPercent: req.DiscountPercent,
+			Code:             req.Code,
+			Name:             req.Name,
+			Description:      req.Description,
+			ImageURL:         imageURL,
+			Price:            req.Price,
+			IsAvailable:      req.IsAvailable,
+			Type:             itemType,
+			Entries:          entries,
+			HasDiscount:      req.HasDiscount,
+			DiscountPercent:  req.DiscountPercent,
+			Privileges:       protoPrivilegesToModel(req.Privileges),
+			DiscountStartsAt: goverter.TimestampToTimePtr(req.DiscountStartsAt),
+			DiscountEndsAt:   goverter.TimestampToTimePtr(req.DiscountEndsAt),
 		}
 		item.Apply(u)
 
 		if !req.HasDiscount {
 			item.ClearDiscount()
+			item.SetDiscountWindow(nil, nil)
 		}
 
 		if err := item.Validate(); err != nil {
@@ -185,7 +199,9 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 		return nil, status.Error(codes.Internal, "failed to update shop item")
 	}
 
-	return &donatev1.UpdateShopItemResponse{Item: s.mapper.ToShopItemProto(updated)}, nil
+	pb := s.mapper.ToShopItemProto(updated)
+	s.fillNowFields(pb, updated)
+	return &donatev1.UpdateShopItemResponse{Item: pb}, nil
 }
 
 func (s *Service) DeleteShopItem(ctx context.Context, req *donatev1.DeleteShopItemRequest) (*donatev1.DeleteShopItemResponse, error) {
@@ -311,7 +327,12 @@ func (s *Service) ListShopItems(ctx context.Context, _ *donatev1.ListShopItemsRe
 		return nil, status.Error(codes.Internal, "failed to list shop items")
 	}
 
-	return &donatev1.ListShopItemsResponse{Items: s.mapper.ToShopItemsProto(items)}, nil
+	now := time.Now()
+	pbItems := s.mapper.ToShopItemsProto(items)
+	for i, m := range items {
+		s.fillNowFieldsAt(pbItems[i], m, now)
+	}
+	return &donatev1.ListShopItemsResponse{Items: pbItems}, nil
 }
 
 func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*donatev1.BuyItemResponse, error) {
@@ -359,6 +380,18 @@ func isDomainError(err error, code codes.Code) bool {
 	return errors.As(err, &de) && de.Code == code
 }
 
+// protoPrivilegesToModel converts proto Privilege slice to model Privilege slice.
+func protoPrivilegesToModel(ps []*donatev1.Privilege) []model.Privilege {
+	result := make([]model.Privilege, len(ps))
+	for i, p := range ps {
+		result[i] = model.Privilege{
+			Text: p.Text,
+			Icon: p.Icon,
+		}
+	}
+	return result
+}
+
 // protoEntriesToModel converts proto KitEntry slice to model KitEntry slice.
 func protoEntriesToModel(entries []*donatev1.KitEntry) ([]model.KitEntry, error) {
 	result := make([]model.KitEntry, len(entries))
@@ -383,4 +416,15 @@ func itemTypeFromProto(t donatev1.ItemType) string {
 	default:
 		return ""
 	}
+}
+
+// fillNowFields stamps DiscountActive and EffectivePrice on pb using time.Now().
+func (s *Service) fillNowFields(pb *donatev1.ShopItem, m *model.ShopItem) {
+	s.fillNowFieldsAt(pb, m, time.Now())
+}
+
+// fillNowFieldsAt stamps DiscountActive and EffectivePrice on pb using a shared now.
+func (s *Service) fillNowFieldsAt(pb *donatev1.ShopItem, m *model.ShopItem, now time.Time) {
+	pb.DiscountActive = m.DiscountActive(now)
+	pb.EffectivePrice = m.EffectivePriceAt(now)
 }
