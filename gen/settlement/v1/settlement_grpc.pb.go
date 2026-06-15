@@ -35,6 +35,7 @@ const (
 	SettlementService_InviteMember_FullMethodName            = "/settlement.v1.SettlementService/InviteMember"
 	SettlementService_RevokeInvitation_FullMethodName        = "/settlement.v1.SettlementService/RevokeInvitation"
 	SettlementService_UpdateSettlement_FullMethodName        = "/settlement.v1.SettlementService/UpdateSettlement"
+	SettlementService_AdminUpdateSettlement_FullMethodName   = "/settlement.v1.SettlementService/AdminUpdateSettlement"
 	SettlementService_AddTagToSettlement_FullMethodName      = "/settlement.v1.SettlementService/AddTagToSettlement"
 	SettlementService_RemoveTagFromSettlement_FullMethodName = "/settlement.v1.SettlementService/RemoveTagFromSettlement"
 )
@@ -161,6 +162,14 @@ type SettlementServiceClient interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	UpdateSettlement(ctx context.Context, in *UpdateSettlementRequest, opts ...grpc.CallOption) (*UpdateSettlementResponse, error)
+	// Admin update of settlement diplomacy status. Requires settlements:manage scope.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found
+	//   - PERMISSION_DENIED (403): missing settlements:manage scope
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	AdminUpdateSettlement(ctx context.Context, in *AdminUpdateSettlementRequest, opts ...grpc.CallOption) (*AdminUpdateSettlementResponse, error)
 	// Add a tag to a settlement. Requires tags:manage privilege.
 	//
 	// Errors:
@@ -349,6 +358,16 @@ func (c *settlementServiceClient) UpdateSettlement(ctx context.Context, in *Upda
 	return out, nil
 }
 
+func (c *settlementServiceClient) AdminUpdateSettlement(ctx context.Context, in *AdminUpdateSettlementRequest, opts ...grpc.CallOption) (*AdminUpdateSettlementResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AdminUpdateSettlementResponse)
+	err := c.cc.Invoke(ctx, SettlementService_AdminUpdateSettlement_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *settlementServiceClient) AddTagToSettlement(ctx context.Context, in *AddTagToSettlementRequest, opts ...grpc.CallOption) (*AddTagToSettlementResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AddTagToSettlementResponse)
@@ -491,6 +510,14 @@ type SettlementServiceServer interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	UpdateSettlement(context.Context, *UpdateSettlementRequest) (*UpdateSettlementResponse, error)
+	// Admin update of settlement diplomacy status. Requires settlements:manage scope.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found
+	//   - PERMISSION_DENIED (403): missing settlements:manage scope
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	AdminUpdateSettlement(context.Context, *AdminUpdateSettlementRequest) (*AdminUpdateSettlementResponse, error)
 	// Add a tag to a settlement. Requires tags:manage privilege.
 	//
 	// Errors:
@@ -565,6 +592,9 @@ func (UnimplementedSettlementServiceServer) RevokeInvitation(context.Context, *R
 }
 func (UnimplementedSettlementServiceServer) UpdateSettlement(context.Context, *UpdateSettlementRequest) (*UpdateSettlementResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateSettlement not implemented")
+}
+func (UnimplementedSettlementServiceServer) AdminUpdateSettlement(context.Context, *AdminUpdateSettlementRequest) (*AdminUpdateSettlementResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AdminUpdateSettlement not implemented")
 }
 func (UnimplementedSettlementServiceServer) AddTagToSettlement(context.Context, *AddTagToSettlementRequest) (*AddTagToSettlementResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddTagToSettlement not implemented")
@@ -880,6 +910,24 @@ func _SettlementService_UpdateSettlement_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SettlementService_AdminUpdateSettlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdminUpdateSettlementRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).AdminUpdateSettlement(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_AdminUpdateSettlement_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).AdminUpdateSettlement(ctx, req.(*AdminUpdateSettlementRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SettlementService_AddTagToSettlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddTagToSettlementRequest)
 	if err := dec(in); err != nil {
@@ -986,6 +1034,10 @@ var SettlementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateSettlement",
 			Handler:    _SettlementService_UpdateSettlement_Handler,
+		},
+		{
+			MethodName: "AdminUpdateSettlement",
+			Handler:    _SettlementService_AdminUpdateSettlement_Handler,
 		},
 		{
 			MethodName: "AddTagToSettlement",

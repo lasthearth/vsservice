@@ -1,7 +1,10 @@
 package model
 
 import (
+	"errors"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 type SettlementType string
@@ -20,6 +23,15 @@ const (
 	// SettlementTypeGuild     SettlementType = "guild"
 	// SettlementTypeGuildLvl2 SettlementType = "guild_lvl2"
 )
+
+func (s *Settlement) SetDiplomacy(diplomacy string) error {
+	if diplomacy == "" {
+		return errors.New("diplomacy cannot be empty")
+	}
+	r, size := utf8.DecodeRuneInString(diplomacy)
+	s.Diplomacy = string(unicode.ToUpper(r)) + diplomacy[size:]
+	return nil
+}
 
 func (s *Settlement) SetProfile(name, description string, attachments []Attachment) {
 	s.Name = name

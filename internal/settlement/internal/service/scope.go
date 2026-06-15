@@ -10,5 +10,6 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "Reject"):                  interceptor.Scope("settlements:manage"),
 		interceptor.Method(srvName + "AddTagToSettlement"):      interceptor.Scope("tags:manage"),
 		interceptor.Method(srvName + "RemoveTagFromSettlement"): interceptor.Scope("tags:manage"),
+		interceptor.Method(srvName + "AdminUpdateSettlement"):   interceptor.Scope("settlements:manage"),
 	}
 }

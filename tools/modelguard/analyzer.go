@@ -13,7 +13,7 @@ import (
 
 // defaultModelPackagePattern matches domain model packages such as
 // ".../internal/donate/internal/model".
-const defaultModelPackagePattern = `(^|/)internal/[^/]+/internal/model$`
+const defaultModelPackagePattern = `(^|/)internal/[^/]+(/internal)?/model$`
 
 func newAnalyzer(s Settings) (*analysis.Analyzer, error) {
 	modelPattern := s.ModelPackagePattern

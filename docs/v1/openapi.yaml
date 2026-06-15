@@ -6,6 +6,46 @@ info:
     name: lasthearth
   version: "1.0"
 paths:
+  /v1/admin/settlements/{id}:
+    patch:
+      tags:
+        - SettlementService
+      summary: Admin update of settlement diplomacy status. Requires settlements:manage scope.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): settlement not found
+           - PERMISSION_DENIED (403): missing settlements:manage scope
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_AdminUpdateSettlement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                diplomacy:
+                  type: string
+                  title: diplomacy
+              title: AdminUpdateSettlementRequest
+              required:
+                - diplomacy
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.AdminUpdateSettlementResponse'
   /v1/donate/me/balance:
     get:
       tags:
@@ -3948,6 +3988,28 @@ components:
       title: AddTagToSettlementResponse
       additionalProperties: false
       description: Response from adding a tag to a settlement
+    settlement.v1.AdminUpdateSettlementRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        diplomacy:
+          type: string
+          title: diplomacy
+      title: AdminUpdateSettlementRequest
+      required:
+        - id
+        - diplomacy
+      additionalProperties: false
+    settlement.v1.AdminUpdateSettlementResponse:
+      type: object
+      properties:
+        settlement:
+          title: settlement
+          $ref: '#/components/schemas/settlement.v1.Settlement'
+      title: AdminUpdateSettlementResponse
+      additionalProperties: false
     settlement.v1.ApproveRequest:
       type: object
       properties:

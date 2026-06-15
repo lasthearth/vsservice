@@ -194,6 +194,20 @@ service SettlementService {
     };
   }
 
+  // Admin update of settlement diplomacy status. Requires settlements:manage scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - PERMISSION_DENIED (403): missing settlements:manage scope
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc AdminUpdateSettlement(AdminUpdateSettlementRequest) returns (AdminUpdateSettlementResponse) {
+    option (google.api.http) = {
+      patch: "/v1/admin/settlements/{id}"
+      body: "*"
+    };
+  }
+
   // Add a tag to a settlement. Requires tags:manage privilege.
   //
   // Errors:
@@ -407,6 +421,15 @@ message RemoveTagFromSettlementRequest {
 
 // Response from removing a tag from a settlement
 message RemoveTagFromSettlementResponse {
+  Settlement settlement = 1;
+}
+
+message AdminUpdateSettlementRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string diplomacy = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message AdminUpdateSettlementResponse {
   Settlement settlement = 1;
 }
 

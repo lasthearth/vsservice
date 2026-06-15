@@ -11,6 +11,28 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// AdminUpdateSettlement implements settlementv1.SettlementServiceServer.
+func (s *Service) AdminUpdateSettlement(ctx context.Context, req *settlementv1.AdminUpdateSettlementRequest) (*settlementv1.AdminUpdateSettlementResponse, error) {
+	l := s.log.WithMethod("AdminUpdateSettlement").With(zap.String("id", req.GetId()))
+
+	updated, err := s.dbRepo.UpdateSettlement(ctx, req.GetId(),
+		func(_ context.Context, settlement *model.Settlement) (*model.Settlement, error) {
+			if err := settlement.SetDiplomacy(req.GetDiplomacy()); err != nil {
+				return nil, status.Error(codes.InvalidArgument, err.Error())
+			}
+			return settlement, nil
+		},
+	)
+	if err != nil {
+		l.Error("failed to update settlement diplomacy", zap.Error(err))
+		return nil, err
+	}
+
+	return &settlementv1.AdminUpdateSettlementResponse{
+		Settlement: s.mapper.ToSettlementProto(*updated),
+	}, nil
+}
+
 // UpdateSettlement implements settlementv1.SettlementServiceServer.
 func (s *Service) UpdateSettlement(ctx context.Context, req *settlementv1.UpdateSettlementRequest) (*settlementv1.UpdateSettlementResponse, error) {
 	l := s.log.WithMethod("UpdateSettlement").With(zap.String("id", req.GetId()))

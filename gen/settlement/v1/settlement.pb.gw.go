@@ -625,6 +625,48 @@ func local_request_SettlementService_UpdateSettlement_0(ctx context.Context, mar
 	return msg, metadata, err
 }
 
+func request_SettlementService_AdminUpdateSettlement_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq AdminUpdateSettlementRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	val, ok := pathParams["id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
+	}
+	protoReq.Id, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
+	}
+	msg, err := client.AdminUpdateSettlement(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_SettlementService_AdminUpdateSettlement_0(ctx context.Context, marshaler runtime.Marshaler, server SettlementServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq AdminUpdateSettlementRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	val, ok := pathParams["id"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
+	}
+	protoReq.Id, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
+	}
+	msg, err := server.AdminUpdateSettlement(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 func request_SettlementService_AddTagToSettlement_0(ctx context.Context, marshaler runtime.Marshaler, client SettlementServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq AddTagToSettlementRequest
@@ -1045,6 +1087,26 @@ func RegisterSettlementServiceHandlerServer(ctx context.Context, mux *runtime.Se
 		}
 		forward_SettlementService_UpdateSettlement_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodPatch, pattern_SettlementService_AdminUpdateSettlement_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/settlement.v1.SettlementService/AdminUpdateSettlement", runtime.WithHTTPPathPattern("/v1/admin/settlements/{id}"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_SettlementService_AdminUpdateSettlement_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_SettlementService_AdminUpdateSettlement_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodPost, pattern_SettlementService_AddTagToSettlement_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -1397,6 +1459,23 @@ func RegisterSettlementServiceHandlerClient(ctx context.Context, mux *runtime.Se
 		}
 		forward_SettlementService_UpdateSettlement_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodPatch, pattern_SettlementService_AdminUpdateSettlement_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/settlement.v1.SettlementService/AdminUpdateSettlement", runtime.WithHTTPPathPattern("/v1/admin/settlements/{id}"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_SettlementService_AdminUpdateSettlement_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_SettlementService_AdminUpdateSettlement_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodPost, pattern_SettlementService_AddTagToSettlement_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -1451,6 +1530,7 @@ var (
 	pattern_SettlementService_InviteMember_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "settlement_id", "invitations"}, ""))
 	pattern_SettlementService_RevokeInvitation_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "settlements", "settlement_id", "invitations", "invitation_id"}, "revoke"))
 	pattern_SettlementService_UpdateSettlement_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "settlements", "id"}, ""))
+	pattern_SettlementService_AdminUpdateSettlement_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "admin", "settlements", "id"}, ""))
 	pattern_SettlementService_AddTagToSettlement_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "settlements", "settlement_id", "tags"}, ""))
 	pattern_SettlementService_RemoveTagFromSettlement_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "settlements", "settlement_id", "tags", "tag_id"}, ""))
 )
@@ -1472,6 +1552,7 @@ var (
 	forward_SettlementService_InviteMember_0            = runtime.ForwardResponseMessage
 	forward_SettlementService_RevokeInvitation_0        = runtime.ForwardResponseMessage
 	forward_SettlementService_UpdateSettlement_0        = runtime.ForwardResponseMessage
+	forward_SettlementService_AdminUpdateSettlement_0   = runtime.ForwardResponseMessage
 	forward_SettlementService_AddTagToSettlement_0      = runtime.ForwardResponseMessage
 	forward_SettlementService_RemoveTagFromSettlement_0 = runtime.ForwardResponseMessage
 )
