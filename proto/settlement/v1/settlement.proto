@@ -179,6 +179,21 @@ service SettlementService {
     };
   }
 
+  // Update settlement name, description and attachments. Caller must be the settlement leader.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - PERMISSION_DENIED (403): caller is not the settlement leader
+  //   - INVALID_ARGUMENT (400): attachments is empty; invalid attachment url
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc UpdateSettlement(UpdateSettlementRequest) returns (UpdateSettlementResponse) {
+    option (google.api.http) = {
+      patch: "/v1/settlements/{id}"
+      body: "*"
+    };
+  }
+
   // Add a tag to a settlement. Requires tags:manage privilege.
   //
   // Errors:
@@ -392,5 +407,21 @@ message RemoveTagFromSettlementRequest {
 
 // Response from removing a tag from a settlement
 message RemoveTagFromSettlementResponse {
+  Settlement settlement = 1;
+}
+
+message UpdateSettlementRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  string description = 3 [(google.api.field_behavior) = REQUIRED];
+  repeated UpdateAttachment attachments = 4 [(google.api.field_behavior) = REQUIRED];
+
+  message UpdateAttachment {
+    string url = 1 [(google.api.field_behavior) = REQUIRED];
+    string description = 2 [(google.api.field_behavior) = REQUIRED];
+  }
+}
+
+message UpdateSettlementResponse {
   Settlement settlement = 1;
 }

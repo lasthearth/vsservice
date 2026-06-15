@@ -73,6 +73,12 @@ type SettlementDbRepository interface {
 	IsMemberOrLeader(ctx context.Context, settlementID, userID string) error
 	IsLeaderOfSettlement(ctx context.Context, settlementID, userID string) error
 
+	UpdateSettlement(
+		ctx context.Context,
+		id string,
+		updateFn func(ctx context.Context, s *model.Settlement) (*model.Settlement, error),
+	) (*model.Settlement, error)
+
 	AddTag(ctx context.Context, settlementID, tagID string) error
 	RemoveTag(ctx context.Context, settlementID, tagID string) error
 

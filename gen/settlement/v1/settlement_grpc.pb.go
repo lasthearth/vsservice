@@ -34,6 +34,7 @@ const (
 	SettlementService_RejectInvitation_FullMethodName        = "/settlement.v1.SettlementService/RejectInvitation"
 	SettlementService_InviteMember_FullMethodName            = "/settlement.v1.SettlementService/InviteMember"
 	SettlementService_RevokeInvitation_FullMethodName        = "/settlement.v1.SettlementService/RevokeInvitation"
+	SettlementService_UpdateSettlement_FullMethodName        = "/settlement.v1.SettlementService/UpdateSettlement"
 	SettlementService_AddTagToSettlement_FullMethodName      = "/settlement.v1.SettlementService/AddTagToSettlement"
 	SettlementService_RemoveTagFromSettlement_FullMethodName = "/settlement.v1.SettlementService/RemoveTagFromSettlement"
 )
@@ -151,6 +152,15 @@ type SettlementServiceClient interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	RevokeInvitation(ctx context.Context, in *RevokeInvitationRequest, opts ...grpc.CallOption) (*RevokeInvitationResponse, error)
+	// Update settlement name, description and attachments. Caller must be the settlement leader.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found
+	//   - PERMISSION_DENIED (403): caller is not the settlement leader
+	//   - INVALID_ARGUMENT (400): attachments is empty; invalid attachment url
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	UpdateSettlement(ctx context.Context, in *UpdateSettlementRequest, opts ...grpc.CallOption) (*UpdateSettlementResponse, error)
 	// Add a tag to a settlement. Requires tags:manage privilege.
 	//
 	// Errors:
@@ -329,6 +339,16 @@ func (c *settlementServiceClient) RevokeInvitation(ctx context.Context, in *Revo
 	return out, nil
 }
 
+func (c *settlementServiceClient) UpdateSettlement(ctx context.Context, in *UpdateSettlementRequest, opts ...grpc.CallOption) (*UpdateSettlementResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateSettlementResponse)
+	err := c.cc.Invoke(ctx, SettlementService_UpdateSettlement_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *settlementServiceClient) AddTagToSettlement(ctx context.Context, in *AddTagToSettlementRequest, opts ...grpc.CallOption) (*AddTagToSettlementResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AddTagToSettlementResponse)
@@ -462,6 +482,15 @@ type SettlementServiceServer interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error)
+	// Update settlement name, description and attachments. Caller must be the settlement leader.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found
+	//   - PERMISSION_DENIED (403): caller is not the settlement leader
+	//   - INVALID_ARGUMENT (400): attachments is empty; invalid attachment url
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	UpdateSettlement(context.Context, *UpdateSettlementRequest) (*UpdateSettlementResponse, error)
 	// Add a tag to a settlement. Requires tags:manage privilege.
 	//
 	// Errors:
@@ -533,6 +562,9 @@ func (UnimplementedSettlementServiceServer) InviteMember(context.Context, *Invit
 }
 func (UnimplementedSettlementServiceServer) RevokeInvitation(context.Context, *RevokeInvitationRequest) (*RevokeInvitationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RevokeInvitation not implemented")
+}
+func (UnimplementedSettlementServiceServer) UpdateSettlement(context.Context, *UpdateSettlementRequest) (*UpdateSettlementResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateSettlement not implemented")
 }
 func (UnimplementedSettlementServiceServer) AddTagToSettlement(context.Context, *AddTagToSettlementRequest) (*AddTagToSettlementResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddTagToSettlement not implemented")
@@ -830,6 +862,24 @@ func _SettlementService_RevokeInvitation_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SettlementService_UpdateSettlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateSettlementRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).UpdateSettlement(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_UpdateSettlement_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).UpdateSettlement(ctx, req.(*UpdateSettlementRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SettlementService_AddTagToSettlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddTagToSettlementRequest)
 	if err := dec(in); err != nil {
@@ -932,6 +982,10 @@ var SettlementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RevokeInvitation",
 			Handler:    _SettlementService_RevokeInvitation_Handler,
+		},
+		{
+			MethodName: "UpdateSettlement",
+			Handler:    _SettlementService_UpdateSettlement_Handler,
 		},
 		{
 			MethodName: "AddTagToSettlement",

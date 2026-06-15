@@ -113,6 +113,46 @@ func (r *Repository) Update(ctx context.Context, opts service.UpdateSettlementOp
 	return nil
 }
 
+// UpdateSettlement implements service.SettlementDbRepository.
+func (r *Repository) UpdateSettlement(
+	ctx context.Context,
+	id string,
+	updateFn func(ctx context.Context, s *model.Settlement) (*model.Settlement, error),
+) (*model.Settlement, error) {
+	l := r.log.WithMethod("UpdateSettlement").With(zap.String("id", id))
+
+	oid, err := mongomodel.ParseObjectID(id)
+	if err != nil {
+		return nil, repoerr.ErrNotFound
+	}
+
+	var d settlementdto.Settlement
+	if err := r.setColl.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, repoerr.ErrNotFound
+		}
+		l.Error("failed to find settlement", zap.Error(err))
+		return nil, err
+	}
+
+	m := r.mapper.FromSettlementDTO(d)
+	updated, err := updateFn(ctx, &m)
+	if err != nil {
+		return nil, err
+	}
+
+	updatedDTO := r.mapper.ToSettlementDTO(*updated)
+	updatedDTO.Model = d.Model
+	updatedDTO.UpdatedAt = time.Now()
+
+	if _, err := r.setColl.ReplaceOne(ctx, bson.M{"_id": oid}, updatedDTO); err != nil {
+		l.Error("failed to replace settlement", zap.Error(err))
+		return nil, err
+	}
+
+	return updated, nil
+}
+
 // GetSettlement implements service.SettlementDbRepository.
 func (r *Repository) GetSettlement(ctx context.Context, id string) (*model.Settlement, error) {
 	r.log.Debug("retrieving settlement by ID", zap.String("settlement_id", id))

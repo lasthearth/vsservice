@@ -1451,6 +1451,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/settlement.v1.GetResponse'
+    patch:
+      tags:
+        - SettlementService
+      summary: Update settlement name, description and attachments. Caller must be the settlement leader.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): settlement not found
+           - PERMISSION_DENIED (403): caller is not the settlement leader
+           - INVALID_ARGUMENT (400): attachments is empty; invalid attachment url
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_UpdateSettlement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  title: name
+                description:
+                  type: string
+                  title: description
+                attachments:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/settlement.v1.UpdateSettlementRequest.UpdateAttachment'
+                  title: attachments
+              title: UpdateSettlementRequest
+              required:
+                - name
+                - description
+                - attachments
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.UpdateSettlementResponse'
   /v1/settlements/{id}/verification:approve:
     post:
       tags:
@@ -4383,6 +4433,52 @@ components:
         - id
       additionalProperties: false
       description: Reference to tag in other messages
+    settlement.v1.UpdateSettlementRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        description:
+          type: string
+          title: description
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/settlement.v1.UpdateSettlementRequest.UpdateAttachment'
+          title: attachments
+      title: UpdateSettlementRequest
+      required:
+        - id
+        - name
+        - description
+        - attachments
+      additionalProperties: false
+    settlement.v1.UpdateSettlementRequest.UpdateAttachment:
+      type: object
+      properties:
+        url:
+          type: string
+          title: url
+        description:
+          type: string
+          title: description
+      title: UpdateAttachment
+      required:
+        - url
+        - description
+      additionalProperties: false
+    settlement.v1.UpdateSettlementResponse:
+      type: object
+      properties:
+        settlement:
+          title: settlement
+          $ref: '#/components/schemas/settlement.v1.Settlement'
+      title: UpdateSettlementResponse
+      additionalProperties: false
     settlement.v1.UpdateTagRequest:
       type: object
       properties:

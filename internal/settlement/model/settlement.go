@@ -21,6 +21,12 @@ const (
 	// SettlementTypeGuildLvl2 SettlementType = "guild_lvl2"
 )
 
+func (s *Settlement) SetProfile(name, description string, attachments []Attachment) {
+	s.Name = name
+	s.Description = description
+	s.Attachments = attachments
+}
+
 // Settlement represents a settlement in the game
 type Settlement struct {
 	Id          string
