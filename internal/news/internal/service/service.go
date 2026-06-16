@@ -63,12 +63,16 @@ func (s *Service) ListNews(ctx context.Context, req *newsv1.ListNewsRequest) (*n
 		return nil, err
 	}
 
-	userID, _ := interceptor.GetUserID(ctx)
+	userID, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	s.logger.Info("userid news inc", zap.String("user_id", userID))
 	for _, v := range news {
-		if userID != "" {
-			if err := s.repo.IncrementViewCount(ctx, v.Id, userID); err != nil {
-				s.logger.Error("failed to increment view count", zap.Error(err))
-			}
+		s.logger.Info("inc news")
+		if err := s.repo.IncrementViewCount(ctx, v.Id, userID); err != nil {
+			s.logger.Error("failed to increment view count", zap.Error(err))
 		}
 	}
 
