@@ -37,16 +37,26 @@ func (r *Repository) AddCoinsToWallet(ctx context.Context, playerID, playerName 
 
 	now := time.Now()
 	filter := bson.M{"player_id": playerID}
+
+	setFields := bson.D{{Key: "updated_at", Value: now}}
+	setOnInsertFields := bson.D{
+		{Key: "_id", Value: mongox.NewModel().Id},
+		{Key: "created_at", Value: now},
+	}
+	// An empty playerName means the caller has no display name to report
+	// (e.g. cross-domain credits like referral rewards). Only overwrite an
+	// existing wallet's player_name when a non-empty name is supplied, so
+	// such calls don't blank out a name set by a previous call.
+	if playerName != "" {
+		setFields = append(setFields, bson.E{Key: "player_name", Value: playerName})
+	} else {
+		setOnInsertFields = append(setOnInsertFields, bson.E{Key: "player_name", Value: playerName})
+	}
+
 	update := bson.D{
 		{Key: "$inc", Value: bson.D{{Key: "coins", Value: amount}}},
-		{Key: "$set", Value: bson.D{
-			{Key: "updated_at", Value: now},
-			{Key: "player_name", Value: playerName},
-		}},
-		{Key: "$setOnInsert", Value: bson.D{
-			{Key: "_id", Value: mongox.NewModel().Id},
-			{Key: "created_at", Value: now},
-		}},
+		{Key: "$set", Value: setFields},
+		{Key: "$setOnInsert", Value: setOnInsertFields},
 	}
 	opts := options.FindOneAndUpdate().
 		SetUpsert(true).
