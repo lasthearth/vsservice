@@ -2,6 +2,7 @@ package donateuc
 
 import (
 	"context"
+	"errors"
 
 	repository "github.com/lasthearth/vsservice/internal/donate/internal/repository/mongo"
 	"go.uber.org/fx"
@@ -32,6 +33,10 @@ func NewAddCoinsUseCase(opts Opts) *AddCoinsUseCase {
 // wallet if it does not exist. The resulting balance is discarded; callers
 // outside the donate domain only need to know whether the operation succeeded.
 func (uc *AddCoinsUseCase) AddCoins(ctx context.Context, playerID, playerName string, amount int64) error {
+	if amount <= 0 {
+		return errors.New("amount must be positive")
+	}
+
 	_, err := uc.repo.AddCoinsToWallet(ctx, playerID, playerName, amount)
 	if err != nil {
 		return err
