@@ -116,10 +116,13 @@ func (r *Repository) GetCodeByCode(ctx context.Context, code string) (*model.Ref
 	return codeFromDTO(d), nil
 }
 
-// UpsertCode inserts code if no referral code exists yet for its player_id.
-// Implemented as an update-with-upsert keyed on player_id so concurrent
-// calls for the same player cannot race into a duplicate-key error.
-func (r *Repository) UpsertCode(ctx context.Context, code *model.ReferralCode) error {
+// UpsertCode inserts code if no referral code exists yet for its player_id,
+// and returns the document that ended up persisted. Implemented as a
+// find-and-update-with-upsert keyed on player_id so concurrent calls for the
+// same player cannot race into a duplicate-key error; if a concurrent call
+// already inserted a code for the same player_id, the returned code reflects
+// that winning document rather than the input.
+func (r *Repository) UpsertCode(ctx context.Context, code *model.ReferralCode) (*model.ReferralCode, error) {
 	l := r.log.With(zap.String("method", "UpsertCode"), zap.String("player_id", code.PlayerID))
 
 	envelope := mongox.NewModel()
@@ -134,18 +137,24 @@ func (r *Repository) UpsertCode(ctx context.Context, code *model.ReferralCode) e
 			{Key: "updated_at", Value: envelope.UpdatedAt},
 		}},
 	}
-	opts := options.UpdateOne().SetUpsert(true)
+	opts := options.FindOneAndUpdate().
+		SetUpsert(true).
+		SetReturnDocument(options.After)
 
-	_, err := r.codesColl.UpdateOne(ctx, filter, update, opts)
+	var d dto.ReferralCode
+	err := r.codesColl.FindOneAndUpdate(ctx, filter, update, opts).Decode(&d)
 	if err != nil {
 		l.Error("failed to upsert referral code", zap.Error(err))
-		return err
+		return nil, err
 	}
 
-	return nil
+	return codeFromDTO(d), nil
 }
 
-// CreateEvent persists a new referral event.
+// CreateEvent persists a new referral event. Returns ierror.ErrAlreadyReferred
+// if refereePlayerID has already been recorded as a referee in another
+// event (enforced by the unique index on referee_player_id), which can
+// happen if a concurrent call won a race against a prior HasReferee check.
 func (r *Repository) CreateEvent(ctx context.Context, event *model.ReferralEvent) error {
 	l := r.log.With(
 		zap.String("method", "CreateEvent"),
@@ -161,6 +170,9 @@ func (r *Repository) CreateEvent(ctx context.Context, event *model.ReferralEvent
 	}
 
 	if _, err := r.eventsColl.InsertOne(ctx, d); err != nil {
+		if mgo.IsDuplicateKeyError(err) {
+			return ierror.ErrAlreadyReferred
+		}
 		l.Error("failed to create referral event", zap.Error(err))
 		return err
 	}
