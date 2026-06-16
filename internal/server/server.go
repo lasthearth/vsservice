@@ -150,12 +150,12 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 		return errors.Wrap(err, "register news service handler")
 	}
 
-	if err := donatev1.RegisterDonateServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
-		return errors.Wrap(err, "register donate service handler")
-	}
-
 	if err := referralv1.RegisterReferralServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register referral service handler")
+	}
+
+	if err := donatev1.RegisterDonateServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register donate service handler")
 	}
 
 	if err := hgv1.RegisterHungerGamesServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
