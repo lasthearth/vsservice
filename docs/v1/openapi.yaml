@@ -1154,11 +1154,11 @@ paths:
     post:
       tags:
         - ReferralService
-      summary: |-
-        Apply a referral code to the current player. Called once after first login;
-         the frontend extracts the code from a ?ref= URL parameter.
+      summary: Apply a referral code to the current player.
       description: |-
-        Errors:
+        Called once after first login; the frontend extracts the code from a ?ref= URL parameter.
+
+         Errors:
            - UNAUTHENTICATED (401): missing or invalid auth token
            - NOT_FOUND (404): code does not exist
            - FAILED_PRECONDITION (409): code already used by this player, or attempting to use own code

@@ -41,8 +41,9 @@ type ReferralServiceClient interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	GetMyReferralStats(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetMyReferralStatsResponse, error)
-	// Apply a referral code to the current player. Called once after first login;
-	// the frontend extracts the code from a ?ref= URL parameter.
+	// Apply a referral code to the current player.
+	//
+	// Called once after first login; the frontend extracts the code from a ?ref= URL parameter.
 	//
 	// Errors:
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
@@ -106,8 +107,9 @@ type ReferralServiceServer interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	GetMyReferralStats(context.Context, *emptypb.Empty) (*GetMyReferralStatsResponse, error)
-	// Apply a referral code to the current player. Called once after first login;
-	// the frontend extracts the code from a ?ref= URL parameter.
+	// Apply a referral code to the current player.
+	//
+	// Called once after first login; the frontend extracts the code from a ?ref= URL parameter.
 	//
 	// Errors:
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
