@@ -2,6 +2,7 @@ package donate
 
 import (
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
+	"github.com/lasthearth/vsservice/internal/donate/donateuc"
 	repository "github.com/lasthearth/vsservice/internal/donate/internal/repository/mongo"
 	"github.com/lasthearth/vsservice/internal/donate/internal/service"
 	"github.com/lasthearth/vsservice/internal/donate/internal/service/sermapper"
@@ -33,11 +34,16 @@ var App = fx.Options(
 			fx.Annotate(
 				repository.New,
 				fx.As(new(service.DonateRepository)),
+				fx.As(new(donateuc.WalletRepo)),
 			),
 			fx.Annotate(
 				pkgstorage.New,
 				fx.As(new(service.Storage)),
 			),
+		),
+
+		fx.Provide(
+			donateuc.NewAddCoinsUseCase,
 		),
 
 		fx.Provide(
