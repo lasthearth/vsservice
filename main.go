@@ -19,6 +19,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
 	"github.com/lasthearth/vsservice/internal/player"
+	"github.com/lasthearth/vsservice/internal/referral"
 	"github.com/lasthearth/vsservice/internal/rules"
 	"github.com/lasthearth/vsservice/internal/server"
 	serverinfo "github.com/lasthearth/vsservice/internal/serverinfo"
@@ -85,6 +86,7 @@ func main() {
 		news.App,
 		webhook.App,
 		donate.App,
+		referral.App,
 		hungergames.App,
 		serverinfo.App,
 		media.App,
