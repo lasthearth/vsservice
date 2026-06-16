@@ -53,6 +53,10 @@ type Config struct {
 
 	TelegramToken string `envconfig:"TELEGRAM_TOKEN"`
 	GroupId       string `envconfig:"GROUP_ID"`
+
+	// ReferralCoinsReward is the number of donate-coins awarded to a referrer
+	// when someone uses their referral code.
+	ReferralCoinsReward int64 `envconfig:"REFERRAL_COINS_REWARD" default:"100"`
 }
 
 // New initializes from .env and returns a new Config instance.
