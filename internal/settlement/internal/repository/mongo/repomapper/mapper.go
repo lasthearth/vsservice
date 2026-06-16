@@ -60,6 +60,7 @@ func (c *MapperImpl) FromSettlementDTO(source settlement.Settlement) model.Settl
 			modelSettlement.TagIds[k] = source.TagIds[k]
 		}
 	}
+	modelSettlement.ImperialFavor = source.ImperialFavor
 	modelSettlement.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)
 	modelSettlement.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
 	return modelSettlement
@@ -134,6 +135,7 @@ func (c *MapperImpl) ToSettlementDTO(source model.Settlement) settlement.Settlem
 			settlementdtoSettlement.TagIds[k] = source.TagIds[k]
 		}
 	}
+	settlementdtoSettlement.ImperialFavor = source.ImperialFavor
 	return settlementdtoSettlement
 }
 func (c *MapperImpl) attachmentdtoAttachmentToAttachmentdtoAttachment(source attachment.Attachment) attachment.Attachment {

@@ -36,6 +36,9 @@ const (
 	SettlementService_RevokeInvitation_FullMethodName        = "/settlement.v1.SettlementService/RevokeInvitation"
 	SettlementService_UpdateSettlement_FullMethodName        = "/settlement.v1.SettlementService/UpdateSettlement"
 	SettlementService_AdminUpdateSettlement_FullMethodName   = "/settlement.v1.SettlementService/AdminUpdateSettlement"
+	SettlementService_AddImperialFavor_FullMethodName        = "/settlement.v1.SettlementService/AddImperialFavor"
+	SettlementService_DeductImperialFavor_FullMethodName     = "/settlement.v1.SettlementService/DeductImperialFavor"
+	SettlementService_ListImperialFavorLogs_FullMethodName   = "/settlement.v1.SettlementService/ListImperialFavorLogs"
 	SettlementService_AddTagToSettlement_FullMethodName      = "/settlement.v1.SettlementService/AddTagToSettlement"
 	SettlementService_RemoveTagFromSettlement_FullMethodName = "/settlement.v1.SettlementService/RemoveTagFromSettlement"
 )
@@ -170,6 +173,31 @@ type SettlementServiceClient interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	AdminUpdateSettlement(ctx context.Context, in *AdminUpdateSettlementRequest, opts ...grpc.CallOption) (*AdminUpdateSettlementResponse, error)
+	// Add imperial favor points to a settlement. Requires settlements:manage scope.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found
+	//   - INVALID_ARGUMENT (400): amount must be positive
+	//   - PERMISSION_DENIED (403): missing settlements:manage scope
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	AddImperialFavor(ctx context.Context, in *AddImperialFavorRequest, opts ...grpc.CallOption) (*AddImperialFavorResponse, error)
+	// Deduct imperial favor points from a settlement. Requires settlements:manage scope.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found
+	//   - INVALID_ARGUMENT (400): amount must be positive; insufficient favor balance
+	//   - PERMISSION_DENIED (403): missing settlements:manage scope
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	DeductImperialFavor(ctx context.Context, in *DeductImperialFavorRequest, opts ...grpc.CallOption) (*DeductImperialFavorResponse, error)
+	// List imperial favor log entries for a settlement. Requires settlements:manage scope.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): missing settlements:manage scope
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	ListImperialFavorLogs(ctx context.Context, in *ListImperialFavorLogsRequest, opts ...grpc.CallOption) (*ListImperialFavorLogsResponse, error)
 	// Add a tag to a settlement. Requires tags:manage privilege.
 	//
 	// Errors:
@@ -368,6 +396,36 @@ func (c *settlementServiceClient) AdminUpdateSettlement(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *settlementServiceClient) AddImperialFavor(ctx context.Context, in *AddImperialFavorRequest, opts ...grpc.CallOption) (*AddImperialFavorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddImperialFavorResponse)
+	err := c.cc.Invoke(ctx, SettlementService_AddImperialFavor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *settlementServiceClient) DeductImperialFavor(ctx context.Context, in *DeductImperialFavorRequest, opts ...grpc.CallOption) (*DeductImperialFavorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeductImperialFavorResponse)
+	err := c.cc.Invoke(ctx, SettlementService_DeductImperialFavor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *settlementServiceClient) ListImperialFavorLogs(ctx context.Context, in *ListImperialFavorLogsRequest, opts ...grpc.CallOption) (*ListImperialFavorLogsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListImperialFavorLogsResponse)
+	err := c.cc.Invoke(ctx, SettlementService_ListImperialFavorLogs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *settlementServiceClient) AddTagToSettlement(ctx context.Context, in *AddTagToSettlementRequest, opts ...grpc.CallOption) (*AddTagToSettlementResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AddTagToSettlementResponse)
@@ -518,6 +576,31 @@ type SettlementServiceServer interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	AdminUpdateSettlement(context.Context, *AdminUpdateSettlementRequest) (*AdminUpdateSettlementResponse, error)
+	// Add imperial favor points to a settlement. Requires settlements:manage scope.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found
+	//   - INVALID_ARGUMENT (400): amount must be positive
+	//   - PERMISSION_DENIED (403): missing settlements:manage scope
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	AddImperialFavor(context.Context, *AddImperialFavorRequest) (*AddImperialFavorResponse, error)
+	// Deduct imperial favor points from a settlement. Requires settlements:manage scope.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): settlement not found
+	//   - INVALID_ARGUMENT (400): amount must be positive; insufficient favor balance
+	//   - PERMISSION_DENIED (403): missing settlements:manage scope
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	DeductImperialFavor(context.Context, *DeductImperialFavorRequest) (*DeductImperialFavorResponse, error)
+	// List imperial favor log entries for a settlement. Requires settlements:manage scope.
+	//
+	// Errors:
+	//   - PERMISSION_DENIED (403): missing settlements:manage scope
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	ListImperialFavorLogs(context.Context, *ListImperialFavorLogsRequest) (*ListImperialFavorLogsResponse, error)
 	// Add a tag to a settlement. Requires tags:manage privilege.
 	//
 	// Errors:
@@ -595,6 +678,15 @@ func (UnimplementedSettlementServiceServer) UpdateSettlement(context.Context, *U
 }
 func (UnimplementedSettlementServiceServer) AdminUpdateSettlement(context.Context, *AdminUpdateSettlementRequest) (*AdminUpdateSettlementResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AdminUpdateSettlement not implemented")
+}
+func (UnimplementedSettlementServiceServer) AddImperialFavor(context.Context, *AddImperialFavorRequest) (*AddImperialFavorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddImperialFavor not implemented")
+}
+func (UnimplementedSettlementServiceServer) DeductImperialFavor(context.Context, *DeductImperialFavorRequest) (*DeductImperialFavorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeductImperialFavor not implemented")
+}
+func (UnimplementedSettlementServiceServer) ListImperialFavorLogs(context.Context, *ListImperialFavorLogsRequest) (*ListImperialFavorLogsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListImperialFavorLogs not implemented")
 }
 func (UnimplementedSettlementServiceServer) AddTagToSettlement(context.Context, *AddTagToSettlementRequest) (*AddTagToSettlementResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddTagToSettlement not implemented")
@@ -928,6 +1020,60 @@ func _SettlementService_AdminUpdateSettlement_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SettlementService_AddImperialFavor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddImperialFavorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).AddImperialFavor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_AddImperialFavor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).AddImperialFavor(ctx, req.(*AddImperialFavorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SettlementService_DeductImperialFavor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeductImperialFavorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).DeductImperialFavor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_DeductImperialFavor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).DeductImperialFavor(ctx, req.(*DeductImperialFavorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SettlementService_ListImperialFavorLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListImperialFavorLogsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).ListImperialFavorLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_ListImperialFavorLogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).ListImperialFavorLogs(ctx, req.(*ListImperialFavorLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SettlementService_AddTagToSettlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddTagToSettlementRequest)
 	if err := dec(in); err != nil {
@@ -1038,6 +1184,18 @@ var SettlementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AdminUpdateSettlement",
 			Handler:    _SettlementService_AdminUpdateSettlement_Handler,
+		},
+		{
+			MethodName: "AddImperialFavor",
+			Handler:    _SettlementService_AddImperialFavor_Handler,
+		},
+		{
+			MethodName: "DeductImperialFavor",
+			Handler:    _SettlementService_DeductImperialFavor_Handler,
+		},
+		{
+			MethodName: "ListImperialFavorLogs",
+			Handler:    _SettlementService_ListImperialFavorLogs_Handler,
 		},
 		{
 			MethodName: "AddTagToSettlement",

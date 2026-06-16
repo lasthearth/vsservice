@@ -8,14 +8,15 @@ import (
 )
 
 type Settlement struct {
-	mongox.Model `bson:",inline"`
-	Name         string                     `bson:"name"`
-	Type         string                     `bson:"type"`
-	Leader       memberdto.Member           `bson:"leader"`
-	Members      []memberdto.Member         `bson:"members"`
-	Coordinates  vector2dto.Vector2         `bson:"coordinates"`
-	Attachments  []attachmentdto.Attachment `bson:"attachments"`
-	Diplomacy    string                     `bson:"diplomacy"`
-	Description  string                     `bson:"description"`
-	TagIds       []string                   `bson:"tag_ids"`
+	mongox.Model  `bson:",inline"`
+	Name          string                     `bson:"name"`
+	Type          string                     `bson:"type"`
+	Leader        memberdto.Member           `bson:"leader"`
+	Members       []memberdto.Member         `bson:"members"`
+	Coordinates   vector2dto.Vector2         `bson:"coordinates"`
+	Attachments   []attachmentdto.Attachment `bson:"attachments"`
+	Diplomacy     string                     `bson:"diplomacy"`
+	Description   string                     `bson:"description"`
+	TagIds        []string                   `bson:"tag_ids"`
+	ImperialFavor int64                      `bson:"imperial_favor"`
 }

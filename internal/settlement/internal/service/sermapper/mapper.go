@@ -28,6 +28,26 @@ func (c *MapperImpl) ToAttachmentsProto(source []model.Attachment) []*v1.Attachm
 	}
 	return pSettlementv1AttachmentList
 }
+func (c *MapperImpl) ToImperialFavorLogProto(source model.ImperialFavorLog) *v1.ImperialFavorLog {
+	var settlementv1ImperialFavorLog v1.ImperialFavorLog
+	settlementv1ImperialFavorLog.Id = source.Id
+	settlementv1ImperialFavorLog.SettlementId = source.SettlementId
+	settlementv1ImperialFavorLog.AdminId = source.AdminId
+	settlementv1ImperialFavorLog.Amount = source.Amount
+	settlementv1ImperialFavorLog.Reason = source.Reason
+	settlementv1ImperialFavorLog.CreatedAt = goverter.TimeToInt64(source.CreatedAt)
+	return &settlementv1ImperialFavorLog
+}
+func (c *MapperImpl) ToImperialFavorLogsProto(source []model.ImperialFavorLog) []*v1.ImperialFavorLog {
+	var pSettlementv1ImperialFavorLogList []*v1.ImperialFavorLog
+	if source != nil {
+		pSettlementv1ImperialFavorLogList = make([]*v1.ImperialFavorLog, len(source))
+		for i := 0; i < len(source); i++ {
+			pSettlementv1ImperialFavorLogList[i] = c.ToImperialFavorLogProto(source[i])
+		}
+	}
+	return pSettlementv1ImperialFavorLogList
+}
 func (c *MapperImpl) ToInvProto(source model.Invitation) *v1.Invitation {
 	var settlementv1Invitation v1.Invitation
 	settlementv1Invitation.Id = source.Id
@@ -73,6 +93,7 @@ func (c *MapperImpl) ToSettlementProto(source model.Settlement) *v1.Settlement {
 	settlementv1Settlement.Coordinates = c.ToVector2Proto(source.Coordinates)
 	settlementv1Settlement.CreatedAt = goverter.TimeToInt64(source.CreatedAt)
 	settlementv1Settlement.UpdatedAt = goverter.TimeToInt64(source.UpdatedAt)
+	settlementv1Settlement.ImperialFavor = source.ImperialFavor
 	settlementv1Settlement.Tags = service.TagIdsToProto(source.TagIds)
 	return &settlementv1Settlement
 }

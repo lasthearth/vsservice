@@ -23,6 +23,7 @@ const (
 	settlementCollName           = "settlements"
 	settlementReqCollName        = "settlement_requests"
 	settlementInvitationCollName = "settlement_invitations"
+	imperialFavorLogCollName     = "imperial_favor_logs"
 )
 
 var _ service.SettlementRepository = (*Repository)(nil)
@@ -39,7 +40,7 @@ type Mapper interface {
 	ToInvModels(dto []invitationdto.Invitation) []model.Invitation
 	ToInvModel(dto invitationdto.Invitation) model.Invitation
 
-	// goverter:ignore Members TagIds
+	// goverter:ignore Members TagIds ImperialFavor
 	FromVerification(dto verificationdto.SettlementVerification) settlementdto.Settlement
 
 	FromSettlementsDTO([]settlementdto.Settlement) []model.Settlement
@@ -69,6 +70,8 @@ type Repository struct {
 	setReqColl *mongo.Collection
 	// Settlement invitations collection
 	setInvColl *mongo.Collection
+	// Imperial favor log collection
+	favorLogColl *mongo.Collection
 	// MongoDB client used for transactions
 	client *mongo.Client
 	mapper Mapper
@@ -78,16 +81,18 @@ func New(opts Opts) *Repository {
 	sColl := opts.Database.Collection(settlementCollName)
 	srColl := opts.Database.Collection(settlementReqCollName)
 	siColl := opts.Database.Collection(settlementInvitationCollName)
+	flColl := opts.Database.Collection(imperialFavorLogCollName)
 	logger := opts.Log.WithComponent("settlement-mongo-repository")
-	setupIndexes(logger, sColl, srColl, siColl)
+	setupIndexes(logger, sColl, srColl, siColl, flColl)
 	return &Repository{
-		log:        logger,
-		cfg:        opts.Cfg,
-		setColl:    sColl,
-		setReqColl: srColl,
-		setInvColl: siColl,
-		client:     opts.Client,
-		mapper:     opts.Mapper,
+		log:          logger,
+		cfg:          opts.Cfg,
+		setColl:      sColl,
+		setReqColl:   srColl,
+		setInvColl:   siColl,
+		favorLogColl: flColl,
+		client:       opts.Client,
+		mapper:       opts.Mapper,
 	}
 }
 
@@ -96,6 +101,7 @@ func setupIndexes(
 	setColl *mongo.Collection,
 	setReqColl *mongo.Collection,
 	setInvColl *mongo.Collection,
+	favorLogColl *mongo.Collection,
 ) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -125,5 +131,9 @@ func setupIndexes(
 			{Key: "settlement_id", Value: 1},
 		},
 		Options: options.Index().SetUnique(true),
+	})
+
+	createIndex(favorLogColl, mongo.IndexModel{
+		Keys: bson.D{{Key: "settlement_id", Value: -1}},
 	})
 }

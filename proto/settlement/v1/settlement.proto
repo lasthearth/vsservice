@@ -208,6 +208,46 @@ service SettlementService {
     };
   }
 
+  // Add imperial favor points to a settlement. Requires settlements:manage scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - INVALID_ARGUMENT (400): amount must be positive
+  //   - PERMISSION_DENIED (403): missing settlements:manage scope
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc AddImperialFavor(AddImperialFavorRequest) returns (AddImperialFavorResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/settlements/{settlement_id}/imperial-favor:add"
+      body: "*"
+    };
+  }
+
+  // Deduct imperial favor points from a settlement. Requires settlements:manage scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - INVALID_ARGUMENT (400): amount must be positive; insufficient favor balance
+  //   - PERMISSION_DENIED (403): missing settlements:manage scope
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc DeductImperialFavor(DeductImperialFavorRequest) returns (DeductImperialFavorResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/settlements/{settlement_id}/imperial-favor:deduct"
+      body: "*"
+    };
+  }
+
+  // List imperial favor log entries for a settlement. Requires settlements:manage scope.
+  //
+  // Errors:
+  //   - PERMISSION_DENIED (403): missing settlements:manage scope
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ListImperialFavorLogs(ListImperialFavorLogsRequest) returns (ListImperialFavorLogsResponse) {
+    option (google.api.http) = {get: "/v1/admin/settlements/{settlement_id}/imperial-favor/logs"};
+  }
+
   // Add a tag to a settlement. Requires tags:manage privilege.
   //
   // Errors:
@@ -268,6 +308,7 @@ message Settlement {
   Vector2 coordinates = 9;
   int64 created_at = 10;
   int64 updated_at = 11;
+  int64 imperial_favor = 12;
   repeated TagReference tags = 20 [(google.api.field_behavior) = OPTIONAL];
 }
 
@@ -447,4 +488,45 @@ message UpdateSettlementRequest {
 
 message UpdateSettlementResponse {
   Settlement settlement = 1;
+}
+
+message ImperialFavorLog {
+  string id = 1;
+  string settlement_id = 2;
+  string admin_id = 3;
+  int64 amount = 4;
+  string reason = 5;
+  int64 created_at = 6;
+}
+
+message AddImperialFavorRequest {
+  string settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
+  int64 amount = 2 [(google.api.field_behavior) = REQUIRED];
+  string reason = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message AddImperialFavorResponse {
+  Settlement settlement = 1;
+}
+
+message DeductImperialFavorRequest {
+  string settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
+  int64 amount = 2 [(google.api.field_behavior) = REQUIRED];
+  string reason = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message DeductImperialFavorResponse {
+  Settlement settlement = 1;
+}
+
+message ListImperialFavorLogsRequest {
+  string settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string next_token = 2 [(google.api.field_behavior) = OPTIONAL];
+  string admin_id = 3 [(google.api.field_behavior) = OPTIONAL];
+  string order_by = 4 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message ListImperialFavorLogsResponse {
+  repeated ImperialFavorLog logs = 1;
+  string next_token = 2;
 }

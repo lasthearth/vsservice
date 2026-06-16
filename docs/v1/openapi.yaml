@@ -46,6 +46,156 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/settlement.v1.AdminUpdateSettlementResponse'
+  /v1/admin/settlements/{settlement_id}/imperial-favor/logs:
+    get:
+      tags:
+        - SettlementService
+      summary: List imperial favor log entries for a settlement. Requires settlements:manage scope.
+      description: |-
+        Errors:
+           - PERMISSION_DENIED (403): missing settlements:manage scope
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_ListImperialFavorLogs
+      parameters:
+        - name: settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: settlement_id
+        - name: next_token
+          in: query
+          required: false
+          schema:
+            type: string
+            title: next_token
+            description: '(OPTIONAL) '
+        - name: admin_id
+          in: query
+          required: false
+          schema:
+            type: string
+            title: admin_id
+            description: '(OPTIONAL) '
+        - name: order_by
+          in: query
+          required: false
+          schema:
+            type: string
+            title: order_by
+            description: '(OPTIONAL) '
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.ListImperialFavorLogsResponse'
+  /v1/admin/settlements/{settlement_id}/imperial-favor:add:
+    post:
+      tags:
+        - SettlementService
+      summary: Add imperial favor points to a settlement. Requires settlements:manage scope.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): settlement not found
+           - INVALID_ARGUMENT (400): amount must be positive
+           - PERMISSION_DENIED (403): missing settlements:manage scope
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_AddImperialFavor
+      parameters:
+        - name: settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: settlement_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                settlement_id:
+                  type: string
+                  title: settlement_id
+                amount:
+                  type:
+                    - integer
+                    - string
+                  title: amount
+                  format: int64
+                reason:
+                  type: string
+                  title: reason
+                  description: '(OPTIONAL) '
+              title: AddImperialFavorRequest
+              required:
+                - settlement_id
+                - amount
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.AddImperialFavorResponse'
+  /v1/admin/settlements/{settlement_id}/imperial-favor:deduct:
+    post:
+      tags:
+        - SettlementService
+      summary: Deduct imperial favor points from a settlement. Requires settlements:manage scope.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): settlement not found
+           - INVALID_ARGUMENT (400): amount must be positive; insufficient favor balance
+           - PERMISSION_DENIED (403): missing settlements:manage scope
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_DeductImperialFavor
+      parameters:
+        - name: settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: settlement_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                settlement_id:
+                  type: string
+                  title: settlement_id
+                amount:
+                  type:
+                    - integer
+                    - string
+                  title: amount
+                  format: int64
+                reason:
+                  type: string
+                  title: reason
+                  description: '(OPTIONAL) '
+              title: DeductImperialFavorRequest
+              required:
+                - settlement_id
+                - amount
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.DeductImperialFavorResponse'
   /v1/donate/me/balance:
     get:
       tags:
@@ -4064,6 +4214,35 @@ components:
       type: object
       title: AcceptInvitationResponse
       additionalProperties: false
+    settlement.v1.AddImperialFavorRequest:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+        amount:
+          type:
+            - integer
+            - string
+          title: amount
+          format: int64
+        reason:
+          type: string
+          title: reason
+          description: '(OPTIONAL) '
+      title: AddImperialFavorRequest
+      required:
+        - settlement_id
+        - amount
+      additionalProperties: false
+    settlement.v1.AddImperialFavorResponse:
+      type: object
+      properties:
+        settlement:
+          title: settlement
+          $ref: '#/components/schemas/settlement.v1.Settlement'
+      title: AddImperialFavorResponse
+      additionalProperties: false
     settlement.v1.AddTagToSettlementRequest:
       type: object
       properties:
@@ -4134,6 +4313,35 @@ components:
       required:
         - desc
         - url
+      additionalProperties: false
+    settlement.v1.DeductImperialFavorRequest:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+        amount:
+          type:
+            - integer
+            - string
+          title: amount
+          format: int64
+        reason:
+          type: string
+          title: reason
+          description: '(OPTIONAL) '
+      title: DeductImperialFavorRequest
+      required:
+        - settlement_id
+        - amount
+      additionalProperties: false
+    settlement.v1.DeductImperialFavorResponse:
+      type: object
+      properties:
+        settlement:
+          title: settlement
+          $ref: '#/components/schemas/settlement.v1.Settlement'
+      title: DeductImperialFavorResponse
       additionalProperties: false
     settlement.v1.DeleteTagRequest:
       type: object
@@ -4271,6 +4479,35 @@ components:
           title: invitations
       title: GetUserInvitationsResponse
       additionalProperties: false
+    settlement.v1.ImperialFavorLog:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        settlement_id:
+          type: string
+          title: settlement_id
+        admin_id:
+          type: string
+          title: admin_id
+        amount:
+          type:
+            - integer
+            - string
+          title: amount
+          format: int64
+        reason:
+          type: string
+          title: reason
+        created_at:
+          type:
+            - integer
+            - string
+          title: created_at
+          format: int64
+      title: ImperialFavorLog
+      additionalProperties: false
     settlement.v1.Invitation:
       type: object
       properties:
@@ -4302,6 +4539,41 @@ components:
     settlement.v1.InviteMemberResponse:
       type: object
       title: InviteMemberResponse
+      additionalProperties: false
+    settlement.v1.ListImperialFavorLogsRequest:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+        next_token:
+          type: string
+          title: next_token
+          description: '(OPTIONAL) '
+        admin_id:
+          type: string
+          title: admin_id
+          description: '(OPTIONAL) '
+        order_by:
+          type: string
+          title: order_by
+          description: '(OPTIONAL) '
+      title: ListImperialFavorLogsRequest
+      required:
+        - settlement_id
+      additionalProperties: false
+    settlement.v1.ListImperialFavorLogsResponse:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/settlement.v1.ImperialFavorLog'
+          title: logs
+        next_token:
+          type: string
+          title: next_token
+      title: ListImperialFavorLogsResponse
       additionalProperties: false
     settlement.v1.ListPendingRequest:
       type: object
@@ -4481,6 +4753,12 @@ components:
             - integer
             - string
           title: updated_at
+          format: int64
+        imperial_favor:
+          type:
+            - integer
+            - string
+          title: imperial_favor
           format: int64
         tags:
           type: array

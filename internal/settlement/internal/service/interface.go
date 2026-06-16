@@ -36,13 +36,18 @@ type Mapper interface {
 	ToSettlementProto(model.Settlement) *settlementv1.Settlement
 	ToSettlementProtos([]model.Settlement) []*settlementv1.Settlement
 	// goverter:ignore state sizeCache unknownFields
-	// goverter:ignore Members Tags
+	// goverter:ignore Members Tags ImperialFavor
 	VerifToSettlementProto(model.SettlementVerification) *settlementv1.Settlement
 	VerifsToSettlementProtos([]model.SettlementVerification) []*settlementv1.Settlement
 
 	// goverter:ignore state sizeCache unknownFields
 	ToInvProto(model.Invitation) *settlementv1.Invitation
 	ToInvProtos([]model.Invitation) []*settlementv1.Invitation
+
+	// goverter:ignore state sizeCache unknownFields
+	// goverter:map CreatedAt | github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToInt64
+	ToImperialFavorLogProto(model.ImperialFavorLog) *settlementv1.ImperialFavorLog
+	ToImperialFavorLogsProto([]model.ImperialFavorLog) []*settlementv1.ImperialFavorLog
 }
 
 type Storage interface {
@@ -81,6 +86,9 @@ type SettlementDbRepository interface {
 
 	AddTag(ctx context.Context, settlementID, tagID string) error
 	RemoveTag(ctx context.Context, settlementID, tagID string) error
+
+	CreateFavorLog(ctx context.Context, log model.ImperialFavorLog) error
+	ListFavorLogs(ctx context.Context, settlementID, adminID, orderBy, nextToken string) ([]model.ImperialFavorLog, string, error)
 
 	RemoveMember(ctx context.Context, settlementID, userID string) error
 	CreateInvitation(ctx context.Context, settlementID, userID string) error
