@@ -178,6 +178,7 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 			http.MethodPut,
 			http.MethodDelete,
 			http.MethodOptions,
+			http.MethodPatch,
 		},
 		AllowedHeaders: []string{
 			"*",
