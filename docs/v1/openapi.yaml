@@ -1116,6 +1116,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/google.protobuf.Empty'
+  /v1/referral/my-code:
+    get:
+      tags:
+        - ReferralService
+      summary: Get the current player's referral code, generating one on first call.
+      description: |-
+        Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: ReferralService_GetMyReferralCode
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/referral.v1.GetMyReferralCodeResponse'
+  /v1/referral/my-stats:
+    get:
+      tags:
+        - ReferralService
+      summary: Get referral stats for the current player (how many people they referred, coins earned).
+      description: |-
+        Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: ReferralService_GetMyReferralStats
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/referral.v1.GetMyReferralStatsResponse'
+  /v1/referral/use:
+    post:
+      tags:
+        - ReferralService
+      summary: |-
+        Apply a referral code to the current player. Called once after first login;
+         the frontend extracts the code from a ?ref= URL parameter.
+      description: |-
+        Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - NOT_FOUND (404): code does not exist
+           - FAILED_PRECONDITION (409): code already used by this player, or attempting to use own code
+           - INTERNAL (500): database failure
+      operationId: ReferralService_UseReferralCode
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/referral.v1.UseReferralCodeRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.Empty'
   /v1/rules/question:
     post:
       tags:
@@ -3834,6 +3895,42 @@ components:
         - UNREAD
         - READ
       description: The state of the notification (e.g., unread or read).
+    referral.v1.GetMyReferralCodeResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          title: code
+      title: GetMyReferralCodeResponse
+      additionalProperties: false
+      description: Response containing the player's referral code
+    referral.v1.GetMyReferralStatsResponse:
+      type: object
+      properties:
+        total_referrals:
+          type:
+            - integer
+            - string
+          title: total_referrals
+          format: int64
+        total_coins_earned:
+          type:
+            - integer
+            - string
+          title: total_coins_earned
+          format: int64
+      title: GetMyReferralStatsResponse
+      additionalProperties: false
+      description: Response containing referral stats for the player
+    referral.v1.UseReferralCodeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          title: code
+      title: UseReferralCodeRequest
+      additionalProperties: false
+      description: Request to apply a referral code
     rules.v1.CreateQuestionRequest:
       type: object
       properties:
@@ -4962,6 +5059,7 @@ tags:
     description: Represents news service
   - name: NotificationService
     description: Provides methods to manage user notifications
+  - name: ReferralService
   - name: RuleService
     description: Represents rules service
   - name: ServerInfoService

@@ -1,0 +1,56 @@
+syntax = "proto3";
+package referral.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+service ReferralService {
+  // Get the current player's referral code, generating one on first call.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc GetMyReferralCode(google.protobuf.Empty) returns (GetMyReferralCodeResponse) {
+    option (google.api.http) = {get: "/v1/referral/my-code"};
+  }
+
+  // Get referral stats for the current player (how many people they referred, coins earned).
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc GetMyReferralStats(google.protobuf.Empty) returns (GetMyReferralStatsResponse) {
+    option (google.api.http) = {get: "/v1/referral/my-stats"};
+  }
+
+  // Apply a referral code to the current player. Called once after first login;
+  // the frontend extracts the code from a ?ref= URL parameter.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - NOT_FOUND (404): code does not exist
+  //   - FAILED_PRECONDITION (409): code already used by this player, or attempting to use own code
+  //   - INTERNAL (500): database failure
+  rpc UseReferralCode(UseReferralCodeRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/referral/use"
+      body: "*"
+    };
+  }
+}
+
+// Response containing the player's referral code
+message GetMyReferralCodeResponse {
+  string code = 1;
+}
+
+// Response containing referral stats for the player
+message GetMyReferralStatsResponse {
+  int64 total_referrals = 1;
+  int64 total_coins_earned = 2;
+}
+
+// Request to apply a referral code
+message UseReferralCodeRequest {
+  string code = 1;
+}
