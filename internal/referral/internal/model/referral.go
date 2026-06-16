@@ -17,7 +17,7 @@ const referralCodeLength = 8
 type ReferralCode struct {
 	Id         string
 	PlayerID   string // Logto user ID of the code's owner.
-	PlayerName string // Needed later for donateuc.AddCoins(playerID, playerName, amount).
+	PlayerName string // Display name of the code's owner.
 	Code       string
 	CreatedAt  time.Time
 }
