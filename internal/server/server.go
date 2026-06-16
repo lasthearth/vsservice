@@ -22,6 +22,7 @@ import (
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
+	referralv1 "github.com/lasthearth/vsservice/gen/referral/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
@@ -100,6 +101,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	settlementv1.RegisterSettlementTagServiceServer(srv, s.settlementTagV1)
 	notificationv1.RegisterNotificationServiceServer(srv, s.notificationV1)
 	newsv1.RegisterNewsServiceServer(srv, s.newsV1)
+	referralv1.RegisterReferralServiceServer(srv, s.referralV1)
 	donatev1.RegisterDonateServiceServer(srv, s.donateV1)
 	hgv1.RegisterHungerGamesServiceServer(srv, s.hungerGamesV1)
 	serverinfov1.RegisterServerInfoServiceServer(srv, s.serverInfoV1)
@@ -150,6 +152,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := donatev1.RegisterDonateServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register donate service handler")
+	}
+
+	if err := referralv1.RegisterReferralServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register referral service handler")
 	}
 
 	if err := hgv1.RegisterHungerGamesServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {

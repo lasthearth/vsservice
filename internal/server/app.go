@@ -11,6 +11,7 @@ import (
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
+	referralv1 "github.com/lasthearth/vsservice/gen/referral/v1"
 	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
 
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
@@ -40,6 +41,7 @@ type Opts struct {
 	SettlementTagV1 settlementv1.SettlementTagServiceServer
 	NotificationV1  notificationv1.NotificationServiceServer
 	NewsV1          newsv1.NewsServiceServer
+	ReferralV1      referralv1.ReferralServiceServer
 	DonateV1        donatev1.DonateServiceServer
 	HungerGamesV1   hgv1.HungerGamesServiceServer
 	ServerInfoV1    serverinfov1.ServerInfoServiceServer
@@ -60,6 +62,7 @@ type Server struct {
 	settlementTagV1     settlementv1.SettlementTagServiceServer
 	notificationV1      notificationv1.NotificationServiceServer
 	newsV1              newsv1.NewsServiceServer
+	referralV1          referralv1.ReferralServiceServer
 	donateV1            donatev1.DonateServiceServer
 	hungerGamesV1       hgv1.HungerGamesServiceServer
 	serverInfoV1        serverinfov1.ServerInfoServiceServer
@@ -85,6 +88,7 @@ func New(opts Opts) *Server {
 		settlementTagV1:     opts.SettlementTagV1,
 		notificationV1:      opts.NotificationV1,
 		newsV1:              opts.NewsV1,
+		referralV1:          opts.ReferralV1,
 		donateV1:            opts.DonateV1,
 		hungerGamesV1:       opts.HungerGamesV1,
 		serverInfoV1:        opts.ServerInfoV1,
