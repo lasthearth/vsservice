@@ -522,7 +522,10 @@ message DeductImperialFavorResponse {
 message ListImperialFavorLogsRequest {
   string settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
   string next_token = 2 [(google.api.field_behavior) = OPTIONAL];
+  // Filter logs by the admin who performed the operation.
   string admin_id = 3 [(google.api.field_behavior) = OPTIONAL];
+  // Sort order. Format: "field [asc|desc]". Default: "created_at desc".
+  // Allowed fields: created_at, settlement_id, admin_id.
   string order_by = 4 [(google.api.field_behavior) = OPTIONAL];
 }
 

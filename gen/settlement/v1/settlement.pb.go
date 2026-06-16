@@ -2500,11 +2500,14 @@ func (x *DeductImperialFavorResponse) GetSettlement() *Settlement {
 }
 
 type ListImperialFavorLogsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SettlementId  string                 `protobuf:"bytes,1,opt,name=settlement_id,json=settlementId,proto3" json:"settlement_id,omitempty"`
-	NextToken     string                 `protobuf:"bytes,2,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
-	AdminId       string                 `protobuf:"bytes,3,opt,name=admin_id,json=adminId,proto3" json:"admin_id,omitempty"`
-	OrderBy       string                 `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	SettlementId string                 `protobuf:"bytes,1,opt,name=settlement_id,json=settlementId,proto3" json:"settlement_id,omitempty"`
+	NextToken    string                 `protobuf:"bytes,2,opt,name=next_token,json=nextToken,proto3" json:"next_token,omitempty"`
+	// Filter logs by the admin who performed the operation.
+	AdminId string `protobuf:"bytes,3,opt,name=admin_id,json=adminId,proto3" json:"admin_id,omitempty"`
+	// Sort order. Format: "field [asc|desc]". Default: "created_at desc".
+	// Allowed fields: created_at, settlement_id, admin_id.
+	OrderBy       string `protobuf:"bytes,4,opt,name=order_by,json=orderBy,proto3" json:"order_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -73,18 +73,24 @@ paths:
             description: '(OPTIONAL) '
         - name: admin_id
           in: query
+          description: Filter logs by the admin who performed the operation.
           required: false
           schema:
             type: string
             title: admin_id
-            description: '(OPTIONAL) '
+            description: (OPTIONAL) Filter logs by the admin who performed the operation.
         - name: order_by
           in: query
+          description: |-
+            Sort order. Format: "field [asc|desc]". Default: "created_at desc".
+             Allowed fields: created_at, settlement_id, admin_id.
           required: false
           schema:
             type: string
             title: order_by
-            description: '(OPTIONAL) '
+            description: |-
+              (OPTIONAL) Sort order. Format: "field [asc|desc]". Default: "created_at desc".
+               Allowed fields: created_at, settlement_id, admin_id.
       responses:
         "200":
           description: Success
@@ -4553,11 +4559,13 @@ components:
         admin_id:
           type: string
           title: admin_id
-          description: '(OPTIONAL) '
+          description: (OPTIONAL) Filter logs by the admin who performed the operation.
         order_by:
           type: string
           title: order_by
-          description: '(OPTIONAL) '
+          description: |-
+            (OPTIONAL) Sort order. Format: "field [asc|desc]". Default: "created_at desc".
+             Allowed fields: created_at, settlement_id, admin_id.
       title: ListImperialFavorLogsRequest
       required:
         - settlement_id

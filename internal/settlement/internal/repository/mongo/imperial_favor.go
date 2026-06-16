@@ -40,8 +40,9 @@ func (r *Repository) CreateFavorLog(ctx context.Context, log model.ImperialFavor
 }
 
 var favorLogAllowedSortFields = map[string]string{
-	"created_at": "created_at",
-	"amount":     "amount",
+	"created_at":    "created_at",
+	"settlement_id": "settlement_id",
+	"admin_id":      "admin_id",
 }
 
 var favorLogDefaultOrder = &orderby.Info{
