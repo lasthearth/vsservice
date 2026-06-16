@@ -95,14 +95,18 @@ func (s *Service) UseReferralCode(ctx context.Context, req *referralv1.UseReferr
 		return nil, err
 	}
 
-	err = s.donateUC.AddCoins(ctx, code.PlayerID, code.PlayerName, s.cfg.ReferralCoinsReward)
-	if err != nil {
-		// The referral event is already recorded; do not fail the RPC. This
-		// means the referrer's coins were not actually credited despite the
-		// event existing, and needs manual reconciliation.
+	if err = s.donateUC.AddCoins(ctx, code.PlayerID, code.PlayerName, s.cfg.ReferralCoinsReward); err != nil {
 		s.log.Error(
 			"failed to add coins to referrer wallet after referral event was recorded",
 			zap.String("referrer_player_id", code.PlayerID),
+			zap.Error(err),
+		)
+	}
+
+	if err = s.donateUC.AddCoins(ctx, refereeID, "", s.cfg.ReferralRefereeCoinsReward); err != nil {
+		s.log.Error(
+			"failed to add coins to referee wallet after referral event was recorded",
+			zap.String("referee_player_id", refereeID),
 			zap.Error(err),
 		)
 	}
