@@ -92,7 +92,7 @@ func setupIndexes(log logger.Logger, walletColl, shopColl, purchColl, txColl *mg
 }
 
 func walletFromDTO(d dto.Wallet) *model.Wallet {
-	return model.ReconstituteWallet(d.Id.Hex(), d.PlayerID, d.PlayerName, d.Coins, d.CreatedAt, d.UpdatedAt)
+	return model.ReconstituteWallet(d.Model.Id.Hex(), d.PlayerID, d.PlayerName, d.Coins, d.CreatedAt, d.UpdatedAt)
 }
 
 func shopItemFromDTO(d dto.ShopItem) *model.ShopItem {

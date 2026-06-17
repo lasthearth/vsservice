@@ -1,4 +1,4 @@
-//go:generate goverter gen github.com/lasthearth/vsservice/internal/kit/internal/repository/assignment
+//go:generate go tool goverter gen github.com/lasthearth/vsservice/internal/kit/internal/repository/assignment
 package assignment
 
 import (

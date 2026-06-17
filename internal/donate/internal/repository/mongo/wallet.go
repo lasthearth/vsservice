@@ -9,6 +9,8 @@ import (
 	"github.com/lasthearth/vsservice/internal/donate/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox/orderby"
+	"github.com/lasthearth/vsservice/internal/pkg/mongox/pagination"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	mgo "go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -70,6 +72,43 @@ func (r *Repository) AddCoinsToWallet(ctx context.Context, playerID, playerName 
 	}
 
 	return d.Coins, nil
+}
+
+// ListWallets returns all wallets sorted by coins DESC, cursor-paginated.
+func (r *Repository) ListWallets(ctx context.Context, pageToken string, limit int64) ([]*model.Wallet, string, error) {
+	l := r.log.With(zap.String("method", "ListWallets"))
+
+	if limit <= 0 {
+		limit = 25
+	}
+
+	sort := orderby.BuildSortOptions(&orderby.Info{
+		MongoField: "coins",
+		Direction:  orderby.Desc,
+	})
+
+	opts := []pagination.OptionFn{
+		pagination.WithLimit(limit),
+		pagination.WithSort(sort),
+	}
+	if pageToken != "" {
+		opts = append(opts, pagination.WithNext(pageToken))
+	}
+
+	resp, err := pagination.Find[dto.Wallet](ctx, r.walletColl, opts...)
+	if err != nil {
+		if errors.Is(err, pagination.ErrNoData) {
+			return nil, "", nil
+		}
+		l.Error("failed to list wallets", zap.Error(err))
+		return nil, "", err
+	}
+
+	result := make([]*model.Wallet, len(resp.Data))
+	for i, d := range resp.Data {
+		result[i] = walletFromDTO(d)
+	}
+	return result, resp.Next, nil
 }
 
 // UpdateWallet reads the wallet, applies updateFn, then replaces the document.

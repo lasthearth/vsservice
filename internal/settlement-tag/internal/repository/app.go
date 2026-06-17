@@ -1,4 +1,4 @@
-//go:generate goverter gen github.com/lasthearth/vsservice/internal/settlement-tag/internal/repository
+//go:generate go tool goverter gen github.com/lasthearth/vsservice/internal/settlement-tag/internal/repository
 package repository
 
 import (

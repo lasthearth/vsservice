@@ -212,4 +212,16 @@ service DonateService {
       get: "/v1/donate/me/purchases"
     };
   }
+
+  // Admin: list all player wallets sorted by coins descending, cursor-paginated.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc ListWallets(ListWalletsRequest) returns (ListWalletsResponse) {
+    option (google.api.http) = {
+      get: "/v1/donate/wallets"
+    };
+  }
 }

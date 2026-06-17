@@ -38,3 +38,19 @@ message AdminGetPlayerBalanceResponse {
   string player_name = 2;
   int64 coins = 3;
 }
+
+message ListWalletsRequest {
+  string page_token = 1;
+  int64 limit = 2;
+}
+
+message ListWalletsResponse {
+  repeated WalletBalance wallets = 1;
+  string next_page_token = 2;
+}
+
+message WalletBalance {
+  string player_id = 1;
+  string player_name = 2;
+  int64 coins = 3;
+}

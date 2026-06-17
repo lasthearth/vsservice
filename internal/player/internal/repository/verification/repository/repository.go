@@ -1,4 +1,4 @@
-//go:generate goverter gen github.com/lasthearth/vsservice/internal/player/internal/repository/verification/repository
+//go:generate go tool goverter gen github.com/lasthearth/vsservice/internal/player/internal/repository/verification/repository
 package repository
 
 import (

@@ -541,6 +541,38 @@ func local_request_DonateService_ListMyPurchases_0(ctx context.Context, marshale
 	return msg, metadata, err
 }
 
+var filter_DonateService_ListWallets_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+
+func request_DonateService_ListWallets_0(ctx context.Context, marshaler runtime.Marshaler, client DonateServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq ListWalletsRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_DonateService_ListWallets_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := client.ListWallets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_DonateService_ListWallets_0(ctx context.Context, marshaler runtime.Marshaler, server DonateServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq ListWalletsRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_DonateService_ListWallets_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.ListWallets(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 // RegisterDonateServiceHandlerServer registers the http handlers for service DonateService to "mux".
 // UnaryRPC     :call DonateServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -847,6 +879,26 @@ func RegisterDonateServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 		}
 		forward_DonateService_ListMyPurchases_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_DonateService_ListWallets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/donate.v1.DonateService/ListWallets", runtime.WithHTTPPathPattern("/v1/donate/wallets"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_DonateService_ListWallets_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_DonateService_ListWallets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 
 	return nil
 }
@@ -1142,6 +1194,23 @@ func RegisterDonateServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		}
 		forward_DonateService_ListMyPurchases_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_DonateService_ListWallets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/donate.v1.DonateService/ListWallets", runtime.WithHTTPPathPattern("/v1/donate/wallets"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_DonateService_ListWallets_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_DonateService_ListWallets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	return nil
 }
 
@@ -1161,6 +1230,7 @@ var (
 	pattern_DonateService_ListShopItems_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "shop", "items"}, ""))
 	pattern_DonateService_BuyItem_0                   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1", "donate", "shop", "items", "item_id"}, "buy"))
 	pattern_DonateService_ListMyPurchases_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v1", "donate", "me", "purchases"}, ""))
+	pattern_DonateService_ListWallets_0               = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "donate", "wallets"}, ""))
 )
 
 var (
@@ -1179,4 +1249,5 @@ var (
 	forward_DonateService_ListShopItems_0             = runtime.ForwardResponseMessage
 	forward_DonateService_BuyItem_0                   = runtime.ForwardResponseMessage
 	forward_DonateService_ListMyPurchases_0           = runtime.ForwardResponseMessage
+	forward_DonateService_ListWallets_0               = runtime.ForwardResponseMessage
 )

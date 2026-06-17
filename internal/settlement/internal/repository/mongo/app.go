@@ -1,4 +1,4 @@
-//go:generate goverter gen github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo
+//go:generate go tool goverter gen github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo
 package repository
 
 import (

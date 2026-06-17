@@ -394,6 +394,21 @@ func (s *Service) ListMyPurchases(ctx context.Context, _ *donatev1.ListMyPurchas
 	return &donatev1.ListMyPurchasesResponse{Purchases: s.mapper.ToPurchasesProto(purchases)}, nil
 }
 
+func (s *Service) ListWallets(ctx context.Context, req *donatev1.ListWalletsRequest) (*donatev1.ListWalletsResponse, error) {
+	l := s.log.With(zap.String("method", "ListWallets"))
+
+	wallets, next, err := s.repo.ListWallets(ctx, req.GetPageToken(), req.GetLimit())
+	if err != nil {
+		l.Error("failed to list wallets", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to list wallets")
+	}
+
+	return &donatev1.ListWalletsResponse{
+		Wallets:       s.mapper.ToWalletBalancesProto(wallets),
+		NextPageToken: next,
+	}, nil
+}
+
 func isDomainError(err error, code codes.Code) bool {
 	var de *pkgerr.DomainError
 	return errors.As(err, &de) && de.Code == code

@@ -717,6 +717,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/donate.v1.BuyItemResponse'
+  /v1/donate/wallets:
+    get:
+      tags:
+        - DonateService
+      summary: 'Admin: list all player wallets sorted by coins descending, cursor-paginated.'
+      description: |-
+        Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: DonateService_ListWallets
+      parameters:
+        - name: page_token
+          in: query
+          schema:
+            type: string
+            title: page_token
+        - name: limit
+          in: query
+          schema:
+            type:
+              - integer
+              - string
+            title: limit
+            format: int64
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/donate.v1.ListWalletsResponse'
   /v1/hungergames/leaderboard:
     get:
       tags:
@@ -2821,6 +2853,33 @@ components:
           title: transactions
       title: ListTransactionsResponse
       additionalProperties: false
+    donate.v1.ListWalletsRequest:
+      type: object
+      properties:
+        page_token:
+          type: string
+          title: page_token
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+      title: ListWalletsRequest
+      additionalProperties: false
+    donate.v1.ListWalletsResponse:
+      type: object
+      properties:
+        wallets:
+          type: array
+          items:
+            $ref: '#/components/schemas/donate.v1.WalletBalance'
+          title: wallets
+        next_page_token:
+          type: string
+          title: next_page_token
+      title: ListWalletsResponse
+      additionalProperties: false
     donate.v1.MarkPurchaseIssuedRequest:
       type: object
       properties:
@@ -3087,6 +3146,23 @@ components:
           title: item
           $ref: '#/components/schemas/donate.v1.ShopItem'
       title: UpdateShopItemResponse
+      additionalProperties: false
+    donate.v1.WalletBalance:
+      type: object
+      properties:
+        player_id:
+          type: string
+          title: player_id
+        player_name:
+          type: string
+          title: player_name
+        coins:
+          type:
+            - integer
+            - string
+          title: coins
+          format: int64
+      title: WalletBalance
       additionalProperties: false
     google.protobuf.Empty:
       type: object

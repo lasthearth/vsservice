@@ -113,3 +113,24 @@ func (c *MapperImpl) ToTransactionsProto(source []*model.Transaction) []*v1.Tran
 	}
 	return pDonatev1TransactionList
 }
+func (c *MapperImpl) ToWalletBalanceProto(source *model.Wallet) *v1.WalletBalance {
+	var pDonatev1WalletBalance *v1.WalletBalance
+	if source != nil {
+		var donatev1WalletBalance v1.WalletBalance
+		donatev1WalletBalance.PlayerId = (*source).PlayerID
+		donatev1WalletBalance.PlayerName = (*source).PlayerName
+		donatev1WalletBalance.Coins = (*source).Coins
+		pDonatev1WalletBalance = &donatev1WalletBalance
+	}
+	return pDonatev1WalletBalance
+}
+func (c *MapperImpl) ToWalletBalancesProto(source []*model.Wallet) []*v1.WalletBalance {
+	var pDonatev1WalletBalanceList []*v1.WalletBalance
+	if source != nil {
+		pDonatev1WalletBalanceList = make([]*v1.WalletBalance, len(source))
+		for i := 0; i < len(source); i++ {
+			pDonatev1WalletBalanceList[i] = c.ToWalletBalanceProto(source[i])
+		}
+	}
+	return pDonatev1WalletBalanceList
+}

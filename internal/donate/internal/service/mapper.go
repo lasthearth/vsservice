@@ -1,4 +1,4 @@
-//go:generate goverter gen github.com/lasthearth/vsservice/internal/donate/internal/service
+//go:generate go tool goverter gen github.com/lasthearth/vsservice/internal/donate/internal/service
 package service
 
 import (
@@ -39,4 +39,9 @@ type Mapper interface {
 	// goverter:map Type Type | github.com/lasthearth/vsservice/internal/donate/internal/goverter:TxTypeToString
 	ToTransactionProto(*model.Transaction) *donatev1.Transaction
 	ToTransactionsProto([]*model.Transaction) []*donatev1.Transaction
+
+	// goverter:ignore state sizeCache unknownFields
+	// goverter:map PlayerID PlayerId
+	ToWalletBalanceProto(*model.Wallet) *donatev1.WalletBalance
+	ToWalletBalancesProto([]*model.Wallet) []*donatev1.WalletBalance
 }

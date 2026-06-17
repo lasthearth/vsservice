@@ -26,6 +26,10 @@ type DonateRepository interface {
 	// Returns ierror.ErrNotFound if the player has no wallet yet.
 	GetWalletByPlayerID(ctx context.Context, playerID string) (*model.Wallet, error)
 
+	// ListWallets returns wallets sorted by coins DESC, cursor-paginated.
+	// Empty pageToken returns the first page; empty next token means no more pages.
+	ListWallets(ctx context.Context, pageToken string, limit int64) (wallets []*model.Wallet, nextPageToken string, err error)
+
 	// AddCoinsToWallet atomically upserts the wallet and increments coins by amount.
 	// Creates the wallet if it does not exist.
 	AddCoinsToWallet(ctx context.Context, playerID, playerName string, amount int64) (newCoins int64, err error)

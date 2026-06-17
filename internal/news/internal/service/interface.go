@@ -11,7 +11,7 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-//go:generate goverter gen github.com/lasthearth/vsservice/internal/news/internal/service
+//go:generate go tool goverter gen github.com/lasthearth/vsservice/internal/news/internal/service
 
 // goverter:converter
 // goverter:output:file sermapper/mapper.go

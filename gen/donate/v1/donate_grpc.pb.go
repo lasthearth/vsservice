@@ -34,6 +34,7 @@ const (
 	DonateService_ListShopItems_FullMethodName             = "/donate.v1.DonateService/ListShopItems"
 	DonateService_BuyItem_FullMethodName                   = "/donate.v1.DonateService/BuyItem"
 	DonateService_ListMyPurchases_FullMethodName           = "/donate.v1.DonateService/ListMyPurchases"
+	DonateService_ListWallets_FullMethodName               = "/donate.v1.DonateService/ListWallets"
 )
 
 // DonateServiceClient is the client API for DonateService service.
@@ -163,6 +164,13 @@ type DonateServiceClient interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	ListMyPurchases(ctx context.Context, in *ListMyPurchasesRequest, opts ...grpc.CallOption) (*ListMyPurchasesResponse, error)
+	// Admin: list all player wallets sorted by coins descending, cursor-paginated.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	ListWallets(ctx context.Context, in *ListWalletsRequest, opts ...grpc.CallOption) (*ListWalletsResponse, error)
 }
 
 type donateServiceClient struct {
@@ -323,6 +331,16 @@ func (c *donateServiceClient) ListMyPurchases(ctx context.Context, in *ListMyPur
 	return out, nil
 }
 
+func (c *donateServiceClient) ListWallets(ctx context.Context, in *ListWalletsRequest, opts ...grpc.CallOption) (*ListWalletsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWalletsResponse)
+	err := c.cc.Invoke(ctx, DonateService_ListWallets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DonateServiceServer is the server API for DonateService service.
 // All implementations should embed UnimplementedDonateServiceServer
 // for forward compatibility.
@@ -450,6 +468,13 @@ type DonateServiceServer interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	ListMyPurchases(context.Context, *ListMyPurchasesRequest) (*ListMyPurchasesResponse, error)
+	// Admin: list all player wallets sorted by coins descending, cursor-paginated.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	ListWallets(context.Context, *ListWalletsRequest) (*ListWalletsResponse, error)
 }
 
 // UnimplementedDonateServiceServer should be embedded to have
@@ -503,6 +528,9 @@ func (UnimplementedDonateServiceServer) BuyItem(context.Context, *BuyItemRequest
 }
 func (UnimplementedDonateServiceServer) ListMyPurchases(context.Context, *ListMyPurchasesRequest) (*ListMyPurchasesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListMyPurchases not implemented")
+}
+func (UnimplementedDonateServiceServer) ListWallets(context.Context, *ListWalletsRequest) (*ListWalletsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWallets not implemented")
 }
 func (UnimplementedDonateServiceServer) testEmbeddedByValue() {}
 
@@ -794,6 +822,24 @@ func _DonateService_ListMyPurchases_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DonateService_ListWallets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWalletsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DonateServiceServer).ListWallets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DonateService_ListWallets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DonateServiceServer).ListWallets(ctx, req.(*ListWalletsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DonateService_ServiceDesc is the grpc.ServiceDesc for DonateService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -860,6 +906,10 @@ var DonateService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListMyPurchases",
 			Handler:    _DonateService_ListMyPurchases_Handler,
+		},
+		{
+			MethodName: "ListWallets",
+			Handler:    _DonateService_ListWallets_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
