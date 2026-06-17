@@ -6,6 +6,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/progression/internal/repository"
 	"github.com/lasthearth/vsservice/internal/progression/internal/service"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
+	"github.com/lasthearth/vsservice/internal/settlement/settlementuc"
 	"go.uber.org/fx"
 )
 
@@ -25,6 +26,9 @@ var App = fx.Options(
 			fx.Annotate(
 				repository.New,
 				fx.As(new(service.ProgressionRepository)),
+			),
+			fx.Annotate(
+				func(f *settlementuc.FavorOps) service.FavorDeductor { return f },
 			),
 		),
 

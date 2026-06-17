@@ -1,9 +1,6 @@
 package model
 
-import (
-	"slices"
-	"time"
-)
+import "time"
 
 type OwnerType string
 
@@ -40,20 +37,15 @@ func ReconstituteTalentProgress(id string, ownerType OwnerType, settlementId, po
 	}
 }
 
-// RollbackLast removes the most recently purchased node (by PurchasedAt) and returns it.
+// RollbackLast removes the last purchased node and returns it.
+// Safe because AddNode always appends in chronological order.
 // Returns false if no nodes are purchased.
 func (p *TalentProgress) RollbackLast() (PurchasedNode, bool) {
 	if len(p.PurchasedNodes) == 0 {
 		return PurchasedNode{}, false
 	}
-	lastIdx := 0
-	for i := 1; i < len(p.PurchasedNodes); i++ {
-		if p.PurchasedNodes[i].PurchasedAt.After(p.PurchasedNodes[lastIdx].PurchasedAt) {
-			lastIdx = i
-		}
-	}
-	last := p.PurchasedNodes[lastIdx]
-	p.PurchasedNodes = slices.Delete(p.PurchasedNodes, lastIdx, lastIdx+1)
+	last := p.PurchasedNodes[len(p.PurchasedNodes)-1]
+	p.PurchasedNodes = p.PurchasedNodes[:len(p.PurchasedNodes)-1]
 	return last, true
 }
 

@@ -3,7 +3,6 @@ package service
 import (
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/pointcontrol"
-	"github.com/lasthearth/vsservice/internal/settlement/settlementuc"
 	"go.uber.org/fx"
 )
 
@@ -12,14 +11,14 @@ type Opts struct {
 
 	Log       logger.Logger
 	Repo      ProgressionRepository
-	Favor     *settlementuc.FavorOps
+	Favor     FavorDeductor
 	PointCtrl pointcontrol.Reader
 }
 
 type Service struct {
 	log       logger.Logger
 	repo      ProgressionRepository
-	favor     *settlementuc.FavorOps
+	favor     FavorDeductor
 	pointCtrl pointcontrol.Reader
 }
 

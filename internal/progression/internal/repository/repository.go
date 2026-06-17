@@ -257,11 +257,19 @@ func fromProgressDTO(d dto.TalentProgress) *model.TalentProgress {
 	for i, n := range d.PurchasedNodes {
 		nodes[i] = model.PurchasedNode{NodeId: n.NodeId, PurchasedAt: n.PurchasedAt, PurchasedBySettlement: n.PurchasedBySettlement}
 	}
+	settlementId := ""
+	if !d.SettlementId.IsZero() {
+		settlementId = d.SettlementId.Hex()
+	}
+	pointId := ""
+	if !d.PointId.IsZero() {
+		pointId = d.PointId.Hex()
+	}
 	return model.ReconstituteTalentProgress(
 		d.Id.Hex(),
 		model.OwnerType(d.OwnerType),
-		d.SettlementId.Hex(),
-		d.PointId.Hex(),
+		settlementId,
+		pointId,
 		d.Side,
 		d.TreeId.Hex(),
 		nodes,

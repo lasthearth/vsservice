@@ -29,19 +29,19 @@ var App = fx.Options(
 			),
 		),
 
+		// Single *Service instance shared across all role bindings so the mutex is effective.
+		fx.Provide(service.New),
+
 		fx.Provide(
 			fx.Annotate(
-				service.New,
-				fx.As(new(imperialpointv1.ImperialPointServiceServer)),
+				func(s *service.Service) imperialpointv1.ImperialPointServiceServer { return s },
 			),
 			fx.Annotate(
-				service.New,
-				fx.As(new(interceptor.Scoper)),
+				func(s *service.Service) interceptor.Scoper { return s },
 				fx.ResultTags(`group:"scopers"`),
 			),
 			fx.Annotate(
-				service.New,
-				fx.As(new(pointcontrol.Reader)),
+				func(s *service.Service) pointcontrol.Reader { return s },
 			),
 		),
 	),
