@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package imperialpoint.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/lasthearth/vsservice/gen/imperialpoint/v1";
+
+// ImperialPointService manages neutral-zone key locations and their control state.
+service ImperialPointService {
+
+  // Create a new imperial point. Requires imperialpoint:write scope.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): missing name
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): requires imperialpoint:write scope
+  //   - INTERNAL (500): database failure
+  rpc CreatePoint(CreatePointRequest) returns (ImperialPoint) {
+    option (google.api.http) = {
+      post: "/v1/imperial-points"
+      body: "*"
+    };
+  }
+
+  // Update an imperial point config (name, description, bi_rate, tree_id).
+  // Requires imperialpoint:write scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): point not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): requires imperialpoint:write scope
+  //   - INTERNAL (500): database failure
+  rpc UpdatePoint(UpdatePointRequest) returns (ImperialPoint) {
+    option (google.api.http) = {
+      patch: "/v1/imperial-points/{id}"
+      body: "*"
+    };
+  }
+
+  // Get an imperial point by ID.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): point not found
+  //   - INTERNAL (500): database failure
+  rpc GetPoint(GetPointRequest) returns (ImperialPoint) {
+    option (google.api.http) = {get: "/v1/imperial-points/{id}"};
+  }
+
+  // List all imperial points.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
+  rpc ListPoints(ListPointsRequest) returns (ListPointsResponse) {
+    option (google.api.http) = {get: "/v1/imperial-points"};
+  }
+
+  // Set which settlement controls an imperial point.
+  // If the point was previously controlled by the opposite side, the last
+  // purchased node in the point's tree is rolled back (no БИ refund).
+  // Requires imperialpoint:write scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): point or settlement not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): requires imperialpoint:write scope
+  //   - FAILED_PRECONDITION (412): side already controls 2 points
+  //   - INTERNAL (500): database failure
+  rpc SetControl(SetControlRequest) returns (ImperialPoint) {
+    option (google.api.http) = {
+      post: "/v1/imperial-points/{point_id}:set-control"
+      body: "*"
+    };
+  }
+
+  // Release control of an imperial point. Rolls back the last purchased node.
+  // Requires imperialpoint:write scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): point not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): requires imperialpoint:write scope
+  //   - INTERNAL (500): database failure
+  rpc ReleaseControl(ReleaseControlRequest) returns (ImperialPoint) {
+    option (google.api.http) = {
+      post: "/v1/imperial-points/{point_id}:release-control"
+      body: "*"
+    };
+  }
+}
+
+message PointControl {
+  string side = 1;
+  string settlement_id = 2;
+  google.protobuf.Timestamp controlled_since = 3;
+}
+
+message ImperialPoint {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  int64 bi_rate_per_hour = 4;
+  string tree_id = 5;
+  PointControl control = 6;
+}
+
+message CreatePointRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  string description = 2;
+  int64 bi_rate_per_hour = 3;
+  string tree_id = 4;
+}
+
+message UpdatePointRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2;
+  string description = 3;
+  int64 bi_rate_per_hour = 4;
+  string tree_id = 5;
+}
+
+message GetPointRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListPointsRequest {}
+
+message ListPointsResponse {
+  repeated ImperialPoint points = 1;
+}
+
+message SetControlRequest {
+  string point_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string settlement_id = 2 [(google.api.field_behavior) = REQUIRED];
+  string side = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ReleaseControlRequest {
+  string point_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
