@@ -68,9 +68,6 @@ func (s *Service) ListPoints(ctx context.Context, _ *imperialpointv1.ListPointsR
 }
 
 func (s *Service) SetControl(ctx context.Context, req *imperialpointv1.SetControlRequest) (*imperialpointv1.ImperialPoint, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	l := s.log.WithMethod("SetControl").With(zap.String("point_id", req.GetPointId()))
 
 	point, err := s.repo.GetPoint(ctx, req.GetPointId())
@@ -112,9 +109,6 @@ func (s *Service) SetControl(ctx context.Context, req *imperialpointv1.SetContro
 }
 
 func (s *Service) ReleaseControl(ctx context.Context, req *imperialpointv1.ReleaseControlRequest) (*imperialpointv1.ImperialPoint, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	l := s.log.WithMethod("ReleaseControl").With(zap.String("point_id", req.GetPointId()))
 
 	point, err := s.repo.GetPoint(ctx, req.GetPointId())
