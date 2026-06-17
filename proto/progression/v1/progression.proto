@@ -1,0 +1,279 @@
+syntax = "proto3";
+
+package progression.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/lasthearth/vsservice/gen/progression/v1";
+
+// ProgressionService manages talent tree templates, presets, and settlement/point progression.
+service ProgressionService {
+
+  // --- Talent Trees (admin) ---
+
+  // Create a new talent tree template. Requires progression:write scope.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): missing required fields
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): requires progression:write scope
+  //   - INTERNAL (500): database failure
+  rpc CreateTree(CreateTreeRequest) returns (TalentTree) {
+    option (google.api.http) = {
+      post: "/v1/progression/trees"
+      body: "*"
+    };
+  }
+
+  // Update an existing talent tree template. Requires progression:write scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): tree not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): requires progression:write scope
+  //   - INTERNAL (500): database failure
+  rpc UpdateTree(UpdateTreeRequest) returns (TalentTree) {
+    option (google.api.http) = {
+      patch: "/v1/progression/trees/{id}"
+      body: "*"
+    };
+  }
+
+  // Get a talent tree by ID.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): tree not found
+  //   - INVALID_ARGUMENT (400): invalid id format
+  //   - INTERNAL (500): database failure
+  rpc GetTree(GetTreeRequest) returns (TalentTree) {
+    option (google.api.http) = {get: "/v1/progression/trees/{id}"};
+  }
+
+  // List all talent trees.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
+  rpc ListTrees(ListTreesRequest) returns (ListTreesResponse) {
+    option (google.api.http) = {get: "/v1/progression/trees"};
+  }
+
+  // --- Presets (admin) ---
+
+  // Create a settlement preset (a named collection of tree IDs available to settlements).
+  // Requires progression:write scope.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): missing required fields
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): requires progression:write scope
+  //   - INTERNAL (500): database failure
+  rpc CreatePreset(CreatePresetRequest) returns (TalentPreset) {
+    option (google.api.http) = {
+      post: "/v1/progression/presets"
+      body: "*"
+    };
+  }
+
+  // Update a settlement preset. Requires progression:write scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): preset not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): requires progression:write scope
+  //   - INTERNAL (500): database failure
+  rpc UpdatePreset(UpdatePresetRequest) returns (TalentPreset) {
+    option (google.api.http) = {
+      patch: "/v1/progression/presets/{id}"
+      body: "*"
+    };
+  }
+
+  // Get a preset by ID.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): preset not found
+  //   - INTERNAL (500): database failure
+  rpc GetPreset(GetPresetRequest) returns (TalentPreset) {
+    option (google.api.http) = {get: "/v1/progression/presets/{id}"};
+  }
+
+  // List all presets.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
+  rpc ListPresets(ListPresetsRequest) returns (ListPresetsResponse) {
+    option (google.api.http) = {get: "/v1/progression/presets"};
+  }
+
+  // --- Progress ---
+
+  // Get a settlement's progress on a specific tree.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
+  rpc GetSettlementProgress(GetSettlementProgressRequest) returns (TalentProgress) {
+    option (google.api.http) = {
+      get: "/v1/progression/settlements/{settlement_id}/trees/{tree_id}"
+    };
+  }
+
+  // Purchase a node in a settlement's talent tree.
+  // Caller must be the leader of settlement_id.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): tree or node not found
+  //   - INVALID_ARGUMENT (400): node already purchased or parent not purchased
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): caller is not the leader of the settlement
+  //   - FAILED_PRECONDITION (412): insufficient imperial favor
+  //   - INTERNAL (500): database failure
+  rpc PurchaseSettlementNode(PurchaseSettlementNodeRequest) returns (TalentProgress) {
+    option (google.api.http) = {
+      post: "/v1/progression/settlements/{settlement_id}/trees/{tree_id}/nodes/{node_id}:purchase"
+      body: "*"
+    };
+  }
+
+  // Get a point's progression for a specific side (east/west).
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
+  rpc GetPointProgress(GetPointProgressRequest) returns (TalentProgress) {
+    option (google.api.http) = {
+      get: "/v1/progression/points/{point_id}/sides/{side}/trees/{tree_id}"
+    };
+  }
+
+  // Purchase a node in a key point's talent tree.
+  // Caller must be the leader of the settlement that controls the point.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): point, tree, or node not found
+  //   - INVALID_ARGUMENT (400): node already purchased or parent not purchased
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): caller's settlement does not control this point
+  //   - FAILED_PRECONDITION (412): insufficient imperial favor
+  //   - INTERNAL (500): database failure
+  rpc PurchasePointNode(PurchasePointNodeRequest) returns (TalentProgress) {
+    option (google.api.http) = {
+      post: "/v1/progression/points/{point_id}/sides/{side}/trees/{tree_id}/nodes/{node_id}:purchase"
+      body: "*"
+    };
+  }
+}
+
+message TalentNode {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string effect = 4;
+  int64 cost_bi = 5;
+}
+
+message TalentEdge {
+  string from = 1;
+  string to = 2;
+}
+
+message TalentTree {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated TalentNode nodes = 4;
+  repeated TalentEdge edges = 5;
+}
+
+message TalentPreset {
+  string id = 1;
+  string name = 2;
+  repeated string tree_ids = 3;
+}
+
+message PurchasedNode {
+  string node_id = 1;
+  google.protobuf.Timestamp purchased_at = 2;
+  string purchased_by_settlement_id = 3;
+}
+
+message TalentProgress {
+  string id = 1;
+  string tree_id = 2;
+  repeated PurchasedNode purchased_nodes = 3;
+}
+
+// Tree requests
+message CreateTreeRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  string description = 2;
+  repeated TalentNode nodes = 3;
+  repeated TalentEdge edges = 4;
+}
+
+message UpdateTreeRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2;
+  string description = 3;
+  repeated TalentNode nodes = 4;
+  repeated TalentEdge edges = 5;
+}
+
+message GetTreeRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListTreesRequest {}
+
+message ListTreesResponse {
+  repeated TalentTree trees = 1;
+}
+
+// Preset requests
+message CreatePresetRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  repeated string tree_ids = 2;
+}
+
+message UpdatePresetRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2;
+  repeated string tree_ids = 3;
+}
+
+message GetPresetRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListPresetsRequest {}
+
+message ListPresetsResponse {
+  repeated TalentPreset presets = 1;
+}
+
+// Progress requests
+message GetSettlementProgressRequest {
+  string settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string tree_id = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PurchaseSettlementNodeRequest {
+  string settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string tree_id = 2 [(google.api.field_behavior) = REQUIRED];
+  string node_id = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetPointProgressRequest {
+  string point_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string side = 2 [(google.api.field_behavior) = REQUIRED];
+  string tree_id = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PurchasePointNodeRequest {
+  string point_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string side = 2 [(google.api.field_behavior) = REQUIRED];
+  string tree_id = 3 [(google.api.field_behavior) = REQUIRED];
+  string node_id = 4 [(google.api.field_behavior) = REQUIRED];
+  string settlement_id = 5 [(google.api.field_behavior) = REQUIRED];
+}
