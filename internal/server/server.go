@@ -18,6 +18,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
+	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
@@ -108,6 +109,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	serverinfov1.RegisterServerInfoServiceServer(srv, s.serverInfoV1)
 	mediav1.RegisterMediaServiceServer(srv, s.mediaV1)
 	progressionv1.RegisterProgressionServiceServer(srv, s.progressionV1)
+	imperialpointv1.RegisterImperialPointServiceServer(srv, s.imperialPointV1)
 	reflection.Register(srv)
 
 	s.grpcSrv = srv
@@ -174,6 +176,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := progressionv1.RegisterProgressionServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register progression service handler")
+	}
+
+	if err := imperialpointv1.RegisterImperialPointServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register imperialpoint service handler")
 	}
 
 	handler := cors.New(cors.Options{

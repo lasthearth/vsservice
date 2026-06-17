@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/lasthearth/vsservice/internal/donate"
 	"github.com/lasthearth/vsservice/internal/hungergames"
+	imperialpoint "github.com/lasthearth/vsservice/internal/imperial-point"
 	"github.com/lasthearth/vsservice/internal/leaderboard"
 	"github.com/lasthearth/vsservice/internal/media"
 	"github.com/lasthearth/vsservice/internal/news"
@@ -92,6 +93,7 @@ func main() {
 		serverinfo.App,
 		media.App,
 		progression.App,
+		imperialpoint.App,
 	)
 
 	a.Run()

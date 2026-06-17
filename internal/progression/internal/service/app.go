@@ -10,9 +10,10 @@ import (
 type Opts struct {
 	fx.In
 
-	Log   logger.Logger
-	Repo  ProgressionRepository
-	Favor *settlementuc.FavorOps
+	Log       logger.Logger
+	Repo      ProgressionRepository
+	Favor     *settlementuc.FavorOps
+	PointCtrl pointcontrol.Reader
 }
 
 type Service struct {
@@ -24,8 +25,9 @@ type Service struct {
 
 func New(opts Opts) *Service {
 	return &Service{
-		log:   opts.Log,
-		repo:  opts.Repo,
-		favor: opts.Favor,
+		log:       opts.Log,
+		repo:      opts.Repo,
+		favor:     opts.Favor,
+		pointCtrl: opts.PointCtrl,
 	}
 }
