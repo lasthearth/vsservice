@@ -248,6 +248,22 @@ service SettlementService {
     option (google.api.http) = {get: "/v1/admin/settlements/{settlement_id}/imperial-favor/logs"};
   }
 
+  // Transfer Imperial Favor from one settlement to another.
+  // Caller must be the leader of from_settlement_id.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): amount <= 0 or missing fields
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): caller is not the leader of from_settlement_id
+  //   - FAILED_PRECONDITION (412): insufficient imperial favor balance
+  //   - INTERNAL (500): database failure
+  rpc TransferImperialFavor(TransferImperialFavorRequest) returns (TransferImperialFavorResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{from_settlement_id}/imperial-favor:transfer"
+      body: "*"
+    };
+  }
+
   // Add a tag to a settlement. Requires tags:manage privilege.
   //
   // Errors:
@@ -532,4 +548,15 @@ message ListImperialFavorLogsRequest {
 message ListImperialFavorLogsResponse {
   repeated ImperialFavorLog logs = 1;
   string next_token = 2;
+}
+
+message TransferImperialFavorRequest {
+  string from_settlement_id = 1 [(google.api.field_behavior) = REQUIRED];
+  string to_settlement_id = 2 [(google.api.field_behavior) = REQUIRED];
+  int64 amount = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message TransferImperialFavorResponse {
+  Settlement from_settlement = 1;
+  Settlement to_settlement = 2;
 }

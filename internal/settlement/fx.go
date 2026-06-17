@@ -9,6 +9,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repomapper"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service/sermapper"
+	"github.com/lasthearth/vsservice/internal/settlement/settlementuc"
 	"go.uber.org/fx"
 )
 
@@ -56,6 +57,10 @@ var App = fx.Options(
 				fx.As(new(interceptor.Scoper)),
 				fx.ResultTags(`group:"scopers"`),
 			),
+
+			func(repo service.SettlementRepository) *settlementuc.FavorOps {
+				return settlementuc.NewFavorOps(repo)
+			},
 		),
 	),
 )

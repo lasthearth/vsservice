@@ -39,6 +39,7 @@ const (
 	SettlementService_AddImperialFavor_FullMethodName        = "/settlement.v1.SettlementService/AddImperialFavor"
 	SettlementService_DeductImperialFavor_FullMethodName     = "/settlement.v1.SettlementService/DeductImperialFavor"
 	SettlementService_ListImperialFavorLogs_FullMethodName   = "/settlement.v1.SettlementService/ListImperialFavorLogs"
+	SettlementService_TransferImperialFavor_FullMethodName   = "/settlement.v1.SettlementService/TransferImperialFavor"
 	SettlementService_AddTagToSettlement_FullMethodName      = "/settlement.v1.SettlementService/AddTagToSettlement"
 	SettlementService_RemoveTagFromSettlement_FullMethodName = "/settlement.v1.SettlementService/RemoveTagFromSettlement"
 )
@@ -198,6 +199,16 @@ type SettlementServiceClient interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	ListImperialFavorLogs(ctx context.Context, in *ListImperialFavorLogsRequest, opts ...grpc.CallOption) (*ListImperialFavorLogsResponse, error)
+	// Transfer Imperial Favor from one settlement to another.
+	// Caller must be the leader of from_settlement_id.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): amount <= 0 or missing fields
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): caller is not the leader of from_settlement_id
+	//   - FAILED_PRECONDITION (412): insufficient imperial favor balance
+	//   - INTERNAL (500): database failure
+	TransferImperialFavor(ctx context.Context, in *TransferImperialFavorRequest, opts ...grpc.CallOption) (*TransferImperialFavorResponse, error)
 	// Add a tag to a settlement. Requires tags:manage privilege.
 	//
 	// Errors:
@@ -426,6 +437,16 @@ func (c *settlementServiceClient) ListImperialFavorLogs(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *settlementServiceClient) TransferImperialFavor(ctx context.Context, in *TransferImperialFavorRequest, opts ...grpc.CallOption) (*TransferImperialFavorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TransferImperialFavorResponse)
+	err := c.cc.Invoke(ctx, SettlementService_TransferImperialFavor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *settlementServiceClient) AddTagToSettlement(ctx context.Context, in *AddTagToSettlementRequest, opts ...grpc.CallOption) (*AddTagToSettlementResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AddTagToSettlementResponse)
@@ -601,6 +622,16 @@ type SettlementServiceServer interface {
 	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	ListImperialFavorLogs(context.Context, *ListImperialFavorLogsRequest) (*ListImperialFavorLogsResponse, error)
+	// Transfer Imperial Favor from one settlement to another.
+	// Caller must be the leader of from_settlement_id.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): amount <= 0 or missing fields
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): caller is not the leader of from_settlement_id
+	//   - FAILED_PRECONDITION (412): insufficient imperial favor balance
+	//   - INTERNAL (500): database failure
+	TransferImperialFavor(context.Context, *TransferImperialFavorRequest) (*TransferImperialFavorResponse, error)
 	// Add a tag to a settlement. Requires tags:manage privilege.
 	//
 	// Errors:
@@ -687,6 +718,9 @@ func (UnimplementedSettlementServiceServer) DeductImperialFavor(context.Context,
 }
 func (UnimplementedSettlementServiceServer) ListImperialFavorLogs(context.Context, *ListImperialFavorLogsRequest) (*ListImperialFavorLogsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListImperialFavorLogs not implemented")
+}
+func (UnimplementedSettlementServiceServer) TransferImperialFavor(context.Context, *TransferImperialFavorRequest) (*TransferImperialFavorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TransferImperialFavor not implemented")
 }
 func (UnimplementedSettlementServiceServer) AddTagToSettlement(context.Context, *AddTagToSettlementRequest) (*AddTagToSettlementResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddTagToSettlement not implemented")
@@ -1074,6 +1108,24 @@ func _SettlementService_ListImperialFavorLogs_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SettlementService_TransferImperialFavor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransferImperialFavorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SettlementServiceServer).TransferImperialFavor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SettlementService_TransferImperialFavor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SettlementServiceServer).TransferImperialFavor(ctx, req.(*TransferImperialFavorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SettlementService_AddTagToSettlement_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddTagToSettlementRequest)
 	if err := dec(in); err != nil {
@@ -1196,6 +1248,10 @@ var SettlementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListImperialFavorLogs",
 			Handler:    _SettlementService_ListImperialFavorLogs_Handler,
+		},
+		{
+			MethodName: "TransferImperialFavor",
+			Handler:    _SettlementService_TransferImperialFavor_Handler,
 		},
 		{
 			MethodName: "AddTagToSettlement",
