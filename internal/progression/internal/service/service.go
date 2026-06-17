@@ -153,10 +153,6 @@ func (s *Service) GetPointProgress(ctx context.Context, req *progressionv1.GetPo
 }
 
 func (s *Service) PurchasePointNode(ctx context.Context, req *progressionv1.PurchasePointNodeRequest) (*progressionv1.TalentProgress, error) {
-	if s.pointCtrl == nil {
-		return nil, status.Error(codes.Unimplemented, "point control not wired")
-	}
-
 	callerID, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -188,7 +184,10 @@ func (s *Service) purchaseNode(
 ) (*progressionv1.TalentProgress, error) {
 	tree, err := s.repo.GetTree(ctx, treeId)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "tree not found")
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, status.Error(codes.NotFound, "tree not found")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	var targetNode *model.TalentNode
