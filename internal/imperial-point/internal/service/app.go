@@ -1,6 +1,8 @@
 package service
 
 import (
+	"sync"
+
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 )
@@ -17,6 +19,9 @@ type Service struct {
 	log         logger.Logger
 	repo        ImperialPointRepository
 	progression ProgressionRollbacker
+	// mu serializes SetControl / ReleaseControl to prevent the count-check + write race
+	// within a single process. Distributed deployments would need an external lock.
+	mu sync.Mutex
 }
 
 func New(opts Opts) *Service {
