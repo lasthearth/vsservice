@@ -30,6 +30,7 @@ type Repository interface {
 	GetNewsById(ctx context.Context, id string) (*model.News, error)
 	SoftDeleteNews(ctx context.Context, id string, deletedBy string) error
 	IncrementViewCount(ctx context.Context, id string, userID string) error
+	GetNewsViewCount(ctx context.Context, id string) (int64, error)
 }
 
 var _ Storage = (*storage.Storage)(nil)

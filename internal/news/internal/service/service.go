@@ -63,15 +63,6 @@ func (s *Service) ListNews(ctx context.Context, req *newsv1.ListNewsRequest) (*n
 		return nil, err
 	}
 
-	userID, _ := interceptor.GetUserID(ctx)
-	for _, v := range news {
-		if userID != "" {
-			if err := s.repo.IncrementViewCount(ctx, v.Id, userID); err != nil {
-				s.logger.Error("failed to increment view count", zap.Error(err))
-			}
-		}
-	}
-
 	return &newsv1.ListNewsResponse{
 		News:          s.mapper.ToProtos(news),
 		NextPageToken: next,
@@ -100,16 +91,30 @@ func (s *Service) DeleteNews(ctx context.Context, req *newsv1.DeleteNewsRequest)
 
 // GetNews implements newsv1.NewsServiceServer.
 func (s *Service) GetNews(ctx context.Context, req *newsv1.GetNewsRequest) (*newsv1.News, error) {
-	if userID, err := interceptor.GetUserID(ctx); err == nil {
-		if err := s.repo.IncrementViewCount(ctx, req.GetId(), userID); err != nil {
-			s.logger.Error("failed to increment view count", zap.Error(err))
-		}
-	}
-
 	news, err := s.repo.GetNewsById(ctx, req.GetId())
 	if err != nil {
 		return nil, err
 	}
 
 	return s.mapper.ToProto(*news), nil
+}
+
+// MarkNewsViewed implements newsv1.NewsServiceServer.
+func (s *Service) MarkNewsViewed(ctx context.Context, req *newsv1.MarkNewsViewedRequest) (*newsv1.MarkNewsViewedResponse, error) {
+	userID, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.IncrementViewCount(ctx, req.GetId(), userID); err != nil {
+		s.logger.Error("failed to increment view count", zap.Error(err))
+		return nil, err
+	}
+
+	count, err := s.repo.GetNewsViewCount(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	return &newsv1.MarkNewsViewedResponse{ViewCount: count}, nil
 }

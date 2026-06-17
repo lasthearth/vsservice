@@ -13,6 +13,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/mongox/pagination"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -162,6 +163,33 @@ func (r *Repository) SoftDeleteNews(ctx context.Context, id string, deletedBy st
 
 	l.Info("news soft deleted successfully")
 	return nil
+}
+
+// GetNewsViewCount implements service.Repository.
+func (r *Repository) GetNewsViewCount(ctx context.Context, id string) (int64, error) {
+	objID, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return 0, ierror.ErrNotFound
+	}
+
+	res := r.coll.FindOne(
+		ctx,
+		bson.M{"_id": objID, "deleted_at": bson.M{"$exists": false}},
+		options.FindOne().SetProjection(bson.M{"view_count": 1}),
+	)
+	if err := res.Err(); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return 0, ierror.ErrNotFound
+		}
+		return 0, err
+	}
+
+	var d dto.News
+	if err := res.Decode(&d); err != nil {
+		return 0, err
+	}
+
+	return d.ViewCount, nil
 }
 
 // IncrementViewCount implements service.Repository.

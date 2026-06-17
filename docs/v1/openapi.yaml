@@ -1093,7 +1093,7 @@ paths:
     get:
       tags:
         - NewsService
-      summary: List news with pagination. View count is incremented for each item returned.
+      summary: List news with pagination.
       description: |-
         Default page size is 15, maximum is 50.
 
@@ -1170,7 +1170,7 @@ paths:
     get:
       tags:
         - NewsService
-      summary: Get a specific news entry by ID. View count is incremented.
+      summary: Get a specific news entry by ID.
       description: |-
         Errors:
            - NOT_FOUND (404): news not found
@@ -1219,6 +1219,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/google.protobuf.Empty'
+  /v1/news/{id}/views:
+    post:
+      tags:
+        - NewsService
+      summary: |-
+        Mark a news item as viewed by the authenticated user. Increments view count once per user.
+         Returns the updated view count.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): news not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: NewsService_MarkNewsViewed
+      parameters:
+        - name: id
+          in: path
+          description: The unique identifier of the news item.
+          required: true
+          schema:
+            type: string
+            title: id
+            description: The unique identifier of the news item.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/news.v1.MarkNewsViewedResponse'
   /v1/notifications:
     get:
       tags:
@@ -4010,6 +4039,28 @@ components:
             A token, which can be sent as `page_token` to retrieve the next page.
              If this field is omitted, there are no subsequent pages.
       title: ListNewsResponse
+      additionalProperties: false
+    news.v1.MarkNewsViewedRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: The unique identifier of the news item.
+      title: MarkNewsViewedRequest
+      required:
+        - id
+      additionalProperties: false
+    news.v1.MarkNewsViewedResponse:
+      type: object
+      properties:
+        view_count:
+          type:
+            - integer
+            - string
+          title: view_count
+          format: int64
+      title: MarkNewsViewedResponse
       additionalProperties: false
     news.v1.News:
       type: object

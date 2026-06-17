@@ -28,7 +28,7 @@ service NewsService {
     option (google.api.method_signature) = "news";
   }
 
-  // List news with pagination. View count is incremented for each item returned.
+  // List news with pagination.
   //
   // Default page size is 15, maximum is 50.
   //
@@ -50,13 +50,28 @@ service NewsService {
     option (google.api.method_signature) = "id";
   }
 
-  // Get a specific news entry by ID. View count is incremented.
+  // Get a specific news entry by ID.
   //
   // Errors:
   //   - NOT_FOUND (404): news not found
   //   - INTERNAL (500): database failure
   rpc GetNews(GetNewsRequest) returns (News) {
     option (google.api.http) = {get: "/v1/news/{id}"};
+    option (google.api.method_signature) = "id";
+  }
+
+  // Mark a news item as viewed by the authenticated user. Increments view count once per user.
+  // Returns the updated view count.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): news not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc MarkNewsViewed(MarkNewsViewedRequest) returns (MarkNewsViewedResponse) {
+    option (google.api.http) = {
+      post: "/v1/news/{id}/views"
+      body: "*"
+    };
     option (google.api.method_signature) = "id";
   }
 }
@@ -108,4 +123,13 @@ message DeleteNewsRequest {
 message GetNewsRequest {
   // The unique identifier of the news item to retrieve.
   string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message MarkNewsViewedRequest {
+  // The unique identifier of the news item.
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message MarkNewsViewedResponse {
+  int64 view_count = 1;
 }

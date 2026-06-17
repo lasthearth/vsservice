@@ -20,10 +20,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	NewsService_CreateNews_FullMethodName = "/news.v1.NewsService/CreateNews"
-	NewsService_ListNews_FullMethodName   = "/news.v1.NewsService/ListNews"
-	NewsService_DeleteNews_FullMethodName = "/news.v1.NewsService/DeleteNews"
-	NewsService_GetNews_FullMethodName    = "/news.v1.NewsService/GetNews"
+	NewsService_CreateNews_FullMethodName     = "/news.v1.NewsService/CreateNews"
+	NewsService_ListNews_FullMethodName       = "/news.v1.NewsService/ListNews"
+	NewsService_DeleteNews_FullMethodName     = "/news.v1.NewsService/DeleteNews"
+	NewsService_GetNews_FullMethodName        = "/news.v1.NewsService/GetNews"
+	NewsService_MarkNewsViewed_FullMethodName = "/news.v1.NewsService/MarkNewsViewed"
 )
 
 // NewsServiceClient is the client API for NewsService service.
@@ -41,7 +42,7 @@ type NewsServiceClient interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): storage or database failure
 	CreateNews(ctx context.Context, in *CreateNewsRequest, opts ...grpc.CallOption) (*News, error)
-	// List news with pagination. View count is incremented for each item returned.
+	// List news with pagination.
 	//
 	// Default page size is 15, maximum is 50.
 	//
@@ -56,12 +57,20 @@ type NewsServiceClient interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): database failure
 	DeleteNews(ctx context.Context, in *DeleteNewsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Get a specific news entry by ID. View count is incremented.
+	// Get a specific news entry by ID.
 	//
 	// Errors:
 	//   - NOT_FOUND (404): news not found
 	//   - INTERNAL (500): database failure
 	GetNews(ctx context.Context, in *GetNewsRequest, opts ...grpc.CallOption) (*News, error)
+	// Mark a news item as viewed by the authenticated user. Increments view count once per user.
+	// Returns the updated view count.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): news not found
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	MarkNewsViewed(ctx context.Context, in *MarkNewsViewedRequest, opts ...grpc.CallOption) (*MarkNewsViewedResponse, error)
 }
 
 type newsServiceClient struct {
@@ -112,6 +121,16 @@ func (c *newsServiceClient) GetNews(ctx context.Context, in *GetNewsRequest, opt
 	return out, nil
 }
 
+func (c *newsServiceClient) MarkNewsViewed(ctx context.Context, in *MarkNewsViewedRequest, opts ...grpc.CallOption) (*MarkNewsViewedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MarkNewsViewedResponse)
+	err := c.cc.Invoke(ctx, NewsService_MarkNewsViewed_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NewsServiceServer is the server API for NewsService service.
 // All implementations should embed UnimplementedNewsServiceServer
 // for forward compatibility.
@@ -127,7 +146,7 @@ type NewsServiceServer interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): storage or database failure
 	CreateNews(context.Context, *CreateNewsRequest) (*News, error)
-	// List news with pagination. View count is incremented for each item returned.
+	// List news with pagination.
 	//
 	// Default page size is 15, maximum is 50.
 	//
@@ -142,12 +161,20 @@ type NewsServiceServer interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): database failure
 	DeleteNews(context.Context, *DeleteNewsRequest) (*emptypb.Empty, error)
-	// Get a specific news entry by ID. View count is incremented.
+	// Get a specific news entry by ID.
 	//
 	// Errors:
 	//   - NOT_FOUND (404): news not found
 	//   - INTERNAL (500): database failure
 	GetNews(context.Context, *GetNewsRequest) (*News, error)
+	// Mark a news item as viewed by the authenticated user. Increments view count once per user.
+	// Returns the updated view count.
+	//
+	// Errors:
+	//   - NOT_FOUND (404): news not found
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - INTERNAL (500): database failure
+	MarkNewsViewed(context.Context, *MarkNewsViewedRequest) (*MarkNewsViewedResponse, error)
 }
 
 // UnimplementedNewsServiceServer should be embedded to have
@@ -168,6 +195,9 @@ func (UnimplementedNewsServiceServer) DeleteNews(context.Context, *DeleteNewsReq
 }
 func (UnimplementedNewsServiceServer) GetNews(context.Context, *GetNewsRequest) (*News, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetNews not implemented")
+}
+func (UnimplementedNewsServiceServer) MarkNewsViewed(context.Context, *MarkNewsViewedRequest) (*MarkNewsViewedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MarkNewsViewed not implemented")
 }
 func (UnimplementedNewsServiceServer) testEmbeddedByValue() {}
 
@@ -261,6 +291,24 @@ func _NewsService_GetNews_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NewsService_MarkNewsViewed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarkNewsViewedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NewsServiceServer).MarkNewsViewed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NewsService_MarkNewsViewed_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NewsServiceServer).MarkNewsViewed(ctx, req.(*MarkNewsViewedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NewsService_ServiceDesc is the grpc.ServiceDesc for NewsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -283,6 +331,10 @@ var NewsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetNews",
 			Handler:    _NewsService_GetNews_Handler,
+		},
+		{
+			MethodName: "MarkNewsViewed",
+			Handler:    _NewsService_MarkNewsViewed_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
