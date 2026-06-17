@@ -19,6 +19,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
 	"github.com/lasthearth/vsservice/internal/player"
+	"github.com/lasthearth/vsservice/internal/progression"
 	"github.com/lasthearth/vsservice/internal/referral"
 	"github.com/lasthearth/vsservice/internal/rules"
 	"github.com/lasthearth/vsservice/internal/server"
@@ -90,6 +91,7 @@ func main() {
 		hungergames.App,
 		serverinfo.App,
 		media.App,
+		progression.App,
 	)
 
 	a.Run()

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/lasthearth/vsservice/internal/pkg/pointcontrol"
 	"github.com/lasthearth/vsservice/internal/progression/internal/model"
 )
 
@@ -32,3 +33,7 @@ type FavorDeductor interface {
 	Deduct(ctx context.Context, settlementID string, amount int64, reason, byPlayerID string) error
 	IsLeader(ctx context.Context, settlementID, playerID string) error
 }
+
+// PointControlReader fetches the current controlling settlement for a point.
+// Implemented by imperial-point service, injected via fx.
+type PointControlReader = pointcontrol.Reader

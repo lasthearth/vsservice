@@ -48,6 +48,11 @@ func (p *TalentProgress) RollbackLast() (PurchasedNode, bool) {
 	return last, true
 }
 
+// AddNode appends a newly purchased node to the progress record.
+func (p *TalentProgress) AddNode(node PurchasedNode) {
+	p.PurchasedNodes = append(p.PurchasedNodes, node)
+}
+
 // HasNode reports whether nodeId is already purchased.
 func (p *TalentProgress) HasNode(nodeId string) bool {
 	for _, n := range p.PurchasedNodes {

@@ -11,6 +11,7 @@ import (
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
+	progressionv1 "github.com/lasthearth/vsservice/gen/progression/v1"
 	referralv1 "github.com/lasthearth/vsservice/gen/referral/v1"
 	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
 
@@ -46,6 +47,7 @@ type Opts struct {
 	HungerGamesV1   hgv1.HungerGamesServiceServer
 	ServerInfoV1    serverinfov1.ServerInfoServiceServer
 	MediaV1         mediav1.MediaServiceServer
+	ProgressionV1   progressionv1.ProgressionServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -67,6 +69,7 @@ type Server struct {
 	hungerGamesV1       hgv1.HungerGamesServiceServer
 	serverInfoV1        serverinfov1.ServerInfoServiceServer
 	mediaV1             mediav1.MediaServiceServer
+	progressionV1       progressionv1.ProgressionServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -93,6 +96,7 @@ func New(opts Opts) *Server {
 		hungerGamesV1:       opts.HungerGamesV1,
 		serverInfoV1:        opts.ServerInfoV1,
 		mediaV1:             opts.MediaV1,
+		progressionV1:       opts.ProgressionV1,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}
