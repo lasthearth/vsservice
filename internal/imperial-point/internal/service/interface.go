@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/lasthearth/vsservice/internal/imperial-point/internal/model"
+	"github.com/lasthearth/vsservice/internal/pkg/pointcontrol"
 )
 
 // ImperialPointRepository is the data access interface consumed by Service.
@@ -16,7 +17,4 @@ type ImperialPointRepository interface {
 }
 
 // ProgressionRollbacker rolls back the last purchased node for a point+side+tree.
-// Implemented by internal/progression Service, injected via fx.
-type ProgressionRollbacker interface {
-	RollbackLastPointNode(ctx context.Context, pointId, side, treeId string) error
-}
+type ProgressionRollbacker = pointcontrol.Rollbacker

@@ -3,6 +3,7 @@ package progression
 import (
 	progressionv1 "github.com/lasthearth/vsservice/gen/progression/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/pointcontrol"
 	"github.com/lasthearth/vsservice/internal/progression/internal/repository"
 	"github.com/lasthearth/vsservice/internal/progression/internal/service"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
@@ -42,6 +43,9 @@ var App = fx.Options(
 			fx.Annotate(
 				func(s *service.Service) interceptor.Scoper { return s },
 				fx.ResultTags(`group:"scopers"`),
+			),
+			fx.Annotate(
+				func(s *service.Service) pointcontrol.Rollbacker { return s },
 			),
 		),
 	),
