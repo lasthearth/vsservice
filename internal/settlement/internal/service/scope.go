@@ -14,5 +14,6 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "AddImperialFavor"):        interceptor.Scope("settlements:manage"),
 		interceptor.Method(srvName + "DeductImperialFavor"):     interceptor.Scope("settlements:manage"),
 		interceptor.Method(srvName + "ListImperialFavorLogs"):   interceptor.Scope("settlements:manage"),
+		interceptor.Method(srvName + "TransferImperialFavor"):   interceptor.Scope(""),
 	}
 }

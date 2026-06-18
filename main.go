@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/lasthearth/vsservice/internal/donate"
 	"github.com/lasthearth/vsservice/internal/hungergames"
+	imperialpoint "github.com/lasthearth/vsservice/internal/imperial-point"
 	"github.com/lasthearth/vsservice/internal/leaderboard"
 	"github.com/lasthearth/vsservice/internal/media"
 	"github.com/lasthearth/vsservice/internal/news"
@@ -19,6 +20,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
 	"github.com/lasthearth/vsservice/internal/player"
+	"github.com/lasthearth/vsservice/internal/progression"
 	"github.com/lasthearth/vsservice/internal/referral"
 	"github.com/lasthearth/vsservice/internal/rules"
 	"github.com/lasthearth/vsservice/internal/server"
@@ -90,6 +92,8 @@ func main() {
 		hungergames.App,
 		serverinfo.App,
 		media.App,
+		progression.App,
+		imperialpoint.App,
 	)
 
 	a.Run()

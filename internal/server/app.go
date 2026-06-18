@@ -3,24 +3,24 @@ package server
 import (
 	"net/http"
 
-	"github.com/lasthearth/vsservice/internal/webhook"
-
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
+	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
+	progressionv1 "github.com/lasthearth/vsservice/gen/progression/v1"
 	referralv1 "github.com/lasthearth/vsservice/gen/referral/v1"
-	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
-
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
+	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
+	"github.com/lasthearth/vsservice/internal/webhook"
 	"go.uber.org/fx"
 	"google.golang.org/grpc"
 )
@@ -46,6 +46,8 @@ type Opts struct {
 	HungerGamesV1   hgv1.HungerGamesServiceServer
 	ServerInfoV1    serverinfov1.ServerInfoServiceServer
 	MediaV1         mediav1.MediaServiceServer
+	ProgressionV1   progressionv1.ProgressionServiceServer
+	ImperialPointV1 imperialpointv1.ImperialPointServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -67,6 +69,8 @@ type Server struct {
 	hungerGamesV1       hgv1.HungerGamesServiceServer
 	serverInfoV1        serverinfov1.ServerInfoServiceServer
 	mediaV1             mediav1.MediaServiceServer
+	progressionV1       progressionv1.ProgressionServiceServer
+	imperialPointV1     imperialpointv1.ImperialPointServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -93,6 +97,8 @@ func New(opts Opts) *Server {
 		hungerGamesV1:       opts.HungerGamesV1,
 		serverInfoV1:        opts.ServerInfoV1,
 		mediaV1:             opts.MediaV1,
+		progressionV1:       opts.ProgressionV1,
+		imperialPointV1:     opts.ImperialPointV1,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}

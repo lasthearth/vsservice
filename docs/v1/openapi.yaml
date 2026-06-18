@@ -942,6 +942,216 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/hungergames.v1.GetPlayerStatsResponse'
+  /v1/imperial-points:
+    get:
+      tags:
+        - ImperialPointService
+      summary: List all imperial points.
+      description: |-
+        Errors:
+           - INTERNAL (500): database failure
+      operationId: ImperialPointService_ListPoints
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/imperialpoint.v1.ListPointsResponse'
+    post:
+      tags:
+        - ImperialPointService
+      summary: Create a new imperial point. Requires imperialpoint:write scope.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): missing name
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): requires imperialpoint:write scope
+           - INTERNAL (500): database failure
+      operationId: ImperialPointService_CreatePoint
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/imperialpoint.v1.CreatePointRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/imperialpoint.v1.ImperialPoint'
+  /v1/imperial-points/{id}:
+    get:
+      tags:
+        - ImperialPointService
+      summary: Get an imperial point by ID.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): point not found
+           - INTERNAL (500): database failure
+      operationId: ImperialPointService_GetPoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/imperialpoint.v1.ImperialPoint'
+    patch:
+      tags:
+        - ImperialPointService
+      summary: |-
+        Update an imperial point config (name, description, bi_rate, tree_id).
+         Requires imperialpoint:write scope.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): point not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): requires imperialpoint:write scope
+           - INTERNAL (500): database failure
+      operationId: ImperialPointService_UpdatePoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  title: name
+                description:
+                  type: string
+                  title: description
+                bi_rate_per_hour:
+                  type:
+                    - integer
+                    - string
+                  title: bi_rate_per_hour
+                  format: int64
+                tree_id:
+                  type: string
+                  title: tree_id
+              title: UpdatePointRequest
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/imperialpoint.v1.ImperialPoint'
+  /v1/imperial-points/{point_id}:release-control:
+    post:
+      tags:
+        - ImperialPointService
+      summary: |-
+        Release control of an imperial point. Rolls back the last purchased node.
+         Requires imperialpoint:write scope.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): point not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): requires imperialpoint:write scope
+           - INTERNAL (500): database failure
+      operationId: ImperialPointService_ReleaseControl
+      parameters:
+        - name: point_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: point_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                point_id:
+                  type: string
+                  title: point_id
+              title: ReleaseControlRequest
+              required:
+                - point_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/imperialpoint.v1.ImperialPoint'
+  /v1/imperial-points/{point_id}:set-control:
+    post:
+      tags:
+        - ImperialPointService
+      summary: |-
+        Set which settlement controls an imperial point.
+         If the point was previously controlled by the opposite side, the last
+         purchased node in the point's tree is rolled back (no БИ refund).
+         Requires imperialpoint:write scope.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): point or settlement not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): requires imperialpoint:write scope
+           - FAILED_PRECONDITION (412): side already controls 2 points
+           - INTERNAL (500): database failure
+      operationId: ImperialPointService_SetControl
+      parameters:
+        - name: point_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: point_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                point_id:
+                  type: string
+                  title: point_id
+                settlement_id:
+                  type: string
+                  title: settlement_id
+                side:
+                  type: string
+                  title: side
+              title: SetControlRequest
+              required:
+                - point_id
+                - settlement_id
+                - side
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/imperialpoint.v1.ImperialPoint'
   /v1/items:
     post:
       tags:
@@ -1333,6 +1543,431 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/google.protobuf.Empty'
+  /v1/progression/points/{point_id}/sides/{side}/trees/{tree_id}:
+    get:
+      tags:
+        - ProgressionService
+      summary: Get a point's progression for a specific side (east/west).
+      description: |-
+        Errors:
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_GetPointProgress
+      parameters:
+        - name: point_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: point_id
+        - name: side
+          in: path
+          required: true
+          schema:
+            type: string
+            title: side
+        - name: tree_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: tree_id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.TalentProgress'
+  /v1/progression/points/{point_id}/sides/{side}/trees/{tree_id}/nodes/{node_id}:purchase:
+    post:
+      tags:
+        - ProgressionService
+      summary: |-
+        Purchase a node in a key point's talent tree.
+         Caller must be the leader of the settlement that controls the point.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): point, tree, or node not found
+           - INVALID_ARGUMENT (400): node already purchased or parent not purchased
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): caller's settlement does not control this point
+           - FAILED_PRECONDITION (412): insufficient imperial favor
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_PurchasePointNode
+      parameters:
+        - name: point_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: point_id
+        - name: side
+          in: path
+          required: true
+          schema:
+            type: string
+            title: side
+        - name: tree_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: tree_id
+        - name: node_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: node_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                point_id:
+                  type: string
+                  title: point_id
+                tree_id:
+                  type: string
+                  title: tree_id
+                node_id:
+                  type: string
+                  title: node_id
+                settlement_id:
+                  type: string
+                  title: settlement_id
+              title: PurchasePointNodeRequest
+              required:
+                - point_id
+                - tree_id
+                - node_id
+                - settlement_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.TalentProgress'
+  /v1/progression/presets:
+    get:
+      tags:
+        - ProgressionService
+      summary: List all presets.
+      description: |-
+        Errors:
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_ListPresets
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.ListPresetsResponse'
+    post:
+      tags:
+        - ProgressionService
+      summary: |-
+        Create a settlement preset (a named collection of tree IDs available to settlements).
+         Requires progression:write scope.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): missing required fields
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): requires progression:write scope
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_CreatePreset
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/progression.v1.CreatePresetRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.TalentPreset'
+  /v1/progression/presets/{id}:
+    get:
+      tags:
+        - ProgressionService
+      summary: Get a preset by ID.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): preset not found
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_GetPreset
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.TalentPreset'
+    patch:
+      tags:
+        - ProgressionService
+      summary: Update a settlement preset. Requires progression:write scope.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): preset not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): requires progression:write scope
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_UpdatePreset
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  title: name
+                tree_ids:
+                  type: array
+                  items:
+                    type: string
+                  title: tree_ids
+              title: UpdatePresetRequest
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.TalentPreset'
+  /v1/progression/settlements/{settlement_id}/trees/{tree_id}:
+    get:
+      tags:
+        - ProgressionService
+      summary: Get a settlement's progress on a specific tree.
+      description: |-
+        Errors:
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_GetSettlementProgress
+      parameters:
+        - name: settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: settlement_id
+        - name: tree_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: tree_id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.TalentProgress'
+  /v1/progression/settlements/{settlement_id}/trees/{tree_id}/nodes/{node_id}:purchase:
+    post:
+      tags:
+        - ProgressionService
+      summary: |-
+        Purchase a node in a settlement's talent tree.
+         Caller must be the leader of settlement_id.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): tree or node not found
+           - INVALID_ARGUMENT (400): node already purchased or parent not purchased
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): caller is not the leader of the settlement
+           - FAILED_PRECONDITION (412): insufficient imperial favor
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_PurchaseSettlementNode
+      parameters:
+        - name: settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: settlement_id
+        - name: tree_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: tree_id
+        - name: node_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: node_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                settlement_id:
+                  type: string
+                  title: settlement_id
+                tree_id:
+                  type: string
+                  title: tree_id
+                node_id:
+                  type: string
+                  title: node_id
+              title: PurchaseSettlementNodeRequest
+              required:
+                - settlement_id
+                - tree_id
+                - node_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.TalentProgress'
+  /v1/progression/trees:
+    get:
+      tags:
+        - ProgressionService
+      summary: List all talent trees.
+      description: |-
+        Errors:
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_ListTrees
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.ListTreesResponse'
+    post:
+      tags:
+        - ProgressionService
+      summary: Create a new talent tree template. Requires progression:write scope.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): missing required fields
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): requires progression:write scope
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_CreateTree
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/progression.v1.CreateTreeRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.TalentTree'
+  /v1/progression/trees/{id}:
+    get:
+      tags:
+        - ProgressionService
+      summary: Get a talent tree by ID.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): tree not found
+           - INVALID_ARGUMENT (400): invalid id format
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_GetTree
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.TalentTree'
+    patch:
+      tags:
+        - ProgressionService
+      summary: Update an existing talent tree template. Requires progression:write scope.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): tree not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): requires progression:write scope
+           - INTERNAL (500): database failure
+      operationId: ProgressionService_UpdateTree
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  title: name
+                description:
+                  type: string
+                  title: description
+                nodes:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/progression.v1.TalentNode'
+                  title: nodes
+                edges:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/progression.v1.TalentEdge'
+                  title: edges
+              title: UpdateTreeRequest
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/progression.v1.TalentTree'
   /v1/referral/my-code:
     get:
       tags:
@@ -1745,6 +2380,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/settlement.v1.ListPendingResponse'
+  /v1/settlements/{from_settlement_id}/imperial-favor:transfer:
+    post:
+      tags:
+        - SettlementService
+      summary: |-
+        Transfer Imperial Favor from one settlement to another.
+         Caller must be the leader of from_settlement_id.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): amount <= 0 or missing fields
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): caller is not the leader of from_settlement_id
+           - FAILED_PRECONDITION (412): insufficient imperial favor balance
+           - INTERNAL (500): database failure
+      operationId: SettlementService_TransferImperialFavor
+      parameters:
+        - name: from_settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: from_settlement_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                from_settlement_id:
+                  type: string
+                  title: from_settlement_id
+                to_settlement_id:
+                  type: string
+                  title: to_settlement_id
+                amount:
+                  type:
+                    - integer
+                    - string
+                  title: amount
+                  format: int64
+              title: TransferImperialFavorRequest
+              required:
+                - from_settlement_id
+                - to_settlement_id
+                - amount
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.TransferImperialFavorResponse'
   /v1/settlements/{id}:
     get:
       tags:
@@ -3725,6 +4414,145 @@ components:
         - coins
       additionalProperties: false
       description: SeasonReward maps a leaderboard rank to a coin reward amount.
+    imperialpoint.v1.CreatePointRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        description:
+          type: string
+          title: description
+        bi_rate_per_hour:
+          type:
+            - integer
+            - string
+          title: bi_rate_per_hour
+          format: int64
+        tree_id:
+          type: string
+          title: tree_id
+      title: CreatePointRequest
+      required:
+        - name
+      additionalProperties: false
+    imperialpoint.v1.GetPointRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetPointRequest
+      required:
+        - id
+      additionalProperties: false
+    imperialpoint.v1.ImperialPoint:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        description:
+          type: string
+          title: description
+        bi_rate_per_hour:
+          type:
+            - integer
+            - string
+          title: bi_rate_per_hour
+          format: int64
+        tree_id:
+          type: string
+          title: tree_id
+        control:
+          title: control
+          $ref: '#/components/schemas/imperialpoint.v1.PointControl'
+      title: ImperialPoint
+      additionalProperties: false
+    imperialpoint.v1.ListPointsRequest:
+      type: object
+      title: ListPointsRequest
+      additionalProperties: false
+    imperialpoint.v1.ListPointsResponse:
+      type: object
+      properties:
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/imperialpoint.v1.ImperialPoint'
+          title: points
+      title: ListPointsResponse
+      additionalProperties: false
+    imperialpoint.v1.PointControl:
+      type: object
+      properties:
+        side:
+          type: string
+          title: side
+        settlement_id:
+          type: string
+          title: settlement_id
+        controlled_since:
+          title: controlled_since
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: PointControl
+      additionalProperties: false
+    imperialpoint.v1.ReleaseControlRequest:
+      type: object
+      properties:
+        point_id:
+          type: string
+          title: point_id
+      title: ReleaseControlRequest
+      required:
+        - point_id
+      additionalProperties: false
+    imperialpoint.v1.SetControlRequest:
+      type: object
+      properties:
+        point_id:
+          type: string
+          title: point_id
+        settlement_id:
+          type: string
+          title: settlement_id
+        side:
+          type: string
+          title: side
+      title: SetControlRequest
+      required:
+        - point_id
+        - settlement_id
+        - side
+      additionalProperties: false
+    imperialpoint.v1.UpdatePointRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        description:
+          type: string
+          title: description
+        bi_rate_per_hour:
+          type:
+            - integer
+            - string
+          title: bi_rate_per_hour
+          format: int64
+        tree_id:
+          type: string
+          title: tree_id
+      title: UpdatePointRequest
+      required:
+        - id
+      additionalProperties: false
     kit.v1.AssignKitToUserRequest:
       type: object
       properties:
@@ -4178,6 +5006,319 @@ components:
         - UNREAD
         - READ
       description: The state of the notification (e.g., unread or read).
+    progression.v1.CreatePresetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        tree_ids:
+          type: array
+          items:
+            type: string
+          title: tree_ids
+      title: CreatePresetRequest
+      required:
+        - name
+      additionalProperties: false
+      description: Preset requests
+    progression.v1.CreateTreeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+        description:
+          type: string
+          title: description
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/progression.v1.TalentNode'
+          title: nodes
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/progression.v1.TalentEdge'
+          title: edges
+      title: CreateTreeRequest
+      required:
+        - name
+      additionalProperties: false
+      description: Tree requests
+    progression.v1.GetPointProgressRequest:
+      type: object
+      properties:
+        point_id:
+          type: string
+          title: point_id
+        side:
+          type: string
+          title: side
+        tree_id:
+          type: string
+          title: tree_id
+      title: GetPointProgressRequest
+      required:
+        - point_id
+        - side
+        - tree_id
+      additionalProperties: false
+    progression.v1.GetPresetRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetPresetRequest
+      required:
+        - id
+      additionalProperties: false
+    progression.v1.GetSettlementProgressRequest:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+        tree_id:
+          type: string
+          title: tree_id
+      title: GetSettlementProgressRequest
+      required:
+        - settlement_id
+        - tree_id
+      additionalProperties: false
+      description: Progress requests
+    progression.v1.GetTreeRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetTreeRequest
+      required:
+        - id
+      additionalProperties: false
+    progression.v1.ListPresetsRequest:
+      type: object
+      title: ListPresetsRequest
+      additionalProperties: false
+    progression.v1.ListPresetsResponse:
+      type: object
+      properties:
+        presets:
+          type: array
+          items:
+            $ref: '#/components/schemas/progression.v1.TalentPreset'
+          title: presets
+      title: ListPresetsResponse
+      additionalProperties: false
+    progression.v1.ListTreesRequest:
+      type: object
+      title: ListTreesRequest
+      additionalProperties: false
+    progression.v1.ListTreesResponse:
+      type: object
+      properties:
+        trees:
+          type: array
+          items:
+            $ref: '#/components/schemas/progression.v1.TalentTree'
+          title: trees
+      title: ListTreesResponse
+      additionalProperties: false
+    progression.v1.PurchasePointNodeRequest:
+      type: object
+      properties:
+        point_id:
+          type: string
+          title: point_id
+        side:
+          type: string
+          title: side
+        tree_id:
+          type: string
+          title: tree_id
+        node_id:
+          type: string
+          title: node_id
+        settlement_id:
+          type: string
+          title: settlement_id
+      title: PurchasePointNodeRequest
+      required:
+        - point_id
+        - side
+        - tree_id
+        - node_id
+        - settlement_id
+      additionalProperties: false
+    progression.v1.PurchaseSettlementNodeRequest:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+        tree_id:
+          type: string
+          title: tree_id
+        node_id:
+          type: string
+          title: node_id
+      title: PurchaseSettlementNodeRequest
+      required:
+        - settlement_id
+        - tree_id
+        - node_id
+      additionalProperties: false
+    progression.v1.PurchasedNode:
+      type: object
+      properties:
+        node_id:
+          type: string
+          title: node_id
+        purchased_at:
+          title: purchased_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        purchased_by_settlement_id:
+          type: string
+          title: purchased_by_settlement_id
+      title: PurchasedNode
+      additionalProperties: false
+    progression.v1.TalentEdge:
+      type: object
+      properties:
+        from:
+          type: string
+          title: from
+        to:
+          type: string
+          title: to
+      title: TalentEdge
+      additionalProperties: false
+    progression.v1.TalentNode:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        description:
+          type: string
+          title: description
+        effect:
+          type: string
+          title: effect
+        cost_bi:
+          type:
+            - integer
+            - string
+          title: cost_bi
+          format: int64
+      title: TalentNode
+      additionalProperties: false
+    progression.v1.TalentPreset:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        tree_ids:
+          type: array
+          items:
+            type: string
+          title: tree_ids
+      title: TalentPreset
+      additionalProperties: false
+    progression.v1.TalentProgress:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        tree_id:
+          type: string
+          title: tree_id
+        purchased_nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/progression.v1.PurchasedNode'
+          title: purchased_nodes
+      title: TalentProgress
+      additionalProperties: false
+    progression.v1.TalentTree:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        description:
+          type: string
+          title: description
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/progression.v1.TalentNode'
+          title: nodes
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/progression.v1.TalentEdge'
+          title: edges
+      title: TalentTree
+      additionalProperties: false
+    progression.v1.UpdatePresetRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        tree_ids:
+          type: array
+          items:
+            type: string
+          title: tree_ids
+      title: UpdatePresetRequest
+      required:
+        - id
+      additionalProperties: false
+    progression.v1.UpdateTreeRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        description:
+          type: string
+          title: description
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/progression.v1.TalentNode'
+          title: nodes
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/progression.v1.TalentEdge'
+          title: edges
+      title: UpdateTreeRequest
+      required:
+        - id
+      additionalProperties: false
     referral.v1.GetMyReferralCodeResponse:
       type: object
       properties:
@@ -5005,6 +6146,38 @@ components:
         - id
       additionalProperties: false
       description: Reference to tag in other messages
+    settlement.v1.TransferImperialFavorRequest:
+      type: object
+      properties:
+        from_settlement_id:
+          type: string
+          title: from_settlement_id
+        to_settlement_id:
+          type: string
+          title: to_settlement_id
+        amount:
+          type:
+            - integer
+            - string
+          title: amount
+          format: int64
+      title: TransferImperialFavorRequest
+      required:
+        - from_settlement_id
+        - to_settlement_id
+        - amount
+      additionalProperties: false
+    settlement.v1.TransferImperialFavorResponse:
+      type: object
+      properties:
+        from_settlement:
+          title: from_settlement
+          $ref: '#/components/schemas/settlement.v1.Settlement'
+        to_settlement:
+          title: to_settlement
+          $ref: '#/components/schemas/settlement.v1.Settlement'
+      title: TransferImperialFavorResponse
+      additionalProperties: false
     settlement.v1.UpdateSettlementRequest:
       type: object
       properties:
@@ -5462,6 +6635,8 @@ tags:
     description: |-
       HungerGamesService manages the Hunger Games game mode: ELO ratings,
        season lifecycle, leaderboard, and reward distribution.
+  - name: ImperialPointService
+    description: ImperialPointService manages neutral-zone key locations and their control state.
   - name: KitService
     description: Kit service for managing game kit assignment to users
   - name: LeaderboardService
@@ -5472,6 +6647,8 @@ tags:
     description: Represents news service
   - name: NotificationService
     description: Provides methods to manage user notifications
+  - name: ProgressionService
+    description: ProgressionService manages talent tree templates, presets, and settlement/point progression.
   - name: ReferralService
   - name: RuleService
     description: Represents rules service
