@@ -137,10 +137,32 @@ func (r *Repository) ListPresets(ctx context.Context) ([]model.TalentPreset, err
 // --- Progress ---
 
 func (r *Repository) GetOrCreateProgress(ctx context.Context, ownerType, settlementId, pointId, side, treeId string) (*model.TalentProgress, error) {
-	filter, err := buildProgressFilter(ownerType, settlementId, pointId, side, treeId)
+	// Parse all ObjectIDs once; reused for both the lookup filter and the create path.
+	treeOid, err := mongox.ParseObjectID(treeId)
 	if err != nil {
 		return nil, err
 	}
+	var settlementOid, pointOid bson.ObjectID
+	if settlementId != "" {
+		if settlementOid, err = mongox.ParseObjectID(settlementId); err != nil {
+			return nil, err
+		}
+	}
+	if pointId != "" {
+		if pointOid, err = mongox.ParseObjectID(pointId); err != nil {
+			return nil, err
+		}
+	}
+
+	filter := bson.M{"owner_type": ownerType, "tree_id": treeOid}
+	if settlementId != "" {
+		filter["settlement_id"] = settlementOid
+	}
+	if pointId != "" {
+		filter["point_id"] = pointOid
+		filter["side"] = side
+	}
+
 	var d dto.TalentProgress
 	err = r.progressColl.FindOne(ctx, filter).Decode(&d)
 	if err == nil {
@@ -149,11 +171,8 @@ func (r *Repository) GetOrCreateProgress(ctx context.Context, ownerType, settlem
 	if !errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, err
 	}
-	// Create empty progress document
-	treeOid, err := mongox.ParseObjectID(treeId)
-	if err != nil {
-		return nil, err
-	}
+
+	// Create empty progress document.
 	d = dto.TalentProgress{
 		Model:          mongox.NewModel(),
 		OwnerType:      ownerType,
@@ -161,18 +180,10 @@ func (r *Repository) GetOrCreateProgress(ctx context.Context, ownerType, settlem
 		PurchasedNodes: []dto.PurchasedNode{},
 	}
 	if settlementId != "" {
-		soid, err := mongox.ParseObjectID(settlementId)
-		if err != nil {
-			return nil, err
-		}
-		d.SettlementId = soid
+		d.SettlementId = settlementOid
 	}
 	if pointId != "" {
-		poid, err := mongox.ParseObjectID(pointId)
-		if err != nil {
-			return nil, err
-		}
-		d.PointId = poid
+		d.PointId = pointOid
 		d.Side = side
 	}
 	if _, err := r.progressColl.InsertOne(ctx, d); err != nil {
@@ -199,30 +210,6 @@ func (r *Repository) SaveProgress(ctx context.Context, progress model.TalentProg
 }
 
 // --- helpers ---
-
-func buildProgressFilter(ownerType, settlementId, pointId, side, treeId string) (bson.M, error) {
-	treeOid, err := mongox.ParseObjectID(treeId)
-	if err != nil {
-		return nil, err
-	}
-	f := bson.M{"owner_type": ownerType, "tree_id": treeOid}
-	if settlementId != "" {
-		soid, err := mongox.ParseObjectID(settlementId)
-		if err != nil {
-			return nil, err
-		}
-		f["settlement_id"] = soid
-	}
-	if pointId != "" {
-		poid, err := mongox.ParseObjectID(pointId)
-		if err != nil {
-			return nil, err
-		}
-		f["point_id"] = poid
-		f["side"] = side
-	}
-	return f, nil
-}
 
 func toNodeDTOs(nodes []model.TalentNode) []dto.TalentNode {
 	out := make([]dto.TalentNode, len(nodes))

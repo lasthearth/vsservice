@@ -2,10 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
-
-	"errors"
 
 	progressionv1 "github.com/lasthearth/vsservice/gen/progression/v1"
 	"github.com/lasthearth/vsservice/internal/progression/internal/model"
@@ -18,7 +17,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Embed for forward compatibility.
+// Compile-time assertion that *Service satisfies the gRPC server interface.
 var _ progressionv1.ProgressionServiceServer = (*Service)(nil)
 
 // --- Trees ---
@@ -46,7 +45,7 @@ func (s *Service) UpdateTree(ctx context.Context, req *progressionv1.UpdateTreeR
 		Edges:       protoEdgesToModel(req.GetEdges()),
 	})
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if isNotFound(err) {
 			return nil, status.Error(codes.NotFound, "tree not found")
 		}
 		return nil, status.Error(codes.Internal, err.Error())
@@ -57,7 +56,7 @@ func (s *Service) UpdateTree(ctx context.Context, req *progressionv1.UpdateTreeR
 func (s *Service) GetTree(ctx context.Context, req *progressionv1.GetTreeRequest) (*progressionv1.TalentTree, error) {
 	tree, err := s.repo.GetTree(ctx, req.GetId())
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if isNotFound(err) {
 			return nil, status.Error(codes.NotFound, "tree not found")
 		}
 		return nil, status.Error(codes.Internal, err.Error())
@@ -90,7 +89,7 @@ func (s *Service) CreatePreset(ctx context.Context, req *progressionv1.CreatePre
 func (s *Service) UpdatePreset(ctx context.Context, req *progressionv1.UpdatePresetRequest) (*progressionv1.TalentPreset, error) {
 	preset, err := s.repo.UpdatePreset(ctx, model.TalentPreset{Id: req.GetId(), Name: req.GetName(), TreeIds: req.GetTreeIds()})
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if isNotFound(err) {
 			return nil, status.Error(codes.NotFound, "preset not found")
 		}
 		return nil, status.Error(codes.Internal, err.Error())
@@ -101,7 +100,7 @@ func (s *Service) UpdatePreset(ctx context.Context, req *progressionv1.UpdatePre
 func (s *Service) GetPreset(ctx context.Context, req *progressionv1.GetPresetRequest) (*progressionv1.TalentPreset, error) {
 	preset, err := s.repo.GetPreset(ctx, req.GetId())
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if isNotFound(err) {
 			return nil, status.Error(codes.NotFound, "preset not found")
 		}
 		return nil, status.Error(codes.Internal, err.Error())
@@ -184,7 +183,7 @@ func (s *Service) purchaseNode(
 ) (*progressionv1.TalentProgress, error) {
 	tree, err := s.repo.GetTree(ctx, treeId)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if isNotFound(err) {
 			return nil, status.Error(codes.NotFound, "tree not found")
 		}
 		return nil, status.Error(codes.Internal, err.Error())
@@ -291,4 +290,8 @@ func protoEdgesToModel(edges []*progressionv1.TalentEdge) []model.TalentEdge {
 		out[i] = model.TalentEdge{From: e.GetFrom(), To: e.GetTo()}
 	}
 	return out
+}
+
+func isNotFound(err error) bool {
+	return errors.Is(err, mongo.ErrNoDocuments)
 }

@@ -29,7 +29,7 @@ var App = fx.Options(
 			),
 		),
 
-		// Single *Service instance shared across all role bindings so the mutex is effective.
+		// Single *Service instance shared across all role bindings.
 		fx.Provide(service.New),
 
 		fx.Provide(

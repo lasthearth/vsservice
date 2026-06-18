@@ -17,7 +17,6 @@ type ImperialPointRepository interface {
 
 // ProgressionRollbacker rolls back the last purchased node for a point+side+tree.
 // Implemented by internal/progression Service, injected via fx.
-// Defined here as interface; concrete type is in internal/pkg/pointcontrol (shared).
 type ProgressionRollbacker interface {
 	RollbackLastPointNode(ctx context.Context, pointId, side, treeId string) error
 }

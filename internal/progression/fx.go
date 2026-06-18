@@ -32,14 +32,15 @@ var App = fx.Options(
 			),
 		),
 
+		// Single *Service instance shared across all role bindings.
+		fx.Provide(service.New),
+
 		fx.Provide(
 			fx.Annotate(
-				service.New,
-				fx.As(new(progressionv1.ProgressionServiceServer)),
+				func(s *service.Service) progressionv1.ProgressionServiceServer { return s },
 			),
 			fx.Annotate(
-				service.New,
-				fx.As(new(interceptor.Scoper)),
+				func(s *service.Service) interceptor.Scoper { return s },
 				fx.ResultTags(`group:"scopers"`),
 			),
 		),

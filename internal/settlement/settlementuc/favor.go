@@ -43,26 +43,6 @@ func (f *FavorOps) Deduct(ctx context.Context, settlementID string, amount int64
 	return nil
 }
 
-// Add increases amount for a settlement's imperial favor balance and records a log entry.
-func (f *FavorOps) Add(ctx context.Context, settlementID string, amount int64, reason, byPlayerID string) error {
-	_, err := f.repo.UpdateSettlement(ctx, settlementID,
-		func(_ context.Context, s *model.Settlement) (*model.Settlement, error) {
-			s.AddFavor(amount)
-			return s, nil
-		},
-	)
-	if err != nil {
-		return err
-	}
-	_ = f.repo.CreateFavorLog(ctx, model.ImperialFavorLog{
-		SettlementId: settlementID,
-		AdminId:      byPlayerID,
-		Amount:       amount,
-		Reason:       reason,
-	})
-	return nil
-}
-
 // IsLeader checks that playerID is the leader of settlementID.
 func (f *FavorOps) IsLeader(ctx context.Context, settlementID, playerID string) error {
 	return f.repo.IsLeaderOfSettlement(ctx, settlementID, playerID)
