@@ -82,9 +82,6 @@ func setupIndexes(log logger.Logger, walletColl, shopColl, purchColl, txColl *mg
 	})
 	createIndex(purchColl, mgo.IndexModel{
 		Keys: bson.D{{Key: "status", Value: 1}, {Key: "_id", Value: -1}},
-		Options: options.Index().SetPartialFilterExpression(bson.M{
-			"issued_at": bson.M{"$exists": false},
-		}),
 	})
 	createIndex(txColl, mgo.IndexModel{
 		Keys: bson.D{{Key: "player_id", Value: 1}},
