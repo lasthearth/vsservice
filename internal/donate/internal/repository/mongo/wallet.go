@@ -142,7 +142,7 @@ func (r *Repository) UpdateWallet(
 		"coins":       updated.Coins,
 		"created_at":  d.CreatedAt,
 		"updated_at":  updated.UpdatedAt,
-		"_id":         d.Id,
+		"_id":         d.Id(),
 	})
 	if err != nil {
 		l.Error("failed to replace wallet", zap.Error(err))
