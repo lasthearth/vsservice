@@ -1,7 +1,6 @@
 services:
   scalar:
     image: nginx:alpine
-    container_name: "scalar-docs-container"
     ports:
       - "8888:80"
     volumes:
