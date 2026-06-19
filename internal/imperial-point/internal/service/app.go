@@ -8,9 +8,8 @@ import (
 type Opts struct {
 	fx.In
 
-	Log         logger.Logger
-	Repo        ImperialPointRepository
-	Progression ProgressionRollbacker
+	Log  logger.Logger
+	Repo ImperialPointRepository
 }
 
 type Service struct {
@@ -21,8 +20,11 @@ type Service struct {
 
 func New(opts Opts) *Service {
 	return &Service{
-		log:         opts.Log,
-		repo:        opts.Repo,
-		progression: opts.Progression,
+		log:  opts.Log,
+		repo: opts.Repo,
 	}
+}
+
+func (s *Service) SetRollbacker(r ProgressionRollbacker) {
+	s.progression = r
 }

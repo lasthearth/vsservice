@@ -28,6 +28,7 @@ var _ service.DonateRepository = (*Repository)(nil)
 type Repository struct {
 	log        logger.Logger
 	client     *mgo.Client
+	mapper     Mapper
 	walletColl *mgo.Collection
 	shopColl   *mgo.Collection
 	purchColl  *mgo.Collection
@@ -40,6 +41,7 @@ type Opts struct {
 	Log      logger.Logger
 	Database *mgo.Database
 	Client   *mgo.Client
+	Mapper   Mapper
 }
 
 func New(opts Opts) *Repository {
@@ -52,6 +54,7 @@ func New(opts Opts) *Repository {
 	return &Repository{
 		log:        log,
 		client:     opts.Client,
+		mapper:     opts.Mapper,
 		walletColl: walletColl,
 		shopColl:   shopColl,
 		purchColl:  purchColl,

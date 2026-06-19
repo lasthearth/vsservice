@@ -136,15 +136,10 @@ func (r *Repository) UpdateWallet(
 	}
 
 	updated.Touch(time.Now())
-	_, err = r.walletColl.ReplaceOne(ctx, bson.M{"player_id": playerID}, bson.M{
-		"player_id":   updated.PlayerID,
-		"player_name": updated.PlayerName,
-		"coins":       updated.Coins,
-		"created_at":  d.CreatedAt,
-		"updated_at":  updated.UpdatedAt,
-		"_id":         d.Id(),
-	})
-	if err != nil {
+	dtoWallet := r.mapper.WalletToDTO(*updated)
+	dtoWallet.Model = d.Model
+	dtoWallet.UpdatedAt = updated.UpdatedAt
+	if _, err = r.walletColl.ReplaceOne(ctx, bson.M{"player_id": playerID}, dtoWallet); err != nil {
 		l.Error("failed to replace wallet", zap.Error(err))
 		return err
 	}

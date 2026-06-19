@@ -10,9 +10,14 @@ import (
 	"go.uber.org/fx"
 )
 
+func wireRollbacker(svc *service.Service, rb pointcontrol.Rollbacker) {
+	svc.SetRollbacker(rb)
+}
+
 const module = "imperial-point"
 
 var App = fx.Options(
+	fx.Invoke(wireRollbacker),
 	fx.Module(
 		module,
 		fx.Decorate(
