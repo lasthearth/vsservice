@@ -9,10 +9,13 @@ import (
 
 // goverter:converter
 // goverter:output:file sermapper/mapper.go
-// goverter:ignore state sizeCache unknownFields
 type Mapper interface {
+	// goverter:ignore state sizeCache unknownFields Id
+	// goverter:map Author AuthorName
 	ToProtoMessage(model.Message) *discordv1.Message
 	ToProtoMessages([]model.Message) []*discordv1.Message
+	// goverter:ignore state sizeCache unknownFields Id
+	// goverter:map Author AuthorName
 	ToProtoImage(model.Image) *discordv1.Image
 	ToProtoImages([]model.Image) []*discordv1.Image
 }

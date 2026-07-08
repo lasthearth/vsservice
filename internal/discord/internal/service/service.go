@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	discordv1 "github.com/lasthearth/vsservice/gen/discord/v1"
 	"github.com/lasthearth/vsservice/internal/discord/internal/discord"
@@ -19,8 +20,10 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-var _ discordv1.DiscordServiceServer = (*Service)(nil)
-var _ DiscordClient = (*discord.Client)(nil)
+var (
+	_ discordv1.DiscordServiceServer = (*Service)(nil)
+	_ DiscordClient                  = (*discord.Client)(nil)
+)
 
 // Service implements discordv1.DiscordServiceServer.
 type Service struct {
@@ -160,7 +163,7 @@ func (s *Service) mapMessage(raw discord.RawMessage) model.Message {
 	content, msgType := lib.ParseMessageType(cleaned)
 
 	return model.Message{
-		ID:        raw.ID,
+		Id:        raw.ID,
 		Content:   content,
 		Author:    author,
 		Timestamp: raw.Timestamp,
@@ -175,10 +178,7 @@ func (s *Service) fetchImages(ctx context.Context, channelID string, limit int, 
 
 	for len(result) < limit {
 		remaining := limit - len(result)
-		fetchLimit := discordPageSize
-		if remaining > fetchLimit {
-			fetchLimit = remaining
-		}
+		fetchLimit := max(remaining, discordPageSize)
 
 		messages, err := s.client.GetChannelMessages(ctx, channelID, fetchLimit, beforeCursor)
 		if err != nil {
@@ -202,9 +202,9 @@ func (s *Service) fetchImages(ctx context.Context, channelID string, limit int, 
 				}
 
 				result = append(result, model.Image{
-					ID:        fmt.Sprintf("%s-%s", msg.ID, att.ID),
-					URL:       att.URL,
-					ProxyURL:  att.ProxyURL,
+					Id:        fmt.Sprintf("%s-%s", msg.ID, att.ID),
+					Url:       att.URL,
+					ProxyUrl:  att.ProxyURL,
 					Alt:       chooseAlt(msg.Content, att.Filename),
 					Author:    author,
 					Timestamp: msg.Timestamp,
@@ -244,12 +244,7 @@ func chooseAlt(content, filename string) string {
 
 // isAllowedChannel checks whether the channel is in the configured allowlist.
 func (s *Service) isAllowedChannel(channelID string) bool {
-	for _, allowed := range s.cfg.DiscordAllowedChannels {
-		if allowed == channelID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s.cfg.DiscordAllowedChannels, channelID)
 }
 
 func (s *Service) buildNewsPayload(req *discordv1.SendNewsRequest) ([]byte, error) {

@@ -80,7 +80,9 @@ func (c *Client) GetChannelMessages(ctx context.Context, channelID string, limit
 	if err != nil {
 		return nil, fmt.Errorf("discord request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -116,7 +118,9 @@ func (c *Client) SendWebhook(ctx context.Context, webhookURL string, payload []b
 	if err != nil {
 		return fmt.Errorf("webhook request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)

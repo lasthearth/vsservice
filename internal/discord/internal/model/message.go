@@ -14,7 +14,7 @@ const (
 
 // Message is a cleaned, UI-ready Discord message.
 type Message struct {
-	ID        string
+	Id        string
 	Content   string
 	Author    string
 	Timestamp string
@@ -23,9 +23,9 @@ type Message struct {
 
 // Image is a UI-ready image attachment extracted from Discord messages.
 type Image struct {
-	ID        string
-	URL       string
-	ProxyURL  string
+	Id        string
+	Url       string
+	ProxyUrl  string
 	Alt       string
 	Author    string
 	Timestamp string
