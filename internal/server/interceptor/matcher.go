@@ -42,6 +42,10 @@ func AuthMatcher(ctx context.Context, c interceptors.CallMeta, cfg config.Config
 		return false
 	case "/user.v1.UserService/GetUser":
 		return false
+	case "/discord.v1.DiscordService/ListMessages":
+		return false
+	case "/discord.v1.DiscordService/ListImages":
+		return false
 	case "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo":
 		return false
 	default:

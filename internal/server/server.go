@@ -16,6 +16,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	discordv1 "github.com/lasthearth/vsservice/gen/discord/v1"
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
 	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
@@ -110,6 +111,7 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	mediav1.RegisterMediaServiceServer(srv, s.mediaV1)
 	progressionv1.RegisterProgressionServiceServer(srv, s.progressionV1)
 	imperialpointv1.RegisterImperialPointServiceServer(srv, s.imperialPointV1)
+	discordv1.RegisterDiscordServiceServer(srv, s.discordV1)
 	reflection.Register(srv)
 
 	s.grpcSrv = srv
@@ -180,6 +182,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := imperialpointv1.RegisterImperialPointServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register imperialpoint service handler")
+	}
+
+	if err := discordv1.RegisterDiscordServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register discord service handler")
 	}
 
 	handler := cors.New(cors.Options{

@@ -13,6 +13,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/media"
 	"github.com/lasthearth/vsservice/internal/news"
 	"github.com/lasthearth/vsservice/internal/notification"
+	"github.com/lasthearth/vsservice/internal/discord"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
@@ -94,6 +95,7 @@ func main() {
 		media.App,
 		progression.App,
 		imperialpoint.App,
+		discord.App,
 	)
 
 	a.Run()

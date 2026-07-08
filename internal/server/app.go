@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 
+	discordv1 "github.com/lasthearth/vsservice/gen/discord/v1"
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
 	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
@@ -48,6 +49,7 @@ type Opts struct {
 	MediaV1         mediav1.MediaServiceServer
 	ProgressionV1   progressionv1.ProgressionServiceServer
 	ImperialPointV1 imperialpointv1.ImperialPointServiceServer
+	DiscordV1       discordv1.DiscordServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -71,6 +73,7 @@ type Server struct {
 	mediaV1             mediav1.MediaServiceServer
 	progressionV1       progressionv1.ProgressionServiceServer
 	imperialPointV1     imperialpointv1.ImperialPointServiceServer
+	discordV1           discordv1.DiscordServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -99,6 +102,7 @@ func New(opts Opts) *Server {
 		mediaV1:             opts.MediaV1,
 		progressionV1:       opts.ProgressionV1,
 		imperialPointV1:     opts.ImperialPointV1,
+		discordV1:           opts.DiscordV1,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}
