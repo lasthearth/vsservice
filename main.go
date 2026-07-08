@@ -6,6 +6,7 @@ import (
 
 	"github.com/eapache/go-resiliency/retrier"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/lasthearth/vsservice/internal/discord"
 	"github.com/lasthearth/vsservice/internal/donate"
 	"github.com/lasthearth/vsservice/internal/hungergames"
 	imperialpoint "github.com/lasthearth/vsservice/internal/imperial-point"
@@ -94,6 +95,7 @@ func main() {
 		media.App,
 		progression.App,
 		imperialpoint.App,
+		discord.App,
 	)
 
 	a.Run()

@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package discord.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+
+// DiscordService proxies read-only Discord channel data and sends news webhooks.
+service DiscordService {
+  // Lists messages from a Discord channel.
+  //
+  // Returns cleaned Markdown text, resolved emojis, and derived message type.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): missing channel_id or invalid limit
+  //   - INTERNAL (500): Discord API error or JSON decode failure
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse) {
+    option (google.api.http) = {get: "/v1/discord/channels/{channel_id}/messages"};
+  }
+
+  // Lists image attachments from a Discord channel.
+  //
+  // Aggregates messages until the requested number of images is collected.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): missing channel_id or invalid limit
+  //   - INTERNAL (500): Discord API error or JSON decode failure
+  rpc ListImages(ListImagesRequest) returns (ListImagesResponse) {
+    option (google.api.http) = {get: "/v1/discord/channels/{channel_id}/images"};
+  }
+
+  // Sends a news embed to the configured Discord webhook.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): missing news:create scope
+  //   - INVALID_ARGUMENT (400): missing required fields
+  //   - INTERNAL (500): webhook request failed
+  rpc SendNews(SendNewsRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/discord/news"
+      body: "*"
+    };
+  }
+}
+
+message ListMessagesRequest {
+  // Discord channel ID.
+  string channel_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Maximum number of messages. Allowed range: [1, 100].
+  int32 limit = 2;
+  // Message ID to fetch before (for pagination).
+  string before = 3;
+}
+
+message ListMessagesResponse {
+  repeated Message messages = 1;
+  bool is_last_page = 2;
+}
+
+message Message {
+  string id = 1;
+  string content = 2;
+  string author_name = 3;
+  string timestamp = 4;
+  string type = 5;
+}
+
+message ListImagesRequest {
+  // Discord channel ID.
+  string channel_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Maximum number of images. Allowed range: [1, 100].
+  int32 limit = 2;
+  // Message ID to fetch before (for pagination).
+  string before = 3;
+}
+
+message ListImagesResponse {
+  repeated Image images = 1;
+  bool is_last_page = 2;
+}
+
+message Image {
+  string id = 1;
+  string url = 2;
+  string proxy_url = 3;
+  string alt = 4;
+  string author_name = 5;
+  string timestamp = 6;
+  int32 width = 7;
+  int32 height = 8;
+}
+
+message SendNewsRequest {
+  string title = 1 [(google.api.field_behavior) = REQUIRED];
+  string content = 2 [(google.api.field_behavior) = REQUIRED];
+  string preview_url = 3;
+  string news_url = 4 [(google.api.field_behavior) = REQUIRED];
+  string author = 5;
+}

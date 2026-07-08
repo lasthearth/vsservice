@@ -49,6 +49,11 @@ type Config struct {
 
 	NatsUrl string `envconfig:"NATS_URL"`
 
+	DiscordBotToken        string   `envconfig:"DISCORD_BOT_TOKEN" required:"true"`
+	DiscordBaseURL         string   `envconfig:"DISCORD_BASE_URL" default:"https://discord.com/api/v10"`
+	DiscordNewsWebhook     string   `envconfig:"DISCORD_NEWS_WEBHOOK_URL"`
+	DiscordAllowedChannels []string `envconfig:"DISCORD_ALLOWED_CHANNELS" required:"true"`
+
 	LogtoWebhookSecret string `envconfig:"LOGTO_WEBHOOK_SECRET"`
 
 	TelegramToken string `envconfig:"TELEGRAM_TOKEN"`

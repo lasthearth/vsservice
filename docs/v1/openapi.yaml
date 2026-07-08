@@ -202,6 +202,117 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/settlement.v1.DeductImperialFavorResponse'
+  /v1/discord/channels/{channel_id}/images:
+    get:
+      tags:
+        - DiscordService
+      summary: Lists image attachments from a Discord channel.
+      description: |-
+        Aggregates messages until the requested number of images is collected.
+
+         Errors:
+           - INVALID_ARGUMENT (400): missing channel_id or invalid limit
+           - INTERNAL (500): Discord API error or JSON decode failure
+      operationId: DiscordService_ListImages
+      parameters:
+        - name: channel_id
+          in: path
+          description: Discord channel ID.
+          required: true
+          schema:
+            type: string
+            title: channel_id
+            description: Discord channel ID.
+        - name: limit
+          in: query
+          description: 'Maximum number of images. Allowed range: [1, 100].'
+          schema:
+            type: integer
+            title: limit
+            format: int32
+            description: 'Maximum number of images. Allowed range: [1, 100].'
+        - name: before
+          in: query
+          description: Message ID to fetch before (for pagination).
+          schema:
+            type: string
+            title: before
+            description: Message ID to fetch before (for pagination).
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/discord.v1.ListImagesResponse'
+  /v1/discord/channels/{channel_id}/messages:
+    get:
+      tags:
+        - DiscordService
+      summary: Lists messages from a Discord channel.
+      description: |-
+        Returns cleaned Markdown text, resolved emojis, and derived message type.
+
+         Errors:
+           - INVALID_ARGUMENT (400): missing channel_id or invalid limit
+           - INTERNAL (500): Discord API error or JSON decode failure
+      operationId: DiscordService_ListMessages
+      parameters:
+        - name: channel_id
+          in: path
+          description: Discord channel ID.
+          required: true
+          schema:
+            type: string
+            title: channel_id
+            description: Discord channel ID.
+        - name: limit
+          in: query
+          description: 'Maximum number of messages. Allowed range: [1, 100].'
+          schema:
+            type: integer
+            title: limit
+            format: int32
+            description: 'Maximum number of messages. Allowed range: [1, 100].'
+        - name: before
+          in: query
+          description: Message ID to fetch before (for pagination).
+          schema:
+            type: string
+            title: before
+            description: Message ID to fetch before (for pagination).
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/discord.v1.ListMessagesResponse'
+  /v1/discord/news:
+    post:
+      tags:
+        - DiscordService
+      summary: Sends a news embed to the configured Discord webhook.
+      description: |-
+        Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing news:create scope
+           - INVALID_ARGUMENT (400): missing required fields
+           - INTERNAL (500): webhook request failed
+      operationId: DiscordService_SendNews
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/discord.v1.SendNewsRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.Empty'
   /v1/donate/me/balance:
     get:
       tags:
@@ -3271,6 +3382,147 @@ paths:
                 $ref: '#/components/schemas/stats.v1.PlayerStatsResponse'
 components:
   schemas:
+    discord.v1.Image:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        url:
+          type: string
+          title: url
+        proxy_url:
+          type: string
+          title: proxy_url
+        alt:
+          type: string
+          title: alt
+        author_name:
+          type: string
+          title: author_name
+        timestamp:
+          type: string
+          title: timestamp
+        width:
+          type: integer
+          title: width
+          format: int32
+        height:
+          type: integer
+          title: height
+          format: int32
+      title: Image
+      additionalProperties: false
+    discord.v1.ListImagesRequest:
+      type: object
+      properties:
+        channel_id:
+          type: string
+          title: channel_id
+          description: Discord channel ID.
+        limit:
+          type: integer
+          title: limit
+          format: int32
+          description: 'Maximum number of images. Allowed range: [1, 100].'
+        before:
+          type: string
+          title: before
+          description: Message ID to fetch before (for pagination).
+      title: ListImagesRequest
+      required:
+        - channel_id
+      additionalProperties: false
+    discord.v1.ListImagesResponse:
+      type: object
+      properties:
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/discord.v1.Image'
+          title: images
+        is_last_page:
+          type: boolean
+          title: is_last_page
+      title: ListImagesResponse
+      additionalProperties: false
+    discord.v1.ListMessagesRequest:
+      type: object
+      properties:
+        channel_id:
+          type: string
+          title: channel_id
+          description: Discord channel ID.
+        limit:
+          type: integer
+          title: limit
+          format: int32
+          description: 'Maximum number of messages. Allowed range: [1, 100].'
+        before:
+          type: string
+          title: before
+          description: Message ID to fetch before (for pagination).
+      title: ListMessagesRequest
+      required:
+        - channel_id
+      additionalProperties: false
+    discord.v1.ListMessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/discord.v1.Message'
+          title: messages
+        is_last_page:
+          type: boolean
+          title: is_last_page
+      title: ListMessagesResponse
+      additionalProperties: false
+    discord.v1.Message:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        content:
+          type: string
+          title: content
+        author_name:
+          type: string
+          title: author_name
+        timestamp:
+          type: string
+          title: timestamp
+        type:
+          type: string
+          title: type
+      title: Message
+      additionalProperties: false
+    discord.v1.SendNewsRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          title: title
+        content:
+          type: string
+          title: content
+        preview_url:
+          type: string
+          title: preview_url
+        news_url:
+          type: string
+          title: news_url
+        author:
+          type: string
+          title: author
+      title: SendNewsRequest
+      required:
+        - title
+        - content
+        - news_url
+      additionalProperties: false
     donate.v1.AddCoinsRequest:
       type: object
       properties:
@@ -6629,6 +6881,8 @@ components:
       bearerFormat: JWT
 security: []
 tags:
+  - name: DiscordService
+    description: DiscordService proxies read-only Discord channel data and sends news webhooks.
   - name: DonateService
     description: Donate service — player wallet, shop, and manual coin management.
   - name: HungerGamesService
