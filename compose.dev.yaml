@@ -1,4 +1,4 @@
-﻿services:
+services:
   vsservice:
     build:
       context: .
@@ -8,6 +8,10 @@
       GATEAWAY_PORT: 6969
       VSAPI_URL: http://vsservice:5000
       MONGO_URL_FILE: /etc/vsservice/mongo/url.txt
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_BASE_URL: ${DISCORD_BASE_URL:-https://discord.com/api/v10}
+      DISCORD_NEWS_WEBHOOK_URL: ${DISCORD_NEWS_WEBHOOK_URL}
+      DISCORD_ALLOWED_CHANNELS: ${DISCORD_ALLOWED_CHANNELS}
     volumes:
       - ./mongo/url.txt:/etc/vsservice/mongo/url.txt
     ports:

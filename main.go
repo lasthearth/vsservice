@@ -6,6 +6,7 @@ import (
 
 	"github.com/eapache/go-resiliency/retrier"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/lasthearth/vsservice/internal/discord"
 	"github.com/lasthearth/vsservice/internal/donate"
 	"github.com/lasthearth/vsservice/internal/hungergames"
 	imperialpoint "github.com/lasthearth/vsservice/internal/imperial-point"
@@ -13,7 +14,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/media"
 	"github.com/lasthearth/vsservice/internal/news"
 	"github.com/lasthearth/vsservice/internal/notification"
-	"github.com/lasthearth/vsservice/internal/discord"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"

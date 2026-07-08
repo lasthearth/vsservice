@@ -60,6 +60,10 @@ func (s *Service) ListMessages(ctx context.Context, req *discordv1.ListMessagesR
 		return nil, status.Error(codes.InvalidArgument, "channel_id is required")
 	}
 
+	if !s.isAllowedChannel(req.GetChannelId()) {
+		return nil, status.Error(codes.InvalidArgument, "channel_id is not allowed")
+	}
+
 	limit := int(req.GetLimit())
 	if limit <= 0 || limit > 100 {
 		limit = 100
@@ -88,6 +92,10 @@ func (s *Service) ListImages(ctx context.Context, req *discordv1.ListImagesReque
 
 	if req.GetChannelId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "channel_id is required")
+	}
+
+	if !s.isAllowedChannel(req.GetChannelId()) {
+		return nil, status.Error(codes.InvalidArgument, "channel_id is not allowed")
 	}
 
 	limit := int(req.GetLimit())
@@ -232,6 +240,16 @@ func chooseAlt(content, filename string) string {
 		return content
 	}
 	return filename
+}
+
+// isAllowedChannel checks whether the channel is in the configured allowlist.
+func (s *Service) isAllowedChannel(channelID string) bool {
+	for _, allowed := range s.cfg.DiscordAllowedChannels {
+		if allowed == channelID {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) buildNewsPayload(req *discordv1.SendNewsRequest) ([]byte, error) {
