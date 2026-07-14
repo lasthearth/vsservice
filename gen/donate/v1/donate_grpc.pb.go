@@ -27,6 +27,7 @@ const (
 	DonateService_Refund_FullMethodName                    = "/donate.v1.DonateService/Refund"
 	DonateService_ListTransactions_FullMethodName          = "/donate.v1.DonateService/ListTransactions"
 	DonateService_AdminListPurchases_FullMethodName        = "/donate.v1.DonateService/AdminListPurchases"
+	DonateService_AdminListAllPurchases_FullMethodName     = "/donate.v1.DonateService/AdminListAllPurchases"
 	DonateService_AdminListPendingPurchases_FullMethodName = "/donate.v1.DonateService/AdminListPendingPurchases"
 	DonateService_MarkPurchaseIssued_FullMethodName        = "/donate.v1.DonateService/MarkPurchaseIssued"
 	DonateService_AdminGetPlayerBalance_FullMethodName     = "/donate.v1.DonateService/AdminGetPlayerBalance"
@@ -109,6 +110,15 @@ type DonateServiceClient interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): database failure
 	AdminListPurchases(ctx context.Context, in *AdminListPurchasesRequest, opts ...grpc.CallOption) (*AdminListPurchasesResponse, error)
+	// Admin: list every purchase across all players, cursor-paginated.
+	//
+	// Returns newest purchases first. Pass the returned next_page_token to fetch the next page.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	AdminListAllPurchases(ctx context.Context, in *AdminListAllPurchasesRequest, opts ...grpc.CallOption) (*AdminListAllPurchasesResponse, error)
 	// Admin: list purchases that have not been marked as issued yet (pending manual delivery).
 	//
 	// Returns only active (non-refunded) purchases.
@@ -255,6 +265,16 @@ func (c *donateServiceClient) AdminListPurchases(ctx context.Context, in *AdminL
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AdminListPurchasesResponse)
 	err := c.cc.Invoke(ctx, DonateService_AdminListPurchases_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *donateServiceClient) AdminListAllPurchases(ctx context.Context, in *AdminListAllPurchasesRequest, opts ...grpc.CallOption) (*AdminListAllPurchasesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AdminListAllPurchasesResponse)
+	err := c.cc.Invoke(ctx, DonateService_AdminListAllPurchases_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -413,6 +433,15 @@ type DonateServiceServer interface {
 	//   - PERMISSION_DENIED (403): insufficient privileges
 	//   - INTERNAL (500): database failure
 	AdminListPurchases(context.Context, *AdminListPurchasesRequest) (*AdminListPurchasesResponse, error)
+	// Admin: list every purchase across all players, cursor-paginated.
+	//
+	// Returns newest purchases first. Pass the returned next_page_token to fetch the next page.
+	//
+	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
+	//   - PERMISSION_DENIED (403): insufficient privileges
+	//   - INTERNAL (500): database failure
+	AdminListAllPurchases(context.Context, *AdminListAllPurchasesRequest) (*AdminListAllPurchasesResponse, error)
 	// Admin: list purchases that have not been marked as issued yet (pending manual delivery).
 	//
 	// Returns only active (non-refunded) purchases.
@@ -507,6 +536,9 @@ func (UnimplementedDonateServiceServer) ListTransactions(context.Context, *ListT
 }
 func (UnimplementedDonateServiceServer) AdminListPurchases(context.Context, *AdminListPurchasesRequest) (*AdminListPurchasesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AdminListPurchases not implemented")
+}
+func (UnimplementedDonateServiceServer) AdminListAllPurchases(context.Context, *AdminListAllPurchasesRequest) (*AdminListAllPurchasesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AdminListAllPurchases not implemented")
 }
 func (UnimplementedDonateServiceServer) AdminListPendingPurchases(context.Context, *AdminListPendingPurchasesRequest) (*AdminListPendingPurchasesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AdminListPendingPurchases not implemented")
@@ -696,6 +728,24 @@ func _DonateService_AdminListPurchases_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DonateService_AdminListAllPurchases_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdminListAllPurchasesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DonateServiceServer).AdminListAllPurchases(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DonateService_AdminListAllPurchases_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DonateServiceServer).AdminListAllPurchases(ctx, req.(*AdminListAllPurchasesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DonateService_AdminListPendingPurchases_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AdminListPendingPurchasesRequest)
 	if err := dec(in); err != nil {
@@ -878,6 +928,10 @@ var DonateService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AdminListPurchases",
 			Handler:    _DonateService_AdminListPurchases_Handler,
+		},
+		{
+			MethodName: "AdminListAllPurchases",
+			Handler:    _DonateService_AdminListAllPurchases_Handler,
 		},
 		{
 			MethodName: "AdminListPendingPurchases",

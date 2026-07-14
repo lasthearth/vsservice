@@ -121,6 +121,20 @@ service DonateService {
     };
   }
 
+  // Admin: list every purchase across all players, cursor-paginated.
+  //
+  // Returns newest purchases first. Pass the returned next_page_token to fetch the next page.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc AdminListAllPurchases(AdminListAllPurchasesRequest) returns (AdminListAllPurchasesResponse) {
+    option (google.api.http) = {
+      get: "/v1/donate/purchases"
+    };
+  }
+
   // Admin: list purchases that have not been marked as issued yet (pending manual delivery).
   //
   // Returns only active (non-refunded) purchases.

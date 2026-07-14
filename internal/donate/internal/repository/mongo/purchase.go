@@ -159,3 +159,35 @@ func (r *Repository) ListPendingPurchases(ctx context.Context, pageToken string,
 	}
 	return result, resp.Next, nil
 }
+
+// ListAllPurchases returns every purchase across all players.
+// Cursor-paginated (newest first); pass an empty pageToken for the first page.
+func (r *Repository) ListAllPurchases(ctx context.Context, pageToken string, limit int64) ([]*model.Purchase, string, error) {
+	l := r.log.With(zap.String("method", "ListAllPurchases"))
+
+	if limit <= 0 {
+		limit = 25
+	}
+
+	opts := []pagination.OptionFn{
+		pagination.WithLimit(limit),
+	}
+	if pageToken != "" {
+		opts = append(opts, pagination.WithNext(pageToken))
+	}
+
+	resp, err := pagination.Find[dto.Purchase](ctx, r.purchColl, opts...)
+	if err != nil {
+		if errors.Is(err, pagination.ErrNoData) || errors.Is(err, mgo.ErrNoDocuments) {
+			return nil, "", nil
+		}
+		l.Error("failed to list all purchases", zap.Error(err))
+		return nil, "", err
+	}
+
+	result := make([]*model.Purchase, len(resp.Data))
+	for i, d := range resp.Data {
+		result[i] = purchaseFromDTO(d)
+	}
+	return result, resp.Next, nil
+}

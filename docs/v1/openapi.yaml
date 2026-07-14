@@ -523,6 +523,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/donate.v1.ListTransactionsResponse'
+  /v1/donate/purchases:
+    get:
+      tags:
+        - DonateService
+      summary: 'Admin: list every purchase across all players, cursor-paginated.'
+      description: |-
+        Returns newest purchases first. Pass the returned next_page_token to fetch the next page.
+
+         Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: DonateService_AdminListAllPurchases
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type:
+              - integer
+              - string
+            title: limit
+            format: int64
+        - name: page_token
+          in: query
+          schema:
+            type: string
+            title: page_token
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/donate.v1.AdminListAllPurchasesResponse'
   /v1/donate/purchases/pending:
     get:
       tags:
@@ -3231,6 +3265,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/verification.v1.VerifyStatusResponse'
+  /v1/users:batchGet:
+    get:
+      tags:
+        - UserService
+      summary: Batch get user profiles by IDs.
+      description: |-
+        Returns only the users that were found; missing IDs are silently omitted.
+
+         Errors:
+           - INVALID_ARGUMENT (400): user_ids is empty or has more than 100 entries
+           - INTERNAL (500): database failure
+      operationId: UserService_BatchGetUsers
+      parameters:
+        - name: user_ids
+          in: query
+          description: At least 1 and at most 100 user IDs.
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+            title: user_ids
+            maxItems: 100
+            minItems: 1
+            description: At least 1 and at most 100 user IDs.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user.v1.BatchGetUsersResponse'
   /v1/verification:
     post:
       tags:
@@ -3578,6 +3644,33 @@ components:
           title: coins
           format: int64
       title: AdminGetPlayerBalanceResponse
+      additionalProperties: false
+    donate.v1.AdminListAllPurchasesRequest:
+      type: object
+      properties:
+        limit:
+          type:
+            - integer
+            - string
+          title: limit
+          format: int64
+        page_token:
+          type: string
+          title: page_token
+      title: AdminListAllPurchasesRequest
+      additionalProperties: false
+    donate.v1.AdminListAllPurchasesResponse:
+      type: object
+      properties:
+        purchases:
+          type: array
+          items:
+            $ref: '#/components/schemas/donate.v1.Purchase'
+          title: purchases
+        next_page_token:
+          type: string
+          title: next_page_token
+      title: AdminListAllPurchasesResponse
       additionalProperties: false
     donate.v1.AdminListPendingPurchasesRequest:
       type: object
@@ -6606,6 +6699,32 @@ components:
           type: string
           title: id
       title: CreateResponse
+      additionalProperties: false
+    user.v1.BatchGetUsersRequest:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: string
+          title: user_ids
+          maxItems: 100
+          minItems: 1
+          description: At least 1 and at most 100 user IDs.
+      title: BatchGetUsersRequest
+      required:
+        - user_ids
+      additionalProperties: false
+    user.v1.BatchGetUsersResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/user.v1.User'
+          title: users
+          description: Found users, in arbitrary order. Missing IDs are not represented.
+      title: BatchGetUsersResponse
       additionalProperties: false
     user.v1.ChangeNicknameRequest:
       type: object

@@ -263,6 +263,21 @@ func (s *Service) AdminListPendingPurchases(ctx context.Context, req *donatev1.A
 	}, nil
 }
 
+func (s *Service) AdminListAllPurchases(ctx context.Context, req *donatev1.AdminListAllPurchasesRequest) (*donatev1.AdminListAllPurchasesResponse, error) {
+	l := s.log.With(zap.String("method", "AdminListAllPurchases"))
+
+	purchases, next, err := s.repo.ListAllPurchases(ctx, req.GetPageToken(), req.GetLimit())
+	if err != nil {
+		l.Error("failed to list all purchases", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to list all purchases")
+	}
+
+	return &donatev1.AdminListAllPurchasesResponse{
+		Purchases:     s.mapper.ToPurchasesProto(purchases),
+		NextPageToken: next,
+	}, nil
+}
+
 func (s *Service) MarkPurchaseIssued(ctx context.Context, req *donatev1.MarkPurchaseIssuedRequest) (*donatev1.MarkPurchaseIssuedResponse, error) {
 	l := s.log.With(zap.String("method", "MarkPurchaseIssued"), zap.String("purchase_id", req.GetPurchaseId()))
 

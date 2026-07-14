@@ -14,6 +14,7 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "AdminGetPlayerBalance"):     interceptor.Scope("donate:wallet:read"),
 		interceptor.Method(srvName + "ListTransactions"):          interceptor.Scope("donate:transaction:list"),
 		interceptor.Method(srvName + "AdminListPurchases"):        interceptor.Scope("donate:purchase:list"),
+		interceptor.Method(srvName + "AdminListAllPurchases"):     interceptor.Scope("donate:purchase:list"),
 		interceptor.Method(srvName + "AdminListPendingPurchases"): interceptor.Scope("donate:purchase:list"),
 		interceptor.Method(srvName + "MarkPurchaseIssued"):        interceptor.Scope("donate:purchase:issue"),
 		interceptor.Method(srvName + "ListWallets"):               interceptor.Scope("donate:wallet:read"),

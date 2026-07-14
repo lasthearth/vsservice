@@ -63,6 +63,10 @@ type DonateRepository interface {
 	// Empty pageToken returns the first page; empty next token means no more pages.
 	ListPendingPurchases(ctx context.Context, pageToken string, limit int64) (purchases []*model.Purchase, nextPageToken string, err error)
 
+	// ListAllPurchases returns every purchase across all players, cursor-paginated (newest first).
+	// Empty pageToken returns the first page; empty next token means no more pages.
+	ListAllPurchases(ctx context.Context, pageToken string, limit int64) (purchases []*model.Purchase, nextPageToken string, err error)
+
 	// MarkPurchaseIssued marks a purchase as manually delivered by adminID.
 	// Idempotent on already-issued purchases. Returns ierror.ErrCannotIssueRefunded if refunded,
 	// ierror.ErrNotFound if missing.

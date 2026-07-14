@@ -32,6 +32,7 @@ type SsoRepository interface {
 
 type DbRepository interface {
 	GetUserById(ctx context.Context, id string) (*model.Player, error)
+	GetUsersByIds(ctx context.Context, ids []string) ([]model.Player, error)
 	SearchUsers(ctx context.Context, query string) ([]model.Player, error)
 	UpdatePlayerNickname(
 		ctx context.Context,
@@ -190,6 +191,23 @@ func (s *Service) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*use
 	resp := s.mapper.ToUserProto(*u)
 
 	return resp, nil
+}
+
+// BatchGetUsers implements userv1.UserServiceServer.
+//
+// Returns only the users that were found; missing IDs are silently omitted.
+func (s *Service) BatchGetUsers(
+	ctx context.Context,
+	req *userv1.BatchGetUsersRequest,
+) (*userv1.BatchGetUsersResponse, error) {
+	users, err := s.dbRepo.GetUsersByIds(ctx, req.GetUserIds())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &userv1.BatchGetUsersResponse{
+		Users: s.mapper.ToUserProtos(users),
+	}, nil
 }
 
 // SearchUsers implements userv1.UserServiceServer.

@@ -68,3 +68,13 @@ message AdminListPendingPurchasesResponse {
   repeated Purchase purchases = 1;
   string next_page_token = 2;
 }
+
+message AdminListAllPurchasesRequest {
+  int64 limit = 1;
+  string page_token = 2;
+}
+
+message AdminListAllPurchasesResponse {
+  repeated Purchase purchases = 1;
+  string next_page_token = 2;
+}

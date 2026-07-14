@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	UserService_UpdateAvatar_FullMethodName   = "/user.v1.UserService/UpdateAvatar"
 	UserService_GetUser_FullMethodName        = "/user.v1.UserService/GetUser"
+	UserService_BatchGetUsers_FullMethodName  = "/user.v1.UserService/BatchGetUsers"
 	UserService_SearchUsers_FullMethodName    = "/user.v1.UserService/SearchUsers"
 	UserService_ChangeNickname_FullMethodName = "/user.v1.UserService/ChangeNickname"
 )
@@ -48,6 +49,14 @@ type UserServiceClient interface {
 	//   - NOT_FOUND (404): user not found
 	//   - INTERNAL (500): database failure
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*User, error)
+	// Batch get user profiles by IDs.
+	//
+	// Returns only the users that were found; missing IDs are silently omitted.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): user_ids is empty or has more than 100 entries
+	//   - INTERNAL (500): database failure
+	BatchGetUsers(ctx context.Context, in *BatchGetUsersRequest, opts ...grpc.CallOption) (*BatchGetUsersResponse, error)
 	// Search users by query string.
 	//
 	// Errors:
@@ -89,6 +98,16 @@ func (c *userServiceClient) GetUser(ctx context.Context, in *GetUserRequest, opt
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(User)
 	err := c.cc.Invoke(ctx, UserService_GetUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) BatchGetUsers(ctx context.Context, in *BatchGetUsersRequest, opts ...grpc.CallOption) (*BatchGetUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BatchGetUsersResponse)
+	err := c.cc.Invoke(ctx, UserService_BatchGetUsers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +156,14 @@ type UserServiceServer interface {
 	//   - NOT_FOUND (404): user not found
 	//   - INTERNAL (500): database failure
 	GetUser(context.Context, *GetUserRequest) (*User, error)
+	// Batch get user profiles by IDs.
+	//
+	// Returns only the users that were found; missing IDs are silently omitted.
+	//
+	// Errors:
+	//   - INVALID_ARGUMENT (400): user_ids is empty or has more than 100 entries
+	//   - INTERNAL (500): database failure
+	BatchGetUsers(context.Context, *BatchGetUsersRequest) (*BatchGetUsersResponse, error)
 	// Search users by query string.
 	//
 	// Errors:
@@ -168,6 +195,9 @@ func (UnimplementedUserServiceServer) UpdateAvatar(context.Context, *UpdateAvata
 }
 func (UnimplementedUserServiceServer) GetUser(context.Context, *GetUserRequest) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUser not implemented")
+}
+func (UnimplementedUserServiceServer) BatchGetUsers(context.Context, *BatchGetUsersRequest) (*BatchGetUsersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BatchGetUsers not implemented")
 }
 func (UnimplementedUserServiceServer) SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SearchUsers not implemented")
@@ -231,6 +261,24 @@ func _UserService_GetUser_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_BatchGetUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchGetUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).BatchGetUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_BatchGetUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).BatchGetUsers(ctx, req.(*BatchGetUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SearchUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SearchUsersRequest)
 	if err := dec(in); err != nil {
@@ -281,6 +329,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUser",
 			Handler:    _UserService_GetUser_Handler,
+		},
+		{
+			MethodName: "BatchGetUsers",
+			Handler:    _UserService_BatchGetUsers_Handler,
 		},
 		{
 			MethodName: "SearchUsers",

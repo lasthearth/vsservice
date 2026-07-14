@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package user.v1;
 
+import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
@@ -35,6 +36,17 @@ service UserService {
   //   - INTERNAL (500): database failure
   rpc GetUser(GetUserRequest) returns (User) {
     option (google.api.http) = {get: "/v1/users/{user_id}"};
+  }
+
+  // Batch get user profiles by IDs.
+  //
+  // Returns only the users that were found; missing IDs are silently omitted.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): user_ids is empty or has more than 100 entries
+  //   - INTERNAL (500): database failure
+  rpc BatchGetUsers(BatchGetUsersRequest) returns (BatchGetUsersResponse) {
+    option (google.api.http) = {get: "/v1/users:batchGet"};
   }
 
   // Search users by query string.
@@ -71,6 +83,19 @@ message UpdateAvatarRequest {
 
 message GetUserRequest {
   string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message BatchGetUsersRequest {
+  // At least 1 and at most 100 user IDs.
+  repeated string user_ids = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).repeated = {min_items: 1, max_items: 100}
+  ];
+}
+
+message BatchGetUsersResponse {
+  // Found users, in arbitrary order. Missing IDs are not represented.
+  repeated User users = 1;
 }
 
 message User {

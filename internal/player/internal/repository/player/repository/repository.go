@@ -66,6 +66,28 @@ func (r *Repository) GetUserById(ctx context.Context, id string) (*model.Player,
 	return &p, nil
 }
 
+// GetUsersByIds returns the players matching the given user IDs.
+// IDs without a matching document are silently omitted (partial success).
+func (r *Repository) GetUsersByIds(ctx context.Context, ids []string) ([]model.Player, error) {
+	filter := bson.M{
+		"user_id": bson.M{"$in": ids},
+	}
+
+	cursor, err := r.coll.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = cursor.Close(ctx) }()
+
+	var dtos []dto.Player
+	if err := cursor.All(ctx, &dtos); err != nil {
+		return nil, err
+	}
+
+	users := r.mapper.ToPlayers(dtos, r.getAvatarPrefix())
+	return users, nil
+}
+
 // SearchUsers searches for players based on a query string, looking for matches in user_game_name and user_name fields.
 func (r *Repository) SearchUsers(
 	ctx context.Context,
