@@ -5,7 +5,6 @@ import (
 
 	"github.com/eapache/go-resiliency/retrier"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
-	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 )
@@ -18,7 +17,6 @@ type Opts struct {
 	// So http client must automatically manage tokens
 	Client  *http.Client
 	Log     logger.Logger
-	Cfg     config.Config
 	Retrier *retrier.Retrier
 	DbRepo  DbRepository
 }
@@ -28,7 +26,6 @@ type Service struct {
 	// So http client must automatically manage tokens
 	client  *http.Client
 	log     logger.Logger
-	cfg     config.Config
 	dbRepo  DbRepository
 	retrier *retrier.Retrier
 }
@@ -37,7 +34,6 @@ func New(opts Opts) *Service {
 	return &Service{
 		client:  opts.Client,
 		log:     opts.Log,
-		cfg:     opts.Cfg,
 		dbRepo:  opts.DbRepo,
 		retrier: opts.Retrier,
 	}

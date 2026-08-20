@@ -2,7 +2,6 @@ package service
 
 import (
 	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
-	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/messaging"
 	"github.com/lasthearth/vsservice/internal/pkg/messaging/mjetstream"
@@ -17,7 +16,6 @@ var _ kitv1.KitServiceServer = (*Service)(nil)
 type Service struct {
 	kitRepo        KitRepository
 	assignmentRepo AssignmentRepository
-	cfg            config.Config
 	log            logger.Logger
 	mapper         Mapper
 	bus            *Bus
@@ -33,7 +31,6 @@ type Bus struct {
 type Opts struct {
 	fx.In
 	Log            logger.Logger
-	Config         config.Config
 	AssignmentRepo AssignmentRepository
 	Mapper         Mapper
 	Bus            *Bus
@@ -43,7 +40,6 @@ func NewFx(opts Opts) *Service {
 	return New(
 		nil,
 		opts.AssignmentRepo,
-		opts.Config,
 		opts.Log,
 		opts.Bus,
 		opts.Mapper,
@@ -53,7 +49,6 @@ func NewFx(opts Opts) *Service {
 func New(
 	kitRepo KitRepository,
 	assignmentRepo AssignmentRepository,
-	cfg config.Config,
 	log logger.Logger,
 	bus *Bus,
 	mapper Mapper,
@@ -61,7 +56,6 @@ func New(
 	return &Service{
 		kitRepo:        kitRepo,
 		assignmentRepo: assignmentRepo,
-		cfg:            cfg,
 		log:            log,
 		mapper:         mapper,
 		bus:            bus,

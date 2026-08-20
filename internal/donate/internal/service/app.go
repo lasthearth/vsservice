@@ -2,7 +2,6 @@ package service
 
 import (
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
-	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
 	"go.uber.org/fx"
@@ -12,7 +11,6 @@ var _ donatev1.DonateServiceServer = (*Service)(nil)
 
 type Service struct {
 	repo     DonateRepository
-	cfg      config.Config
 	log      logger.Logger
 	mapper   Mapper
 	mediaUrl *mediaurl.Validator
@@ -22,7 +20,6 @@ type Opts struct {
 	fx.In
 
 	Repo     DonateRepository
-	Config   config.Config
 	Logger   logger.Logger
 	Mapper   Mapper
 	MediaURL *mediaurl.Validator
@@ -31,7 +28,6 @@ type Opts struct {
 func New(opts Opts) *Service {
 	return &Service{
 		repo:     opts.Repo,
-		cfg:      opts.Config,
 		log:      opts.Logger,
 		mapper:   opts.Mapper,
 		mediaUrl: opts.MediaURL,

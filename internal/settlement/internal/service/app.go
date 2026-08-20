@@ -5,7 +5,6 @@ import (
 
 	"github.com/eapache/go-resiliency/retrier"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
-	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
 	"go.uber.org/fx"
@@ -17,7 +16,6 @@ type Opts struct {
 	fx.In
 	Client   *http.Client
 	Log      logger.Logger
-	Cfg      config.Config
 	Retrier  *retrier.Retrier
 	DbRepo   SettlementRepository
 	Mapper   Mapper
@@ -27,7 +25,6 @@ type Opts struct {
 type Service struct {
 	client   *http.Client
 	log      logger.Logger
-	cfg      config.Config
 	dbRepo   SettlementRepository
 	retrier  *retrier.Retrier
 	mapper   Mapper
@@ -38,7 +35,6 @@ func New(opts Opts) *Service {
 	return &Service{
 		client:   opts.Client,
 		log:      opts.Log,
-		cfg:      opts.Cfg,
 		dbRepo:   opts.DbRepo,
 		retrier:  opts.Retrier,
 		mapper:   opts.Mapper,
