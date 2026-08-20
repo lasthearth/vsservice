@@ -79,18 +79,6 @@ func (r *Repository) ListPurchasesByPlayerID(ctx context.Context, playerID strin
 	return result, nil
 }
 
-// MarkPurchaseIssued marks a purchase as manually delivered by adminID.
-// Idempotent: re-issuing a purchase that's already issued is a no-op.
-// Returns ierror.ErrCannotIssueRefunded if the purchase is refunded.
-func (r *Repository) MarkPurchaseIssued(ctx context.Context, purchaseID, adminID string) (*model.Purchase, error) {
-	return r.UpdatePurchase(ctx, purchaseID, func(_ context.Context, p *model.Purchase) (*model.Purchase, error) {
-		if err := p.MarkIssued(adminID); err != nil {
-			return nil, ierror.ErrCannotIssueRefunded
-		}
-		return p, nil
-	})
-}
-
 // ListPendingPurchases returns active purchases that have not yet been marked as issued.
 // Cursor-paginated; pass an empty pageToken for the first page.
 func (r *Repository) ListPendingPurchases(ctx context.Context, pageToken string, limit int64) ([]*model.Purchase, string, error) {
