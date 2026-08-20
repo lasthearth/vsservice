@@ -13,13 +13,25 @@ type ctxKey struct {
 	key string
 }
 
-func provideUserID(ctx context.Context, uid string) (context.Context, error) {
+// ContextWithUserID returns ctx carrying uid, also injecting it as a logging
+// field. Exported so handlers can be tested from outside this package.
+func ContextWithUserID(ctx context.Context, uid string) context.Context {
 	ctx = logging.InjectFields(
 		ctx,
 		logging.Fields{"user_id", uid},
 	)
 
-	return context.WithValue(ctx, ctxKey{"sub"}, uid), nil
+	return context.WithValue(ctx, ctxKey{"sub"}, uid)
+}
+
+// ContextWithClaims returns ctx carrying claims. Exported so handlers can be
+// tested from outside this package.
+func ContextWithClaims(ctx context.Context, claims *jwt.Claims) context.Context {
+	return context.WithValue(ctx, ctxKey{"claims"}, claims)
+}
+
+func provideUserID(ctx context.Context, uid string) (context.Context, error) {
+	return ContextWithUserID(ctx, uid), nil
 }
 
 func provideClaims(ctx context.Context, payload *jwt.Claims) (context.Context, error) {
@@ -27,7 +39,7 @@ func provideClaims(ctx context.Context, payload *jwt.Claims) (context.Context, e
 		return nil, errors.New("payload is nil")
 	}
 
-	return context.WithValue(ctx, ctxKey{"claims"}, payload), nil
+	return ContextWithClaims(ctx, payload), nil
 }
 
 func GetClaims(ctx context.Context) (jwt.Claims, error) {
@@ -58,6 +70,7 @@ func provideReqID(ctx context.Context) (context.Context, error) {
 		logging.Fields{"request_id", rid.String()},
 	)
 
+	// Stored as a string: GetRequestID type-asserts string.
 	return context.WithValue(ctx, ctxKey{"rid"}, rid.String()), nil
 }
 

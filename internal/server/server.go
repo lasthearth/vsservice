@@ -114,6 +114,9 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	discordv1.RegisterDiscordServiceServer(srv, s.discordV1)
 	reflection.Register(srv)
 
+	// After registration so GetServiceInfo() sees every service.
+	s.authInterceptor.LogUncoveredMethods(srv)
+
 	s.grpcSrv = srv
 	return srv.Serve(l)
 }
