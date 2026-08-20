@@ -65,7 +65,6 @@ func (c *MapperImpl) ToShopItemProto(source *model.ShopItem) *v1.ShopItem {
 		}
 		donatev1ShopItem.HasDiscount = (*source).HasDiscount
 		donatev1ShopItem.DiscountPercent = (*source).DiscountPercent
-		donatev1ShopItem.EffectivePrice = goverter.ShopItemEffectivePrice(source)
 		if (*source).Privileges != nil {
 			donatev1ShopItem.Privileges = make([]*v1.Privilege, len((*source).Privileges))
 			for j := 0; j < len((*source).Privileges); j++ {

@@ -187,13 +187,18 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 		}
 
 		if err := item.Validate(); err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
+			// A domain error, not a gRPC status: the closure runs inside the
+			// repository's update cycle, and isDomainError below is what maps it.
+			return nil, pkgerr.InvalidArgument(err.Error())
 		}
 		return item, nil
 	})
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "shop item not found")
+		}
+		if isDomainError(err, codes.InvalidArgument) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 		l.Error("failed to update shop item", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to update shop item")
@@ -221,7 +226,7 @@ func (s *Service) DeleteShopItem(ctx context.Context, req *donatev1.DeleteShopIt
 func (s *Service) Refund(ctx context.Context, req *donatev1.RefundRequest) (*donatev1.RefundResponse, error) {
 	l := s.log.With(zap.String("method", "Refund"), zap.String("purchase_id", req.GetPurchaseId()))
 
-	purchase, err := s.repo.Refund(ctx, req.GetPurchaseId(), req.GetReason())
+	purchase, err := s.purchases.Refund(ctx, req.GetPurchaseId(), req.GetReason())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "purchase not found")
@@ -286,7 +291,7 @@ func (s *Service) MarkPurchaseIssued(ctx context.Context, req *donatev1.MarkPurc
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	purchase, err := s.repo.MarkPurchaseIssued(ctx, req.GetPurchaseId(), adminID)
+	purchase, err := s.purchases.MarkIssued(ctx, req.GetPurchaseId(), adminID)
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "purchase not found")
@@ -377,7 +382,7 @@ func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*d
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	purchase, err := s.repo.BuyItem(ctx, playerID, req.GetItemId())
+	purchase, err := s.purchases.Buy(ctx, playerID, req.GetItemId())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "item not found or unavailable")

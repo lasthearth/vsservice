@@ -16,12 +16,12 @@ import (
 // goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:PtrStringToString
 // goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:PurchaseStatusToString
 // goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:TxTypeToString
-// goverter:extend github.com/lasthearth/vsservice/internal/donate/internal/goverter:ShopItemEffectivePrice
 type Mapper interface {
-	// goverter:ignore state sizeCache unknownFields DiscountActive
+	// DiscountActive and EffectivePrice are clock-dependent, so the mapper does
+	// not compute them — Service.fillNowFieldsAt stamps both from one `now`.
+	// goverter:ignore state sizeCache unknownFields DiscountActive EffectivePrice
 	// goverter:map ImageURL ImageUrl
 	// goverter:map Type ItemType | github.com/lasthearth/vsservice/internal/donate/internal/goverter:ItemTypeModelToProto
-	// goverter:map . EffectivePrice | github.com/lasthearth/vsservice/internal/donate/internal/goverter:ShopItemEffectivePrice
 	ToShopItemProto(*model.ShopItem) *donatev1.ShopItem
 	ToShopItemsProto([]*model.ShopItem) []*donatev1.ShopItem
 

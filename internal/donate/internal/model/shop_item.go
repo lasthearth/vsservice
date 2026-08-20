@@ -233,6 +233,3 @@ func (s *ShopItem) EffectivePriceAt(now time.Time) int64 {
 	p := max(s.Price*int64(100-s.DiscountPercent)/100, 1)
 	return p
 }
-
-// EffectivePrice keeps backward-compat (uses time.Now()).
-func (s *ShopItem) EffectivePrice() int64 { return s.EffectivePriceAt(time.Now()) }
