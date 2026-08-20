@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
@@ -69,5 +70,48 @@ func TestUpdateShopItemRejectsAnInvalidDiscountWithInvalidArgument(t *testing.T)
 	}
 	if msg := status.Convert(err).Message(); msg != "discount_percent must be between 0 and 100" {
 		t.Fatalf("message = %q, want the validation message", msg)
+	}
+}
+
+// listItemsRepo implements only ListShopItems.
+type listItemsRepo struct {
+	service.DonateRepository
+	items []*model.ShopItem
+}
+
+func (r *listItemsRepo) ListShopItems(context.Context, bool) ([]*model.ShopItem, error) {
+	return r.items, nil
+}
+
+// EffectivePrice and DiscountActive are stamped by the service from one clock,
+// not by the mapper. Before, the mapper computed EffectivePrice from its own
+// time.Now() and the service overwrote it — correct only by statement order.
+func TestListShopItemsStampsTheDiscountedPrice(t *testing.T) {
+	item := model.NewShopItem("code", "Sword", "", "", 50)
+	if err := item.SetDiscount(40); err != nil {
+		t.Fatalf("SetDiscount: %v", err)
+	}
+	start := time.Now().Add(-time.Hour)
+	end := time.Now().Add(time.Hour)
+	item.SetDiscountWindow(&start, &end)
+
+	svc := newService(t, &listItemsRepo{items: []*model.ShopItem{item}})
+
+	resp, err := svc.ListShopItems(context.Background(), &donatev1.ListShopItemsRequest{})
+	if err != nil {
+		t.Fatalf("ListShopItems: %v", err)
+	}
+	if n := len(resp.GetItems()); n != 1 {
+		t.Fatalf("items = %d, want 1", n)
+	}
+	got := resp.GetItems()[0]
+	if got.GetEffectivePrice() != 30 {
+		t.Fatalf("effective_price = %d, want 30", got.GetEffectivePrice())
+	}
+	if !got.GetDiscountActive() {
+		t.Fatal("discount_active = false, want true inside the window")
+	}
+	if got.GetPrice() != 50 {
+		t.Fatalf("price = %d, want the undiscounted 50", got.GetPrice())
 	}
 }

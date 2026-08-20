@@ -46,8 +46,6 @@ func PurchaseStatusToString(s model.PurchaseStatus) string { return string(s) }
 
 func TxTypeToString(t model.TxType) string { return string(t) }
 
-func ShopItemEffectivePrice(s *model.ShopItem) int64 { return s.EffectivePrice() }
-
 func TimePtrToTimestamp(t *time.Time) *timestamppb.Timestamp {
 	if t == nil {
 		return nil

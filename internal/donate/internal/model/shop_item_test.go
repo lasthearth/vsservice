@@ -134,7 +134,8 @@ func TestShopItem_Apply(t *testing.T) {
 	}
 }
 
-func TestShopItem_EffectivePrice(t *testing.T) {
+func TestShopItem_EffectivePriceNoWindow(t *testing.T) {
+	now := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
 	tests := []struct {
 		name     string
 		price    int64
@@ -157,9 +158,9 @@ func TestShopItem_EffectivePrice(t *testing.T) {
 					t.Fatalf("SetDiscount failed: %v", err)
 				}
 			}
-			got := item.EffectivePrice()
+			got := item.EffectivePriceAt(now)
 			if got != tc.want {
-				t.Errorf("EffectivePrice() = %v, want %v", got, tc.want)
+				t.Errorf("EffectivePriceAt() = %v, want %v", got, tc.want)
 			}
 		})
 	}
