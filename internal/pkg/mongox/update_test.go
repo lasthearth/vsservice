@@ -160,7 +160,8 @@ func TestGuardFieldMatchesEncodedDocument(t *testing.T) {
 	}
 }
 
-func TestUpdateDocNotFound(t *testing.T) {	f := &fakeStore{doc: storedDoc(), findErr: mongo.ErrNoDocuments}
+func TestUpdateDocNotFound(t *testing.T) {
+	f := &fakeStore{doc: storedDoc(), findErr: mongo.ErrNoDocuments}
 
 	_, err := UpdateDoc(context.Background(), f, bson.M{}, errNotFound,
 		toTestModel, fromTestModel, rename("after"))
