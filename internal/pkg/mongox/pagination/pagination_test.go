@@ -435,12 +435,15 @@ func TestPageEmptyIsNotAnError(t *testing.T) {
 	}
 }
 
-// List's conversion step: nothing decoded yields a non-nil empty slice, an
-// empty cursor and no error, so callers need no ErrNoData guard.
+// List's conversion step: nothing decoded yields an empty slice, an empty
+// cursor and no error, so callers need no ErrNoData guard.
 func TestConvertEmptyYieldsEmptySlice(t *testing.T) {
 	datas, next, err := page[stub](nil, DefaultLimit, bson.D{{Key: "_id", Value: -1}})
 	if err != nil {
 		t.Fatalf("page: %v", err)
+	}
+	if next != "" {
+		t.Fatalf("next = %q, want no cursor", next)
 	}
 
 	items := make([]string, len(datas))
@@ -448,11 +451,8 @@ func TestConvertEmptyYieldsEmptySlice(t *testing.T) {
 		items[i] = d.Id().Hex()
 	}
 
-	if items == nil {
-		t.Fatal("items = nil, want an empty slice")
-	}
-	if len(items) != 0 || next != "" {
-		t.Fatalf("items = %#v, next = %q", items, next)
+	if len(items) != 0 {
+		t.Fatalf("items = %#v, want empty", items)
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"maps"
 	"reflect"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -163,9 +164,7 @@ func resolve(opts []OptionFn) (query, error) {
 	sort := withIDTiebreaker(o.sort)
 
 	filter := bson.M{}
-	for k, v := range o.filter {
-		filter[k] = v
-	}
+	maps.Copy(filter, o.filter)
 
 	if o.next != "" {
 		t, err := decodeToken(o.next)
