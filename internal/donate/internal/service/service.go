@@ -221,7 +221,7 @@ func (s *Service) DeleteShopItem(ctx context.Context, req *donatev1.DeleteShopIt
 func (s *Service) Refund(ctx context.Context, req *donatev1.RefundRequest) (*donatev1.RefundResponse, error) {
 	l := s.log.With(zap.String("method", "Refund"), zap.String("purchase_id", req.GetPurchaseId()))
 
-	purchase, err := s.repo.Refund(ctx, req.GetPurchaseId(), req.GetReason())
+	purchase, err := s.purchases.Refund(ctx, req.GetPurchaseId(), req.GetReason())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "purchase not found")
@@ -286,7 +286,7 @@ func (s *Service) MarkPurchaseIssued(ctx context.Context, req *donatev1.MarkPurc
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	purchase, err := s.repo.MarkPurchaseIssued(ctx, req.GetPurchaseId(), adminID)
+	purchase, err := s.purchases.MarkIssued(ctx, req.GetPurchaseId(), adminID)
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "purchase not found")
