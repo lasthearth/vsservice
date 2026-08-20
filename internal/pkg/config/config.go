@@ -19,7 +19,7 @@ type Config struct {
 	Issuer   string `envconfig:"ISSUER"`
 	Audience string `envconfig:"AUDIENCE"`
 
-	GrpcPort     int `envconfig:"GPRC_PORT" default:"50051"`
+	GrpcPort     int `envconfig:"GRPC_PORT" default:"50051"`
 	GateAwayPort int `envconfig:"GATEAWAY_PORT" default:"6969"`
 
 	MongoUrlFile string `envconfig:"MONGO_URL_FILE" required:"true"`
