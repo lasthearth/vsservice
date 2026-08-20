@@ -78,17 +78,16 @@ func (interceptor *Auth) authorize(ctx context.Context, method string) (context.
 		return ctx, err
 	}
 
-	for _, scoper := range interceptor.scopers {
-		reqScopeMap := scoper.Scope()
-
-		if requiredScope, ok := reqScopeMap[Method(method)]; ok {
-			claimScopes := strings.Split(claims.Scope, " ")
-			if slices.Contains(claimScopes, string(requiredScope)) {
-				return ctx, nil
-			}
-			return ctx, status.Errorf(codes.PermissionDenied, "no permission to access this resource")
+	if requiredScope, ok := interceptor.policy[Method(method)]; ok {
+		claimScopes := strings.Split(claims.Scope, " ")
+		if slices.Contains(claimScopes, string(requiredScope)) {
+			return ctx, nil
 		}
+		return ctx, status.Errorf(codes.PermissionDenied, "no permission to access this resource")
 	}
 
+	// Methods absent from the policy table are authenticated but not
+	// scope-checked: fail-open by omission. Deliberately unchanged — the
+	// alternative requires a Logto scope for every method.
 	return ctx, nil
 }
