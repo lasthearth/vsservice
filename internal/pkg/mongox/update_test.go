@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -136,8 +137,30 @@ func TestUpdateDocPersistsCallbackResult(t *testing.T) {
 	}
 }
 
-func TestUpdateDocNotFound(t *testing.T) {
-	f := &fakeStore{doc: storedDoc(), findErr: mongo.ErrNoDocuments}
+func TestGuardFieldMatchesEncodedDocument(t *testing.T) {
+	// The guard names a field path; if that path is not where the DTO actually
+	// encodes updated_at, every replace silently matches nothing.
+	for _, tc := range []struct {
+		name string
+		doc  any
+		path string
+	}{
+		{"inline envelope", testDoc{Model: Model{UpdatedAt: time.Now()}}, updatedAtField[testDoc, *testDoc]()},
+		{"untagged embedded envelope", nestedDoc{Model: Model{UpdatedAt: time.Now()}}, updatedAtField[nestedDoc, *nestedDoc]()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := bson.Marshal(tc.doc)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			if _, err := bson.Raw(raw).LookupErr(strings.Split(tc.path, ".")...); err != nil {
+				t.Errorf("guard reads %q, which the encoded document does not have: %v", tc.path, err)
+			}
+		})
+	}
+}
+
+func TestUpdateDocNotFound(t *testing.T) {	f := &fakeStore{doc: storedDoc(), findErr: mongo.ErrNoDocuments}
 
 	_, err := UpdateDoc(context.Background(), f, bson.M{}, errNotFound,
 		toTestModel, fromTestModel, rename("after"))
