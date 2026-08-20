@@ -9,7 +9,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/discord"
 	"github.com/lasthearth/vsservice/internal/donate"
 	"github.com/lasthearth/vsservice/internal/hungergames"
-	imperialpoint "github.com/lasthearth/vsservice/internal/imperial-point"
 	"github.com/lasthearth/vsservice/internal/leaderboard"
 	"github.com/lasthearth/vsservice/internal/media"
 	"github.com/lasthearth/vsservice/internal/news"
@@ -94,7 +93,6 @@ func main() {
 		serverinfo.App,
 		media.App,
 		progression.App,
-		imperialpoint.App,
 		discord.App,
 	)
 

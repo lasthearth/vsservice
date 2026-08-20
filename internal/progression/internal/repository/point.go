@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 
-	"github.com/lasthearth/vsservice/internal/imperial-point/internal/dto"
-	"github.com/lasthearth/vsservice/internal/imperial-point/internal/model"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
+	"github.com/lasthearth/vsservice/internal/progression/internal/dto"
+	"github.com/lasthearth/vsservice/internal/progression/internal/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -26,7 +26,7 @@ func (r *Repository) CreatePoint(ctx context.Context, point model.ImperialPoint)
 		BiRatePerHour: point.BiRatePerHour,
 		TreeId:        treeOid,
 	}
-	if _, err := r.coll.InsertOne(ctx, d); err != nil {
+	if _, err := r.pointsColl.InsertOne(ctx, d); err != nil {
 		return nil, err
 	}
 	point.SetId(d.Id.Hex())
@@ -44,7 +44,7 @@ func (r *Repository) UpdatePoint(ctx context.Context, point model.ImperialPoint)
 		"bi_rate_per_hour": point.BiRatePerHour,
 		"tree_id":          point.TreeId,
 	}}
-	res, err := r.coll.UpdateByID(ctx, oid, update)
+	res, err := r.pointsColl.UpdateByID(ctx, oid, update)
 	if err != nil {
 		return nil, err
 	}
@@ -60,14 +60,14 @@ func (r *Repository) GetPoint(ctx context.Context, id string) (*model.ImperialPo
 		return nil, err
 	}
 	var d dto.ImperialPoint
-	if err := r.coll.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
+	if err := r.pointsColl.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
 		return nil, err
 	}
-	return fromDTO(d), nil
+	return fromPointDTO(d), nil
 }
 
 func (r *Repository) ListPoints(ctx context.Context) ([]model.ImperialPoint, error) {
-	cur, err := r.coll.Find(ctx, bson.M{})
+	cur, err := r.pointsColl.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (r *Repository) ListPoints(ctx context.Context) ([]model.ImperialPoint, err
 	}
 	out := make([]model.ImperialPoint, len(docs))
 	for i, d := range docs {
-		out[i] = *fromDTO(d)
+		out[i] = *fromPointDTO(d)
 	}
 	return out, nil
 }
@@ -101,11 +101,11 @@ func (r *Repository) SaveControl(ctx context.Context, pointId string, control *m
 			ControlledSince: control.ControlledSince,
 		}}}
 	}
-	_, err = r.coll.UpdateByID(ctx, oid, update)
+	_, err = r.pointsColl.UpdateByID(ctx, oid, update)
 	return err
 }
 
-func fromDTO(d dto.ImperialPoint) *model.ImperialPoint {
+func fromPointDTO(d dto.ImperialPoint) *model.ImperialPoint {
 	p := &model.ImperialPoint{
 		Id:            d.Id.Hex(),
 		Name:          d.Name,
