@@ -2,13 +2,10 @@ package service
 
 import (
 	"context"
-	"io"
 
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	"github.com/lasthearth/vsservice/internal/news/internal/model"
 	"github.com/lasthearth/vsservice/internal/news/internal/repository"
-	"github.com/lasthearth/vsservice/internal/pkg/storage"
-	"github.com/minio/minio-go/v7"
 )
 
 //go:generate go tool goverter gen github.com/lasthearth/vsservice/internal/news/internal/service
@@ -31,19 +28,4 @@ type Repository interface {
 	SoftDeleteNews(ctx context.Context, id string, deletedBy string) error
 	IncrementViewCount(ctx context.Context, id string, userID string) error
 	GetNewsViewCount(ctx context.Context, id string) (int64, error)
-}
-
-var _ Storage = (*storage.Storage)(nil)
-
-type Storage interface {
-	BucketExists(ctx context.Context, bucketName string) (bool, error)
-	MakeBucketPublic(ctx context.Context, bucketName string) error
-	CreateBucket(ctx context.Context, bucketName string) error
-	UploadObject(
-		ctx context.Context,
-		bucketName, objectName string,
-		reader io.Reader,
-		size int64,
-		contentType string,
-	) (*minio.UploadInfo, error)
 }

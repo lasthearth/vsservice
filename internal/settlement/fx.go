@@ -3,7 +3,6 @@ package settlement
 import (
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
-	"github.com/lasthearth/vsservice/internal/pkg/storage"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	repository "github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/repository/mongo/repomapper"
@@ -37,10 +36,6 @@ var App = fx.Options(
 					return &sermapper.MapperImpl{}
 				},
 				fx.As(new(service.Mapper)),
-			),
-			fx.Annotate(
-				storage.New,
-				fx.As(new(service.Storage)),
 			),
 			fx.Annotate(
 				repository.New,

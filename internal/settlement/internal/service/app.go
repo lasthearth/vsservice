@@ -21,7 +21,6 @@ type Opts struct {
 	Retrier  *retrier.Retrier
 	DbRepo   SettlementRepository
 	Mapper   Mapper
-	Storage  Storage
 	MediaURL *mediaurl.Validator
 }
 
@@ -32,7 +31,6 @@ type Service struct {
 	dbRepo   SettlementRepository
 	retrier  *retrier.Retrier
 	mapper   Mapper
-	storage  Storage
 	mediaUrl *mediaurl.Validator
 }
 
@@ -44,7 +42,6 @@ func New(opts Opts) *Service {
 		dbRepo:   opts.DbRepo,
 		retrier:  opts.Retrier,
 		mapper:   opts.Mapper,
-		storage:  opts.Storage,
 		mediaUrl: opts.MediaURL,
 	}
 }

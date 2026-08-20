@@ -8,7 +8,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/news/internal/service"
 	"github.com/lasthearth/vsservice/internal/news/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
-	"github.com/lasthearth/vsservice/internal/pkg/storage"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
 )
@@ -34,10 +33,6 @@ var App = fx.Options(
 					return &repomapper.MapperImpl{}
 				},
 				fx.As(new(repository.Mapper)),
-			),
-			fx.Annotate(
-				storage.New,
-				fx.As(new(service.Storage)),
 			),
 			fx.Annotate(
 				repository.New,

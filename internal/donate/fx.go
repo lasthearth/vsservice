@@ -8,7 +8,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/donate/internal/service"
 	"github.com/lasthearth/vsservice/internal/donate/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
-	pkgstorage "github.com/lasthearth/vsservice/internal/pkg/storage"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
 )
@@ -42,10 +41,6 @@ var App = fx.Options(
 				repository.New,
 				fx.As(new(service.DonateRepository)),
 				fx.As(new(donateuc.WalletRepo)),
-			),
-			fx.Annotate(
-				pkgstorage.New,
-				fx.As(new(service.Storage)),
 			),
 		),
 

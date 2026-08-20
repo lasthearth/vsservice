@@ -4,17 +4,7 @@ import (
 	"context"
 
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
-	"github.com/lasthearth/vsservice/internal/pkg/storage"
 )
-
-// Storage is the subset of pkg/storage.Storage used by the donate service.
-var _ Storage = (*storage.Storage)(nil)
-
-type Storage interface {
-	BucketExists(ctx context.Context, bucketName string) (bool, error)
-	MakeBucketPublic(ctx context.Context, bucketName string) error
-	CreateBucket(ctx context.Context, bucketName string) error
-}
 
 // DonateRepository is the single persistence interface for the donate domain.
 // All repository methods are defined here; the implementation lives in

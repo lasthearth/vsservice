@@ -17,7 +17,6 @@ type Opts struct {
 	Logger               logger.Logger
 	Repo                 Repository
 	CreateNotificationUC *notificationuc.Create
-	Storage              Storage
 	Mapper               Mapper
 	Config               config.Config
 	Validator            *validator.Validate
@@ -29,7 +28,6 @@ type Service struct {
 	repo   Repository
 	// Create notification use case
 	cnuc      *notificationuc.Create
-	storage   Storage
 	mapper    Mapper
 	config    config.Config
 	validator *validator.Validate
@@ -42,7 +40,6 @@ func New(opts Opts) *Service {
 		logger:    l,
 		repo:      opts.Repo,
 		cnuc:      opts.CreateNotificationUC,
-		storage:   opts.Storage,
 		mapper:    opts.Mapper,
 		config:    opts.Config,
 		validator: opts.Validator,
