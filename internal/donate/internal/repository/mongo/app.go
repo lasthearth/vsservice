@@ -7,6 +7,7 @@ import (
 	dto "github.com/lasthearth/vsservice/internal/donate/internal/dto/mongo"
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
 	"github.com/lasthearth/vsservice/internal/donate/internal/service"
+	"github.com/lasthearth/vsservice/internal/donate/internal/usecase"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	mgo "go.mongodb.org/mongo-driver/v2/mongo"
@@ -22,7 +23,11 @@ const (
 	transactionCollName = "donate_transactions"
 )
 
-var _ service.DonateRepository = (*Repository)(nil)
+var (
+	_ service.DonateRepository = (*Repository)(nil)
+	_ usecase.PurchaseRepo     = (*Repository)(nil)
+	_ usecase.Sequence         = (*Repository)(nil)
+)
 
 type Repository struct {
 	log        logger.Logger

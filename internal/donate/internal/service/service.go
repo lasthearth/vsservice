@@ -377,7 +377,7 @@ func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*d
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	purchase, err := s.repo.BuyItem(ctx, playerID, req.GetItemId())
+	purchase, err := s.purchases.Buy(ctx, playerID, req.GetItemId())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "item not found or unavailable")

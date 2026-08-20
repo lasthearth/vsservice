@@ -68,11 +68,6 @@ type DonateRepository interface {
 
 	// Atomic operations
 
-	// BuyItem atomically deducts coins from the wallet, creates a purchase record,
-	// and records a debit transaction — all within a single MongoDB session.
-	// playerName is resolved from the wallet document (set by admin via AddCoins).
-	BuyItem(ctx context.Context, playerID, itemID string) (*model.Purchase, error)
-
 	// Refund atomically marks the purchase as refunded, restores coins to the wallet,
 	// and records a credit transaction — all within a single MongoDB session.
 	Refund(ctx context.Context, purchaseID, reason string) (*model.Purchase, error)

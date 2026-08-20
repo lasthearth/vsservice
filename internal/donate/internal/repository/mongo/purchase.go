@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (r *Repository) createPurchase(ctx context.Context, purchase *model.Purchase) (*model.Purchase, error) {
+func (r *Repository) CreatePurchase(ctx context.Context, purchase *model.Purchase) (*model.Purchase, error) {
 	m := mongox.NewModel()
 	d := purchaseToDTO(purchase)
 	d.Model = m
@@ -31,7 +31,7 @@ func (r *Repository) createPurchase(ctx context.Context, purchase *model.Purchas
 	return purchase, nil
 }
 
-func (r *Repository) updatePurchase(
+func (r *Repository) UpdatePurchase(
 	ctx context.Context,
 	id string,
 	updateFn func(ctx context.Context, p *model.Purchase) (*model.Purchase, error),
@@ -83,7 +83,7 @@ func (r *Repository) ListPurchasesByPlayerID(ctx context.Context, playerID strin
 // Idempotent: re-issuing a purchase that's already issued is a no-op.
 // Returns ierror.ErrCannotIssueRefunded if the purchase is refunded.
 func (r *Repository) MarkPurchaseIssued(ctx context.Context, purchaseID, adminID string) (*model.Purchase, error) {
-	return r.updatePurchase(ctx, purchaseID, func(_ context.Context, p *model.Purchase) (*model.Purchase, error) {
+	return r.UpdatePurchase(ctx, purchaseID, func(_ context.Context, p *model.Purchase) (*model.Purchase, error) {
 		if err := p.MarkIssued(adminID); err != nil {
 			return nil, ierror.ErrCannotIssueRefunded
 		}

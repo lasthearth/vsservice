@@ -6,6 +6,7 @@ import (
 	repository "github.com/lasthearth/vsservice/internal/donate/internal/repository/mongo"
 	"github.com/lasthearth/vsservice/internal/donate/internal/service"
 	"github.com/lasthearth/vsservice/internal/donate/internal/service/sermapper"
+	"github.com/lasthearth/vsservice/internal/donate/internal/usecase"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
@@ -34,7 +35,14 @@ var App = fx.Options(
 				repository.New,
 				fx.As(new(service.DonateRepository)),
 				fx.As(new(donateuc.WalletRepo)),
+				fx.As(new(usecase.PurchaseRepo)),
+				fx.As(new(usecase.Sequence)),
 			),
+		),
+
+		fx.Provide(
+			fx.Private,
+			usecase.NewPurchases,
 		),
 
 		fx.Provide(
