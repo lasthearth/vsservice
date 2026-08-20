@@ -187,13 +187,18 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 		}
 
 		if err := item.Validate(); err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
+			// A domain error, not a gRPC status: the closure runs inside the
+			// repository's update cycle, and isDomainError below is what maps it.
+			return nil, pkgerr.InvalidArgument(err.Error())
 		}
 		return item, nil
 	})
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "shop item not found")
+		}
+		if isDomainError(err, codes.InvalidArgument) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 		l.Error("failed to update shop item", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to update shop item")
