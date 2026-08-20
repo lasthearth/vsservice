@@ -38,6 +38,14 @@ func (r *Repository) CreateTransaction(ctx context.Context, tx *model.Transactio
 	return tx, nil
 }
 
+// CreateCreditTransaction records a credit entry in the ledger. It is the
+// primitive-typed entry point used by donateuc.WalletRepo, so cross-domain
+// callers never construct donate's Transaction model themselves.
+func (r *Repository) CreateCreditTransaction(ctx context.Context, playerID string, amount int64, reason string) error {
+	_, err := r.CreateTransaction(ctx, model.NewCreditTransaction(playerID, amount, reason))
+	return err
+}
+
 func (r *Repository) ListTransactionsByPlayerID(ctx context.Context, playerID string) ([]*model.Transaction, error) {
 	l := r.log.With(zap.String("method", "ListTransactionsByPlayerID"), zap.String("player_id", playerID))
 
