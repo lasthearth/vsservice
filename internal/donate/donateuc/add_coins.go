@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 
-	repository "github.com/lasthearth/vsservice/internal/donate/internal/repository/mongo"
 	"go.uber.org/fx"
 )
 
-var _ WalletRepo = (*repository.Repository)(nil)
-
+// WalletRepo is the donate-side write port used by other domains. It is
+// deliberately primitive-typed so donate's internal model and DTO types never
+// cross this seam. Bound to the donate Mongo repository in internal/donate/fx.go.
 type WalletRepo interface {
 	AddCoinsToWallet(ctx context.Context, playerID, playerName string, amount int64) (int64, error)
 }
