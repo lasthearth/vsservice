@@ -124,9 +124,7 @@ func updatedAtField[D any, PD interface {
 	*D
 	enveloped
 }]() string {
-	t := reflect.TypeFor[D]()
-	for i := range t.NumField() {
-		f := t.Field(i)
+	for f := range reflect.TypeFor[D]().Fields() {
 		if !f.Anonymous || f.Type != reflect.TypeFor[Model]() {
 			continue
 		}
