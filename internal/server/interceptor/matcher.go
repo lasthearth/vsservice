@@ -42,6 +42,14 @@ func AuthMatcher(ctx context.Context, c interceptors.CallMeta, cfg config.Config
 		return false
 	case "/user.v1.UserService/GetUser":
 		return false
+	case "/user.v1.UserService/BatchGetUsers":
+		return false
+	case "/settlement.v1.SettlementTagService/GetTag":
+		return false
+	case "/settlement.v1.SettlementTagService/GetTags":
+		return false
+	case "/settlement.v1.SettlementTagService/GetTagsByIds":
+		return false
 	case "/discord.v1.DiscordService/ListMessages":
 		return false
 	case "/discord.v1.DiscordService/ListImages":

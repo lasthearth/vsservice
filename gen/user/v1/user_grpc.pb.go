@@ -57,9 +57,10 @@ type UserServiceClient interface {
 	//   - INVALID_ARGUMENT (400): user_ids is empty or has more than 100 entries
 	//   - INTERNAL (500): database failure
 	BatchGetUsers(ctx context.Context, in *BatchGetUsersRequest, opts ...grpc.CallOption) (*BatchGetUsersResponse, error)
-	// Search users by query string.
+	// Search users by query string. Requires auth, since it enumerates players by name.
 	//
 	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	SearchUsers(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error)
 	// Change in-game nickname for a user. Caller must match user_id.
@@ -164,9 +165,10 @@ type UserServiceServer interface {
 	//   - INVALID_ARGUMENT (400): user_ids is empty or has more than 100 entries
 	//   - INTERNAL (500): database failure
 	BatchGetUsers(context.Context, *BatchGetUsersRequest) (*BatchGetUsersResponse, error)
-	// Search users by query string.
+	// Search users by query string. Requires auth, since it enumerates players by name.
 	//
 	// Errors:
+	//   - UNAUTHENTICATED (401): missing or invalid auth token
 	//   - INTERNAL (500): database failure
 	SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error)
 	// Change in-game nickname for a user. Caller must match user_id.
