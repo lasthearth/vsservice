@@ -75,7 +75,6 @@ func main() {
 			setupStorage,
 			mongox.New,
 			mongox.NewDatabase,
-			// fx.Annotate(service.New, fx.As(new(vsservice.StatsService))),
 		),
 
 		leaderboard.App,

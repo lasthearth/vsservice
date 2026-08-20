@@ -24,8 +24,6 @@ type Config struct {
 
 	MongoUrlFile string `envconfig:"MONGO_URL_FILE" required:"true"`
 
-	VsAPIUrl string `envconfig:"VSAPI_URL"`
-
 	CdnUrl string `envconfig:"CDN_URL"`
 
 	// MediaAllowedHosts lists external hosts (besides the CDN) that image URLs
@@ -38,9 +36,6 @@ type Config struct {
 	TokenUrl     string   `envconfig:"TOKEN_URL"`
 	Resource     string   `envconfig:"RESOURCE"`
 	Scopes       []string `envconfig:"SCOPES"`
-
-	StatsFetchingIntervalSecs int  `envconfig:"STATS_FETCHING_INTERVAL_SECS"`
-	StatsFetchingEnable       bool `envconfig:"STATS_FETCHING_ENABLE"`
 
 	MinioEndpoint  string `envconfig:"MINIO_ENDPOINT"`
 	MinioAccessKey string `envconfig:"MINIO_ACCESS_KEY"`
