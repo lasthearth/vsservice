@@ -3005,9 +3005,10 @@ paths:
     get:
       tags:
         - UserService
-      summary: Search users by query string.
+      summary: Search users by query string. Requires auth, since it enumerates players by name.
       description: |-
         Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
            - INTERNAL (500): database failure
       operationId: UserService_SearchUsers
       parameters:

@@ -1,0 +1,3 @@
+# buf embeds proto source comments verbatim into generated openapi/go output,
+# so CRLF in .proto leaks \r\n into descriptions. Force LF.
+*.proto text eol=lf

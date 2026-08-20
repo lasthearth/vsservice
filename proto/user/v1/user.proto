@@ -49,9 +49,10 @@ service UserService {
     option (google.api.http) = {get: "/v1/users:batchGet"};
   }
 
-  // Search users by query string.
+  // Search users by query string. Requires auth, since it enumerates players by name.
   //
   // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database failure
   rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse) {
     option (google.api.http) = {get: "/v1/users/search"};
