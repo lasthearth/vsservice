@@ -2,6 +2,7 @@ package pagination
 
 import (
 	"encoding/base64"
+	"errors"
 	"testing"
 	"time"
 
@@ -103,6 +104,14 @@ func TestDecodeTokenAcceptsLegacyJSON(t *testing.T) {
 func TestDecodeTokenRejectsGarbage(t *testing.T) {
 	if _, err := decodeToken("!!!not base64!!!"); err == nil {
 		t.Fatal("expected an error for a non-base64 token")
+	}
+}
+
+// A token the client made up is a bad request, not a server fault.
+func TestResolveRejectsInvalidPageToken(t *testing.T) {
+	_, err := resolve([]OptionFn{WithNext("!!!not base64!!!")})
+	if !errors.Is(err, ErrInvalidPageToken) {
+		t.Fatalf("err = %v, want ErrInvalidPageToken", err)
 	}
 }
 

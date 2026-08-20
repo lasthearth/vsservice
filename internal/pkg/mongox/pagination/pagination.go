@@ -16,6 +16,7 @@ import (
 	"maps"
 	"reflect"
 
+	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -27,6 +28,11 @@ const (
 	DefaultLimit int64 = 25
 	MaxLimit     int64 = 100
 )
+
+// ErrInvalidPageToken is returned when the caller passes a page token this
+// package did not produce. It carries codes.InvalidArgument, so the domain error
+// interceptor answers the client with a 400 rather than a 500.
+var ErrInvalidPageToken = ierror.InvalidArgument("invalid page token")
 
 type Options struct {
 	limit  int64
@@ -169,7 +175,9 @@ func resolve(opts []OptionFn) (query, error) {
 	if o.next != "" {
 		t, err := decodeToken(o.next)
 		if err != nil {
-			return query{}, err
+			// The token comes straight from the client, so a broken one is a bad
+			// request, not a server fault.
+			return query{}, ErrInvalidPageToken
 		}
 
 		if !t.Oid.IsZero() {
