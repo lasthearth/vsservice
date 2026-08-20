@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"slices"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -68,14 +67,17 @@ func Parse(
 	}, nil
 }
 
+// BuildSortOptions returns the caller's field as the primary sort key.
+// `_id` is appended last as the deterministic tiebreaker cursor pagination
+// needs — pagination.List adds it when absent, so it is only spelled out here
+// for callers that pass the sort elsewhere.
 func BuildSortOptions(orderInfo *Info) bson.D {
-	sort := bson.D{}
-	sort = slices.Insert(sort, 0, bson.E{Key: "_id", Value: Desc})
 	if orderInfo == nil {
-		return sort
+		return bson.D{{Key: "_id", Value: Desc}}
 	}
 
-	sort = append(sort, bson.E{Key: orderInfo.MongoField, Value: orderInfo.Direction})
-
-	return sort
+	return bson.D{
+		{Key: orderInfo.MongoField, Value: orderInfo.Direction},
+		{Key: "_id", Value: orderInfo.Direction},
+	}
 }

@@ -80,21 +80,16 @@ func (r *Repository) ListNews(
 
 	l.Info("listing news")
 
-	resp, err := pagination.Find[dto.News](
-		ctx,
-		r.coll,
-		pagination.WithLimit(15),
+	news, nextToken, err := pagination.List(
+		ctx, r.coll, next, int64(limit), r.mapper.ToModel,
 		pagination.WithFilter(bson.M{"deleted_at": bson.M{"$exists": false}}),
 	)
 	if err != nil {
 		l.Error("failed to list news", zap.Error(err))
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, "", ierror.ErrNewsNotFound
-		}
 		return nil, "", err
 	}
 
-	return r.mapper.ToModels(resp.Data), resp.Next, nil
+	return news, nextToken, nil
 }
 
 // GetNewsById implements service.Repository.

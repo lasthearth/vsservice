@@ -98,35 +98,19 @@ func (r *Repository) MarkPurchaseIssued(ctx context.Context, purchaseID, adminID
 func (r *Repository) ListPendingPurchases(ctx context.Context, pageToken string, limit int64) ([]*model.Purchase, string, error) {
 	l := r.log.With(zap.String("method", "ListPendingPurchases"))
 
-	if limit <= 0 {
-		limit = 25
-	}
-
-	opts := []pagination.OptionFn{
-		pagination.WithLimit(limit),
+	purchases, next, err := pagination.List(
+		ctx, r.purchColl, pageToken, limit, purchaseFromDTO,
 		pagination.WithFilter(bson.M{
 			"issued_at": bson.M{"$exists": false},
 			"status":    string(model.PurchaseStatusActive),
 		}),
-	}
-	if pageToken != "" {
-		opts = append(opts, pagination.WithNext(pageToken))
-	}
-
-	resp, err := pagination.Find[dto.Purchase](ctx, r.purchColl, opts...)
+	)
 	if err != nil {
-		if errors.Is(err, pagination.ErrNoData) || errors.Is(err, mgo.ErrNoDocuments) {
-			return nil, "", nil
-		}
 		l.Error("failed to list pending purchases", zap.Error(err))
 		return nil, "", err
 	}
 
-	result := make([]*model.Purchase, len(resp.Data))
-	for i, d := range resp.Data {
-		result[i] = purchaseFromDTO(d)
-	}
-	return result, resp.Next, nil
+	return purchases, next, nil
 }
 
 // ListAllPurchases returns every purchase across all players.
@@ -134,29 +118,11 @@ func (r *Repository) ListPendingPurchases(ctx context.Context, pageToken string,
 func (r *Repository) ListAllPurchases(ctx context.Context, pageToken string, limit int64) ([]*model.Purchase, string, error) {
 	l := r.log.With(zap.String("method", "ListAllPurchases"))
 
-	if limit <= 0 {
-		limit = 25
-	}
-
-	opts := []pagination.OptionFn{
-		pagination.WithLimit(limit),
-	}
-	if pageToken != "" {
-		opts = append(opts, pagination.WithNext(pageToken))
-	}
-
-	resp, err := pagination.Find[dto.Purchase](ctx, r.purchColl, opts...)
+	purchases, next, err := pagination.List(ctx, r.purchColl, pageToken, limit, purchaseFromDTO)
 	if err != nil {
-		if errors.Is(err, pagination.ErrNoData) || errors.Is(err, mgo.ErrNoDocuments) {
-			return nil, "", nil
-		}
 		l.Error("failed to list all purchases", zap.Error(err))
 		return nil, "", err
 	}
 
-	result := make([]*model.Purchase, len(resp.Data))
-	for i, d := range resp.Data {
-		result[i] = purchaseFromDTO(d)
-	}
-	return result, resp.Next, nil
+	return purchases, next, nil
 }

@@ -36,14 +36,9 @@ func (s *Service) ListNotifications(ctx context.Context, req *notificationv1.Lis
 	l := s.log.WithMethod("list_notifications")
 	limit := min(int(req.GetPageSize()), 15)
 
+	// The page token is an opaque pagination cursor, not an ObjectID hex.
 	pageToken := strings.TrimSpace(req.GetPageToken())
 	orderBy := strings.ToLower(strings.TrimSpace(req.GetOrderBy()))
-
-	_, err := mongox.ParseObjectID(pageToken)
-	if err != nil {
-		l.Debug("failed to parse page token, make it empty", zap.Error(err))
-		pageToken = ""
-	}
 
 	uid, err := interceptor.GetUserID(ctx)
 	if err != nil {

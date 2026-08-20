@@ -100,28 +100,14 @@ func (r *Repository) CountSeasons(ctx context.Context) (int, error) {
 
 func (r *Repository) ListSeasons(ctx context.Context, next string, limit int) ([]*model.Season, string, error) {
 	// Default sort is _id descending (newest season first), compatible with the
-	// ObjectID-based cursor used by pagination.Find.
-	opts := []pagination.OptionFn{
-		pagination.WithLimit(int64(limit)),
-	}
-	if next != "" {
-		opts = append(opts, pagination.WithNext(next))
-	}
-
-	resp, err := pagination.Find[seasonDTO](ctx, r.seasonsColl, opts...)
+	// ObjectID-based cursor used by pagination.List.
+	seasons, nextToken, err := pagination.List(ctx, r.seasonsColl, next, int64(limit), seasonFromDTO)
 	if err != nil {
-		if err.Error() == "no data found" {
-			return nil, "", nil
-		}
 		r.log.Error("ListSeasons: find failed", zap.Error(err))
 		return nil, "", err
 	}
 
-	seasons := make([]*model.Season, len(resp.Data))
-	for i, d := range resp.Data {
-		seasons[i] = seasonFromDTO(d)
-	}
-	return seasons, resp.Next, nil
+	return seasons, nextToken, nil
 }
 
 func seasonFromDTO(d seasonDTO) *model.Season {

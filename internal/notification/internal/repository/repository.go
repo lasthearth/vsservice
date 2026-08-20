@@ -96,19 +96,17 @@ func (r *Repository) ListNotifications(ctx context.Context, limit int, userID, n
 	}
 	sort := orderby.BuildSortOptions(orderInfo)
 
-	resp, err := pagination.Find[dto.Notification](
-		ctx,
-		r.coll,
+	notifications, next, err := pagination.List(
+		ctx, r.coll, nextPageToken, int64(limit), r.mapper.ToModel,
 		pagination.WithFilter(filter),
 		pagination.WithSort(sort),
-		pagination.WithLimit(int64(limit)),
 	)
 	if err != nil {
 		l.Error("failed to find notifications", zap.Error(err))
 		return nil, "", fmt.Errorf("failed to find notifications: %w", err)
 	}
 
-	return r.mapper.ToModels(resp.Data), resp.Next, nil
+	return notifications, next, nil
 }
 
 func (r *Repository) MarkNotificationRead(ctx context.Context, id string) error {
