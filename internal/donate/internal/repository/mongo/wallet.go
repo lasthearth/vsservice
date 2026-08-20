@@ -119,30 +119,17 @@ func (r *Repository) UpdateWallet(
 ) error {
 	l := r.log.With(zap.String("method", "UpdateWallet"), zap.String("player_id", playerID))
 
-	var d dto.Wallet
-	err := r.walletColl.FindOne(ctx, bson.M{"player_id": playerID}).Decode(&d)
-	if err != nil {
-		if errors.Is(err, mgo.ErrNoDocuments) {
-			return ierror.ErrNotFound
-		}
-		l.Error("failed to find wallet", zap.Error(err))
-		return err
+	_, err := mongox.UpdateDoc(
+		ctx,
+		r.walletColl,
+		bson.M{"player_id": playerID},
+		ierror.ErrNotFound,
+		walletFromDTO,
+		walletToDTO,
+		updateFn,
+	)
+	if err != nil && !errors.Is(err, ierror.ErrNotFound) {
+		l.Error("failed to update wallet", zap.Error(err))
 	}
-
-	wallet := walletFromDTO(d)
-	updated, err := updateFn(ctx, wallet)
-	if err != nil {
-		return err
-	}
-
-	updated.Touch(time.Now())
-	dtoWallet := r.mapper.WalletToDTO(*updated)
-	dtoWallet.Model = d.Model
-	dtoWallet.UpdatedAt = updated.UpdatedAt
-	if _, err = r.walletColl.ReplaceOne(ctx, bson.M{"player_id": playerID}, dtoWallet); err != nil {
-		l.Error("failed to replace wallet", zap.Error(err))
-		return err
-	}
-
-	return nil
+	return err
 }

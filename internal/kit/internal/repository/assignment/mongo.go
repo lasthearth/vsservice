@@ -82,36 +82,26 @@ func (r *Repository) UpdateAssignment(
 
 	l.Info("updating assignment")
 
-	// Get the current assignment
-	var dtoObj dto.Assignment
-	err := r.coll.FindOne(ctx, bson.M{"_id": assignmentID}).Decode(&dtoObj)
+	_, err := mongox.UpdateDoc(
+		ctx,
+		r.coll,
+		bson.M{"_id": assignmentID},
+		ierror.ErrNotFound,
+		func(d dto.Assignment) *model.KitAssignment {
+			m := r.mapper.ToAssignment(d)
+			return &m
+		},
+		func(m *model.KitAssignment) dto.Assignment {
+			return r.mapper.FromAssignment(*m)
+		},
+		updateFn,
+	)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if errors.Is(err, ierror.ErrNotFound) {
 			l.Info("assignment not found", zap.String("assignment_id", assignmentID))
-			return ierror.ErrNotFound
+		} else {
+			l.Error("failed to update assignment", zap.Error(err))
 		}
-		l.Error("failed to find assignment", zap.Error(err))
-		return err
-	}
-
-	// Convert DTO to model for processing
-	assignment := r.mapper.ToAssignment(dtoObj)
-	assignmentPtr := &assignment
-
-	// Apply the update function
-	updatedAssignment, err := updateFn(ctx, assignmentPtr)
-	if err != nil {
-		l.Error("failed to update assignment in update function", zap.Error(err))
-		return err
-	}
-
-	// Convert back to DTO
-	dtoToUpdate := r.mapper.FromAssignment(*updatedAssignment)
-
-	// Update in database
-	_, err = r.coll.ReplaceOne(ctx, bson.M{"_id": assignmentID}, dtoToUpdate)
-	if err != nil {
-		l.Error("failed to update assignment in database", zap.Error(err))
 		return err
 	}
 
