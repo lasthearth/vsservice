@@ -32,26 +32,6 @@ func (r *Repository) createPurchase(ctx context.Context, purchase *model.Purchas
 	return purchase, nil
 }
 
-func (r *Repository) GetPurchase(ctx context.Context, id string) (*model.Purchase, error) {
-	l := r.log.With(zap.String("method", "GetPurchase"), zap.String("id", id))
-
-	oid, err := mongox.ParseObjectID(id)
-	if err != nil {
-		return nil, ierror.ErrNotFound
-	}
-
-	var d dto.Purchase
-	if err := r.purchColl.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
-		if errors.Is(err, mgo.ErrNoDocuments) {
-			return nil, ierror.ErrNotFound
-		}
-		l.Error("failed to find purchase", zap.Error(err))
-		return nil, err
-	}
-
-	return purchaseFromDTO(d), nil
-}
-
 func (r *Repository) updatePurchase(
 	ctx context.Context,
 	id string,

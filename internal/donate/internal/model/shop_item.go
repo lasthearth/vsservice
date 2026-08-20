@@ -211,20 +211,6 @@ func (s *ShopItem) ClearDiscount() {
 	s.DiscountPercent = 0
 }
 
-// SetEntries validates and sets the kit entries.
-func (s *ShopItem) SetEntries(e []KitEntry) error {
-	for i, entry := range e {
-		if entry.Name == "" {
-			return errors.New("kit entry name cannot be empty")
-		}
-		if entry.Quantity <= 0 {
-			return fmt.Errorf("kit entry %d quantity must be positive", i)
-		}
-	}
-	s.Entries = e
-	return nil
-}
-
 // DiscountActive reports whether the discount applies at `now`.
 func (s *ShopItem) DiscountActive(now time.Time) bool {
 	if !s.HasDiscount || s.DiscountPercent <= 0 {

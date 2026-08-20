@@ -58,7 +58,7 @@ func provideReqID(ctx context.Context) (context.Context, error) {
 		logging.Fields{"request_id", rid.String()},
 	)
 
-	return context.WithValue(ctx, ctxKey{"rid"}, rid), nil
+	return context.WithValue(ctx, ctxKey{"rid"}, rid.String()), nil
 }
 
 // GetRequestID from context, only throws ErrGetRequestID if uid not found in context

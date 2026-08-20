@@ -19,12 +19,10 @@ type Config struct {
 	Issuer   string `envconfig:"ISSUER"`
 	Audience string `envconfig:"AUDIENCE"`
 
-	GrpcPort     int `envconfig:"GPRC_PORT" default:"50051"`
+	GrpcPort     int `envconfig:"GRPC_PORT" default:"50051"`
 	GateAwayPort int `envconfig:"GATEAWAY_PORT" default:"6969"`
 
 	MongoUrlFile string `envconfig:"MONGO_URL_FILE" required:"true"`
-
-	VsAPIUrl string `envconfig:"VSAPI_URL"`
 
 	CdnUrl string `envconfig:"CDN_URL"`
 
@@ -38,9 +36,6 @@ type Config struct {
 	TokenUrl     string   `envconfig:"TOKEN_URL"`
 	Resource     string   `envconfig:"RESOURCE"`
 	Scopes       []string `envconfig:"SCOPES"`
-
-	StatsFetchingIntervalSecs int  `envconfig:"STATS_FETCHING_INTERVAL_SECS"`
-	StatsFetchingEnable       bool `envconfig:"STATS_FETCHING_ENABLE"`
 
 	MinioEndpoint  string `envconfig:"MINIO_ENDPOINT"`
 	MinioAccessKey string `envconfig:"MINIO_ACCESS_KEY"`

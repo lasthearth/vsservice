@@ -4,7 +4,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
-	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
 	"go.uber.org/fx"
@@ -17,9 +16,7 @@ type Opts struct {
 	Logger               logger.Logger
 	Repo                 Repository
 	CreateNotificationUC *notificationuc.Create
-	Storage              Storage
 	Mapper               Mapper
-	Config               config.Config
 	Validator            *validator.Validate
 	MediaURL             *mediaurl.Validator
 }
@@ -29,9 +26,7 @@ type Service struct {
 	repo   Repository
 	// Create notification use case
 	cnuc      *notificationuc.Create
-	storage   Storage
 	mapper    Mapper
-	config    config.Config
 	validator *validator.Validate
 	mediaUrl  *mediaurl.Validator
 }
@@ -42,9 +37,7 @@ func New(opts Opts) *Service {
 		logger:    l,
 		repo:      opts.Repo,
 		cnuc:      opts.CreateNotificationUC,
-		storage:   opts.Storage,
 		mapper:    opts.Mapper,
-		config:    opts.Config,
 		validator: opts.Validator,
 		mediaUrl:  opts.MediaURL,
 	}

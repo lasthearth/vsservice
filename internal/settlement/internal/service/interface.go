@@ -3,12 +3,10 @@ package service
 
 import (
 	"context"
-	"io"
 
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
-	"github.com/minio/minio-go/v7"
 )
 
 // goverter:converter
@@ -48,19 +46,6 @@ type Mapper interface {
 	// goverter:map CreatedAt | github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToInt64
 	ToImperialFavorLogProto(model.ImperialFavorLog) *settlementv1.ImperialFavorLog
 	ToImperialFavorLogsProto([]model.ImperialFavorLog) []*settlementv1.ImperialFavorLog
-}
-
-type Storage interface {
-	BucketExists(ctx context.Context, bucketName string) (bool, error)
-	MakeBucketPublic(ctx context.Context, bucketName string) error
-	CreateBucket(ctx context.Context, bucketName string) error
-	UploadObject(
-		ctx context.Context,
-		bucketName, objectName string,
-		reader io.Reader,
-		size int64,
-		contentType string,
-	) (*minio.UploadInfo, error)
 }
 
 type SettlementRepository interface {

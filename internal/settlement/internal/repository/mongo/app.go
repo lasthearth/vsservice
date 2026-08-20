@@ -5,7 +5,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	invitationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
 	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
@@ -55,7 +54,6 @@ type Mapper interface {
 type Opts struct {
 	fx.In
 	Log      logger.Logger
-	Cfg      config.Config
 	Database *mongo.Database
 	Client   *mongo.Client
 	Mapper   Mapper
@@ -63,7 +61,6 @@ type Opts struct {
 
 type Repository struct {
 	log logger.Logger
-	cfg config.Config
 	// Settlements collection
 	setColl *mongo.Collection
 	// Settlement requests collection
@@ -86,7 +83,6 @@ func New(opts Opts) *Repository {
 	setupIndexes(logger, sColl, srColl, siColl, flColl)
 	return &Repository{
 		log:          logger,
-		cfg:          opts.Cfg,
 		setColl:      sColl,
 		setReqColl:   srColl,
 		setInvColl:   siColl,
