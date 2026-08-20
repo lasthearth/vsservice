@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"errors"
 
 	mongox "github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox/orderby"
@@ -73,34 +72,26 @@ func (r *Repository) ListFavorLogs(ctx context.Context, settlementID, adminID, o
 
 	sort := orderby.BuildSortOptions(orderInfo)
 
-	opts := []pagination.OptionFn{
+	logs, next, err := pagination.List(
+		ctx, r.favorLogColl, nextToken, 0, favorLogFromDTO,
 		pagination.WithFilter(filter),
 		pagination.WithSort(sort),
-	}
-	if nextToken != "" {
-		opts = append(opts, pagination.WithNext(nextToken))
-	}
-
-	resp, err := pagination.Find[favorlogdto.ImperialFavorLog](ctx, r.favorLogColl, opts...)
+	)
 	if err != nil {
-		if errors.Is(err, pagination.ErrNoData) {
-			return nil, "", nil
-		}
 		l.Error("failed to list favor logs", zap.Error(err))
 		return nil, "", err
 	}
 
-	logs := make([]model.ImperialFavorLog, len(resp.Data))
-	for i, d := range resp.Data {
-		logs[i] = model.ImperialFavorLog{
-			Id:           d.Model.Id.Hex(),
-			SettlementId: d.SettlementId.Hex(),
-			AdminId:      d.AdminId,
-			Amount:       d.Amount,
-			Reason:       d.Reason,
-			CreatedAt:    d.CreatedAt,
-		}
-	}
+	return logs, next, nil
+}
 
-	return logs, resp.Next, nil
+func favorLogFromDTO(d favorlogdto.ImperialFavorLog) model.ImperialFavorLog {
+	return model.ImperialFavorLog{
+		Id:           d.Model.Id.Hex(),
+		SettlementId: d.SettlementId.Hex(),
+		AdminId:      d.AdminId,
+		Amount:       d.Amount,
+		Reason:       d.Reason,
+		CreatedAt:    d.CreatedAt,
+	}
 }

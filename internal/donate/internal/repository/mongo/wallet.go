@@ -78,37 +78,21 @@ func (r *Repository) AddCoinsToWallet(ctx context.Context, playerID, playerName 
 func (r *Repository) ListWallets(ctx context.Context, pageToken string, limit int64) ([]*model.Wallet, string, error) {
 	l := r.log.With(zap.String("method", "ListWallets"))
 
-	if limit <= 0 {
-		limit = 25
-	}
-
 	sort := orderby.BuildSortOptions(&orderby.Info{
 		MongoField: "coins",
 		Direction:  orderby.Desc,
 	})
 
-	opts := []pagination.OptionFn{
-		pagination.WithLimit(limit),
+	wallets, next, err := pagination.List(
+		ctx, r.walletColl, pageToken, limit, walletFromDTO,
 		pagination.WithSort(sort),
-	}
-	if pageToken != "" {
-		opts = append(opts, pagination.WithNext(pageToken))
-	}
-
-	resp, err := pagination.Find[dto.Wallet](ctx, r.walletColl, opts...)
+	)
 	if err != nil {
-		if errors.Is(err, pagination.ErrNoData) {
-			return nil, "", nil
-		}
 		l.Error("failed to list wallets", zap.Error(err))
 		return nil, "", err
 	}
 
-	result := make([]*model.Wallet, len(resp.Data))
-	for i, d := range resp.Data {
-		result[i] = walletFromDTO(d)
-	}
-	return result, resp.Next, nil
+	return wallets, next, nil
 }
 
 // UpdateWallet reads the wallet, applies updateFn, then replaces the document.
