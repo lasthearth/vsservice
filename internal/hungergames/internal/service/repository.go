@@ -66,12 +66,4 @@ type Repository interface {
 	// GetPlayerSeasonResult returns a single player's archived result for a season.
 	// Returns ierror.ErrNotFound if not found.
 	GetPlayerSeasonResult(ctx context.Context, seasonID, playerID string) (*model.SeasonResult, error)
-
-	// Coins (direct writes to donate domain collections)
-
-	// AddCoinsToWallet atomically upserts the donate wallet and increments coins.
-	AddCoinsToWallet(ctx context.Context, playerID, playerName string, amount int64) error
-
-	// CreateCreditTransaction records a credit entry in the donate transactions log.
-	CreateCreditTransaction(ctx context.Context, playerID string, amount int64, reason string) error
 }

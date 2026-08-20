@@ -54,11 +54,9 @@ func (s *Service) ResetSeason(ctx context.Context, req *hgv1.ResetSeasonRequest)
 
 		if rewardCoins > 0 {
 			reason := fmt.Sprintf("Season %d reward, rank %d", season.Number, rank)
-			if err := s.repo.AddCoinsToWallet(ctx, st.PlayerID, st.PlayerName, rewardCoins); err != nil {
-				l.Error("failed to add reward coins", zap.String("player_id", st.PlayerID), zap.Error(err))
+			if err := s.donateUC.Credit(ctx, st.PlayerID, st.PlayerName, rewardCoins, reason); err != nil {
+				l.Error("failed to credit season reward", zap.String("player_id", st.PlayerID), zap.Error(err))
 				// non-fatal: season reset continues even if a reward fails
-			} else if err := s.repo.CreateCreditTransaction(ctx, st.PlayerID, rewardCoins, reason); err != nil {
-				l.Error("failed to record reward transaction", zap.String("player_id", st.PlayerID), zap.Error(err))
 			}
 		}
 	}
