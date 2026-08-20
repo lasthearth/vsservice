@@ -56,7 +56,6 @@ type DonateRepository interface {
 
 	// Purchases
 
-	GetPurchase(ctx context.Context, id string) (*model.Purchase, error)
 	ListPurchasesByPlayerID(ctx context.Context, playerID string) ([]*model.Purchase, error)
 
 	// ListPendingPurchases returns active purchases not yet marked as issued, cursor-paginated.
