@@ -2,12 +2,12 @@ package serverinfo
 
 import (
 	"context"
-	"time"
 
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/serverinfo/internal/dto"
 	"github.com/lasthearth/vsservice/internal/serverinfo/internal/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func (r *Repository) GetServerInfo(ctx context.Context) (*model.ServerInfo, error) {
@@ -40,36 +40,31 @@ func (r *Repository) Update(
 		*model.ServerInfo,
 	) (*model.ServerInfo, error),
 ) error {
-	si, err := r.GetServerInfo(ctx)
-	if err != nil {
-		return err
-	}
-
-	newSi, err := updateFn(ctx, si)
-	if err != nil {
-		return err
-	}
-
-	oid, err := mongox.ParseObjectID(si.Id)
-	if err != nil {
-		return err
-	}
-
-	newModel := mongox.NewModel()
-	newModel.UpdatedAt = time.Now()
-	newModel.CreatedAt = si.CreatedAt
-	newModel.Id = oid
-
-	dtoSi := dto.ServerInfo{
-		Model:       newModel,
-		WorldTime:   newSi.WorldTime,
-		TotalOnline: newSi.TotalOnline,
-		MaxOnline:   75,
-	}
-
-	_, err = r.coll.UpdateOne(ctx, bson.M{}, bson.M{"$set": dtoSi})
-	if err != nil {
-		return err
-	}
-	return nil
+	_, err := mongox.UpdateDoc(
+		ctx,
+		r.coll,
+		bson.M{},
+		mongo.ErrNoDocuments,
+		func(si dto.ServerInfo) *model.ServerInfo {
+			return &model.ServerInfo{
+				Id:          si.Id.Hex(),
+				WorldTime:   si.WorldTime,
+				TotalOnline: si.TotalOnline,
+				MaxOnline:   si.MaxOnline,
+				CreatedAt:   si.CreatedAt,
+				UpdatedAt:   si.UpdatedAt,
+			}
+		},
+		func(si *model.ServerInfo) dto.ServerInfo {
+			return dto.ServerInfo{
+				WorldTime:   si.WorldTime,
+				TotalOnline: si.TotalOnline,
+				// MaxOnline is not player-driven; kept pinned as before this
+				// method was folded into mongox.UpdateDoc.
+				MaxOnline: 75,
+			}
+		},
+		updateFn,
+	)
+	return err
 }
