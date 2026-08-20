@@ -8,7 +8,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
 	"github.com/lasthearth/vsservice/internal/donate/internal/service"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
-	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	mgo "go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -95,6 +94,16 @@ func walletFromDTO(d dto.Wallet) *model.Wallet {
 	return model.ReconstituteWallet(d.Model.Id.Hex(), d.PlayerID, d.PlayerName, d.Coins, d.CreatedAt, d.UpdatedAt)
 }
 
+// walletToDTO builds a BSON-ready Wallet DTO from a domain model. The mongox.Model
+// envelope is owned by the caller (mongox.UpdateDoc), not by this conversion.
+func walletToDTO(m *model.Wallet) dto.Wallet {
+	return dto.Wallet{
+		PlayerID:   m.PlayerID,
+		PlayerName: m.PlayerName,
+		Coins:      m.Coins,
+	}
+}
+
 func shopItemFromDTO(d dto.ShopItem) *model.ShopItem {
 	t := model.ItemType(d.Type)
 	if t == "" {
@@ -127,6 +136,8 @@ func shopItemFromDTO(d dto.ShopItem) *model.ShopItem {
 	)
 }
 
+// shopItemToDTO builds a BSON-ready ShopItem DTO from a domain model. The
+// mongox.Model envelope is owned by the caller, not by this conversion.
 func shopItemToDTO(m *model.ShopItem) dto.ShopItem {
 	itemType := string(m.Type)
 	if itemType == "" {
@@ -166,13 +177,6 @@ func shopItemToDTO(m *model.ShopItem) dto.ShopItem {
 		DiscountStartsAt: m.DiscountStartsAt,
 		DiscountEndsAt:   m.DiscountEndsAt,
 	}
-	if m.Id != "" {
-		if oid, err := mongox.ParseObjectID(m.Id); err == nil {
-			d.Id = oid
-		}
-	}
-	d.CreatedAt = m.CreatedAt
-	d.UpdatedAt = m.UpdatedAt
 	return d
 }
 
@@ -184,10 +188,10 @@ func purchaseFromDTO(d dto.Purchase) *model.Purchase {
 	)
 }
 
-// purchaseToDTO builds a BSON-ready Purchase DTO from a domain model, reusing the supplied mongox.Model envelope.
-func purchaseToDTO(m mongox.Model, p *model.Purchase) dto.Purchase {
+// purchaseToDTO builds a BSON-ready Purchase DTO from a domain model. The
+// mongox.Model envelope is owned by the caller, not by this conversion.
+func purchaseToDTO(p *model.Purchase) dto.Purchase {
 	return dto.Purchase{
-		Model:           m,
 		PlayerID:        p.PlayerID,
 		PlayerName:      p.PlayerName,
 		ItemID:          p.ItemID,

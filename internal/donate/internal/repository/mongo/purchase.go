@@ -16,7 +16,8 @@ import (
 
 func (r *Repository) createPurchase(ctx context.Context, purchase *model.Purchase) (*model.Purchase, error) {
 	m := mongox.NewModel()
-	d := purchaseToDTO(m, purchase)
+	d := purchaseToDTO(purchase)
+	d.Model = m
 
 	result, err := r.purchColl.InsertOne(ctx, d)
 	if err != nil {
@@ -42,27 +43,15 @@ func (r *Repository) updatePurchase(
 		return nil, ierror.ErrNotFound
 	}
 
-	var d dto.Purchase
-	if err := r.purchColl.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
-		if errors.Is(err, mgo.ErrNoDocuments) {
-			return nil, ierror.ErrNotFound
-		}
-		return nil, err
-	}
-
-	purchase := purchaseFromDTO(d)
-	updated, err := updateFn(ctx, purchase)
-	if err != nil {
-		return nil, err
-	}
-
-	updatedDTO := purchaseToDTO(d.Model, updated)
-
-	if _, err := r.purchColl.ReplaceOne(ctx, bson.M{"_id": oid}, updatedDTO); err != nil {
-		return nil, err
-	}
-
-	return updated, nil
+	return mongox.UpdateDoc(
+		ctx,
+		r.purchColl,
+		bson.M{"_id": oid},
+		ierror.ErrNotFound,
+		purchaseFromDTO,
+		purchaseToDTO,
+		updateFn,
+	)
 }
 
 func (r *Repository) ListPurchasesByPlayerID(ctx context.Context, playerID string) ([]*model.Purchase, error) {

@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"time"
 
 	dto "github.com/lasthearth/vsservice/internal/donate/internal/dto/mongo"
 	"github.com/lasthearth/vsservice/internal/donate/internal/ierror"
@@ -69,30 +68,19 @@ func (r *Repository) UpdateShopItem(
 		return nil, ierror.ErrNotFound
 	}
 
-	var d dto.ShopItem
-	if err := r.shopColl.FindOne(ctx, bson.M{"_id": oid}).Decode(&d); err != nil {
-		if errors.Is(err, mgo.ErrNoDocuments) {
-			return nil, ierror.ErrNotFound
-		}
-		l.Error("failed to find shop item", zap.Error(err))
-		return nil, err
+	updated, err := mongox.UpdateDoc(
+		ctx,
+		r.shopColl,
+		bson.M{"_id": oid},
+		ierror.ErrNotFound,
+		shopItemFromDTO,
+		shopItemToDTO,
+		updateFn,
+	)
+	if err != nil && !errors.Is(err, ierror.ErrNotFound) {
+		l.Error("failed to update shop item", zap.Error(err))
 	}
-
-	item := shopItemFromDTO(d)
-	updated, err := updateFn(ctx, item)
-	if err != nil {
-		return nil, err
-	}
-
-	updated.Touch(time.Now())
-	updatedDTO := shopItemToDTO(updated)
-
-	if _, err := r.shopColl.ReplaceOne(ctx, bson.M{"_id": oid}, updatedDTO); err != nil {
-		l.Error("failed to replace shop item", zap.Error(err))
-		return nil, err
-	}
-
-	return updated, nil
+	return updated, err
 }
 
 func (r *Repository) DeleteShopItem(ctx context.Context, id string) error {
