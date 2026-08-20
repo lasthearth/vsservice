@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"errors"
 
 	dto "github.com/lasthearth/vsservice/internal/donate/internal/dto/mongo"
 	"github.com/lasthearth/vsservice/internal/donate/internal/ierror"
@@ -10,7 +9,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox/pagination"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	mgo "go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
