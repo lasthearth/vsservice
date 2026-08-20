@@ -1,9 +1,9 @@
 package progression
 
 import (
+	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
 	progressionv1 "github.com/lasthearth/vsservice/gen/progression/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
-	"github.com/lasthearth/vsservice/internal/pkg/pointcontrol"
 	"github.com/lasthearth/vsservice/internal/progression/internal/repository"
 	"github.com/lasthearth/vsservice/internal/progression/internal/service"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
@@ -33,7 +33,8 @@ var App = fx.Options(
 			),
 		),
 
-		// Single *Service instance shared across all role bindings.
+		// Single *Service instance shared across all role bindings; it serves
+		// both the progression and the imperial-point gRPC services.
 		fx.Provide(service.New),
 
 		fx.Provide(
@@ -41,11 +42,11 @@ var App = fx.Options(
 				func(s *service.Service) progressionv1.ProgressionServiceServer { return s },
 			),
 			fx.Annotate(
-				func(s *service.Service) interceptor.Scoper { return s },
-				fx.ResultTags(`group:"scopers"`),
+				func(s *service.Service) imperialpointv1.ImperialPointServiceServer { return s },
 			),
 			fx.Annotate(
-				func(s *service.Service) pointcontrol.Rollbacker { return s },
+				func(s *service.Service) interceptor.Scoper { return s },
+				fx.ResultTags(`group:"scopers"`),
 			),
 		),
 	),

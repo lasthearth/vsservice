@@ -24,6 +24,13 @@ type ProgressionRepository interface {
 	// Progress
 	GetOrCreateProgress(ctx context.Context, ownerType, settlementId, pointId, side, treeId string) (*model.TalentProgress, error)
 	SaveProgress(ctx context.Context, progress model.TalentProgress) error
+
+	// Imperial points
+	CreatePoint(ctx context.Context, point model.ImperialPoint) (*model.ImperialPoint, error)
+	UpdatePoint(ctx context.Context, point model.ImperialPoint) (*model.ImperialPoint, error)
+	GetPoint(ctx context.Context, id string) (*model.ImperialPoint, error)
+	ListPoints(ctx context.Context) ([]model.ImperialPoint, error)
+	SaveControl(ctx context.Context, pointId string, control *model.PointControl) error
 }
 
 // FavorDeductor deducts imperial favor from a settlement.

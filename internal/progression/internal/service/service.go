@@ -157,7 +157,7 @@ func (s *Service) PurchasePointNode(ctx context.Context, req *progressionv1.Purc
 		return nil, err
 	}
 
-	controllingSettlement, err := s.pointCtrl.GetControllingSettlement(ctx, req.GetPointId())
+	controllingSettlement, err := s.controllingSettlement(ctx, req.GetPointId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to fetch point control")
 	}
@@ -220,30 +220,18 @@ func (s *Service) purchaseNode(
 		return nil, err
 	}
 
-	progress.AddNode(model.PurchasedNode{
+	if err := progress.AddNode(model.PurchasedNode{
 		NodeId:                nodeId,
 		PurchasedAt:           time.Now(),
 		PurchasedBySettlement: spendingSettlementId,
-	})
+	}); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	if err := s.repo.SaveProgress(ctx, *progress); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return progressToProto(progress), nil
-}
-
-// RollbackLastPointNode removes the last purchased node for a point+side+tree.
-// Called by imperial-point service when a point changes hands. BI is NOT refunded.
-func (s *Service) RollbackLastPointNode(ctx context.Context, pointId, side, treeId string) error {
-	progress, err := s.repo.GetOrCreateProgress(ctx, string(model.OwnerTypePointSide), "", pointId, side, treeId)
-	if err != nil {
-		return err
-	}
-	_, ok := progress.RollbackLast()
-	if !ok {
-		return nil
-	}
-	return s.repo.SaveProgress(ctx, *progress)
 }
 
 // --- proto converters ---

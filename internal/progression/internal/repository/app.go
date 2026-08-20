@@ -18,6 +18,7 @@ type Repository struct {
 	treesColl    *mongo.Collection
 	presetsColl  *mongo.Collection
 	progressColl *mongo.Collection
+	pointsColl   *mongo.Collection
 }
 
 func New(opts Opts) *Repository {
@@ -26,5 +27,6 @@ func New(opts Opts) *Repository {
 		treesColl:    opts.Database.Collection("talent_trees"),
 		presetsColl:  opts.Database.Collection("talent_presets"),
 		progressColl: opts.Database.Collection("talent_progress"),
+		pointsColl:   opts.Database.Collection("imperial_points"),
 	}
 }

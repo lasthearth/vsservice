@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 type OwnerType string
 
@@ -38,8 +41,8 @@ func ReconstituteTalentProgress(id string, ownerType OwnerType, settlementId, po
 }
 
 // RollbackLast removes the last purchased node and returns it.
-// Safe because AddNode always appends in chronological order.
-// Returns false if no nodes are purchased.
+// AddNode rejects out-of-order purchases, so the last element is always the most
+// recent one. Returns false if no nodes are purchased.
 func (p *TalentProgress) RollbackLast() (PurchasedNode, bool) {
 	if len(p.PurchasedNodes) == 0 {
 		return PurchasedNode{}, false
@@ -50,8 +53,14 @@ func (p *TalentProgress) RollbackLast() (PurchasedNode, bool) {
 }
 
 // AddNode appends a newly purchased node to the progress record.
-func (p *TalentProgress) AddNode(node PurchasedNode) {
+// It rejects a node older than the current last one: RollbackLast pops from the
+// tail and would otherwise discard the wrong purchase.
+func (p *TalentProgress) AddNode(node PurchasedNode) error {
+	if n := len(p.PurchasedNodes); n > 0 && node.PurchasedAt.Before(p.PurchasedNodes[n-1].PurchasedAt) {
+		return errors.New("purchased node is older than the last recorded purchase")
+	}
 	p.PurchasedNodes = append(p.PurchasedNodes, node)
+	return nil
 }
 
 // HasNode reports whether nodeId is already purchased.
