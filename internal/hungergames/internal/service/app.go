@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
+	"github.com/lasthearth/vsservice/internal/donate/donateuc"
 	pkgerr "github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
@@ -14,22 +15,25 @@ var _ hgv1.HungerGamesServiceServer = (*Service)(nil)
 
 // Service implements HungerGamesServiceServer.
 type Service struct {
-	repo Repository
-	log  logger.Logger
+	repo     Repository
+	donateUC *donateuc.AddCoinsUseCase
+	log      logger.Logger
 }
 
 // Opts are the fx-injected dependencies for the service.
 type Opts struct {
 	fx.In
 
-	Repo   Repository
-	Logger logger.Logger
+	Repo     Repository
+	DonateUC *donateuc.AddCoinsUseCase
+	Logger   logger.Logger
 }
 
 func New(opts Opts) *Service {
 	return &Service{
-		repo: opts.Repo,
-		log:  opts.Logger,
+		repo:     opts.Repo,
+		donateUC: opts.DonateUC,
+		log:      opts.Logger,
 	}
 }
 

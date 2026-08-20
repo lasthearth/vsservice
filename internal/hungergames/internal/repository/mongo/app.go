@@ -19,9 +19,6 @@ const (
 	playerStatsCollName   = "hg_player_stats"
 	seasonsCollName       = "hg_seasons"
 	seasonResultsCollName = "hg_season_results"
-	// Cross-domain: donate wallet and transaction collections
-	donateWalletCollName = "donate_wallets"
-	donateTxCollName     = "donate_transactions"
 )
 
 var _ service.Repository = (*Repository)(nil)
@@ -32,8 +29,6 @@ type Repository struct {
 	playerStatsColl  *mgo.Collection
 	seasonsColl      *mgo.Collection
 	seasonResultColl *mgo.Collection
-	walletColl       *mgo.Collection
-	txColl           *mgo.Collection
 }
 
 type Opts struct {
@@ -49,8 +44,6 @@ func New(opts Opts) *Repository {
 	playerStatsColl := opts.Database.Collection(playerStatsCollName)
 	seasonsColl := opts.Database.Collection(seasonsCollName)
 	seasonResultColl := opts.Database.Collection(seasonResultsCollName)
-	walletColl := opts.Database.Collection(donateWalletCollName)
-	txColl := opts.Database.Collection(donateTxCollName)
 
 	setupIndexes(log, playerStatsColl, seasonsColl, seasonResultColl)
 
@@ -59,8 +52,6 @@ func New(opts Opts) *Repository {
 		playerStatsColl:  playerStatsColl,
 		seasonsColl:      seasonsColl,
 		seasonResultColl: seasonResultColl,
-		walletColl:       walletColl,
-		txColl:           txColl,
 	}
 }
 
