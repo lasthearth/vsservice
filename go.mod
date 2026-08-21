@@ -69,7 +69,7 @@ require (
 require (
 	cel.dev/expr v0.25.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/google/cel-go v0.28.0 // indirect
+	github.com/google/cel-go v0.29.0 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/nats-io/nkeys v0.4.12 // indirect
