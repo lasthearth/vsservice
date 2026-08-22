@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -16,8 +17,11 @@ type Config struct {
 	DisableAuthMatcher bool `envconfig:"DISABLE_AUTH_MATCHER" default:"false"`
 
 	JWKS_URL string `envconfig:"JWKS_URL"`
-	Issuer   string `envconfig:"ISSUER"`
-	Audience string `envconfig:"AUDIENCE"`
+	// Issuer and Audience are required because golang-jwt treats an empty
+	// expected value as "skip this check": leaving either unset silently
+	// accepts every token the identity provider ever minted, for any audience.
+	Issuer   string `envconfig:"ISSUER" required:"true"`
+	Audience string `envconfig:"AUDIENCE" required:"true"`
 
 	GrpcPort     int `envconfig:"GRPC_PORT" default:"50051"`
 	GateAwayPort int `envconfig:"GATEAWAY_PORT" default:"6969"`
@@ -25,6 +29,18 @@ type Config struct {
 	MongoUrlFile string `envconfig:"MONGO_URL_FILE" required:"true"`
 
 	CdnUrl string `envconfig:"CDN_URL"`
+
+	// CorsAllowedOrigins lists the exact browser origins allowed to make
+	// credentialed cross-origin requests. A single leading `*.` wildcard label
+	// is supported (rs/cors matches it as prefix+suffix), so
+	// `https://*.lasthearth.ru` is safe but `http://localhost*` is not: that
+	// form matches any origin merely STARTING with the string, including
+	// `http://localhost.attacker.com`.
+	CorsAllowedOrigins []string `envconfig:"CORS_ALLOWED_ORIGINS" default:"https://lasthearth.ru,https://*.lasthearth.ru"`
+
+	// CorsDevOrigins is appended to CorsAllowedOrigins when AppEnv is not
+	// "prod", so local frontends work without loosening the deployed list.
+	CorsDevOrigins []string `envconfig:"CORS_DEV_ORIGINS" default:"http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"`
 
 	// MediaAllowedHosts lists external hosts (besides the CDN) that image URLs
 	// may point to, e.g. i.imgur.com.
@@ -77,6 +93,17 @@ func New() (Config, error) {
 
 	if err := envconfig.Process("", &cfg); err != nil {
 		return cfg, err
+	}
+
+	// envconfig's required tag only rejects an ABSENT variable — `ISSUER=` is
+	// "present and empty" and passes it. golang-jwt reads an empty expected
+	// issuer or audience as "skip this check", so an empty value here disables
+	// JWT validation instead of tightening it. Fail closed at startup.
+	if cfg.Issuer == "" {
+		return cfg, errors.New("ISSUER must be a non-empty value: an empty issuer disables JWT issuer validation")
+	}
+	if cfg.Audience == "" {
+		return cfg, errors.New("AUDIENCE must be a non-empty value: an empty audience disables JWT audience validation")
 	}
 
 	return cfg, nil
