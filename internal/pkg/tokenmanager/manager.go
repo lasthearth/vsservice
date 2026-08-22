@@ -46,10 +46,51 @@ func (m *Manager) Client(ctx context.Context) *http.Client {
 	}
 }
 
-func (m *Manager) getToken() error {
+// accessToken returns a currently-valid access token, fetching a new one when
+// the cached one is missing or expired.
+//
+// Every read of m.token and m.tokenIat happens under a lock. The fast path
+// takes the read lock and copies the token string out, so the caller never
+// dereferences m.token while getTokenLocked is replacing it.
+func (m *Manager) accessToken() (string, error) {
+	m.rw.RLock()
+	if tok, ok := m.validTokenLocked(); ok {
+		m.rw.RUnlock()
+		return tok, nil
+	}
+	m.rw.RUnlock()
+
 	m.rw.Lock()
 	defer m.rw.Unlock()
 
+	// Re-check under the write lock: while this goroutine waited for it, a peer
+	// may already have refreshed. Without this, every goroutine that observed
+	// the same expiry performs its own client_credentials grant.
+	if tok, ok := m.validTokenLocked(); ok {
+		return tok, nil
+	}
+
+	if err := m.getTokenLocked(); err != nil {
+		return "", err
+	}
+	return m.token.AccessToken, nil
+}
+
+// validTokenLocked reports whether the cached token is usable. The caller must
+// hold either the read or the write lock.
+func (m *Manager) validTokenLocked() (string, bool) {
+	if m.token == nil {
+		return "", false
+	}
+	expires := m.tokenIat.Add(time.Duration(m.token.ExpiresIn) * time.Second)
+	if !time.Now().Before(expires) {
+		return "", false
+	}
+	return m.token.AccessToken, true
+}
+
+// getTokenLocked fetches a fresh token. The caller must hold the write lock.
+func (m *Manager) getTokenLocked() error {
 	v := url.Values{
 		"grant_type": {"client_credentials"},
 		"resource":   {m.config.Resource},
