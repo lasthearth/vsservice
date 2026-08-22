@@ -85,6 +85,7 @@ func storedDoc() testDoc {
 			Id:        bson.NewObjectID(),
 			CreatedAt: time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC),
 			UpdatedAt: time.Date(2021, 6, 7, 8, 9, 10, 0, time.UTC),
+			Version:   7,
 		},
 		Name: "before",
 	}
@@ -145,8 +146,8 @@ func TestGuardFieldMatchesEncodedDocument(t *testing.T) {
 		doc  any
 		path string
 	}{
-		{"inline envelope", testDoc{Model: Model{UpdatedAt: time.Now()}}, updatedAtField[testDoc, *testDoc]()},
-		{"untagged embedded envelope", nestedDoc{Model: Model{UpdatedAt: time.Now()}}, updatedAtField[nestedDoc, *nestedDoc]()},
+		{"inline envelope", testDoc{Model: Model{Version: 1}}, versionField[testDoc, *testDoc]()},
+		{"untagged embedded envelope", nestedDoc{Model: Model{Version: 1}}, versionField[nestedDoc, *nestedDoc]()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			raw, err := bson.Marshal(tc.doc)
@@ -212,7 +213,7 @@ func TestUpdateDocGuardsReplaceWithLoadedUpdatedAt(t *testing.T) {
 		t.Fatalf("UpdateDoc: %v", err)
 	}
 
-	want := guard(bson.M{"_id": stored.Id}, "updated_at", stored.UpdatedAt)
+	want := guard(bson.M{"_id": stored.Id}, "version", stored.Version)
 	if got := f.filters[0]; !sameFilter(got, want) {
 		t.Errorf("replace filter = %v, want %v", got, want)
 	}
@@ -266,24 +267,23 @@ func TestUpdateDocReplaceErrorIsPropagated(t *testing.T) {
 }
 
 func TestGuard(t *testing.T) {
-	ts := time.Date(2021, 6, 7, 8, 9, 10, 0, time.UTC)
 	filter := bson.M{"player_id": "p1"}
 
-	t.Run("known updated_at pins equality", func(t *testing.T) {
-		got := guard(filter, "updated_at", ts)
-		want := bson.M{"$and": bson.A{filter, bson.M{"updated_at": ts}}}
+	t.Run("known version pins equality", func(t *testing.T) {
+		got := guard(filter, "version", 7)
+		want := bson.M{"$and": bson.A{filter, bson.M{"version": int64(7)}}}
 		if !sameFilter(got, want) {
 			t.Errorf("guard = %v, want %v", got, want)
 		}
 	})
 
-	t.Run("zero updated_at also matches a missing field", func(t *testing.T) {
-		// Documents predating the stamp carry no updated_at at all; the guard has
+	t.Run("zero version also matches a missing field", func(t *testing.T) {
+		// Documents predating the counter carry no version at all; the guard has
 		// to accept those without a migration.
-		got := guard(filter, "updated_at", time.Time{})
+		got := guard(filter, "version", 0)
 		want := bson.M{"$and": bson.A{filter, bson.M{"$or": bson.A{
-			bson.M{"updated_at": nil},
-			bson.M{"updated_at": time.Time{}},
+			bson.M{"version": nil},
+			bson.M{"version": int64(0)},
 		}}}}
 		if !sameFilter(got, want) {
 			t.Errorf("guard = %v, want %v", got, want)
@@ -291,12 +291,39 @@ func TestGuard(t *testing.T) {
 	})
 }
 
-func TestUpdatedAtField(t *testing.T) {
-	if got := updatedAtField[testDoc, *testDoc](); got != "updated_at" {
-		t.Errorf("inline envelope field = %q, want %q", got, "updated_at")
+func TestVersionField(t *testing.T) {
+	if got := versionField[testDoc, *testDoc](); got != "version" {
+		t.Errorf("inline envelope field = %q, want %q", got, "version")
 	}
-	if got := updatedAtField[nestedDoc, *nestedDoc](); got != "model.updated_at" {
-		t.Errorf("untagged embedded envelope field = %q, want %q", got, "model.updated_at")
+	if got := versionField[nestedDoc, *nestedDoc](); got != "model.version" {
+		t.Errorf("untagged embedded envelope field = %q, want %q", got, "model.version")
+	}
+}
+
+// The guard must be a monotonic counter, not a millisecond timestamp. With a
+// timestamp, two writes inside one millisecond leave updated_at unchanged, so a
+// third writer holding that same value still matches and its stale write lands
+// (ABA). A version always advances, so the loser is always rejected.
+func TestUpdateDocAdvancesVersionSoAStaleGuardCannotMatch(t *testing.T) {
+	stored := storedDoc()
+	f := &fakeStore{doc: stored}
+
+	if _, err := UpdateDoc(context.Background(), f, bson.M{"_id": stored.Id}, errNotFound,
+		toTestModel, fromTestModel, rename("after")); err != nil {
+		t.Fatalf("UpdateDoc: %v", err)
+	}
+
+	w := f.writes[0]
+	if w.Version != stored.Version+1 {
+		t.Errorf("persisted version = %d, want %d (the guard must advance)", w.Version, stored.Version+1)
+	}
+
+	// The next writer's guard is the version it read. Whatever this write
+	// persisted must not equal what it guarded on, or a same-millisecond
+	// interleaving could satisfy it twice.
+	guarded := guard(bson.M{"_id": stored.Id}, "version", stored.Version)
+	if sameFilter(guarded, guard(bson.M{"_id": stored.Id}, "version", w.Version)) {
+		t.Error("guard value did not change across the write: a stale writer could still match")
 	}
 }
 

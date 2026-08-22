@@ -44,6 +44,10 @@ func (r *Repository) AddCoinsToWallet(ctx context.Context, playerID, playerName 
 	setOnInsertFields := bson.D{
 		{Key: "_id", Value: mongox.NewModel().Id},
 		{Key: "created_at", Value: now},
+		// Start the optimistic-concurrency counter, so a wallet created here is
+		// not stuck on the guard's "missing or zero" branch, which two
+		// concurrent UpdateWallet calls could both satisfy once.
+		{Key: "version", Value: int64(1)},
 	}
 	// An empty playerName means the caller has no display name to report
 	// (e.g. cross-domain credits like referral rewards). Only overwrite an

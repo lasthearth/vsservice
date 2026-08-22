@@ -46,9 +46,9 @@ func (m *Model) setEnvelope(e Model) { *m = e }
 // mongo.ErrNoDocuments becomes notFound. When the model exposes Touch(time.Time)
 // the returned model is stamped too, so callers see the persisted value.
 //
-// The replace is guarded by the updated_at that was read, so a concurrent writer
-// is never silently overwritten: the cycle is retried against fresh state
-// instead, and ErrConflict is returned if it keeps losing.
+// The replace is guarded by the version that was read and writes version+1, so a
+// concurrent writer is never silently overwritten: the cycle is retried against
+// fresh state instead, and ErrConflict is returned if it keeps losing.
 func UpdateDoc[D any, PD interface {
 	*D
 	enveloped
@@ -61,7 +61,7 @@ func UpdateDoc[D any, PD interface {
 	fromModel func(*M) D,
 	fn func(context.Context, *M) (*M, error),
 ) (*M, error) {
-	guardField := updatedAtField[D, PD]()
+	guardField := versionField[D, PD]()
 
 	for range updateAttempts {
 		var d D
@@ -79,7 +79,8 @@ func UpdateDoc[D any, PD interface {
 		}
 
 		// BSON datetime keeps milliseconds, so a truncated stamp round-trips
-		// exactly and can serve as the next writer's guard value.
+		// exactly. It is reported to callers, but it is the version that guards
+		// the write.
 		now := time.Now().UTC().Truncate(time.Millisecond)
 		if t, ok := any(updated).(interface{ Touch(time.Time) }); ok {
 			t.Touch(now)
@@ -90,9 +91,10 @@ func UpdateDoc[D any, PD interface {
 			Id:        loaded.Id,
 			CreatedAt: loaded.CreatedAt,
 			UpdatedAt: now,
+			Version:   loaded.Version + 1,
 		})
 
-		res, err := coll.ReplaceOne(ctx, guard(filter, guardField, loaded.UpdatedAt), out)
+		res, err := coll.ReplaceOne(ctx, guard(filter, guardField, loaded.Version), out)
 		if err != nil {
 			return nil, err
 		}
@@ -106,21 +108,21 @@ func UpdateDoc[D any, PD interface {
 	return nil, ErrConflict
 }
 
-// guard pins the replace to the document state that was read. Documents written
-// before updated_at was maintained carry no such field, and a nil match covers
-// both missing and null, so no backfill is required.
-func guard(filter bson.M, field string, loaded time.Time) bson.M {
+// guard pins the replace to the document version that was read. Documents
+// written before version was maintained carry no such field and decode as 0, and
+// a nil match covers both missing and zero, so no backfill is required.
+func guard(filter bson.M, field string, loaded int64) bson.M {
 	pin := bson.M{field: loaded}
-	if loaded.IsZero() {
-		pin = bson.M{"$or": bson.A{bson.M{field: nil}, bson.M{field: loaded}}}
+	if loaded == 0 {
+		pin = bson.M{"$or": bson.A{bson.M{field: nil}, bson.M{field: int64(0)}}}
 	}
 	return bson.M{"$and": bson.A{filter, pin}}
 }
 
-// updatedAtField locates the envelope's updated_at in the stored document.
+// versionField locates the envelope's version in the stored document.
 // Most DTOs embed Model with `bson:",inline"` and keep it at the top level; a
 // DTO that embeds Model untagged nests it under the field name instead.
-func updatedAtField[D any, PD interface {
+func versionField[D any, PD interface {
 	*D
 	enveloped
 }]() string {
@@ -135,7 +137,7 @@ func updatedAtField[D any, PD interface {
 		if name == "" {
 			name = strings.ToLower(f.Name)
 		}
-		return name + ".updated_at"
+		return name + ".version"
 	}
-	return "updated_at"
+	return "version"
 }
