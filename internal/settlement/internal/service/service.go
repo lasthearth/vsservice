@@ -204,6 +204,23 @@ func (s *Service) RemoveMember(ctx context.Context, req *settlementv1.RemoveMemb
 		zap.String("settlement_id", req.GetSettlementId()),
 		zap.String("user_id", req.GetUserId()))
 
+	uid, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		s.log.Error("failed to get user id", zap.Error(err))
+		return nil, err
+	}
+
+	// Leader of THIS settlement, or a moderator holding the manage scope.
+	// Without either check any authenticated caller could evict any member of
+	// any settlement — the ids are readable from the public Get/List RPCs.
+	if lerr := s.dbRepo.IsLeaderOfSettlement(ctx, req.GetSettlementId(), uid); lerr != nil {
+		if serr := s.requireScope(ctx, manageScope); serr != nil {
+			s.log.Warn("member removal denied: not leader and no manage scope",
+				zap.String("user_id", uid), zap.Error(lerr))
+			return nil, serr
+		}
+	}
+
 	if err := s.dbRepo.RemoveMember(ctx, req.GetSettlementId(), req.GetUserId()); err != nil {
 		s.log.Error("failed to remove member", zap.Error(err))
 		return nil, err
