@@ -42,9 +42,16 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "RejectInvitation"):   interceptor.ScopeAuthenticated,
 		interceptor.Method(srvName + "GetUserInvitations"): interceptor.ScopeAuthenticated,
 
-		// These take a user_id from the request without comparing it to the JWT
-		// subject, so they disclose another player's settlement request state.
-		// Left authenticated-only to keep this change behaviour-preserving; the
+		// Look up by a user_id from the request, no subject comparison.
+		//
+		// GetByUserId returns a Settlement, which Get and List already serve
+		// publicly (see matcher.go), so it discloses nothing those do not.
+		//
+		// VerificationStatus returns the status and rejection_reason of that
+		// user's settlement request, which has no public equivalent —
+		// ListPending is manage-gated. Any authenticated caller can therefore
+		// read whether a given player applied and why they were rejected. Left
+		// authenticated-only to keep this change behaviour-preserving; the
 		// missing ownership check is tracked separately.
 		interceptor.Method(srvName + "GetByUserId"):        interceptor.ScopeAuthenticated,
 		interceptor.Method(srvName + "VerificationStatus"): interceptor.ScopeAuthenticated,

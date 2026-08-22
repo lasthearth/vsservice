@@ -20,8 +20,11 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(prog + "GetPreset"):   interceptor.ScopeAuthenticated,
 		interceptor.Method(prog + "ListPresets"): interceptor.ScopeAuthenticated,
 
-		// Progress lookups take a settlement/point id from the request and
-		// create the document when it is missing, so a read writes. Left
+		// Progress lookups take a settlement/point id and tree id from the
+		// request. GetOrCreateProgress inserts an empty document when none
+		// matches, and only the id FORMAT is validated, not existence — so any
+		// authenticated caller can create unbounded progress documents under
+		// arbitrary ids. This is a storage-growth issue, not a disclosure. Left
 		// authenticated-only here; the read-that-writes is tracked separately.
 		interceptor.Method(prog + "GetSettlementProgress"): interceptor.ScopeAuthenticated,
 		interceptor.Method(prog + "GetPointProgress"):      interceptor.ScopeAuthenticated,
