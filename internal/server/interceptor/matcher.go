@@ -16,7 +16,6 @@ var publicMethods = map[string]struct{}{
 	"/hungergames.v1.HungerGamesService/ListSeasons":                 {},
 	"/hungergames.v1.HungerGamesService/GetSeasonLeaderboard":        {},
 	"/hungergames.v1.HungerGamesService/GetPlayerStats":              {},
-	"/verification.v1.VerificationService/VerifyCode":                {},
 	"/verification.v1.VerificationService/VerifyStatusByName":        {},
 	"/news.v1.NewsService/ListNews":                                  {},
 	"/news.v1.NewsService/GetNews":                                   {},

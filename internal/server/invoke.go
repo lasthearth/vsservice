@@ -44,6 +44,14 @@ var App = fx.Options(
 				lc.Append(
 					fx.Hook{
 						OnStart: func(ctx context.Context) error {
+							// Built here, synchronously, so a failure (notably
+							// an auth-coverage violation) aborts startup. Run
+							// executes in a goroutine below, where a returned
+							// error is only logged.
+							if err := server.Build(); err != nil {
+								return err
+							}
+
 							go func() {
 								addr := fmt.Sprintf(":%d", c.GrpcPort)
 								err := server.Run(context.Background(), "tcp", addr)
