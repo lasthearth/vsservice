@@ -5,6 +5,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	mongorepo "github.com/lasthearth/vsservice/internal/referral/internal/repository/referral"
 	"github.com/lasthearth/vsservice/internal/referral/internal/service"
+	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
 )
 
@@ -30,6 +31,10 @@ var App = fx.Options(
 		fx.Provide(
 			fx.Annotate(service.New,
 				fx.As(new(referralv1.ReferralServiceServer)),
+			),
+			fx.Annotate(service.New,
+				fx.As(new(interceptor.Scoper)),
+				fx.ResultTags(`group:"scopers"`),
 			),
 		),
 	),

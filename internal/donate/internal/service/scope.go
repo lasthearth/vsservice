@@ -18,5 +18,11 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "AdminListPendingPurchases"): interceptor.Scope("donate:purchase:list"),
 		interceptor.Method(srvName + "MarkPurchaseIssued"):        interceptor.Scope("donate:purchase:issue"),
 		interceptor.Method(srvName + "ListWallets"):               interceptor.Scope("donate:wallet:read"),
+
+		// Self-service: the player is the JWT subject and the wallet is looked
+		// up by it, so there is nothing a scope would add.
+		interceptor.Method(srvName + "BuyItem"):         interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "GetMyBalance"):    interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "ListMyPurchases"): interceptor.ScopeAuthenticated,
 	}
 }

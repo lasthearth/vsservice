@@ -8,5 +8,8 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 	return map[interceptor.Method]interceptor.Scope{
 		interceptor.Method(srvName + "CreateNews"): interceptor.Scope("news:create"),
 		interceptor.Method(srvName + "DeleteNews"): interceptor.Scope("news:delete"),
+
+		// Records the JWT subject as a viewer; the id is deduped server-side.
+		interceptor.Method(srvName + "MarkNewsViewed"): interceptor.ScopeAuthenticated,
 	}
 }

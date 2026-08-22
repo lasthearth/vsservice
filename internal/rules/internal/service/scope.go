@@ -8,5 +8,8 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "CreateQuestion"): interceptor.Scope("question:create"),
 		interceptor.Method(srvName + "ListQuestions"):  interceptor.Scope("question:list"),
 		interceptor.Method(srvName + "DeleteQuestion"): interceptor.Scope("question:delete"),
+
+		// Reads a random sample of the public rules quiz.
+		interceptor.Method(srvName + "GetRandomQuestions"): interceptor.ScopeAuthenticated,
 	}
 }
