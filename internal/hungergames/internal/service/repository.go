@@ -46,7 +46,10 @@ type Repository interface {
 	// CreateSeason inserts a new season and returns the created record.
 	CreateSeason(ctx context.Context, season *model.Season) (*model.Season, error)
 
-	// CloseSeason sets ended_at on the season with the given ID.
+	// CloseSeason sets ended_at on the season with the given ID, but only while
+	// it is still open. Returns ierror.ErrSeasonAlreadyClosed when another
+	// caller closed it first, which callers use to claim the season before
+	// performing irreversible work such as paying rewards.
 	CloseSeason(ctx context.Context, id string) error
 
 	// CountSeasons returns the total number of seasons (for numbering the next one).

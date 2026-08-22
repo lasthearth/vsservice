@@ -71,6 +71,10 @@ func (r *Repository) CreateSeason(ctx context.Context, season *model.Season) (*m
 	return season, nil
 }
 
+// CloseSeason stamps ended_at, but only while the season is still open. The
+// "still open" predicate makes this a claim: two concurrent ResetSeason calls
+// both read the same active season, and whoever loses the UpdateOne race gets
+// ErrSeasonAlreadyClosed instead of paying out a second set of rewards.
 func (r *Repository) CloseSeason(ctx context.Context, id string) error {
 	oid, err := mongox.ParseObjectID(id)
 	if err != nil {
@@ -78,15 +82,22 @@ func (r *Repository) CloseSeason(ctx context.Context, id string) error {
 	}
 
 	now := time.Now()
-	_, err = r.seasonsColl.UpdateOne(ctx,
-		bson.M{"_id": oid},
+	res, err := r.seasonsColl.UpdateOne(ctx,
+		bson.M{"_id": oid, "ended_at": bson.M{"$exists": false}},
 		bson.D{{Key: "$set", Value: bson.D{{Key: "ended_at", Value: now}}}},
 		options.UpdateOne(),
 	)
 	if err != nil {
 		r.log.Error("CloseSeason: update failed", zap.Error(err))
+		return err
 	}
-	return err
+	if res.MatchedCount == 0 {
+		// Either the id does not exist or the season already has ended_at. The
+		// caller only ever passes an id it just read as active, so treat it as
+		// a lost race rather than a missing document.
+		return ierror.ErrSeasonAlreadyClosed
+	}
+	return nil
 }
 
 func (r *Repository) CountSeasons(ctx context.Context) (int, error) {
