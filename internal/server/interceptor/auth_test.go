@@ -3,6 +3,7 @@ package interceptor
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/lasthearth/vsservice/internal/pkg/jwt"
@@ -86,6 +87,21 @@ func TestAuthorize(t *testing.T) {
 			wantErr: codes.Unauthenticated,
 		},
 		{
+			// Regression: "Bearer" without the trailing space used to satisfy
+			// a HasPrefix check and then panic slicing [7:] on a 6-byte string,
+			// killing the process from an unauthenticated request.
+			name:    "bare Bearer without space",
+			ctx:     bearerCtx("Bearer"),
+			method:  testMethod,
+			wantErr: codes.Unauthenticated,
+		},
+		{
+			name:    "Bearer with empty token",
+			ctx:     bearerCtx("Bearer "),
+			method:  testMethod,
+			wantErr: codes.Unauthenticated,
+		},
+		{
 			name:    "jwt verify failure",
 			ctx:     bearerCtx("Bearer bad"),
 			method:  testMethod,
@@ -121,6 +137,65 @@ func TestAuthorize(t *testing.T) {
 			a := newTestAuth(tt.verify, &nopLogger{}, fakeScoper{testMethod: testScope})
 
 			_, err := a.authorize(tt.ctx, tt.method)
+
+			if tt.wantErr == codes.OK {
+				if err != nil {
+					t.Fatalf("want nil error, got %v", err)
+				}
+				return
+			}
+			if status.Code(err) != tt.wantErr {
+				t.Fatalf("want code %v, got %v (err=%v)", tt.wantErr, status.Code(err), err)
+			}
+		})
+	}
+}
+
+func TestAuthorizeScopeMatching(t *testing.T) {
+	tests := []struct {
+		name     string
+		required Scope
+		claim    string
+		wantErr  codes.Code
+	}{
+		{
+			// Regression: strings.Split(" ") preserves empty tokens, so an
+			// empty required scope matched a scope-less token.
+			name: "empty required scope denies a scope-less token", required: "", claim: "",
+			wantErr: codes.PermissionDenied,
+		},
+		{
+			// Regression: the same bug denied every caller that actually held
+			// scopes, because "a b" splits without an empty token.
+			name: "ScopeAuthenticated admits a caller holding scopes", required: ScopeAuthenticated, claim: "openid profile",
+		},
+		{
+			name: "ScopeAuthenticated admits a scope-less token", required: ScopeAuthenticated, claim: "",
+		},
+		{
+			// Regression: leading, trailing and doubled spaces produced empty
+			// tokens that satisfied an empty required scope.
+			name: "padded claim does not satisfy an empty scope", required: "", claim: " a  b ",
+			wantErr: codes.PermissionDenied,
+		},
+		{
+			name: "exact scope match", required: testScope, claim: "other " + testScope,
+		},
+		{
+			name: "no substring match", required: "donate:coins", claim: "donate:coins:add",
+			wantErr: codes.PermissionDenied,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := newTestAuth(
+				fakeVerifier{claims: &jwt.Claims{Scope: tt.claim}},
+				&nopLogger{},
+				fakeScoper{testMethod: tt.required},
+			)
+
+			_, err := a.authorize(bearerCtx("Bearer good"), testMethod)
 
 			if tt.wantErr == codes.OK {
 				if err != nil {
@@ -203,6 +278,87 @@ func TestUncoveredMethods(t *testing.T) {
 
 	if len(got) != 1 || got[0] != "/donate.v1.DonateService/GetBalance" {
 		t.Errorf("unexpected uncovered list: %v", got)
+	}
+}
+
+// gRPC's own reflection and health services are not domain RPCs, so they are not
+// subject to the classification requirement.
+func TestUncoveredMethodsSkipsInfraServices(t *testing.T) {
+	a := newTestAuth(fakeVerifier{}, &nopLogger{}, fakeScoper{})
+
+	got := a.uncoveredMethods(map[string]grpc.ServiceInfo{
+		"grpc.reflection.v1.ServerReflection": {Methods: []grpc.MethodInfo{{Name: "ServerReflectionInfo"}}},
+		"grpc.health.v1.Health":               {Methods: []grpc.MethodInfo{{Name: "Check"}}},
+	})
+
+	if len(got) != 0 {
+		t.Errorf("want infra services skipped, got %v", got)
+	}
+}
+
+// --- coverage verification -------------------------------------------------
+
+func TestVerifyCoverageRejectsAnUnclassifiedMethod(t *testing.T) {
+	// The RemoveMember case: a method nobody declared, reachable by any
+	// authenticated caller, indistinguishable from a deliberate omission.
+	a := newTestAuth(fakeVerifier{}, &nopLogger{}, fakeScoper{testMethod: testScope})
+
+	err := a.verifyCoverage(map[string]grpc.ServiceInfo{
+		"donate.v1.DonateService": {Methods: []grpc.MethodInfo{
+			{Name: "AddCoins"},
+			{Name: "ListShopItems"}, // public, listed so it is not read as stale
+			{Name: "GetBalance"},
+		}},
+	})
+	if err == nil {
+		t.Fatal("want an error for the unclassified method, got nil")
+	}
+	if !strings.Contains(err.Error(), "/donate.v1.DonateService/GetBalance") {
+		t.Errorf("error must name the offending method, got: %v", err)
+	}
+}
+
+func TestVerifyCoverageAcceptsScopeAuthenticated(t *testing.T) {
+	// Declaring a method authenticated-only is a decision, not an omission.
+	a := newTestAuth(fakeVerifier{}, &nopLogger{}, fakeScoper{
+		testMethod:                                testScope,
+		"/donate.v1.DonateService/GetMyBalance":   ScopeAuthenticated,
+		"/media.v1.MediaService/CreateUploadUrls": ScopeAuthenticated,
+	})
+
+	err := a.verifyCoverage(map[string]grpc.ServiceInfo{
+		"donate.v1.DonateService": {Methods: []grpc.MethodInfo{
+			{Name: "AddCoins"},
+			{Name: "GetMyBalance"},
+			{Name: "ListShopItems"}, // public
+		}},
+		"media.v1.MediaService": {Methods: []grpc.MethodInfo{{Name: "CreateUploadUrls"}}},
+	})
+	if err != nil {
+		t.Fatalf("want no error, got %v", err)
+	}
+}
+
+func TestVerifyCoverageRejectsStaleDeclarations(t *testing.T) {
+	// A declaration naming a method that does not exist is a typo or a leftover,
+	// and it silently goes live the day a method with that name is added.
+	// publicMethods carries exactly this: VerifyCode, an RPC in neither proto/
+	// nor gen/.
+	a := newTestAuth(fakeVerifier{}, &nopLogger{}, fakeScoper{
+		"/donate.v1.DonateService/RenamedAway": testScope,
+	})
+
+	err := a.verifyCoverage(map[string]grpc.ServiceInfo{
+		"donate.v1.DonateService": {Methods: []grpc.MethodInfo{
+			{Name: "AddCoins"},
+			{Name: "ListShopItems"}, // public
+		}},
+	})
+	if err == nil {
+		t.Fatal("want an error for the stale declaration, got nil")
+	}
+	if !strings.Contains(err.Error(), "RenamedAway") {
+		t.Errorf("error must name the stale entry, got: %v", err)
 	}
 }
 

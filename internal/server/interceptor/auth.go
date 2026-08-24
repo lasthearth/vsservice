@@ -12,6 +12,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// bearerPrefix includes the separating space: matching on "Bearer" alone lets a
+// header value of exactly that word through, and the token slice that follows
+// then reads past the end of the string.
+const bearerPrefix = "Bearer "
+
 func (interceptor *Auth) Unary() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		ctx, err := interceptor.authorize(ctx, info.FullMethod)
@@ -53,12 +58,12 @@ func (interceptor *Auth) authorize(ctx context.Context, method string) (context.
 
 	accessToken := values[0]
 
-	tokenIdentifier := "Bearer"
-	if !strings.HasPrefix(accessToken, tokenIdentifier) {
+	// CutPrefix requires the trailing space, so a bare "Bearer" is rejected
+	// here instead of panicking on the slice that used to follow.
+	token, ok := strings.CutPrefix(accessToken, bearerPrefix)
+	if !ok || token == "" {
 		return ctx, status.Errorf(codes.Unauthenticated, "invalid authorization token format")
 	}
-
-	token := accessToken[len(tokenIdentifier)+1:]
 
 	claims, err := interceptor.jwtManager.Verify(token)
 	if err != nil {
@@ -79,8 +84,15 @@ func (interceptor *Auth) authorize(ctx context.Context, method string) (context.
 	}
 
 	if requiredScope, ok := interceptor.policy[Method(method)]; ok {
-		claimScopes := strings.Split(claims.Scope, " ")
-		if slices.Contains(claimScopes, string(requiredScope)) {
+		// ScopeAuthenticated means the method declares itself deliberately
+		// scope-free, so a valid token is enough.
+		if requiredScope == ScopeAuthenticated {
+			return ctx, nil
+		}
+		// strings.Fields, not strings.Split: Split(" ") on an empty or
+		// space-padded claim yields empty tokens, so an empty required scope
+		// used to match a scope-less token while denying every real one.
+		if slices.Contains(strings.Fields(claims.Scope), string(requiredScope)) {
 			return ctx, nil
 		}
 		return ctx, status.Errorf(codes.PermissionDenied, "no permission to access this resource")

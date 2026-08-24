@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"slices"
 	"time"
 
 	"go.uber.org/zap"
@@ -43,17 +44,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (s *Server) Run(ctx context.Context, network, address string) error {
-	var lc net.ListenConfig
-	l, err := lc.Listen(ctx, network, address)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := l.Close(); err != nil {
-			grpclog.Errorf("Failed to close %s %s: %v", network, address, err)
-		}
-	}()
+// Build constructs the gRPC server, registers every service and verifies that
+// each registered method is classified for auth.
+//
+// Separated from Run so a construction failure surfaces to fx synchronously.
+// Run executes inside a goroutine, where a returned error is only logged — the
+// coverage check would then leave the process alive with no gRPC server rather
+// than refusing to start.
+func (s *Server) Build() error {
 	logOpts := []logging.Option{
 		logging.WithLogOnEvents(
 		// logging.StartCall,
@@ -76,21 +74,25 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	mb := 1024 * 1024
 	srv := grpc.NewServer(
 		grpc.MaxRecvMsgSize(60*mb),
+		// recovery is first, so it is the outermost interceptor and covers the
+		// auth and logging interceptors too. grpc-go does not recover panics
+		// itself, so anything panicking outside recovery's scope kills the
+		// process.
 		grpc.ChainUnaryInterceptor(
+			recovery.UnaryServerInterceptor(recoveryOpts...),
 			selector.UnaryServerInterceptor(s.authInterceptor.Unary(), selector.MatchFunc(func(ctx context.Context, callMeta interceptors.CallMeta) bool {
 				return interceptor.AuthMatcher(ctx, callMeta, s.c)
 			})),
 			logging.UnaryServerInterceptor(interceptorLogger(s.log), logOpts...),
-			recovery.UnaryServerInterceptor(recoveryOpts...),
 			protovalidatemw.UnaryServerInterceptor(validator),
 			interceptor.DomainErrorUnaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
+			recovery.StreamServerInterceptor(recoveryOpts...),
 			selector.StreamServerInterceptor(s.authInterceptor.Stream(), selector.MatchFunc(func(ctx context.Context, callMeta interceptors.CallMeta) bool {
 				return interceptor.AuthMatcher(ctx, callMeta, s.c)
 			})),
 			logging.StreamServerInterceptor(interceptorLogger(s.log), logOpts...),
-			recovery.StreamServerInterceptor(recoveryOpts...),
 			protovalidatemw.StreamServerInterceptor(validator),
 			interceptor.DomainErrorStreamInterceptor,
 		),
@@ -114,11 +116,36 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 	discordv1.RegisterDiscordServiceServer(srv, s.discordV1)
 	reflection.Register(srv)
 
-	// After registration so GetServiceInfo() sees every service.
-	s.authInterceptor.LogUncoveredMethods(srv)
+	// After registration so GetServiceInfo() sees every service. Fails startup
+	// rather than warning: an unclassified method is reachable by any
+	// authenticated caller, and a warning in a long list is how RemoveMember
+	// stayed open.
+	if err := s.authInterceptor.VerifyCoverage(srv); err != nil {
+		return errors.Wrap(err, "verify auth coverage")
+	}
 
 	s.grpcSrv = srv
-	return srv.Serve(l)
+	return nil
+}
+
+// Run serves the gRPC server built by Build.
+func (s *Server) Run(ctx context.Context, network, address string) error {
+	if s.grpcSrv == nil {
+		return errors.New("server not built: call Build before Run")
+	}
+
+	var lc net.ListenConfig
+	l, err := lc.Listen(ctx, network, address)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := l.Close(); err != nil {
+			grpclog.Errorf("Failed to close %s %s: %v", network, address, err)
+		}
+	}()
+
+	return s.grpcSrv.Serve(l)
 }
 
 // RunInProcessGateway starts the invoke in process http gateway.
@@ -192,13 +219,7 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 	}
 
 	handler := cors.New(cors.Options{
-		AllowedOrigins: []string{
-			"https://lasthearth.ru",
-			"http://localhost*",
-			"http://0.0.0.0*",
-			"http://127.0.0.1*",
-			"https://*.lasthearth.ru",
-		},
+		AllowedOrigins: s.corsAllowedOrigins(),
 		AllowedMethods: []string{
 			http.MethodGet,
 			http.MethodPost,
@@ -207,8 +228,15 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 			http.MethodOptions,
 			http.MethodPatch,
 		},
+		// Enumerated rather than "*": with AllowCredentials the response echoes
+		// the request origin, so every extra degree of freedom here widens what
+		// a page on an allowed-looking origin can send.
 		AllowedHeaders: []string{
-			"*",
+			"Authorization",
+			"Content-Type",
+			"Accept",
+			"X-Requested-With",
+			"Grpc-Metadata-Bin",
 		},
 		AllowCredentials: true,
 		Debug:            s.c.AppEnv != "prod",
@@ -236,6 +264,16 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	s.gwSrv = srv
 	return nil
+}
+
+// corsAllowedOrigins returns the configured origins, plus the local dev origins
+// outside prod.
+func (s *Server) corsAllowedOrigins() []string {
+	origins := slices.Clone(s.c.CorsAllowedOrigins)
+	if s.c.AppEnv != "prod" {
+		origins = append(origins, s.c.CorsDevOrigins...)
+	}
+	return origins
 }
 
 func (s *Server) GracefulStop(ctx context.Context) {

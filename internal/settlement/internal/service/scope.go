@@ -1,19 +1,73 @@
 package service
 
-import "github.com/lasthearth/vsservice/internal/server/interceptor"
+import (
+	"context"
+	"slices"
+	"strings"
+
+	"github.com/lasthearth/vsservice/internal/server/interceptor"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+// manageScope gates settlement moderation.
+const manageScope = "settlements:manage"
 
 func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 	srvName := "/settlement.v1.SettlementService/"
 	return map[interceptor.Method]interceptor.Scope{
-		interceptor.Method(srvName + "Approve"):                 interceptor.Scope("settlements:manage"),
-		interceptor.Method(srvName + "ListPending"):             interceptor.Scope("settlements:manage"),
-		interceptor.Method(srvName + "Reject"):                  interceptor.Scope("settlements:manage"),
+		interceptor.Method(srvName + "Approve"):                 interceptor.Scope(manageScope),
+		interceptor.Method(srvName + "ListPending"):             interceptor.Scope(manageScope),
+		interceptor.Method(srvName + "Reject"):                  interceptor.Scope(manageScope),
 		interceptor.Method(srvName + "AddTagToSettlement"):      interceptor.Scope("tags:manage"),
 		interceptor.Method(srvName + "RemoveTagFromSettlement"): interceptor.Scope("tags:manage"),
-		interceptor.Method(srvName + "AdminUpdateSettlement"):   interceptor.Scope("settlements:manage"),
-		interceptor.Method(srvName + "AddImperialFavor"):        interceptor.Scope("settlements:manage"),
-		interceptor.Method(srvName + "DeductImperialFavor"):     interceptor.Scope("settlements:manage"),
-		interceptor.Method(srvName + "ListImperialFavorLogs"):   interceptor.Scope("settlements:manage"),
-		interceptor.Method(srvName + "TransferImperialFavor"):   interceptor.Scope(""),
+		interceptor.Method(srvName + "AdminUpdateSettlement"):   interceptor.Scope(manageScope),
+		interceptor.Method(srvName + "AddImperialFavor"):        interceptor.Scope(manageScope),
+		interceptor.Method(srvName + "DeductImperialFavor"):     interceptor.Scope(manageScope),
+		interceptor.Method(srvName + "ListImperialFavorLogs"):   interceptor.Scope(manageScope),
+		interceptor.Method(srvName + "TransferImperialFavor"):   interceptor.ScopeAuthenticated,
+
+		// Leader-gated: each of these calls IsLeaderOfSettlement on the target
+		// settlement before mutating it. RemoveMember additionally accepts a
+		// moderator holding manageScope (see requireScope).
+		interceptor.Method(srvName + "UpdateSettlement"): interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "InviteMember"):     interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "RevokeInvitation"): interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "GetInvitations"):   interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "RemoveMember"):     interceptor.ScopeAuthenticated,
+
+		// Self-service: scoped to the JWT subject.
+		interceptor.Method(srvName + "Submit"):             interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "AcceptInvitation"):   interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "RejectInvitation"):   interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "GetUserInvitations"): interceptor.ScopeAuthenticated,
+
+		// Look up by a user_id from the request, no subject comparison.
+		//
+		// GetByUserId returns a Settlement, which Get and List already serve
+		// publicly (see matcher.go), so it discloses nothing those do not.
+		//
+		// VerificationStatus returns the status and rejection_reason of that
+		// user's settlement request, which has no public equivalent —
+		// ListPending is manage-gated. Any authenticated caller can therefore
+		// read whether a given player applied and why they were rejected. Left
+		// authenticated-only to keep this change behaviour-preserving; the
+		// missing ownership check is tracked separately.
+		interceptor.Method(srvName + "GetByUserId"):        interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "VerificationStatus"): interceptor.ScopeAuthenticated,
 	}
+}
+
+// requireScope checks a scope in-handler, for methods where the requirement is
+// conditional and so cannot be expressed in the Scope table: RemoveMember
+// accepts either the settlement's leader or a moderator.
+func (s *Service) requireScope(ctx context.Context, scope string) error {
+	claims, err := interceptor.GetClaims(ctx)
+	if err != nil {
+		return status.Error(codes.Unauthenticated, "missing claims")
+	}
+	if !slices.Contains(strings.Fields(claims.Scope), scope) {
+		return status.Error(codes.PermissionDenied, "caller is neither the settlement leader nor a moderator")
+	}
+	return nil
 }

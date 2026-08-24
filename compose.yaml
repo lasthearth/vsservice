@@ -7,6 +7,9 @@ services:
       GRPC_PORT: ${GRPC_PORT}
       GATEAWAY_PORT: ${GATEAWAY_PORT}
       MONGO_URL_FILE: ${MONGO_URL_FILE}
+      JWKS_URL: ${JWKS_URL}
+      ISSUER: ${ISSUER:?required, an empty issuer disables JWT issuer validation}
+      AUDIENCE: ${AUDIENCE:?required, an empty audience disables JWT audience validation}
       DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
       DISCORD_BASE_URL: ${DISCORD_BASE_URL:-https://discord.com/api/v10}
       DISCORD_NEWS_WEBHOOK_URL: ${DISCORD_NEWS_WEBHOOK_URL}

@@ -9,6 +9,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/player/internal/repository/player/sso"
 	service "github.com/lasthearth/vsservice/internal/player/internal/service/player"
 	"github.com/lasthearth/vsservice/internal/player/internal/service/player/sermapper"
+	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
 )
 
@@ -58,6 +59,10 @@ var App = fx.Options(
 		fx.Provide(
 			fx.Annotate(service.New,
 				fx.As(new(userv1.UserServiceServer)),
+			),
+			fx.Annotate(service.New,
+				fx.As(new(interceptor.Scoper)),
+				fx.ResultTags(`group:"scopers"`),
 			),
 		),
 	),

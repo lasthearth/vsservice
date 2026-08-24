@@ -9,6 +9,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/notification/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
 )
 
@@ -56,6 +57,11 @@ var App = fx.Options(
 			fx.Annotate(
 				service.New,
 				fx.As(new(notificationv1.NotificationServiceServer)),
+			),
+			fx.Annotate(
+				service.New,
+				fx.As(new(interceptor.Scoper)),
+				fx.ResultTags(`group:"scopers"`),
 			),
 		),
 	),

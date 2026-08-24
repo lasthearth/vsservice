@@ -55,6 +55,14 @@ func buildPolicy(scopers []Scoper, log logger.Logger) map[Method]Scope {
 				)
 				continue
 			}
+			// An empty scope now denies every caller (no claim contains an
+			// empty token). That is the safe direction, but it is never what
+			// the declaration meant — say ScopeAuthenticated instead.
+			if scope == "" {
+				log.Warn("empty scope declaration denies all callers, use interceptor.ScopeAuthenticated instead",
+					zap.String("method", string(method)),
+				)
+			}
 			policy[method] = scope
 		}
 	}

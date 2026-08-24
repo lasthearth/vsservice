@@ -135,6 +135,7 @@ func (r *Repository) UpsertCode(ctx context.Context, code *model.ReferralCode) (
 			{Key: "code", Value: code.Code},
 			{Key: "created_at", Value: envelope.CreatedAt},
 			{Key: "updated_at", Value: envelope.UpdatedAt},
+			{Key: "version", Value: envelope.Version},
 		}},
 	}
 	opts := options.FindOneAndUpdate().

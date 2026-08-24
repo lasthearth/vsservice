@@ -13,6 +13,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// ResetSeason closes the active season, archives the standings, pays the rank
+// rewards and clears current-season stats.
+//
+// Order matters: the season is CLAIMED (closed) before any coins move. Credit
+// is an atomic $inc, so it cannot be undone — if two callers both read the same
+// active season and both paid before closing it, every reward would be paid
+// twice with no way to reverse it. Closing first means the loser of the race
+// gets ErrSeasonAlreadyClosed and pays nothing.
 func (s *Service) ResetSeason(ctx context.Context, req *hgv1.ResetSeasonRequest) (*hgv1.ResetSeasonResponse, error) {
 	l := s.log.With(zap.String("method", "ResetSeason"))
 
@@ -29,6 +37,18 @@ func (s *Service) ResetSeason(ctx context.Context, req *hgv1.ResetSeasonRequest)
 	if err != nil {
 		l.Error("failed to list all player stats", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to list player stats")
+	}
+
+	// Claim the season. A concurrent reset that read the same active season
+	// stops here without having paid anything.
+	if err := s.repo.CloseSeason(ctx, season.ID); err != nil {
+		if isDomainError(err, codes.AlreadyExists) {
+			l.Warn("season already closed by a concurrent reset, no rewards paid",
+				zap.String("season_id", season.ID))
+			return nil, status.Error(codes.AlreadyExists, "season is already closed")
+		}
+		l.Error("failed to close season", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to close season")
 	}
 
 	rewardMap := make(map[int]int64, len(req.GetRewards()))
@@ -63,14 +83,12 @@ func (s *Service) ResetSeason(ctx context.Context, req *hgv1.ResetSeasonRequest)
 
 	if len(results) > 0 {
 		if err := s.repo.CreateSeasonResults(ctx, results); err != nil {
-			l.Error("failed to save season results", zap.Error(err))
+			// The season is already closed and rewards are already paid, so
+			// this leaves the standings unarchived. Not compensated: the
+			// alternative is reopening a season whose coins are spent.
+			l.Error("failed to save season results after rewards were paid", zap.Error(err))
 			return nil, status.Error(codes.Internal, "failed to save season results")
 		}
-	}
-
-	if err := s.repo.CloseSeason(ctx, season.ID); err != nil {
-		l.Error("failed to close season", zap.Error(err))
-		return nil, status.Error(codes.Internal, "failed to close season")
 	}
 
 	if err := s.repo.DeleteAllPlayerStats(ctx); err != nil {
