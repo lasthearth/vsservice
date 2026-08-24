@@ -5,17 +5,20 @@ import (
 )
 
 type Member struct {
-	UserId string `bson:"user_id"`
+	UserId  string   `bson:"user_id"`
+	RoleIds []string `bson:"role_ids"`
 }
 
 func (m *Member) ToModel() *model.Member {
 	return &model.Member{
-		UserId: m.UserId,
+		UserId:  m.UserId,
+		RoleIds: m.RoleIds,
 	}
 }
 
 func FromModel(model *model.Member) *Member {
 	return &Member{
-		UserId: model.UserId,
+		UserId:  model.UserId,
+		RoleIds: model.RoleIds,
 	}
 }

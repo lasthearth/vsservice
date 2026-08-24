@@ -8,6 +8,7 @@ import (
 	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongox"
 	attachmentdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
 	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
+	roledto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/role"
 	vector2dto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
 	verificationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/verification"
 	repoerr "github.com/lasthearth/vsservice/internal/settlement/internal/ierror"
@@ -36,7 +37,7 @@ func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementO
 		Type:            string(opts.Type),
 		Description:     opts.Description,
 		Coordinates:     *vector2dto.FromModel(&opts.Coordinates),
-		Leader:          memberdto.Member(opts.Leader),
+		Leader:          *memberdto.FromModel(&opts.Leader),
 		Attachments:     attachments,
 		Diplomacy:       opts.Diplomacy,
 		Status:          string(model.SettlementStatusPending),
@@ -177,12 +178,14 @@ func (r *Repository) Approve(ctx context.Context, id string) error {
 		_, err := r.GetSettlement(ctx, dto.Id.Hex())
 		if err != nil {
 			if errors.Is(err, repoerr.ErrNotFound) {
-				model := mongomodel.NewModel()
-				model.Id = dto.Id
-
 				cdto := r.mapper.FromVerification(dto)
-				cdto.Members = make([]memberdto.Member, 0)
+				cdto.Members = []memberdto.Member{{
+					UserId:  dto.Leader.UserId,
+					RoleIds: []string{model.OwnerRoleId},
+				}}
 				cdto.TagIds = make([]string, 0)
+				cdto.Roles = make([]roledto.Role, 0)
+				cdto.RolesEnabled = true
 				return r.Create(ctx, cdto)
 			}
 

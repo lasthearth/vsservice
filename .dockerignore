@@ -29,5 +29,9 @@
 **/obj
 **/secrets.dev.yaml
 **/values.dev.yaml
+# Generated protobuf stubs / OpenAPI — regenerated inside the build stage,
+# never copied from the host.
+gen/
+docs/v1/openapi.yaml
 LICENSE
 README.md

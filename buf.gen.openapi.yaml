@@ -1,0 +1,10 @@
+# OpenAPI-only codegen using the LOCAL protoc-gen-connect-openapi plugin, so the
+# REST contract can be regenerated offline (no buf.build remote-plugin access).
+# strategy: all merges every service into a single docs/v1/openapi.yaml.
+# Install the plugin once: go install github.com/sudorandom/protoc-gen-connect-openapi@latest
+version: v2
+plugins:
+  - local: protoc-gen-connect-openapi
+    strategy: all
+    out: docs/v1
+    opt: [path=openapi.yaml, format=yaml, with-proto-names, short-service-tags, short-operation-ids]

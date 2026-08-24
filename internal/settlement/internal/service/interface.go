@@ -13,6 +13,7 @@ import (
 // goverter:output:file sermapper/mapper.go
 // goverter:extend TypeToProto
 // goverter:extend TagIdsToProto
+// goverter:extend PermissionToProto
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTimestamp
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToInt64
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:IntToInt32
@@ -30,11 +31,19 @@ type Mapper interface {
 	ToMembersProto([]model.Member) []*settlementv1.Member
 
 	// goverter:ignore state sizeCache unknownFields
+	ToRoleProto(model.Role) *settlementv1.Role
+	ToRolesProto([]model.Role) []*settlementv1.Role
+
+	// goverter:ignore state sizeCache unknownFields
+	ToJoinRequestProto(model.JoinRequest) *settlementv1.JoinRequest
+	ToJoinRequestsProto([]model.JoinRequest) []*settlementv1.JoinRequest
+
+	// goverter:ignore state sizeCache unknownFields
 	// goverter:map TagIds Tags
 	ToSettlementProto(model.Settlement) *settlementv1.Settlement
 	ToSettlementProtos([]model.Settlement) []*settlementv1.Settlement
 	// goverter:ignore state sizeCache unknownFields
-	// goverter:ignore Members Tags ImperialFavor
+	// goverter:ignore Members Tags ImperialFavor Roles RolesEnabled ContactInfo
 	VerifToSettlementProto(model.SettlementVerification) *settlementv1.Settlement
 	VerifsToSettlementProtos([]model.SettlementVerification) []*settlementv1.Settlement
 
@@ -60,7 +69,7 @@ type SettlementDbRepository interface {
 	GetSettlementByUserId(ctx context.Context, userId string) (*model.Settlement, error)
 	GetAllSettlements(ctx context.Context) ([]model.Settlement, error)
 
-	IsMemberOrLeader(ctx context.Context, settlementID, userID string) error
+	IsMemberOfAnySettlement(ctx context.Context, userID string) error
 	IsLeaderOfSettlement(ctx context.Context, settlementID, userID string) error
 
 	UpdateSettlement(
@@ -68,6 +77,8 @@ type SettlementDbRepository interface {
 		id string,
 		updateFn func(ctx context.Context, s *model.Settlement) (*model.Settlement, error),
 	) (*model.Settlement, error)
+
+	DeleteSettlement(ctx context.Context, settlementID string) error
 
 	AddTag(ctx context.Context, settlementID, tagID string) error
 	RemoveTag(ctx context.Context, settlementID, tagID string) error
@@ -82,6 +93,17 @@ type SettlementDbRepository interface {
 	AcceptInvitation(ctx context.Context, invID, userID string) error
 	GetInvitations(ctx context.Context, settlementID string) ([]model.Invitation, error)
 	GetUserInvitations(ctx context.Context, userID string) ([]model.Invitation, error)
+
+	CountUserJoinRequests(ctx context.Context, userID string) (int64, error)
+	CreateJoinRequest(ctx context.Context, settlementID, userID string) error
+	GetJoinRequest(ctx context.Context, joinRequestID string) (*model.JoinRequest, error)
+	GetJoinRequests(ctx context.Context, settlementID string) ([]model.JoinRequest, error)
+	GetUserJoinRequests(ctx context.Context, userID string) ([]model.JoinRequest, error)
+	DeleteJoinRequestForUser(ctx context.Context, joinRequestID, userID string) error
+	// ApproveJoinRequest adds the applicant to the settlement, deletes the
+	// request and all other pending requests of that user, in one transaction.
+	ApproveJoinRequest(ctx context.Context, joinRequestID string) (userID string, err error)
+	DeleteJoinRequest(ctx context.Context, joinRequestID, settlementID string) error
 }
 
 type SettlementRequestDbRepository interface {

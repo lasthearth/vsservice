@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package settlement.v1;
 
+import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
@@ -291,6 +292,233 @@ service SettlementService {
   rpc RemoveTagFromSettlement(RemoveTagFromSettlementRequest) returns (RemoveTagFromSettlementResponse) {
     option (google.api.http) = {delete: "/v1/settlements/{settlement_id}/tags/{tag_id}"};
   }
+
+  // Create a join request to a settlement. Caller must not already belong to a settlement.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - ALREADY_EXISTS (409): caller already belongs to a settlement or already applied here
+  //   - RESOURCE_EXHAUSTED (429): caller has reached the active join-request limit
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc CreateJoinRequest(CreateJoinRequestRequest) returns (CreateJoinRequestResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{settlement_id}/join-requests"
+      body: "*"
+    };
+  }
+
+  // Cancel the caller's own join request.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): join request not found for the caller
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc CancelJoinRequest(CancelJoinRequestRequest) returns (CancelJoinRequestResponse) {
+    option (google.api.http) = {post: "/v1/settlements/join-requests/{join_request_id}:cancel"};
+  }
+
+  // List the caller's own active join requests.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc GetMyJoinRequests(GetMyJoinRequestsRequest) returns (GetMyJoinRequestsResponse) {
+    option (google.api.http) = {get: "/v1/users/{user_id}/settlements/join-requests"};
+  }
+
+  // List join requests for a settlement. Caller needs the review_join_request permission or owner.
+  //
+  // Errors:
+  //   - PERMISSION_DENIED (403): caller lacks the review_join_request permission
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ListJoinRequests(ListJoinRequestsRequest) returns (ListJoinRequestsResponse) {
+    option (google.api.http) = {get: "/v1/settlements/{settlement_id}/join-requests"};
+  }
+
+  // Approve a join request. Caller needs the review_join_request permission or owner.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): join request not found
+  //   - ALREADY_EXISTS (409): applicant already joined another settlement
+  //   - PERMISSION_DENIED (403): caller lacks the review_join_request permission
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ApproveJoinRequest(ApproveJoinRequestRequest) returns (ApproveJoinRequestResponse) {
+    option (google.api.http) = {post: "/v1/settlements/{settlement_id}/join-requests/{join_request_id}:approve"};
+  }
+
+  // Reject a join request. Caller needs the review_join_request permission or owner.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): join request not found
+  //   - PERMISSION_DENIED (403): caller lacks the review_join_request permission
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc RejectJoinRequest(RejectJoinRequestRequest) returns (RejectJoinRequestResponse) {
+    option (google.api.http) = {post: "/v1/settlements/{settlement_id}/join-requests/{join_request_id}:reject"};
+  }
+
+  // Create a custom role in a settlement. Owner only. Ignored while roles are disabled.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - FAILED_PRECONDITION (400): roles disabled; role limit reached
+  //   - PERMISSION_DENIED (403): caller is not an owner
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{settlement_id}/roles"
+      body: "*"
+    };
+  }
+
+  // Update a custom role's name or permissions. Owner only.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement or role not found
+  //   - FAILED_PRECONDITION (400): roles disabled
+  //   - PERMISSION_DENIED (403): caller is not an owner
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse) {
+    option (google.api.http) = {
+      patch: "/v1/settlements/{settlement_id}/roles/{role_id}"
+      body: "*"
+    };
+  }
+
+  // Delete a custom role. Owner only. The role is unassigned from all members.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement or role not found
+  //   - PERMISSION_DENIED (403): caller is not an owner
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse) {
+    option (google.api.http) = {delete: "/v1/settlements/{settlement_id}/roles/{role_id}"};
+  }
+
+  // Assign a custom role to a member. Owner only. The owner role cannot be assigned here.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement, role, or member not found
+  //   - FAILED_PRECONDITION (400): roles disabled; cannot assign the owner role
+  //   - PERMISSION_DENIED (403): caller is not an owner
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{settlement_id}/members/{user_id}/roles"
+      body: "*"
+    };
+  }
+
+  // Unassign a custom role from a member. Owner only.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement or member not found
+  //   - PERMISSION_DENIED (403): caller is not an owner
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc UnassignRole(UnassignRoleRequest) returns (UnassignRoleResponse) {
+    option (google.api.http) = {delete: "/v1/settlements/{settlement_id}/members/{user_id}/roles/{role_id}"};
+  }
+
+  // Transfer ownership: grant owner to a member and drop it from the caller. Owner only.
+  // The owner count is preserved, so this cannot be used to add owners.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement or target member not found
+  //   - PERMISSION_DENIED (403): caller is not an owner
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc TransferOwnership(TransferOwnershipRequest) returns (TransferOwnershipResponse) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{settlement_id}/ownership:transfer"
+      body: "*"
+    };
+  }
+
+  // Leave the settlement the caller belongs to. The last owner cannot leave.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): caller does not belong to a settlement
+  //   - FAILED_PRECONDITION (400): caller is the last owner
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc LeaveSettlement(LeaveSettlementRequest) returns (LeaveSettlementResponse) {
+    option (google.api.http) = {post: "/v1/settlements/{settlement_id}:leave"};
+  }
+
+  // Update the settlement's public contact info. Owner only.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - INVALID_ARGUMENT (400): contact info too long or contains forbidden characters
+  //   - PERMISSION_DENIED (403): caller is not an owner
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc UpdateContactInfo(UpdateContactInfoRequest) returns (UpdateContactInfoResponse) {
+    option (google.api.http) = {
+      patch: "/v1/settlements/{settlement_id}/contact-info"
+      body: "*"
+    };
+  }
+
+  // Admin: grant the owner role to a member. Requires settlements:manage scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement or member not found
+  //   - PERMISSION_DENIED (403): missing settlements:manage scope
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc AddOwner(AddOwnerRequest) returns (AddOwnerResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/settlements/{settlement_id}/owners"
+      body: "*"
+    };
+  }
+
+  // Admin: revoke the owner role from a member. Requires settlements:manage scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement or member not found
+  //   - FAILED_PRECONDITION (400): cannot revoke the last owner
+  //   - PERMISSION_DENIED (403): missing settlements:manage scope
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc RemoveOwner(RemoveOwnerRequest) returns (RemoveOwnerResponse) {
+    option (google.api.http) = {delete: "/v1/admin/settlements/{settlement_id}/owners/{user_id}"};
+  }
+
+  // Admin: enable or disable custom roles for a settlement. Requires settlements:manage scope.
+  // When disabled, roles are neither returned nor applied.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - PERMISSION_DENIED (403): missing settlements:manage scope
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc SetRolesEnabled(SetRolesEnabledRequest) returns (SetRolesEnabledResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/settlements/{settlement_id}/roles:set-enabled"
+      body: "*"
+    };
+  }
+
+  // Admin: permanently delete a settlement, its invitations and join requests. Requires settlements:manage scope.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - PERMISSION_DENIED (403): missing settlements:manage scope
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc DeleteSettlement(DeleteSettlementRequest) returns (DeleteSettlementResponse) {
+    option (google.api.http) = {delete: "/v1/admin/settlements/{settlement_id}"};
+  }
 }
 
 message GetUserInvitationsRequest {
@@ -319,7 +547,8 @@ message Settlement {
   SettlementType type = 3;
   string description = 4;
   string diplomacy = 5;
-  Member leader = 6;
+  // Deprecated: use members with the "owner" role instead. Populated with the first owner for compatibility.
+  Member leader = 6 [deprecated = true];
   repeated Member members = 7;
   repeated Attachment attachments = 8;
   Vector2 coordinates = 9;
@@ -327,6 +556,12 @@ message Settlement {
   int64 updated_at = 11;
   int64 imperial_favor = 12;
   repeated TagReference tags = 20 [(google.api.field_behavior) = OPTIONAL];
+  // Custom roles defined for this settlement. Empty when roles are disabled.
+  repeated Role roles = 21 [(google.api.field_behavior) = OPTIONAL];
+  // Whether custom roles are enabled by moderation.
+  bool roles_enabled = 22;
+  // Public contact information for the settlement (free text).
+  string contact_info = 23 [(google.api.field_behavior) = OPTIONAL];
 }
 
 enum SettlementType {
@@ -338,8 +573,29 @@ enum SettlementType {
   PROVINCE = 5;
 }
 
+// Permission a custom role can grant. The owner role holds all permissions implicitly.
+enum Permission {
+  PERMISSION_UNSPECIFIED = 0;
+  PERMISSION_INVITE_MEMBER = 1;
+  PERMISSION_REVIEW_JOIN_REQUEST = 2;
+}
+
+message Role {
+  string id = 1;
+  string name = 2;
+  repeated Permission permissions = 3;
+}
+
 message Member {
   string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Role ids held by this member. "owner" denotes a settlement leader.
+  repeated string role_ids = 2;
+}
+
+message JoinRequest {
+  string id = 1;
+  string user_id = 2;
+  string settlement_id = 3;
 }
 
 message SubmitRequest {
@@ -561,3 +817,162 @@ message TransferImperialFavorResponse {
   Settlement from_settlement = 1;
   Settlement to_settlement = 2;
 }
+
+message CreateJoinRequestRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+}
+
+message CreateJoinRequestResponse {}
+
+message CancelJoinRequestRequest {
+  string join_request_id = 1 [(buf.validate.field).required = true];
+}
+
+message CancelJoinRequestResponse {}
+
+message GetMyJoinRequestsRequest {
+  string user_id = 1 [(buf.validate.field).required = true];
+}
+
+message GetMyJoinRequestsResponse {
+  repeated JoinRequest join_requests = 1;
+}
+
+message ListJoinRequestsRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+}
+
+message ListJoinRequestsResponse {
+  repeated JoinRequest join_requests = 1;
+}
+
+message ApproveJoinRequestRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string join_request_id = 2 [(buf.validate.field).required = true];
+}
+
+message ApproveJoinRequestResponse {}
+
+message RejectJoinRequestRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string join_request_id = 2 [(buf.validate.field).required = true];
+}
+
+message RejectJoinRequestResponse {}
+
+message CreateRoleRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  repeated Permission permissions = 3 [(buf.validate.field).repeated = {
+    items: {enum: {defined_only: true}}
+  }];
+}
+
+message CreateRoleResponse {
+  Settlement settlement = 1;
+}
+
+message UpdateRoleRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string role_id = 2 [(buf.validate.field).required = true];
+  string name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  repeated Permission permissions = 4 [(buf.validate.field).repeated = {
+    items: {enum: {defined_only: true}}
+  }];
+}
+
+message UpdateRoleResponse {
+  Settlement settlement = 1;
+}
+
+message DeleteRoleRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string role_id = 2 [(buf.validate.field).required = true];
+}
+
+message DeleteRoleResponse {
+  Settlement settlement = 1;
+}
+
+message AssignRoleRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string user_id = 2 [(buf.validate.field).required = true];
+  string role_id = 3 [(buf.validate.field).required = true];
+}
+
+message AssignRoleResponse {
+  Settlement settlement = 1;
+}
+
+message UnassignRoleRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string user_id = 2 [(buf.validate.field).required = true];
+  string role_id = 3 [(buf.validate.field).required = true];
+}
+
+message UnassignRoleResponse {
+  Settlement settlement = 1;
+}
+
+message TransferOwnershipRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string to_user_id = 2 [(buf.validate.field).required = true];
+}
+
+message TransferOwnershipResponse {
+  Settlement settlement = 1;
+}
+
+message LeaveSettlementRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+}
+
+message LeaveSettlementResponse {}
+
+message UpdateContactInfoRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string contact_info = 2 [(buf.validate.field).string.max_len = 512];
+}
+
+message UpdateContactInfoResponse {
+  Settlement settlement = 1;
+}
+
+message AddOwnerRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string user_id = 2 [(buf.validate.field).required = true];
+}
+
+message AddOwnerResponse {
+  Settlement settlement = 1;
+}
+
+message RemoveOwnerRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string user_id = 2 [(buf.validate.field).required = true];
+}
+
+message RemoveOwnerResponse {
+  Settlement settlement = 1;
+}
+
+message SetRolesEnabledRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  bool enabled = 2;
+}
+
+message SetRolesEnabledResponse {
+  Settlement settlement = 1;
+}
+
+message DeleteSettlementRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+}
+
+message DeleteSettlementResponse {}

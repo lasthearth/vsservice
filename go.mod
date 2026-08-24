@@ -63,6 +63,7 @@ require (
 	github.com/google/gnostic v0.7.1
 	github.com/h2non/bimg v1.1.9
 	github.com/minio/minio-go/v7 v7.0.97
+	github.com/xakep666/mongo-migrate v0.4.1
 	google.golang.org/genproto v0.0.0-20251202230838-ff82c1b0f217
 )
 

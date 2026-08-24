@@ -17,6 +17,30 @@ func TagIdsToProto(ids []string) []*settlementv1.TagReference {
 	return tagIds
 }
 
+// PermissionToProto converts a model.Permission to its proto enum.
+func PermissionToProto(p model.Permission) settlementv1.Permission {
+	switch p {
+	case model.PermInviteMember:
+		return settlementv1.Permission_PERMISSION_INVITE_MEMBER
+	case model.PermReviewJoinRequest:
+		return settlementv1.Permission_PERMISSION_REVIEW_JOIN_REQUEST
+	default:
+		return settlementv1.Permission_PERMISSION_UNSPECIFIED
+	}
+}
+
+// PermissionFromProto converts a proto enum to a model.Permission ("" if unknown).
+func PermissionFromProto(p settlementv1.Permission) model.Permission {
+	switch p {
+	case settlementv1.Permission_PERMISSION_INVITE_MEMBER:
+		return model.PermInviteMember
+	case settlementv1.Permission_PERMISSION_REVIEW_JOIN_REQUEST:
+		return model.PermReviewJoinRequest
+	default:
+		return ""
+	}
+}
+
 // TypeToProto converts a model.SettlementType to a settlementv1.SettlementType.
 func TypeToProto(s model.SettlementType) settlementv1.SettlementType {
 	var stype settlementv1.SettlementType

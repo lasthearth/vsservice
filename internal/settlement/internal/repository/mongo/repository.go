@@ -7,7 +7,6 @@ import (
 
 	mongomodel "github.com/lasthearth/vsservice/internal/pkg/mongox"
 	attachmentdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
-	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
 	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	vector2dto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
 	repoerr "github.com/lasthearth/vsservice/internal/settlement/internal/ierror"
@@ -45,10 +44,12 @@ func (r *Repository) Create(ctx context.Context, dto settlementdto.Settlement) e
 }
 
 func (r *Repository) CountByLeaderID(ctx context.Context, id string) (int64, error) {
-	count, err := r.setColl.CountDocuments(ctx, bson.D{{
-		Key:   "leader.user_id",
-		Value: id,
-	}})
+	count, err := r.setColl.CountDocuments(ctx, bson.M{
+		"members": bson.M{"$elemMatch": bson.M{
+			"user_id":  id,
+			"role_ids": model.OwnerRoleId,
+		}},
+	})
 	if err != nil {
 		r.log.Error("failed to count settlements",
 			zap.Error(err),
@@ -91,7 +92,6 @@ func (r *Repository) Update(ctx context.Context, opts service.UpdateSettlementOp
 				Value: bson.D{
 					{Key: "name", Value: opts.Name},
 					{Key: "type", Value: string(opts.Type)},
-					{Key: "leader", Value: memberdto.FromModel(&opts.Leader)},
 					{Key: "coordinates", Value: vector2dto.FromModel(&opts.Coordinates)},
 					{Key: "attachments", Value: attachments},
 					{Key: "diplomacy", Value: opts.Diplomacy},
@@ -143,6 +143,9 @@ func (r *Repository) UpdateSettlement(
 	if err != nil && !errors.Is(err, repoerr.ErrNotFound) {
 		l.Error("failed to update settlement", zap.Error(err))
 	}
+	if updated != nil {
+		updated.DeriveLeader()
+	}
 	return updated, err
 }
 
@@ -174,6 +177,7 @@ func (r *Repository) GetSettlement(ctx context.Context, id string) (*model.Settl
 
 	r.log.Debug("settlement retrieved", zap.String("settlement_id", id))
 	set := r.mapper.FromSettlementDTO(settlement)
+	set.DeriveLeader()
 	return &set, nil
 }
 
@@ -186,12 +190,7 @@ func (r *Repository) GetSettlementByUserId(ctx context.Context, userId string) (
 
 	r.log.Debug("executing find query on settlement collection")
 
-	filter := bson.M{
-		"$or": []bson.M{
-			{"leader.user_id": userId},
-			{"members.user_id": userId},
-		},
-	}
+	filter := bson.M{"members.user_id": userId}
 	found := r.setColl.FindOne(ctx, filter)
 	err := found.Err()
 	if err != nil {
@@ -209,6 +208,7 @@ func (r *Repository) GetSettlementByUserId(ctx context.Context, userId string) (
 	}
 
 	set := r.mapper.FromSettlementDTO(settlement)
+	set.DeriveLeader()
 	r.log.Info(
 		"successfully retrieved settlements",
 		zap.String("settlement_id", set.Id),
@@ -242,6 +242,9 @@ func (r *Repository) GetAllSettlements(ctx context.Context) ([]model.Settlement,
 	}
 
 	res := r.mapper.FromSettlementsDTO(settlements)
+	for i := range res {
+		res[i].DeriveLeader()
+	}
 	r.log.Info(
 		"successfully retrieved all settlements",
 		zap.Int("count", len(res)),
@@ -249,36 +252,29 @@ func (r *Repository) GetAllSettlements(ctx context.Context) ([]model.Settlement,
 	return res, nil
 }
 
-// IsMemberOrLeader checks if a user is already a member or leader of any settlement. Returns ErrAlreadyMember if the user is already a member or leader.
-func (r *Repository) IsMemberOrLeader(ctx context.Context, settlementID, memberID string) error {
+// IsMemberOfAnySettlement returns ErrAlreadyMember if the user already belongs
+// to any settlement (owners are members too).
+func (r *Repository) IsMemberOfAnySettlement(ctx context.Context, memberID string) error {
 	l := r.log.
-		With(
-			zap.String("settlement_id", settlementID),
-			zap.String("user_id", memberID),
-		).
-		WithMethod("is_member_or_leader")
-	l.Info("checking if user is member of settlement")
+		With(zap.String("user_id", memberID)).
+		WithMethod("is_member_of_any_settlement")
+	l.Info("checking if user is in any settlement")
 
-	filterAny := bson.M{
-		"$or": bson.A{
-			bson.M{"members.user_id": memberID},
-			bson.M{"leader.user_id": memberID},
-		},
-	}
-	count, err := r.setColl.CountDocuments(ctx, filterAny)
+	count, err := r.setColl.CountDocuments(ctx, bson.M{"members.user_id": memberID})
 	if err != nil {
 		l.Error("failed to check existing membership", zap.Error(err))
 		return err
 	}
 	if count > 0 {
-		l.Warn("user already in a settlement, cannot invite")
+		l.Warn("user already in a settlement")
 		return repoerr.ErrAlreadyMember
 	}
 
 	return nil
 }
 
-// IsLeaderOfSettlement checks if a user is already a leader of any settlement. Returns ErrNotLeader if the user is not a leader.
+// IsLeaderOfSettlement checks that a user holds the owner role in the given
+// settlement. Returns ErrNotLeader otherwise.
 func (r *Repository) IsLeaderOfSettlement(ctx context.Context, settlementID, userID string) error {
 	l := r.log.
 		With(
@@ -286,7 +282,7 @@ func (r *Repository) IsLeaderOfSettlement(ctx context.Context, settlementID, use
 			zap.String("user_id", userID),
 		).
 		WithMethod("is_leader_of_settlement")
-	l.Info("checking if user is leader of settlement")
+	l.Info("checking if user is owner of settlement")
 
 	setId, err := mongomodel.ParseObjectID(settlementID)
 	if err != nil {
@@ -294,16 +290,50 @@ func (r *Repository) IsLeaderOfSettlement(ctx context.Context, settlementID, use
 		return err
 	}
 
-	filter := bson.M{"_id": setId, "leader.user_id": userID}
+	filter := bson.M{
+		"_id": setId,
+		"members": bson.M{"$elemMatch": bson.M{
+			"user_id":  userID,
+			"role_ids": model.OwnerRoleId,
+		}},
+	}
 	count, err := r.setColl.CountDocuments(ctx, filter)
 	if err != nil {
 		l.Error("failed to check existing leadership", zap.Error(err))
 		return err
 	}
 	if count <= 0 {
-		l.Warn("user already leader of settlement")
+		l.Warn("user is not owner of settlement")
 		return repoerr.ErrNotLeader
 	}
 
+	return nil
+}
+
+// DeleteSettlement hard-deletes a settlement and its invitations and join
+// requests. Imperial favor logs are retained for audit.
+func (r *Repository) DeleteSettlement(ctx context.Context, settlementID string) error {
+	l := r.log.With(zap.String("settlement_id", settlementID)).WithMethod("delete_settlement")
+
+	oid, err := mongomodel.ParseObjectID(settlementID)
+	if err != nil {
+		return repoerr.ErrNotFound
+	}
+
+	res, err := r.setColl.DeleteOne(ctx, bson.M{"_id": oid})
+	if err != nil {
+		l.Error("failed to delete settlement", zap.Error(err))
+		return err
+	}
+	if res.DeletedCount == 0 {
+		return repoerr.ErrNotFound
+	}
+
+	if _, err := r.setInvColl.DeleteMany(ctx, bson.M{"settlement_id": settlementID}); err != nil {
+		l.Error("failed to delete invitations", zap.Error(err))
+	}
+	if _, err := r.setJoinReqColl.DeleteMany(ctx, bson.M{"settlement_id": settlementID}); err != nil {
+		l.Error("failed to delete join requests", zap.Error(err))
+	}
 	return nil
 }

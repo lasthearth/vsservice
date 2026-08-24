@@ -33,7 +33,6 @@ func (s *Service) TransferImperialFavor(ctx context.Context, req *settlementv1.T
 	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.GetFromSettlementId(), callerID); err != nil {
 		return nil, status.Error(codes.PermissionDenied, "caller is not the leader of the source settlement")
 	}
-
 	from, err := s.dbRepo.UpdateSettlement(ctx, req.GetFromSettlementId(),
 		func(_ context.Context, s *model.Settlement) (*model.Settlement, error) {
 			return s, s.DeductFavor(req.GetAmount())

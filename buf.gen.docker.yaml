@@ -1,0 +1,30 @@
+# Codegen template for CI / Docker and offline local use. Uses ONLY local
+# plugins (the module's `go tool` protoc-gen-* entries), so it needs no
+# buf.build remote-plugin access or token.
+#
+# Scope: Go stubs into gen/ — that is all the binary build requires. The REST
+# contract docs/v1/openapi.yaml is committed to the repo and regenerated with
+# `make proto` (buf.gen.yaml, remote OpenAPI plugin) whenever protos change.
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/lasthearth/vsservice/gen
+  disable:
+    - file_option: go_package_prefix
+      module: buf.build/googleapis/googleapis
+    - file_option: go_package_prefix
+      module: buf.build/bufbuild/protovalidate
+    - file_option: go_package_prefix
+      module: buf.build/gnostic/gnostic
+plugins:
+  - local: ["go", "tool", "protoc-gen-go"]
+    out: gen
+    opt: paths=source_relative
+  - local: ["go", "tool", "protoc-gen-go-grpc"]
+    out: gen
+    opt: paths=source_relative,require_unimplemented_servers=false
+  - local: ["go", "tool", "protoc-gen-grpc-gateway"]
+    out: gen
+    opt: paths=source_relative

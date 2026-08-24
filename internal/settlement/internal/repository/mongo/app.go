@@ -19,10 +19,11 @@ import (
 )
 
 const (
-	settlementCollName           = "settlements"
-	settlementReqCollName        = "settlement_requests"
-	settlementInvitationCollName = "settlement_invitations"
-	imperialFavorLogCollName     = "imperial_favor_logs"
+	settlementCollName            = "settlements"
+	settlementReqCollName         = "settlement_requests"
+	settlementInvitationCollName  = "settlement_invitations"
+	settlementJoinRequestCollName = "settlement_join_requests"
+	imperialFavorLogCollName      = "imperial_favor_logs"
 )
 
 var _ service.SettlementRepository = (*Repository)(nil)
@@ -39,7 +40,7 @@ type Mapper interface {
 	ToInvModels(dto []invitationdto.Invitation) []model.Invitation
 	ToInvModel(dto invitationdto.Invitation) model.Invitation
 
-	// goverter:ignore Members TagIds ImperialFavor
+	// goverter:ignore Members TagIds ImperialFavor Roles RolesEnabled ContactInfo
 	FromVerification(dto verificationdto.SettlementVerification) settlementdto.Settlement
 
 	FromSettlementsDTO([]settlementdto.Settlement) []model.Settlement
@@ -67,6 +68,8 @@ type Repository struct {
 	setReqColl *mongo.Collection
 	// Settlement invitations collection
 	setInvColl *mongo.Collection
+	// Settlement join requests collection
+	setJoinReqColl *mongo.Collection
 	// Imperial favor log collection
 	favorLogColl *mongo.Collection
 	// MongoDB client used for transactions
@@ -78,17 +81,19 @@ func New(opts Opts) *Repository {
 	sColl := opts.Database.Collection(settlementCollName)
 	srColl := opts.Database.Collection(settlementReqCollName)
 	siColl := opts.Database.Collection(settlementInvitationCollName)
+	sjrColl := opts.Database.Collection(settlementJoinRequestCollName)
 	flColl := opts.Database.Collection(imperialFavorLogCollName)
 	logger := opts.Log.WithComponent("settlement-mongo-repository")
-	setupIndexes(logger, sColl, srColl, siColl, flColl)
+	setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl)
 	return &Repository{
-		log:          logger,
-		setColl:      sColl,
-		setReqColl:   srColl,
-		setInvColl:   siColl,
-		favorLogColl: flColl,
-		client:       opts.Client,
-		mapper:       opts.Mapper,
+		log:            logger,
+		setColl:        sColl,
+		setReqColl:     srColl,
+		setInvColl:     siColl,
+		setJoinReqColl: sjrColl,
+		favorLogColl:   flColl,
+		client:         opts.Client,
+		mapper:         opts.Mapper,
 	}
 }
 
@@ -97,6 +102,7 @@ func setupIndexes(
 	setColl *mongo.Collection,
 	setReqColl *mongo.Collection,
 	setInvColl *mongo.Collection,
+	setJoinReqColl *mongo.Collection,
 	favorLogColl *mongo.Collection,
 ) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -108,16 +114,23 @@ func setupIndexes(
 		}
 	}
 
+	// One settlement per player: a user_id may appear in members at most once
+	// across all settlement documents. Owners are members too, so this single
+	// array index enforces the whole invariant at the DB level.
 	createIndex(setColl, mongo.IndexModel{
-		Keys: bson.D{
-			{Key: "leader.user_id", Value: 1},
-			{Key: "members.user_id", Value: 1},
-		},
+		Keys:    bson.D{{Key: "members.user_id", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
 
+	// A settlement has at most one verification request. Kept partial so
+	// documents predating the settlement (settlement_id unset) don't collide.
 	createIndex(setReqColl, mongo.IndexModel{
-		Keys:    bson.D{{Key: "leader.user_id", Value: -1}},
+		Keys:    bson.D{{Key: "settlement_id", Value: 1}},
+		Options: options.Index().SetUnique(true).SetPartialFilterExpression(bson.M{"settlement_id": bson.M{"$type": "string"}}),
+	})
+	// A user without a settlement yet has at most one open first-time request.
+	createIndex(setReqColl, mongo.IndexModel{
+		Keys:    bson.D{{Key: "leader.user_id", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
 
@@ -127,6 +140,17 @@ func setupIndexes(
 			{Key: "settlement_id", Value: 1},
 		},
 		Options: options.Index().SetUnique(true),
+	})
+
+	createIndex(setJoinReqColl, mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "user_id", Value: 1},
+			{Key: "settlement_id", Value: 1},
+		},
+		Options: options.Index().SetUnique(true),
+	})
+	createIndex(setJoinReqColl, mongo.IndexModel{
+		Keys: bson.D{{Key: "settlement_id", Value: 1}},
 	})
 
 	createIndex(favorLogColl, mongo.IndexModel{

@@ -1,3 +1,18 @@
+# Normalize all text files to LF in the repository. Windows checkouts keep LF
+# too (no CRLF conversion), so generated Go/YAML never churns on line endings.
+* text=auto eol=lf
+
 # buf embeds proto source comments verbatim into generated openapi/go output,
 # so CRLF in .proto leaks \r\n into descriptions. Force LF.
 *.proto text eol=lf
+
+# Binary types must never be normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zst binary
+*.woff binary
+*.woff2 binary

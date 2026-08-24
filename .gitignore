@@ -32,3 +32,8 @@ go.work.sum
 .worktrees/
 # golangci-lint custom plugin binary (built locally)
 /custom-gcl
+
+# Generated protobuf Go stubs — produced by `make proto` / Docker build.
+# OpenAPI (docs/v1/openapi.yaml) is intentionally committed: it is the REST
+# contract the frontend consumes and is reviewed on every proto change.
+/gen/

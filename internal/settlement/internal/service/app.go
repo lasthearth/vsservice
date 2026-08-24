@@ -5,6 +5,7 @@ import (
 
 	"github.com/eapache/go-resiliency/retrier"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
+	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
 	"go.uber.org/fx"
@@ -20,6 +21,7 @@ type Opts struct {
 	DbRepo   SettlementRepository
 	Mapper   Mapper
 	MediaURL *mediaurl.Validator
+	Notifier *notificationuc.Create
 }
 
 type Service struct {
@@ -29,6 +31,7 @@ type Service struct {
 	retrier  *retrier.Retrier
 	mapper   Mapper
 	mediaUrl *mediaurl.Validator
+	notifier *notificationuc.Create
 }
 
 func New(opts Opts) *Service {
@@ -39,5 +42,6 @@ func New(opts Opts) *Service {
 		retrier:  opts.Retrier,
 		mapper:   opts.Mapper,
 		mediaUrl: opts.MediaURL,
+		notifier: opts.Notifier,
 	}
 }

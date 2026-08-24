@@ -4,6 +4,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	attachmentdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
 	memberdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
+	roledto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/role"
 	vector2dto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
 )
 
@@ -19,4 +20,7 @@ type Settlement struct {
 	Description   string                     `bson:"description"`
 	TagIds        []string                   `bson:"tag_ids"`
 	ImperialFavor int64                      `bson:"imperial_favor"`
+	Roles         []roledto.Role             `bson:"roles"`
+	RolesEnabled  bool                       `bson:"roles_enabled"`
+	ContactInfo   string                     `bson:"contact_info"`
 }

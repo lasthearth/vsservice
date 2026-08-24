@@ -46,9 +46,9 @@ func (s *Service) UpdateSettlement(ctx context.Context, req *settlementv1.Update
 		return nil, status.Error(codes.InvalidArgument, "attachments cannot be empty")
 	}
 
-	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.GetId(), uid); err != nil {
+	if _, err := s.requireOwner(ctx, req.GetId(), uid); err != nil {
 		l.Error("permission check failed", zap.Error(err))
-		return nil, status.Error(codes.PermissionDenied, "user is not leader")
+		return nil, err
 	}
 
 	attachs := make([]model.Attachment, len(req.GetAttachments()))

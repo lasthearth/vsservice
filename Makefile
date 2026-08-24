@@ -54,9 +54,16 @@ test:
 generate:
 	go generate ./...
 
-## proto: regenerate protobuf stubs (requires buf)
+## proto: regenerate protobuf stubs (requires buf + buf.build access)
 proto:
 	buf generate
+
+## proto-offline: regenerate Go stubs + OpenAPI with only local plugins (no buf.build).
+## Mirrors the Docker build. Needs protoc-gen-connect-openapi on PATH:
+##   go install github.com/sudorandom/protoc-gen-connect-openapi@latest
+proto-offline:
+	buf generate --template buf.gen.docker.yaml
+	buf generate --template buf.gen.openapi.yaml
 
 ## tidy: tidy both go modules
 tidy:
@@ -72,4 +79,4 @@ hooks:
 clean:
 	rm -f $(GOLANGCI)
 
-.PHONY: help build run lint lint-fix lint-build test generate proto tidy hooks clean
+.PHONY: help build run lint lint-fix lint-build test generate proto proto-offline tidy hooks clean

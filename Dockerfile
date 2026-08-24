@@ -52,11 +52,22 @@ RUN wget https://github.com/libvips/libvips/releases/download/v${LIBVIPS_VERSION
 
 ARG TARGETARCH
 
-# Build the application.
-# Leverage a cache mount to /go/pkg/mod/ to speed up subsequent builds.
-# Leverage a bind mount to the current directory to avoid having to copy the
-# source code into the container.
-RUN --mount=type=bind,source=./${PROJECT_PATH}/,target=. \
+# Regenerate protobuf stubs and build the application. The generated `gen/` is
+# gitignored, so it must be produced here. buf and the OpenAPI plugin are
+# pinned; the Go codegen plugins are the module's `go tool` entries (see
+# go.mod), invoked via buf.gen.docker.yaml. docs/v1/openapi.yaml is committed
+# and NOT regenerated here — it is the reviewed REST contract.
+ARG BUF_VERSION=1.50.0
+RUN --mount=type=cache,target=/go/pkg/mod/ \
+    go install github.com/bufbuild/buf/cmd/buf@v${BUF_VERSION}
+
+# Copy the source (bind mount is read-only, but codegen writes into the tree).
+COPY ${PROJECT_PATH}/ .
+
+RUN --mount=type=cache,target=/go/pkg/mod/ \
+    buf generate --template buf.gen.docker.yaml
+
+RUN --mount=type=cache,target=/go/pkg/mod/ \
     CGO_ENABLED=1 GOARCH=$TARGETARCH go build -o /bin/vsservice ./main.go
 
 ################################################################################

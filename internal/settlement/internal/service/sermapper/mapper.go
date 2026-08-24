@@ -65,9 +65,32 @@ func (c *MapperImpl) ToInvProtos(source []model.Invitation) []*v1.Invitation {
 	}
 	return pSettlementv1InvitationList
 }
+func (c *MapperImpl) ToJoinRequestProto(source model.JoinRequest) *v1.JoinRequest {
+	var settlementv1JoinRequest v1.JoinRequest
+	settlementv1JoinRequest.Id = source.Id
+	settlementv1JoinRequest.UserId = source.UserId
+	settlementv1JoinRequest.SettlementId = source.SettlementId
+	return &settlementv1JoinRequest
+}
+func (c *MapperImpl) ToJoinRequestsProto(source []model.JoinRequest) []*v1.JoinRequest {
+	var pSettlementv1JoinRequestList []*v1.JoinRequest
+	if source != nil {
+		pSettlementv1JoinRequestList = make([]*v1.JoinRequest, len(source))
+		for i := 0; i < len(source); i++ {
+			pSettlementv1JoinRequestList[i] = c.ToJoinRequestProto(source[i])
+		}
+	}
+	return pSettlementv1JoinRequestList
+}
 func (c *MapperImpl) ToMemberProto(source model.Member) *v1.Member {
 	var settlementv1Member v1.Member
 	settlementv1Member.UserId = source.UserId
+	if source.RoleIds != nil {
+		settlementv1Member.RoleIds = make([]string, len(source.RoleIds))
+		for i := 0; i < len(source.RoleIds); i++ {
+			settlementv1Member.RoleIds[i] = source.RoleIds[i]
+		}
+	}
 	return &settlementv1Member
 }
 func (c *MapperImpl) ToMembersProto(source []model.Member) []*v1.Member {
@@ -79,6 +102,28 @@ func (c *MapperImpl) ToMembersProto(source []model.Member) []*v1.Member {
 		}
 	}
 	return pSettlementv1MemberList
+}
+func (c *MapperImpl) ToRoleProto(source model.Role) *v1.Role {
+	var settlementv1Role v1.Role
+	settlementv1Role.Id = source.Id
+	settlementv1Role.Name = source.Name
+	if source.Permissions != nil {
+		settlementv1Role.Permissions = make([]v1.Permission, len(source.Permissions))
+		for i := 0; i < len(source.Permissions); i++ {
+			settlementv1Role.Permissions[i] = service.PermissionToProto(source.Permissions[i])
+		}
+	}
+	return &settlementv1Role
+}
+func (c *MapperImpl) ToRolesProto(source []model.Role) []*v1.Role {
+	var pSettlementv1RoleList []*v1.Role
+	if source != nil {
+		pSettlementv1RoleList = make([]*v1.Role, len(source))
+		for i := 0; i < len(source); i++ {
+			pSettlementv1RoleList[i] = c.ToRoleProto(source[i])
+		}
+	}
+	return pSettlementv1RoleList
 }
 func (c *MapperImpl) ToSettlementProto(source model.Settlement) *v1.Settlement {
 	var settlementv1Settlement v1.Settlement
@@ -95,6 +140,9 @@ func (c *MapperImpl) ToSettlementProto(source model.Settlement) *v1.Settlement {
 	settlementv1Settlement.UpdatedAt = goverter.TimeToInt64(source.UpdatedAt)
 	settlementv1Settlement.ImperialFavor = source.ImperialFavor
 	settlementv1Settlement.Tags = service.TagIdsToProto(source.TagIds)
+	settlementv1Settlement.Roles = c.ToRolesProto(source.Roles)
+	settlementv1Settlement.RolesEnabled = source.RolesEnabled
+	settlementv1Settlement.ContactInfo = source.ContactInfo
 	return &settlementv1Settlement
 }
 func (c *MapperImpl) ToSettlementProtos(source []model.Settlement) []*v1.Settlement {

@@ -35,7 +35,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		return nil, err
 	}
 
-	if err := s.dbRepo.IsMemberOrLeader(ctx, "", userID); err != nil {
+	if err := s.dbRepo.IsMemberOfAnySettlement(ctx, userID); err != nil {
 		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", userID))
 		if !errors.Is(err, ierror.ErrAlreadyMember) {
 			return nil, err
@@ -241,12 +241,11 @@ func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemb
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.GetSettlementId(), uid); err != nil {
-		s.log.Error("failed to check if user is leader", zap.Error(err))
-		return nil, status.Error(codes.PermissionDenied, "user is not leader")
+	if err := s.requirePermission(ctx, req.GetSettlementId(), uid, model.PermInviteMember); err != nil {
+		return nil, err
 	}
 
-	if err := s.dbRepo.IsMemberOrLeader(ctx, req.GetSettlementId(), req.GetUserId()); err != nil {
+	if err := s.dbRepo.IsMemberOfAnySettlement(ctx, req.GetUserId()); err != nil {
 		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", req.GetUserId()))
 		if !errors.Is(err, ierror.ErrAlreadyMember) {
 			return nil, err
@@ -274,8 +273,7 @@ func (s *Service) GetInvitations(ctx context.Context, req *settlementv1.GetInvit
 	}
 	l = l.With(zap.String("user_id", uid))
 
-	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.GetSettlementId(), uid); err != nil {
-		l.Error("failed to check member or leader", zap.Error(err))
+	if err := s.requirePermission(ctx, req.GetSettlementId(), uid, model.PermInviteMember); err != nil {
 		return nil, err
 	}
 
@@ -300,13 +298,12 @@ func (s *Service) RevokeInvitation(ctx context.Context, req *settlementv1.Revoke
 	}
 	l = l.With(zap.String("user_id", uid))
 
-	if err := s.dbRepo.IsLeaderOfSettlement(ctx, req.GetSettlementId(), uid); err != nil {
-		l.Error("failed to check member or leader", zap.Error(err))
+	if err := s.requirePermission(ctx, req.GetSettlementId(), uid, model.PermInviteMember); err != nil {
 		return nil, err
 	}
 
 	if err := s.dbRepo.DeleteInvitationForLeader(ctx, req.GetInvitationId(), req.GetSettlementId()); err != nil {
-		s.log.Error("failed to revoke invitation", zap.Error(err))
+		l.Error("failed to revoke invitation", zap.Error(err))
 		return nil, err
 	}
 

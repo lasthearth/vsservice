@@ -9,6 +9,7 @@ import (
 	attachment "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
 	invitation "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
 	member "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
+	role "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/role"
 	settlement "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	vector2 "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
 	verification "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/verification"
@@ -61,6 +62,14 @@ func (c *MapperImpl) FromSettlementDTO(source settlement.Settlement) model.Settl
 		}
 	}
 	modelSettlement.ImperialFavor = source.ImperialFavor
+	if source.Roles != nil {
+		modelSettlement.Roles = make([]model.Role, len(source.Roles))
+		for l := 0; l < len(source.Roles); l++ {
+			modelSettlement.Roles[l] = c.roledtoRoleToModelRole(source.Roles[l])
+		}
+	}
+	modelSettlement.RolesEnabled = source.RolesEnabled
+	modelSettlement.ContactInfo = source.ContactInfo
 	modelSettlement.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)
 	modelSettlement.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
 	return modelSettlement
@@ -136,6 +145,14 @@ func (c *MapperImpl) ToSettlementDTO(source model.Settlement) settlement.Settlem
 		}
 	}
 	settlementdtoSettlement.ImperialFavor = source.ImperialFavor
+	if source.Roles != nil {
+		settlementdtoSettlement.Roles = make([]role.Role, len(source.Roles))
+		for l := 0; l < len(source.Roles); l++ {
+			settlementdtoSettlement.Roles[l] = c.modelRoleToRoledtoRole(source.Roles[l])
+		}
+	}
+	settlementdtoSettlement.RolesEnabled = source.RolesEnabled
+	settlementdtoSettlement.ContactInfo = source.ContactInfo
 	return settlementdtoSettlement
 }
 func (c *MapperImpl) attachmentdtoAttachmentToAttachmentdtoAttachment(source attachment.Attachment) attachment.Attachment {
@@ -155,11 +172,23 @@ func (c *MapperImpl) attachmentdtoAttachmentToModelAttachment(source attachment.
 func (c *MapperImpl) memberdtoMemberToMemberdtoMember(source member.Member) member.Member {
 	var memberdtoMember member.Member
 	memberdtoMember.UserId = source.UserId
+	if source.RoleIds != nil {
+		memberdtoMember.RoleIds = make([]string, len(source.RoleIds))
+		for i := 0; i < len(source.RoleIds); i++ {
+			memberdtoMember.RoleIds[i] = source.RoleIds[i]
+		}
+	}
 	return memberdtoMember
 }
 func (c *MapperImpl) memberdtoMemberToModelMember(source member.Member) model.Member {
 	var modelMember model.Member
 	modelMember.UserId = source.UserId
+	if source.RoleIds != nil {
+		modelMember.RoleIds = make([]string, len(source.RoleIds))
+		for i := 0; i < len(source.RoleIds); i++ {
+			modelMember.RoleIds[i] = source.RoleIds[i]
+		}
+	}
 	return modelMember
 }
 func (c *MapperImpl) modelAttachmentToAttachmentdtoAttachment(source model.Attachment) attachment.Attachment {
@@ -172,7 +201,25 @@ func (c *MapperImpl) modelAttachmentToAttachmentdtoAttachment(source model.Attac
 func (c *MapperImpl) modelMemberToMemberdtoMember(source model.Member) member.Member {
 	var memberdtoMember member.Member
 	memberdtoMember.UserId = source.UserId
+	if source.RoleIds != nil {
+		memberdtoMember.RoleIds = make([]string, len(source.RoleIds))
+		for i := 0; i < len(source.RoleIds); i++ {
+			memberdtoMember.RoleIds[i] = source.RoleIds[i]
+		}
+	}
 	return memberdtoMember
+}
+func (c *MapperImpl) modelRoleToRoledtoRole(source model.Role) role.Role {
+	var roledtoRole role.Role
+	roledtoRole.Id = source.Id
+	roledtoRole.Name = source.Name
+	if source.Permissions != nil {
+		roledtoRole.Permissions = make([]string, len(source.Permissions))
+		for i := 0; i < len(source.Permissions); i++ {
+			roledtoRole.Permissions[i] = string(source.Permissions[i])
+		}
+	}
+	return roledtoRole
 }
 func (c *MapperImpl) modelVector2ToVector2dtoVector2(source model.Vector2) vector2.Vector2 {
 	var vector2dtoVector2 vector2.Vector2
@@ -185,7 +232,20 @@ func (c *MapperImpl) mongoxModelToMongoxModel(source mongox.Model) mongox.Model 
 	mongoxModel.Id = goverter.ObjectIdToObjectId(source.Id)
 	mongoxModel.CreatedAt = goverter.TimeToTime(source.CreatedAt)
 	mongoxModel.UpdatedAt = goverter.TimeToTime(source.UpdatedAt)
+	mongoxModel.Version = source.Version
 	return mongoxModel
+}
+func (c *MapperImpl) roledtoRoleToModelRole(source role.Role) model.Role {
+	var modelRole model.Role
+	modelRole.Id = source.Id
+	modelRole.Name = source.Name
+	if source.Permissions != nil {
+		modelRole.Permissions = make([]model.Permission, len(source.Permissions))
+		for i := 0; i < len(source.Permissions); i++ {
+			modelRole.Permissions[i] = model.Permission(source.Permissions[i])
+		}
+	}
+	return modelRole
 }
 func (c *MapperImpl) vector2dtoVector2ToModelVector2(source vector2.Vector2) model.Vector2 {
 	var modelVector2 model.Vector2
