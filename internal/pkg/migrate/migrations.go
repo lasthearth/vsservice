@@ -52,6 +52,13 @@ func settlementMultiOwnerUp(ctx context.Context, db *mongo.Database) error {
 		return fmt.Errorf("cannot migrate: %d user_id(s) belong to more than one settlement: %v", len(dupeDocs), dupeDocs)
 	}
 
+	// Drop obsolete unique indexes FIRST. The old compound index
+	// leader.user_id_1_members.user_id_1 is unique; unsetting `leader` below
+	// collapses every touched document to (null, null) and would trip it with
+	// E11000. Missing-index errors are ignored (best-effort).
+	dropIndex(ctx, coll, "leader.user_id_1_members.user_id_1")
+	dropIndex(ctx, reqColl, "leader.user_id_-1")
+
 	// Fold leader into members with the owner role.
 	cur, err := coll.Find(ctx, bson.M{"leader": bson.M{"$exists": true}})
 	if err != nil {
@@ -97,15 +104,7 @@ func settlementMultiOwnerUp(ctx context.Context, db *mongo.Database) error {
 			return err
 		}
 	}
-	if err := cur.Err(); err != nil {
-		return err
-	}
-
-	// Drop obsolete indexes; the app recreates the replacements on startup.
-	// Missing-index errors (code 27, IndexNotFound) are ignored.
-	dropIndex(ctx, coll, "leader.user_id_1_members.user_id_1")
-	dropIndex(ctx, reqColl, "leader.user_id_-1")
-	return nil
+	return cur.Err()
 }
 
 func normalizeMembers(raw any) bson.A {
