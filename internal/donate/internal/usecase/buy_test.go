@@ -196,3 +196,81 @@ func TestBuyKeepsThePurchaseWhenTheLedgerFails(t *testing.T) {
 		t.Fatalf("transactions = %d, want none", len(repo.txs))
 	}
 }
+
+// An item purchase composes an item-mail and stamps the purchase issued by
+// system:mail in the same Buy sequence.
+func TestBuyItemComposesItemMailAndStampsIssued(t *testing.T) {
+	repo := newFakeRepo().withWallet("p1", "Bob", 100)
+	repo.withItem("i1", "Sword", 30)
+	mail := &fakeMail{}
+
+	p, err := newPurchasesWithMail(repo, mail).Buy(context.Background(), "p1", "i1")
+	if err != nil {
+		t.Fatalf("Buy: %v", err)
+	}
+
+	if len(mail.itemCalls) != 1 {
+		t.Fatalf("item mail calls = %d, want exactly one", len(mail.itemCalls))
+	}
+	if len(mail.kitCalls) != 0 {
+		t.Fatalf("kit mail calls = %d, want none for an item purchase", len(mail.kitCalls))
+	}
+	call := mail.itemCalls[0]
+	if call.recipient != "p1" || call.purchaseID != p.Id {
+		t.Fatalf("item mail = recipient %q purchase %q, want p1 / %s", call.recipient, call.purchaseID, p.Id)
+	}
+	if len(call.items) != 1 || call.items[0].GameCode != "code-i1" || call.items[0].Quantity != 1 || call.items[0].Type != "item" {
+		t.Fatalf("item spec = %+v, want one code-i1 x1 type=item", call.items)
+	}
+	if p.IssuedAt == nil || p.IssuedBy == nil || *p.IssuedBy != "system:mail" {
+		t.Fatalf("purchase = issued_at %v issued_by %v, want stamped by system:mail", p.IssuedAt, p.IssuedBy)
+	}
+}
+
+// A kit purchase composes a kit-mail (kit code == item.Code) and stamps the
+// purchase issued by system:mail.
+func TestBuyKitComposesKitMailAndStampsIssued(t *testing.T) {
+	repo := newFakeRepo().withWallet("p1", "Bob", 100)
+	repo.withKitItem("i1", "Food Kit", "foodkit", 30)
+	mail := &fakeMail{}
+
+	p, err := newPurchasesWithMail(repo, mail).Buy(context.Background(), "p1", "i1")
+	if err != nil {
+		t.Fatalf("Buy: %v", err)
+	}
+
+	if len(mail.kitCalls) != 1 {
+		t.Fatalf("kit mail calls = %d, want exactly one", len(mail.kitCalls))
+	}
+	if len(mail.itemCalls) != 0 {
+		t.Fatalf("item mail calls = %d, want none for a kit purchase", len(mail.itemCalls))
+	}
+	call := mail.kitCalls[0]
+	if call.recipient != "p1" || call.kitID != "foodkit" || call.purchaseID != p.Id {
+		t.Fatalf("kit mail = recipient %q kit %q purchase %q, want p1 / foodkit / %s", call.recipient, call.kitID, call.purchaseID, p.Id)
+	}
+	if p.IssuedBy == nil || *p.IssuedBy != "system:mail" {
+		t.Fatalf("purchase issued_by = %v, want system:mail", p.IssuedBy)
+	}
+}
+
+// A compose failure fails the Buy sequence: the purchase exists (record of
+// truth) but is not stamped issued.
+func TestBuyLeavesPurchaseUnstampedWhenComposeFails(t *testing.T) {
+	repo := newFakeRepo().withWallet("p1", "Bob", 100)
+	repo.withItem("i1", "Sword", 30)
+	mail := &fakeMail{err: errors.New("compose failed")}
+
+	_, err := newPurchasesWithMail(repo, mail).Buy(context.Background(), "p1", "i1")
+	if err == nil {
+		t.Fatal("Buy: got nil error, want the compose failure")
+	}
+	if len(repo.purchases) != 1 {
+		t.Fatalf("purchases = %d, want the purchase to survive a compose failure", len(repo.purchases))
+	}
+	for _, p := range repo.purchases {
+		if p.IsIssued() {
+			t.Fatal("purchase was stamped issued despite the compose failure")
+		}
+	}
+}

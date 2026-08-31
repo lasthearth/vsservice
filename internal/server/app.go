@@ -7,7 +7,9 @@ import (
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
 	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
+	kitdefv1 "github.com/lasthearth/vsservice/gen/kitdef/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
+	mailv1 "github.com/lasthearth/vsservice/gen/mail/v1"
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
@@ -47,6 +49,8 @@ type Opts struct {
 	HungerGamesV1   hgv1.HungerGamesServiceServer
 	ServerInfoV1    serverinfov1.ServerInfoServiceServer
 	MediaV1         mediav1.MediaServiceServer
+	MailV1          mailv1.MailServiceServer
+	KitDefV1        kitdefv1.KitDefServiceServer
 	ProgressionV1   progressionv1.ProgressionServiceServer
 	ImperialPointV1 imperialpointv1.ImperialPointServiceServer
 	DiscordV1       discordv1.DiscordServiceServer
@@ -71,6 +75,8 @@ type Server struct {
 	hungerGamesV1       hgv1.HungerGamesServiceServer
 	serverInfoV1        serverinfov1.ServerInfoServiceServer
 	mediaV1             mediav1.MediaServiceServer
+	mailV1              mailv1.MailServiceServer
+	kitDefV1            kitdefv1.KitDefServiceServer
 	progressionV1       progressionv1.ProgressionServiceServer
 	imperialPointV1     imperialpointv1.ImperialPointServiceServer
 	discordV1           discordv1.DiscordServiceServer
@@ -100,6 +106,8 @@ func New(opts Opts) *Server {
 		hungerGamesV1:       opts.HungerGamesV1,
 		serverInfoV1:        opts.ServerInfoV1,
 		mediaV1:             opts.MediaV1,
+		mailV1:              opts.MailV1,
+		kitDefV1:            opts.KitDefV1,
 		progressionV1:       opts.ProgressionV1,
 		imperialPointV1:     opts.ImperialPointV1,
 		discordV1:           opts.DiscordV1,

@@ -1,0 +1,119 @@
+- generic [active] [ref=f3e1]:
+  - generic [ref=f3e2]:
+    - button "empty" [ref=f3e3] [cursor=pointer]
+    - button "loading" [ref=f3e4] [cursor=pointer]
+  - generic [ref=f3e5]:
+    - generic [ref=f3e6]:
+      - generic [ref=f3e7]: Меню сервера
+      - generic [ref=f3e8] [cursor=pointer]: ✕
+    - generic [ref=f3e9]:
+      - generic [ref=f3e10]:
+        - generic [ref=f3e11]: Поиск…
+        - generic [ref=f3e12]:
+          - generic [ref=f3e13] [cursor=pointer]:
+            - generic [ref=f3e15]: События
+            - generic [ref=f3e16]: "2"
+          - generic [ref=f3e17] [cursor=pointer]:
+            - generic [ref=f3e19]: Почта
+            - generic [ref=f3e20]: "3"
+        - generic [ref=f3e21]: Гайды
+        - generic [ref=f3e24]:
+          - generic [ref=f3e25] [cursor=pointer]: Как начать
+          - generic [ref=f3e28] [cursor=pointer]: Правила сервера
+      - generic [ref=f3e32]:
+        - generic [ref=f3e33]: Почта
+        - generic [ref=f3e34]: "Непрочитанных: 3"
+        - generic [ref=f3e36]:
+          - generic [ref=f3e37]:
+            - generic [ref=f3e40] [cursor=pointer]:
+              - generic [ref=f3e41]: "Донат: набор «Странник»"
+              - generic [ref=f3e42]:
+                - generic [ref=f3e43]: Новое
+                - generic [ref=f3e44]: system:donate
+                - generic [ref=f3e45]: 2 мин назад
+              - generic [ref=f3e46]:
+                - generic [ref=f3e47]: "250"
+                - generic [ref=f3e49]:
+                  - generic [ref=f3e50]: ▦
+                  - text: ×1
+                - generic [ref=f3e51]:
+                  - generic [ref=f3e52]: ▦
+                  - text: ×3
+            - generic [ref=f3e55] [cursor=pointer]:
+              - generic [ref=f3e56]: Награда за победу в Голодных играх
+              - generic [ref=f3e57]:
+                - generic [ref=f3e58]: Новое
+                - generic [ref=f3e59]: admin:ripls
+                - generic [ref=f3e60]: 1 ч назад
+                - generic [ref=f3e61]: ⏳ через 6 дн
+              - generic [ref=f3e63]:
+                - generic [ref=f3e64]: ▦
+                - text: ×1
+            - generic [ref=f3e67] [cursor=pointer]:
+              - generic [ref=f3e68]: "Всем: обновление сервера 1.22"
+              - generic [ref=f3e69]:
+                - generic [ref=f3e70]: Новое
+                - generic [ref=f3e71]: admin:ripls
+                - generic [ref=f3e72]: 3 ч назад
+                - generic [ref=f3e73]: Всем
+                - generic [ref=f3e74]: ⏳ через 2 дн
+              - generic [ref=f3e75]: "1000"
+            - generic [ref=f3e79] [cursor=pointer]:
+              - generic [ref=f3e80]: Приветственное сообщение
+              - generic [ref=f3e81]:
+                - generic [ref=f3e82]: Прочитано
+                - generic [ref=f3e83]: system
+                - generic [ref=f3e84]: вчера
+                - generic [ref=f3e85]: Всем
+            - generic [ref=f3e87] [cursor=pointer]:
+              - generic [ref=f3e88]: "Донат: 500 осколков"
+              - generic [ref=f3e89]:
+                - generic [ref=f3e90]: Получено
+                - generic [ref=f3e91]: system:donate
+                - generic [ref=f3e92]: 2 дн назад
+              - generic [ref=f3e93]: "500"
+            - generic [ref=f3e97] [cursor=pointer]:
+              - generic [ref=f3e98]: Ежедневный бонус (истёк)
+              - generic [ref=f3e99]:
+                - generic [ref=f3e100]: Срок истёк
+                - generic [ref=f3e101]: system
+                - generic [ref=f3e102]: 8 дн назад
+                - generic [ref=f3e103]: Всем
+                - generic [ref=f3e104]: ⏳ истёк
+              - generic [ref=f3e106]:
+                - generic [ref=f3e107]: ▦
+                - text: ×2
+            - generic [ref=f3e109] [cursor=pointer]:
+              - generic [ref=f3e110]: Ошибочная выдача (отозвано)
+              - generic [ref=f3e111]:
+                - generic [ref=f3e112]: Отозвано
+                - generic [ref=f3e113]: admin:ripls
+                - generic [ref=f3e114]: 5 дн назад
+              - generic [ref=f3e116]:
+                - generic [ref=f3e117]: ▦
+                - text: ×5
+          - generic [ref=f3e119]:
+            - generic [ref=f3e120]: "Донат: набор «Странник»"
+            - generic [ref=f3e121]: Новое system:donate 2 мин назад
+            - generic [ref=f3e123]:
+              - text: Спасибо за покупку! Заберите содержимое набора ниже. Предметы упадут к ногам, если инвентарь полон.
+              - generic [ref=f3e125]:
+                - generic [ref=f3e126]:
+                  - generic [ref=f3e128]: Осколки искры
+                  - generic [ref=f3e129]: ×250
+                - generic [ref=f3e130]:
+                  - generic [ref=f3e131]: ▦
+                  - generic [ref=f3e132]: Сумка (game:bag-hunter)
+                  - generic [ref=f3e133]: ×1
+                - generic [ref=f3e134]:
+                  - generic [ref=f3e135]: ▦
+                  - generic [ref=f3e136]: Сыр (game:cheese)
+                  - generic [ref=f3e137]: ×3
+            - button "Забрать" [ref=f3e139] [cursor=pointer]
+  - generic [ref=f3e140]:
+    - text: ✉
+    - generic [ref=f3e141]: "3"
+  - generic [ref=f3e142]:
+    - button "‹" [ref=f3e143] [cursor=pointer]
+    - generic [ref=f3e144]: A — Split — список + письмо (классический inbox)
+    - button "›" [ref=f3e145] [cursor=pointer]

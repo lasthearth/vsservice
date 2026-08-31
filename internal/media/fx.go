@@ -23,7 +23,7 @@ var App = fx.Options(fx.Module("media",
 	fx.Invoke(func(lc fx.Lifecycle, s service.Storage) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
-				for _, bucket := range []string{"donate-shop", "settlementsreq", "news"} {
+				for _, bucket := range []string{"donate-shop", "settlementsreq", "news", "kit-icons"} {
 					exists, err := s.BucketExists(ctx, bucket)
 					if err != nil {
 						return err

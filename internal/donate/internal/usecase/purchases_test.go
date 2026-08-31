@@ -153,6 +153,15 @@ func (f *fakeRepo) withItem(id, name string, price int64) *model.ShopItem {
 	return item
 }
 
+// withKitItem seeds an available kit-type item at the given price. Code doubles
+// as the kit code the mail composer expands.
+func (f *fakeRepo) withKitItem(id, name, code string, price int64) *model.ShopItem {
+	item := model.NewKitShopItem(code, name, "", "", price, []model.KitEntry{{Name: "x", Quantity: 1}})
+	item.MarkCreated(id, time.Now())
+	f.items[id] = item
+	return item
+}
+
 // withPurchase seeds a stored purchase and returns it.
 func (f *fakeRepo) withPurchase(id, playerID, playerName string, pricePaid int64) *model.Purchase {
 	p := model.NewPurchase(playerID, playerName, "item-1", "Sword", pricePaid, pricePaid, 0)
@@ -162,5 +171,42 @@ func (f *fakeRepo) withPurchase(id, playerID, playerName string, pricePaid int64
 }
 
 func newPurchases(repo *fakeRepo) *usecase.Purchases {
-	return usecase.NewPurchases(usecase.Opts{Repo: repo, Seq: usecase.Inline{}})
+	return usecase.NewPurchases(usecase.Opts{Repo: repo, Seq: usecase.Inline{}, Mail: &fakeMail{}})
+}
+
+// fakeMail is a hand-written stand-in for usecase.MailComposer. It records the
+// composed mails so tests can assert which path (item vs kit) was taken.
+type fakeMail struct {
+	itemCalls []itemMailCall
+	kitCalls  []kitMailCall
+	err       error
+}
+
+type itemMailCall struct {
+	recipient, title, body, purchaseID string
+	items                              []usecase.ItemSpec
+}
+
+type kitMailCall struct {
+	recipient, kitID, title, body, purchaseID string
+}
+
+func (f *fakeMail) ComposeItemMail(_ context.Context, recipient, title, body, purchaseID string, items []usecase.ItemSpec) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.itemCalls = append(f.itemCalls, itemMailCall{recipient, title, body, purchaseID, items})
+	return nil
+}
+
+func (f *fakeMail) ComposeKitMail(_ context.Context, recipient, kitID, title, body, purchaseID string) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.kitCalls = append(f.kitCalls, kitMailCall{recipient, kitID, title, body, purchaseID})
+	return nil
+}
+
+func newPurchasesWithMail(repo *fakeRepo, mail *fakeMail) *usecase.Purchases {
+	return usecase.NewPurchases(usecase.Opts{Repo: repo, Seq: usecase.Inline{}, Mail: mail})
 }

@@ -92,31 +92,27 @@ paths:
             title: settlement_id
         - name: next_token
           in: query
+          description: '(OPTIONAL) '
           required: false
           schema:
             type: string
             title: next_token
-            description: '(OPTIONAL) '
         - name: admin_id
           in: query
-          description: Filter logs by the admin who performed the operation.
+          description: (OPTIONAL) Filter logs by the admin who performed the operation.
           required: false
           schema:
             type: string
             title: admin_id
-            description: (OPTIONAL) Filter logs by the admin who performed the operation.
         - name: order_by
           in: query
           description: |-
-            Sort order. Format: "field [asc|desc]". Default: "created_at desc".
+            (OPTIONAL) Sort order. Format: "field [asc|desc]". Default: "created_at desc".
              Allowed fields: created_at, settlement_id, admin_id.
           required: false
           schema:
             type: string
             title: order_by
-            description: |-
-              (OPTIONAL) Sort order. Format: "field [asc|desc]". Default: "created_at desc".
-               Allowed fields: created_at, settlement_id, admin_id.
       responses:
         "200":
           description: Success
@@ -365,7 +361,6 @@ paths:
           schema:
             type: string
             title: channel_id
-            description: Discord channel ID.
         - name: limit
           in: query
           description: 'Maximum number of images. Allowed range: [1, 100].'
@@ -373,14 +368,12 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: 'Maximum number of images. Allowed range: [1, 100].'
         - name: before
           in: query
           description: Message ID to fetch before (for pagination).
           schema:
             type: string
             title: before
-            description: Message ID to fetch before (for pagination).
       responses:
         "200":
           description: Success
@@ -403,7 +396,6 @@ paths:
           schema:
             type: string
             title: channel_id
-            description: Discord channel ID.
         - name: limit
           in: query
           description: 'Maximum number of messages. Allowed range: [1, 100].'
@@ -411,14 +403,12 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: 'Maximum number of messages. Allowed range: [1, 100].'
         - name: before
           in: query
           description: Message ID to fetch before (for pagination).
           schema:
             type: string
             title: before
-            description: Message ID to fetch before (for pagination).
       responses:
         "200":
           description: Success
@@ -956,7 +946,6 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: Maximum number of entries. Defaults to 25.
       responses:
         "200":
           description: Success
@@ -1038,7 +1027,6 @@ paths:
           schema:
             type: string
             title: next
-            description: Cursor from a previous response for pagination.
         - name: limit
           in: query
           description: Maximum number of seasons. Defaults to 20.
@@ -1046,7 +1034,6 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: Maximum number of seasons. Defaults to 20.
       responses:
         "200":
           description: Success
@@ -1297,6 +1284,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/trademarket.v1.CreateResponse'
+  /v1/kitdefs:
+    get:
+      tags:
+        - KitDefService
+      summary: 'Admin: list every captured kit with its display metadata and item icons.'
+      description: |-
+        Returns all kits in one response — attr_snapshot is not exposed.
+
+         Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing kit:edit scope
+           - INTERNAL (500): database failure
+      operationId: KitDefService_ListKits
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/kitdef.v1.ListKitsResponse'
+  /v1/kitdefs/{code}:rename:
+    post:
+      tags:
+        - KitDefService
+      summary: 'Admin: rename a kit (set its display title). Metadata-only $set, no upsert.'
+      description: |-
+        NotFound when the kit was never captured by the game — vsservice does not
+         insert. Only the title changes; code/items/created_at stay the game's.
+
+         Errors:
+           - INVALID_ARGUMENT (400): empty code or title
+           - NOT_FOUND (404): kit was never captured
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing kit:edit scope
+           - INTERNAL (500): database failure
+      operationId: KitDefService_RenameKit
+      parameters:
+        - name: code
+          in: path
+          description: Upsert key of the kit to rename.
+          required: true
+          schema:
+            type: string
+            title: code
+            minLength: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  title: title
+                  minLength: 1
+                  description: New display title.
+              title: RenameKitRequest
+              required:
+                - title
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/kitdef.v1.RenameKitResponse'
   /v1/kits:
     get:
       tags:
@@ -1365,7 +1420,6 @@ paths:
           required: true
           schema:
             title: filter
-            description: Leaderboard filter. Service will return entries sorted by provided filter.
             $ref: '#/components/schemas/leaderboard.v1.LeaderboardRequest.LeaderboardFilter'
         - name: limit
           in: query
@@ -1374,7 +1428,6 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: "The maximum number of entries to return.\r\n If unspecified, 25 entry will be returned."
       responses:
         "200":
           description: Success
@@ -1382,6 +1435,248 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/leaderboard.v1.LeaderboardResponse'
+  /v1/mail:
+    get:
+      tags:
+        - MailService
+      summary: 'Player: list the caller''s mails joined with their per-player claim state.'
+      description: |-
+        Returns targeted mails (recipient == caller) and broadcasts. State is
+         derived: no claim row → UNREAD; revoked/expired computed at read.
+
+         Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: MailService_ListMail
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mail.v1.ListMailResponse'
+  /v1/mail/{mail_id}:claim:
+    post:
+      tags:
+        - MailService
+      summary: 'Player: claim the attachments of one of the caller''s mails. Idempotent.'
+      description: |-
+        The claimed row is written before physical delivery (VintageAPI grants by
+         reading Mongo). Not claimable when the mail has no attachments, is expired,
+         or was revoked before the claim.
+
+         Errors:
+           - NOT_FOUND (404): mail does not exist or is not addressed to the caller
+           - FAILED_PRECONDITION (412): nothing to claim, expired, or revoked
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: MailService_Claim
+      parameters:
+        - name: mail_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: mail_id
+            minLength: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mail_id:
+                  type: string
+                  title: mail_id
+                  minLength: 1
+              title: ClaimRequest
+              required:
+                - mail_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mail.v1.ClaimResponse'
+  /v1/mail/{mail_id}:read:
+    post:
+      tags:
+        - MailService
+      summary: 'Player: mark one of the caller''s mails as read. Idempotent.'
+      description: |-
+        Errors:
+           - NOT_FOUND (404): mail does not exist or is not addressed to the caller
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: MailService_MarkRead
+      parameters:
+        - name: mail_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: mail_id
+            minLength: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mail_id:
+                  type: string
+                  title: mail_id
+                  minLength: 1
+              title: MarkReadRequest
+              required:
+                - mail_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mail.v1.MarkReadResponse'
+  /v1/mail/{mail_id}:revoke:
+    post:
+      tags:
+        - MailService
+      summary: 'Admin: revoke a mail before it is claimed. Idempotent.'
+      description: |-
+        Sets the revoked flag on the document (not on claims). Non-claimers lose
+         access (status revoked at read); already-claimed grants are NOT rolled back.
+
+         Errors:
+           - NOT_FOUND (404): mail not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: MailService_RevokeMail
+      parameters:
+        - name: mail_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: mail_id
+            minLength: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mail_id:
+                  type: string
+                  title: mail_id
+                  minLength: 1
+              title: RevokeMailRequest
+              required:
+                - mail_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mail.v1.RevokeMailResponse'
+  /v1/mail:claim-all:
+    post:
+      tags:
+        - MailService
+      summary: 'Player: claim every claimable mail for the caller. Idempotent.'
+      description: |-
+        Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: MailService_ClaimAll
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mail.v1.ClaimAllRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mail.v1.ClaimAllResponse'
+  /v1/mail:compose:
+    post:
+      tags:
+        - MailService
+      summary: 'Admin: compose a mail to one player or to everyone (broadcast).'
+      description: |-
+        Broadcast creates ONE document with recipient "broadcast"; there is no
+         fan-out (per-player claim rows are created lazily on read/claim). An empty
+         attachments list is a pure notification. Optional idempotency_key makes the
+         call retry-safe: the same key returns the same mail.
+
+         Errors:
+           - INVALID_ARGUMENT (400): missing recipient, empty title/body, or bad attachment
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: MailService_ComposeMail
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mail.v1.ComposeMailRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mail.v1.ComposeMailResponse'
+  /v1/mail:compose-kit:
+    post:
+      tags:
+        - MailService
+      summary: |-
+        Admin: compose a mail whose attachments are a captured kit's contents,
+         expanded server-side. Addressed to one player or to everyone (broadcast).
+      description: |-
+        The kit is expanded at compose time into item attachments (game_code +
+         type + quantity + attr_snapshot carried through as-is); the kit reference
+         itself is never stored on the mail. A kit that was never captured is
+         NOT_FOUND; a captured-but-empty kit is FAILED_PRECONDITION (an empty kit is
+         treated as missing — a claimless kit-mail is never created). Optional
+         idempotency_key makes the call retry-safe: the same key returns the same
+         mail.
+
+         Errors:
+           - INVALID_ARGUMENT (400): missing recipient, empty kit_id/title/body
+           - NOT_FOUND (404): kit was never captured
+           - FAILED_PRECONDITION (412): kit is empty (nothing to grant)
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: MailService_ComposeKitMail
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mail.v1.ComposeKitMailRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mail.v1.ComposeKitMailResponse'
   /v1/media/upload-urls:
     post:
       tags:
@@ -1417,14 +1712,12 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: "The maximum number of news to return. The service may return fewer than\r\n this value.\r\n If unspecified, at most 15 news will be returned.\r\n The maximum value is 50; values above 50 will be coerced to 50."
         - name: page_token
           in: query
           description: "A page token, received from a previous `ListBooks` call.\r\n Provide this to retrieve the subsequent page.\r\n\r\n When paginating, all other parameters provided to `ListBooks` must match\r\n the call that provided the page token."
           schema:
             type: string
             title: page_token
-            description: "A page token, received from a previous `ListBooks` call.\r\n Provide this to retrieve the subsequent page.\r\n\r\n When paginating, all other parameters provided to `ListBooks` must match\r\n the call that provided the page token."
       responses:
         "200":
           description: Success
@@ -1466,7 +1759,6 @@ paths:
           schema:
             type: string
             title: id
-            description: The unique identifier of the news item to retrieve.
       responses:
         "200":
           description: Success
@@ -1488,7 +1780,6 @@ paths:
           schema:
             type: string
             title: id
-            description: The unique identifier of the news item to delete.
       responses:
         "200":
           description: Success
@@ -1511,7 +1802,6 @@ paths:
           schema:
             type: string
             title: id
-            description: The unique identifier of the news item.
       responses:
         "200":
           description: Success
@@ -1534,21 +1824,18 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: "The maximum number of notifications to return. The service may return fewer\r\n than this value. If unspecified, at most 15 notifications will be returned.\r\n The maximum value is 15; values above 15 will be coerced to 15."
         - name: page_token
           in: query
           description: A token identifying a page of results the server should return.
           schema:
             type: string
             title: page_token
-            description: A token identifying a page of results the server should return.
         - name: order_by
           in: query
           description: "The field to sort by, followed by direction (e.g., \"created_at desc\" or \"state asc\").\r\n Supported fields: \"created_at\", \"state\". If unspecified, defaults to \"created_at desc\"."
           schema:
             type: string
             title: order_by
-            description: "The field to sort by, followed by direction (e.g., \"created_at desc\" or \"state asc\").\r\n Supported fields: \"created_at\", \"state\". If unspecified, defaults to \"created_at desc\"."
       responses:
         "200":
           description: Success
@@ -1571,7 +1858,6 @@ paths:
           schema:
             type: string
             title: id
-            description: "The identifier of the notification to mark as read.\r\n Required."
       responses:
         "200":
           description: Success
@@ -2053,7 +2339,6 @@ paths:
             type: integer
             title: count
             format: int32
-            description: Count of questions to return, if not specified, returns 5 questions
       responses:
         "200":
           description: Success
@@ -3250,7 +3535,6 @@ paths:
           required: true
           schema:
             title: filter
-            description: Stats filter. Service will return count sorted by provided filter.
             $ref: '#/components/schemas/stats.v1.OnlineStatsRequest.StatsFilter'
         - name: started_at
           in: query
@@ -3261,7 +3545,6 @@ paths:
               - string
             title: started_at
             format: int64
-            description: Start time for filtering
       responses:
         "200":
           description: Success
@@ -3596,7 +3879,6 @@ paths:
             title: user_ids
             maxItems: 100
             minItems: 1
-            description: At least 1 and at most 100 user IDs.
       responses:
         "200":
           description: Success
@@ -5278,6 +5560,91 @@ components:
       title: ListUserAssignmentsResponse
       additionalProperties: false
       description: Response containing user assignments list
+    kitdef.v1.KitDef:
+      type: object
+      properties:
+        code:
+          type: string
+          title: code
+          description: Unique upsert key, written by the game.
+        title:
+          type: string
+          title: title
+          description: Display name, written by RenameKit.
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/kitdef.v1.KitItem'
+          title: items
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updated_at:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: KitDef
+      additionalProperties: false
+      description: 'KitDef is a captured kit: game-owned content plus vsservice-owned title.'
+    kitdef.v1.KitItem:
+      type: object
+      properties:
+        game_code:
+          type: string
+          title: game_code
+          description: Full namespaced Collectible.Code (identifies the item/block).
+        type:
+          type: string
+          title: type
+          description: '"item" or "block".'
+        quantity:
+          type: integer
+          title: quantity
+          format: int32
+        image_url:
+          type: string
+          title: image_url
+          description: <CDN>/<bucket>/<uuidv7>.png
+      title: KitItem
+      additionalProperties: false
+      description: |-
+        KitItem is one entry of a kit's contents. attr_snapshot is intentionally NOT
+         present here — it stays server-side.
+    kitdef.v1.ListKitsRequest:
+      type: object
+      title: ListKitsRequest
+      additionalProperties: false
+    kitdef.v1.ListKitsResponse:
+      type: object
+      properties:
+        kits:
+          type: array
+          items:
+            $ref: '#/components/schemas/kitdef.v1.KitDef'
+          title: kits
+      title: ListKitsResponse
+      additionalProperties: false
+    kitdef.v1.RenameKitRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          title: code
+          minLength: 1
+          description: Upsert key of the kit to rename.
+        title:
+          type: string
+          title: title
+          minLength: 1
+          description: New display title.
+      title: RenameKitRequest
+      required:
+        - code
+        - title
+      additionalProperties: false
+    kitdef.v1.RenameKitResponse:
+      type: object
+      title: RenameKitResponse
+      additionalProperties: false
     leaderboard.v1.LeaderboardEntry:
       type: object
       properties:
@@ -5334,6 +5701,328 @@ components:
             $ref: '#/components/schemas/leaderboard.v1.LeaderboardEntry'
           title: entries
       title: LeaderboardResponse
+      additionalProperties: false
+    mail.v1.Attachment:
+      type: object
+      oneOf:
+        - type: object
+          properties:
+            coins:
+              title: coins
+              $ref: '#/components/schemas/mail.v1.CoinsAttachment'
+          title: coins
+          required:
+            - coins
+        - type: object
+          properties:
+            item:
+              title: item
+              $ref: '#/components/schemas/mail.v1.ItemAttachment'
+          title: item
+          required:
+            - item
+      title: Attachment
+      additionalProperties: false
+      description: Attachment is exactly one of item or coins.
+    mail.v1.ClaimAllRequest:
+      type: object
+      title: ClaimAllRequest
+      additionalProperties: false
+    mail.v1.ClaimAllResponse:
+      type: object
+      properties:
+        claimed_mail_ids:
+          type: array
+          items:
+            type: string
+          title: claimed_mail_ids
+          description: IDs of the mails claimed by this call.
+      title: ClaimAllResponse
+      additionalProperties: false
+    mail.v1.ClaimRequest:
+      type: object
+      properties:
+        mail_id:
+          type: string
+          title: mail_id
+          minLength: 1
+      title: ClaimRequest
+      required:
+        - mail_id
+      additionalProperties: false
+    mail.v1.ClaimResponse:
+      type: object
+      title: ClaimResponse
+      additionalProperties: false
+    mail.v1.CoinsAttachment:
+      type: object
+      properties:
+        amount:
+          exclusiveMinimum: 0
+          type:
+            - integer
+            - string
+          title: amount
+          format: int64
+      title: CoinsAttachment
+      required:
+        - amount
+      additionalProperties: false
+      description: CoinsAttachment grants donate-wallet coins.
+    mail.v1.ComposeKitMailRequest:
+      type: object
+      allOf:
+        - properties:
+            kit_id:
+              type: string
+              title: kit_id
+              minLength: 1
+              description: Code of a captured kit; expanded into item attachments at compose time.
+            title:
+              type: string
+              title: title
+              minLength: 1
+            body:
+              type: string
+              title: body
+              minLength: 1
+            expires_at:
+              oneOf:
+                - $ref: '#/components/schemas/google.protobuf.Timestamp'
+                - type: "null"
+              title: expires_at
+              description: |
+                nil = never expires; if set, must be in the future.
+                timestamp.gt_now = true
+            idempotency_key:
+              type:
+                - string
+                - "null"
+              title: idempotency_key
+              description: Optional. Repeat with the same key to get the same mail; empty = always new.
+        - oneOf:
+            - type: object
+              properties:
+                broadcast:
+                  type: boolean
+                  title: broadcast
+              title: broadcast
+              required:
+                - broadcast
+            - type: object
+              properties:
+                user_id:
+                  type: string
+                  title: user_id
+              title: user_id
+              required:
+                - user_id
+      title: ComposeKitMailRequest
+      required:
+        - kit_id
+        - title
+        - body
+      additionalProperties: false
+    mail.v1.ComposeKitMailResponse:
+      type: object
+      properties:
+        mail_id:
+          type: string
+          title: mail_id
+      title: ComposeKitMailResponse
+      additionalProperties: false
+    mail.v1.ComposeMailRequest:
+      type: object
+      allOf:
+        - properties:
+            title:
+              type: string
+              title: title
+              minLength: 1
+            body:
+              type: string
+              title: body
+              minLength: 1
+            attachments:
+              type: array
+              items:
+                $ref: '#/components/schemas/mail.v1.Attachment'
+              title: attachments
+            expires_at:
+              oneOf:
+                - $ref: '#/components/schemas/google.protobuf.Timestamp'
+                - type: "null"
+              title: expires_at
+              description: |
+                nil = never expires; if set, must be in the future.
+                timestamp.gt_now = true
+            idempotency_key:
+              type:
+                - string
+                - "null"
+              title: idempotency_key
+              description: Optional. Repeat with the same key to get the same mail; empty = always new.
+        - oneOf:
+            - type: object
+              properties:
+                broadcast:
+                  type: boolean
+                  title: broadcast
+              title: broadcast
+              required:
+                - broadcast
+            - type: object
+              properties:
+                user_id:
+                  type: string
+                  title: user_id
+              title: user_id
+              required:
+                - user_id
+      title: ComposeMailRequest
+      required:
+        - title
+        - body
+      additionalProperties: false
+    mail.v1.ComposeMailResponse:
+      type: object
+      properties:
+        mail_id:
+          type: string
+          title: mail_id
+      title: ComposeMailResponse
+      additionalProperties: false
+    mail.v1.ItemAttachment:
+      type: object
+      properties:
+        game_code:
+          type: string
+          title: game_code
+          minLength: 1
+        quantity:
+          exclusiveMinimum: 0
+          type: integer
+          title: quantity
+          format: int32
+        attr_snapshot:
+          type: string
+          title: attr_snapshot
+          description: Base64 binary TreeAttribute snapshot. Empty = plain stack.
+        type:
+          type: string
+          title: type
+          enum:
+            - ""
+            - item
+            - block
+          description: '"item" (default) or "block".'
+      title: ItemAttachment
+      required:
+        - game_code
+        - quantity
+      additionalProperties: false
+      description: |-
+        ItemAttachment grants a game item or block. game_code + type identify the
+         asset (VintageAPI resolves it); attr_snapshot is a base64 TreeAttribute
+         snapshot (empty = plain stack). Validity of game_code is checked at claim by
+         VintageAPI, not here.
+    mail.v1.ListMailRequest:
+      type: object
+      title: ListMailRequest
+      additionalProperties: false
+    mail.v1.ListMailResponse:
+      type: object
+      properties:
+        mails:
+          type: array
+          items:
+            $ref: '#/components/schemas/mail.v1.Mail'
+          title: mails
+      title: ListMailResponse
+      additionalProperties: false
+    mail.v1.Mail:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        recipient:
+          type: string
+          title: recipient
+          description: Either a user_id or the literal "broadcast".
+        sender:
+          type: string
+          title: sender
+          description: e.g. "admin:{jwt_sub}" or "system:donate".
+        title:
+          type: string
+          title: title
+        body:
+          type: string
+          title: body
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/mail.v1.Attachment'
+          title: attachments
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        expires_at:
+          title: expires_at
+          description: nil = never expires.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        state:
+          title: state
+          $ref: '#/components/schemas/mail.v1.MailState'
+        revoked:
+          type: boolean
+          title: revoked
+      title: Mail
+      additionalProperties: false
+      description: Mail is an inbox entry. state is per-player and derived at read.
+    mail.v1.MailState:
+      type: string
+      title: MailState
+      enum:
+        - MAIL_STATE_UNSPECIFIED
+        - MAIL_STATE_UNREAD
+        - MAIL_STATE_READ
+        - MAIL_STATE_CLAIMED
+        - MAIL_STATE_EXPIRED
+        - MAIL_STATE_REVOKED
+      description: |-
+        MailState is the per-player state, derived at read from the mail document and
+         the caller's claim row.
+    mail.v1.MarkReadRequest:
+      type: object
+      properties:
+        mail_id:
+          type: string
+          title: mail_id
+          minLength: 1
+      title: MarkReadRequest
+      required:
+        - mail_id
+      additionalProperties: false
+    mail.v1.MarkReadResponse:
+      type: object
+      title: MarkReadResponse
+      additionalProperties: false
+    mail.v1.RevokeMailRequest:
+      type: object
+      properties:
+        mail_id:
+          type: string
+          title: mail_id
+          minLength: 1
+      title: RevokeMailRequest
+      required:
+        - mail_id
+      additionalProperties: false
+    mail.v1.RevokeMailResponse:
+      type: object
+      title: RevokeMailResponse
       additionalProperties: false
     media.v1.CreateUploadUrlsRequest:
       type: object
@@ -7694,8 +8383,34 @@ tags:
     description: ImperialPointService manages neutral-zone key locations and their control state.
   - name: KitService
     description: Kit service for managing game kit assignment to users
+  - name: KitDefService
+    description: |-
+      KitDefService — read model + metadata writer over the shared `kits`
+       collection.
+
+       Ownership is split by field, not by document: the game (VintageAPI) is the
+       content writer via Mongo-direct ($setOnInsert code/items/created_at), while
+       vsservice writes only display metadata (title). The two writers touch
+       disjoint fields, so they never collide. vsservice NEVER inserts a kit and
+       NEVER writes content — an unknown code is NotFound, not a new document.
+
+       attr_snapshot (the base64 TreeAttribute per item) is deliberately absent from
+       the wire types below: it is server-side only, mirroring DailyRewards keeping
+       attributes off the client. Both rpcs require the admin scope kit:edit.
   - name: LeaderboardService
     description: Represent basic leaderboard
+  - name: MailService
+    description: |-
+      MailService — player inbox plus admin compose/revoke.
+
+       One service, split only by JWT scope: ListMail/MarkRead/Claim/ClaimAll are
+       self-service (the caller is the recipient); ComposeMail/RevokeMail require
+       admin scopes (mail:compose / mail:revoke).
+
+       The mail document is immutable content; per-player state (unread/read/claimed)
+       lives in the mail_claims collection and is derived at read. expired/revoked
+       are derived, never stored. Physical delivery of item/coin attachments is done
+       by VintageAPI reading Mongo — vsservice only manages documents and claim rows.
   - name: MediaService
     description: MediaService issues presigned POST targets for direct uploads to S3.
   - name: NewsService

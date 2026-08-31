@@ -1,0 +1,100 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - button "empty" [ref=f1e3] [cursor=pointer]
+    - button "loading" [ref=f1e4] [cursor=pointer]
+  - generic [ref=f1e5]:
+    - generic [ref=f1e6]:
+      - generic [ref=f1e7]: Меню сервера
+      - generic [ref=f1e8] [cursor=pointer]: ✕
+    - generic [ref=f1e9]:
+      - generic [ref=f1e10]:
+        - generic [ref=f1e11]: Поиск…
+        - generic [ref=f1e12]:
+          - generic [ref=f1e13] [cursor=pointer]:
+            - generic [ref=f1e15]: События
+            - generic [ref=f1e16]: "2"
+          - generic [ref=f1e17] [cursor=pointer]:
+            - generic [ref=f1e19]: Почта
+            - generic [ref=f1e20]: "3"
+        - generic [ref=f1e21]: Гайды
+        - generic [ref=f1e24]:
+          - generic [ref=f1e25] [cursor=pointer]: Как начать
+          - generic [ref=f1e28] [cursor=pointer]: Правила сервера
+      - generic [ref=f1e32]:
+        - generic [ref=f1e33]: Почта
+        - generic [ref=f1e34]: "Непрочитанных: 3"
+        - generic [ref=f1e36]:
+          - generic [ref=f1e39] [cursor=pointer]:
+            - generic [ref=f1e40]: "Донат: набор «Странник»"
+            - generic [ref=f1e41]:
+              - generic [ref=f1e42]: Новое
+              - generic [ref=f1e43]: system:donate
+              - generic [ref=f1e44]: 2 мин назад
+            - generic [ref=f1e45]:
+              - generic [ref=f1e46]: "250"
+              - generic [ref=f1e48]:
+                - generic [ref=f1e49]: ▦
+                - text: ×1
+              - generic [ref=f1e50]:
+                - generic [ref=f1e51]: ▦
+                - text: ×3
+          - generic [ref=f1e54] [cursor=pointer]:
+            - generic [ref=f1e55]: Награда за победу в Голодных играх
+            - generic [ref=f1e56]:
+              - generic [ref=f1e57]: Новое
+              - generic [ref=f1e58]: admin:ripls
+              - generic [ref=f1e59]: 1 ч назад
+              - generic [ref=f1e60]: ⏳ через 6 дн
+            - generic [ref=f1e62]:
+              - generic [ref=f1e63]: ▦
+              - text: ×1
+          - generic [ref=f1e66] [cursor=pointer]:
+            - generic [ref=f1e67]: "Всем: обновление сервера 1.22"
+            - generic [ref=f1e68]:
+              - generic [ref=f1e69]: Новое
+              - generic [ref=f1e70]: admin:ripls
+              - generic [ref=f1e71]: 3 ч назад
+              - generic [ref=f1e72]: Всем
+              - generic [ref=f1e73]: ⏳ через 2 дн
+            - generic [ref=f1e74]: "1000"
+          - generic [ref=f1e78] [cursor=pointer]:
+            - generic [ref=f1e79]: Приветственное сообщение
+            - generic [ref=f1e80]:
+              - generic [ref=f1e81]: Прочитано
+              - generic [ref=f1e82]: system
+              - generic [ref=f1e83]: вчера
+              - generic [ref=f1e84]: Всем
+          - generic [ref=f1e86] [cursor=pointer]:
+            - generic [ref=f1e87]: "Донат: 500 осколков"
+            - generic [ref=f1e88]:
+              - generic [ref=f1e89]: Получено
+              - generic [ref=f1e90]: system:donate
+              - generic [ref=f1e91]: 2 дн назад
+            - generic [ref=f1e92]: "500"
+          - generic [ref=f1e96] [cursor=pointer]:
+            - generic [ref=f1e97]: Ежедневный бонус (истёк)
+            - generic [ref=f1e98]:
+              - generic [ref=f1e99]: Срок истёк
+              - generic [ref=f1e100]: system
+              - generic [ref=f1e101]: 8 дн назад
+              - generic [ref=f1e102]: Всем
+              - generic [ref=f1e103]: ⏳ истёк
+            - generic [ref=f1e105]:
+              - generic [ref=f1e106]: ▦
+              - text: ×2
+          - generic [ref=f1e108] [cursor=pointer]:
+            - generic [ref=f1e109]: Ошибочная выдача (отозвано)
+            - generic [ref=f1e110]:
+              - generic [ref=f1e111]: Отозвано
+              - generic [ref=f1e112]: admin:ripls
+              - generic [ref=f1e113]: 5 дн назад
+            - generic [ref=f1e115]:
+              - generic [ref=f1e116]: ▦
+              - text: ×5
+  - generic [ref=f1e117]:
+    - text: ✉
+    - generic [ref=f1e118]: "3"
+  - generic [ref=f1e119]:
+    - button "‹" [ref=f1e120] [cursor=pointer]
+    - generic [ref=f1e121]: B — Drill-in — список на всю ширину, письмо отдельно
+    - button "›" [ref=f1e122] [cursor=pointer]

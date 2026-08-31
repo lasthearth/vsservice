@@ -1,0 +1,119 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - button "empty" [ref=e3] [cursor=pointer]
+    - button "loading" [ref=e4] [cursor=pointer]
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: Меню сервера
+      - generic [ref=e8] [cursor=pointer]: ✕
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic [ref=e11]: Поиск…
+        - generic [ref=e12]:
+          - generic [ref=e13] [cursor=pointer]:
+            - generic [ref=e15]: События
+            - generic [ref=e16]: "2"
+          - generic [ref=e17] [cursor=pointer]:
+            - generic [ref=e19]: Почта
+            - generic [ref=e20]: "3"
+        - generic [ref=e21]: Гайды
+        - generic [ref=e24]:
+          - generic [ref=e25] [cursor=pointer]: Как начать
+          - generic [ref=e28] [cursor=pointer]: Правила сервера
+      - generic [ref=e32]:
+        - generic [ref=e33]: Почта
+        - generic [ref=e34]: "Непрочитанных: 3"
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - generic [ref=e40] [cursor=pointer]:
+              - generic [ref=e41]: "Донат: набор «Странник»"
+              - generic [ref=e42]:
+                - generic [ref=e43]: Новое
+                - generic [ref=e44]: system:donate
+                - generic [ref=e45]: 2 мин назад
+              - generic [ref=e46]:
+                - generic [ref=e47]: "250"
+                - generic [ref=e49]:
+                  - generic [ref=e50]: ▦
+                  - text: ×1
+                - generic [ref=e51]:
+                  - generic [ref=e52]: ▦
+                  - text: ×3
+            - generic [ref=e55] [cursor=pointer]:
+              - generic [ref=e56]: Награда за победу в Голодных играх
+              - generic [ref=e57]:
+                - generic [ref=e58]: Новое
+                - generic [ref=e59]: admin:ripls
+                - generic [ref=e60]: 1 ч назад
+                - generic [ref=e61]: ⏳ через 6 дн
+              - generic [ref=e63]:
+                - generic [ref=e64]: ▦
+                - text: ×1
+            - generic [ref=e67] [cursor=pointer]:
+              - generic [ref=e68]: "Всем: обновление сервера 1.22"
+              - generic [ref=e69]:
+                - generic [ref=e70]: Новое
+                - generic [ref=e71]: admin:ripls
+                - generic [ref=e72]: 3 ч назад
+                - generic [ref=e73]: Всем
+                - generic [ref=e74]: ⏳ через 2 дн
+              - generic [ref=e75]: "1000"
+            - generic [ref=e79] [cursor=pointer]:
+              - generic [ref=e80]: Приветственное сообщение
+              - generic [ref=e81]:
+                - generic [ref=e82]: Прочитано
+                - generic [ref=e83]: system
+                - generic [ref=e84]: вчера
+                - generic [ref=e85]: Всем
+            - generic [ref=e87] [cursor=pointer]:
+              - generic [ref=e88]: "Донат: 500 осколков"
+              - generic [ref=e89]:
+                - generic [ref=e90]: Получено
+                - generic [ref=e91]: system:donate
+                - generic [ref=e92]: 2 дн назад
+              - generic [ref=e93]: "500"
+            - generic [ref=e97] [cursor=pointer]:
+              - generic [ref=e98]: Ежедневный бонус (истёк)
+              - generic [ref=e99]:
+                - generic [ref=e100]: Срок истёк
+                - generic [ref=e101]: system
+                - generic [ref=e102]: 8 дн назад
+                - generic [ref=e103]: Всем
+                - generic [ref=e104]: ⏳ истёк
+              - generic [ref=e106]:
+                - generic [ref=e107]: ▦
+                - text: ×2
+            - generic [ref=e109] [cursor=pointer]:
+              - generic [ref=e110]: Ошибочная выдача (отозвано)
+              - generic [ref=e111]:
+                - generic [ref=e112]: Отозвано
+                - generic [ref=e113]: admin:ripls
+                - generic [ref=e114]: 5 дн назад
+              - generic [ref=e116]:
+                - generic [ref=e117]: ▦
+                - text: ×5
+          - generic [ref=e119]:
+            - generic [ref=e120]: "Донат: набор «Странник»"
+            - generic [ref=e121]: Новое system:donate 2 мин назад
+            - generic [ref=e123]:
+              - text: Спасибо за покупку! Заберите содержимое набора ниже. Предметы упадут к ногам, если инвентарь полон.
+              - generic [ref=e125]:
+                - generic [ref=e126]:
+                  - generic [ref=e128]: Осколки искры
+                  - generic [ref=e129]: ×250
+                - generic [ref=e130]:
+                  - generic [ref=e131]: ▦
+                  - generic [ref=e132]: Сумка (game:bag-hunter)
+                  - generic [ref=e133]: ×1
+                - generic [ref=e134]:
+                  - generic [ref=e135]: ▦
+                  - generic [ref=e136]: Сыр (game:cheese)
+                  - generic [ref=e137]: ×3
+            - button "Забрать" [ref=e139] [cursor=pointer]
+  - generic [ref=e140]:
+    - text: ✉
+    - generic [ref=e141]: "3"
+  - generic [ref=e142]:
+    - button "‹" [ref=e143] [cursor=pointer]
+    - generic [ref=e144]: A — Split — список + письмо (классический inbox)
+    - button "›" [ref=e145] [cursor=pointer]
