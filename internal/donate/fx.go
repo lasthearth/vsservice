@@ -43,6 +43,10 @@ var App = fx.Options(
 		fx.Provide(
 			fx.Private,
 			usecase.NewPurchases,
+			// Adapt mail's public composer port to donate's consumer interface
+			// at the composition seam. donate imports mailcompose (public); mail
+			// never imports donate.
+			newMailComposerAdapter,
 		),
 
 		fx.Provide(

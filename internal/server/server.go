@@ -21,7 +21,9 @@ import (
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
 	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
+	kitdefv1 "github.com/lasthearth/vsservice/gen/kitdef/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
+	mailv1 "github.com/lasthearth/vsservice/gen/mail/v1"
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
@@ -111,6 +113,8 @@ func (s *Server) Build() error {
 	hgv1.RegisterHungerGamesServiceServer(srv, s.hungerGamesV1)
 	serverinfov1.RegisterServerInfoServiceServer(srv, s.serverInfoV1)
 	mediav1.RegisterMediaServiceServer(srv, s.mediaV1)
+	mailv1.RegisterMailServiceServer(srv, s.mailV1)
+	kitdefv1.RegisterKitDefServiceServer(srv, s.kitDefV1)
 	progressionv1.RegisterProgressionServiceServer(srv, s.progressionV1)
 	imperialpointv1.RegisterImperialPointServiceServer(srv, s.imperialPointV1)
 	discordv1.RegisterDiscordServiceServer(srv, s.discordV1)
@@ -204,6 +208,14 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := mediav1.RegisterMediaServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register media service handler")
+	}
+
+	if err := mailv1.RegisterMailServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register mail service handler")
+	}
+
+	if err := kitdefv1.RegisterKitDefServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register kitdef service handler")
 	}
 
 	if err := progressionv1.RegisterProgressionServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {

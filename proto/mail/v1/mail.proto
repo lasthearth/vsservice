@@ -1,0 +1,298 @@
+syntax = "proto3";
+
+package mail.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/timestamp.proto";
+
+// MailService — player inbox plus admin compose/revoke.
+//
+// One service, split only by JWT scope: ListMail/MarkRead/Claim/ClaimAll are
+// self-service (the caller is the recipient); ComposeMail/RevokeMail require
+// admin scopes (mail:compose / mail:revoke).
+//
+// The mail document is immutable content; per-player state (unread/read/claimed)
+// lives in the mail_claims collection and is derived at read. expired/revoked
+// are derived, never stored. Physical delivery of item/coin attachments is done
+// by VintageAPI reading Mongo — vsservice only manages documents and claim rows.
+service MailService {
+  // Player: list the caller's mails joined with their per-player claim state.
+  //
+  // Returns targeted mails (recipient == caller) and broadcasts. State is
+  // derived: no claim row → UNREAD; revoked/expired computed at read.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ListMail(ListMailRequest) returns (ListMailResponse) {
+    option (google.api.http) = {get: "/v1/mail"};
+  }
+
+  // Player: mark one of the caller's mails as read. Idempotent.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): mail does not exist or is not addressed to the caller
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse) {
+    option (google.api.http) = {
+      post: "/v1/mail/{mail_id}:read"
+      body: "*"
+    };
+  }
+
+  // Player: claim the attachments of one of the caller's mails. Idempotent.
+  //
+  // The claimed row is written before physical delivery (VintageAPI grants by
+  // reading Mongo). Not claimable when the mail has no attachments, is expired,
+  // or was revoked before the claim.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): mail does not exist or is not addressed to the caller
+  //   - FAILED_PRECONDITION (412): nothing to claim, expired, or revoked
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc Claim(ClaimRequest) returns (ClaimResponse) {
+    option (google.api.http) = {
+      post: "/v1/mail/{mail_id}:claim"
+      body: "*"
+    };
+  }
+
+  // Player: claim every claimable mail for the caller. Idempotent.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ClaimAll(ClaimAllRequest) returns (ClaimAllResponse) {
+    option (google.api.http) = {
+      post: "/v1/mail:claim-all"
+      body: "*"
+    };
+  }
+
+  // Admin: compose a mail to one player or to everyone (broadcast).
+  //
+  // Broadcast creates ONE document with recipient "broadcast"; there is no
+  // fan-out (per-player claim rows are created lazily on read/claim). An empty
+  // attachments list is a pure notification. Optional idempotency_key makes the
+  // call retry-safe: the same key returns the same mail.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): missing recipient, empty title/body, or bad attachment
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc ComposeMail(ComposeMailRequest) returns (ComposeMailResponse) {
+    option (google.api.http) = {
+      post: "/v1/mail:compose"
+      body: "*"
+    };
+  }
+
+  // Admin: revoke a mail before it is claimed. Idempotent.
+  //
+  // Sets the revoked flag on the document (not on claims). Non-claimers lose
+  // access (status revoked at read); already-claimed grants are NOT rolled back.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): mail not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc RevokeMail(RevokeMailRequest) returns (RevokeMailResponse) {
+    option (google.api.http) = {
+      post: "/v1/mail/{mail_id}:revoke"
+      body: "*"
+    };
+  }
+
+  // Admin: compose a mail whose attachments are a captured kit's contents,
+  // expanded server-side. Addressed to one player or to everyone (broadcast).
+  //
+  // The kit is expanded at compose time into item attachments (game_code +
+  // type + quantity + attr_snapshot carried through as-is); the kit reference
+  // itself is never stored on the mail. A kit that was never captured is
+  // NOT_FOUND; a captured-but-empty kit is FAILED_PRECONDITION (an empty kit is
+  // treated as missing — a claimless kit-mail is never created). Optional
+  // idempotency_key makes the call retry-safe: the same key returns the same
+  // mail.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): missing recipient, empty kit_id/title/body
+  //   - NOT_FOUND (404): kit was never captured
+  //   - FAILED_PRECONDITION (412): kit is empty (nothing to grant)
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc ComposeKitMail(ComposeKitMailRequest) returns (ComposeKitMailResponse) {
+    option (google.api.http) = {
+      post: "/v1/mail:compose-kit"
+      body: "*"
+    };
+  }
+}
+
+// MailState is the per-player state, derived at read from the mail document and
+// the caller's claim row.
+enum MailState {
+  MAIL_STATE_UNSPECIFIED = 0;
+  MAIL_STATE_UNREAD = 1;
+  MAIL_STATE_READ = 2;
+  MAIL_STATE_CLAIMED = 3;
+  MAIL_STATE_EXPIRED = 4;
+  MAIL_STATE_REVOKED = 5;
+}
+
+// ItemAttachment grants a game item or block. game_code + type identify the
+// asset (VintageAPI resolves it); attr_snapshot is a base64 TreeAttribute
+// snapshot (empty = plain stack). Validity of game_code is checked at claim by
+// VintageAPI, not here.
+message ItemAttachment {
+  string game_code = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+  int32 quantity = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).int32.gt = 0
+  ];
+  // Base64 binary TreeAttribute snapshot. Empty = plain stack.
+  string attr_snapshot = 3;
+  // "item" (default) or "block".
+  string type = 4 [(buf.validate.field).string = {in: [
+    "",
+    "item",
+    "block"
+  ]}];
+}
+
+// CoinsAttachment grants donate-wallet coins.
+message CoinsAttachment {
+  int64 amount = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).int64.gt = 0
+  ];
+}
+
+// Attachment is exactly one of item or coins.
+message Attachment {
+  oneof kind {
+    option (buf.validate.oneof).required = true;
+    ItemAttachment item = 1;
+    CoinsAttachment coins = 2;
+  }
+}
+
+// Mail is an inbox entry. state is per-player and derived at read.
+message Mail {
+  string id = 1;
+  // Either a user_id or the literal "broadcast".
+  string recipient = 2;
+  // e.g. "admin:{jwt_sub}" or "system:donate".
+  string sender = 3;
+  string title = 4;
+  string body = 5;
+  repeated Attachment attachments = 6;
+  google.protobuf.Timestamp created_at = 7;
+  // nil = never expires.
+  google.protobuf.Timestamp expires_at = 8;
+  MailState state = 9;
+  bool revoked = 10;
+}
+
+message ListMailRequest {}
+
+message ListMailResponse {
+  repeated Mail mails = 1;
+}
+
+message MarkReadRequest {
+  string mail_id = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+message MarkReadResponse {}
+
+message ClaimRequest {
+  string mail_id = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+message ClaimResponse {}
+
+message ClaimAllRequest {}
+
+message ClaimAllResponse {
+  // IDs of the mails claimed by this call.
+  repeated string claimed_mail_ids = 1;
+}
+
+message ComposeMailRequest {
+  oneof recipient {
+    option (buf.validate.oneof).required = true;
+    string user_id = 1;
+    bool broadcast = 2;
+  }
+  string title = 3 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+  string body = 4 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+  repeated Attachment attachments = 5;
+  // nil = never expires; if set, must be in the future.
+  optional google.protobuf.Timestamp expires_at = 6 [(buf.validate.field).timestamp.gt_now = true];
+  // Optional. Repeat with the same key to get the same mail; empty = always new.
+  optional string idempotency_key = 7;
+}
+
+message ComposeMailResponse {
+  string mail_id = 1;
+}
+
+message RevokeMailRequest {
+  string mail_id = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+message RevokeMailResponse {}
+
+message ComposeKitMailRequest {
+  oneof recipient {
+    option (buf.validate.oneof).required = true;
+    string user_id = 1;
+    bool broadcast = 2;
+  }
+  // Code of a captured kit; expanded into item attachments at compose time.
+  string kit_id = 3 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+  string title = 4 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+  string body = 5 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+  // nil = never expires; if set, must be in the future.
+  optional google.protobuf.Timestamp expires_at = 6 [(buf.validate.field).timestamp.gt_now = true];
+  // Optional. Repeat with the same key to get the same mail; empty = always new.
+  optional string idempotency_key = 7;
+}
+
+message ComposeKitMailResponse {
+  string mail_id = 1;
+}

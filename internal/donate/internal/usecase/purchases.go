@@ -33,6 +33,7 @@ type Opts struct {
 
 	Repo PurchaseRepo
 	Seq  Sequence
+	Mail MailComposer
 }
 
 // Purchases owns the rules that move coins in or out of a wallet against a
@@ -40,8 +41,9 @@ type Opts struct {
 type Purchases struct {
 	repo PurchaseRepo
 	seq  Sequence
+	mail MailComposer
 }
 
 func NewPurchases(opts Opts) *Purchases {
-	return &Purchases{repo: opts.Repo, seq: opts.Seq}
+	return &Purchases{repo: opts.Repo, seq: opts.Seq, mail: opts.Mail}
 }

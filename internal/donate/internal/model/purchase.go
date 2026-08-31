@@ -106,3 +106,12 @@ func (p *Purchase) MarkIssued(adminID string) error {
 	p.IssuedBy = &adminID
 	return nil
 }
+
+// MarkIssuedBy records that issuer (a "system:*" identity, e.g. "system:mail")
+// automatically delivered this purchase via the mail seam. Same invariant guard
+// as MarkIssued — idempotent when already issued, refuses a refunded purchase —
+// but carries a non-admin issuer. MarkIssued/IssuedAt/IssuedBy remain the
+// deprecated manual path; this is the auto path.
+func (p *Purchase) MarkIssuedBy(issuer string) error {
+	return p.MarkIssued(issuer)
+}

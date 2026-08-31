@@ -1,44 +1,57 @@
 package migrate
 
 import (
+	"slices"
 	"testing"
-
-	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // Self-check for the pure transformation helpers used by the settlement
 // migration. Run: go test ./internal/pkg/migrate
-func TestEnsureOwnerAndNormalize(t *testing.T) {
-	// Leader not yet in members: prepended with owner role.
-	members := normalizeMembers(bson.A{bson.M{"user_id": "b"}})
-	members = ensureOwner(members, "a")
-	if len(members) != 2 {
-		t.Fatalf("want 2 members, got %d", len(members))
+func TestFoldMembers(t *testing.T) {
+	// Leader not yet in members: prepended with owner role, no member lost.
+	s := &oldSettlement{
+		Leader:  &oldMember{UserID: "a"},
+		Members: []oldMember{{UserID: "b"}},
 	}
-	first := members[0].(bson.M)
-	if first["user_id"] != "a" || !containsStr(first["role_ids"], "owner") {
-		t.Fatalf("leader a must be prepended with owner role, got %v", first)
+	got := foldMembers(s)
+	if len(got) != 2 {
+		t.Fatalf("want 2 members, got %d", len(got))
 	}
-
-	// Leader already a member: owner role added, not duplicated.
-	m2 := normalizeMembers(bson.A{bson.M{"user_id": "a", "role_ids": bson.A{"recruiter"}}})
-	m2 = ensureOwner(m2, "a")
-	if len(m2) != 1 {
-		t.Fatalf("want 1 member, got %d", len(m2))
-	}
-	roles := toA(m2[0].(bson.M)["role_ids"])
-	if len(roles) != 2 || !containsStr(roles, "owner") || !containsStr(roles, "recruiter") {
-		t.Fatalf("want [recruiter owner], got %v", roles)
+	if got[0].UserID != "a" || !slices.Contains(got[0].RoleIDs, ownerRoleID) {
+		t.Fatalf("leader a must be prepended with owner role, got %+v", got[0])
 	}
 
-	// Idempotent: a second ensureOwner does not add a duplicate owner.
-	m2 = ensureOwner(m2, "a")
-	if got := toA(m2[0].(bson.M)["role_ids"]); len(got) != 2 {
-		t.Fatalf("owner role must not be duplicated, got %v", got)
+	// Leader already a member: owner role added, existing role kept, not duped.
+	s = &oldSettlement{
+		Leader:  &oldMember{UserID: "a"},
+		Members: []oldMember{{UserID: "a", RoleIDs: []string{"recruiter"}}},
+	}
+	got = foldMembers(s)
+	if len(got) != 1 {
+		t.Fatalf("want 1 member, got %d", len(got))
+	}
+	if !slices.Contains(got[0].RoleIDs, ownerRoleID) || !slices.Contains(got[0].RoleIDs, "recruiter") {
+		t.Fatalf("want [recruiter owner], got %v", got[0].RoleIDs)
 	}
 
-	// normalizeMembers on a nil/absent field yields an empty array, not nil.
-	if got := normalizeMembers(nil); got == nil || len(got) != 0 {
-		t.Fatalf("want empty bson.A, got %v", got)
+	// Idempotent: folding an already-folded settlement changes nothing.
+	again := ensureOwner(got, "a")
+	if len(again[0].RoleIDs) != 2 {
+		t.Fatalf("owner role must not be duplicated, got %v", again[0].RoleIDs)
+	}
+
+	// Invariant: fold never drops a member.
+	s = &oldSettlement{
+		Leader:  &oldMember{UserID: "lead"},
+		Members: []oldMember{{UserID: "x"}, {UserID: "y"}, {UserID: "z"}},
+	}
+	if got := foldMembers(s); len(got) != 4 {
+		t.Fatalf("want 4 members (3 + leader), got %d", len(got))
+	}
+
+	// nil role_ids are normalised to empty, never left nil.
+	s = &oldSettlement{Members: []oldMember{{UserID: "x"}}}
+	if got := foldMembers(s); got[0].RoleIDs == nil {
+		t.Fatalf("role_ids must be non-nil")
 	}
 }

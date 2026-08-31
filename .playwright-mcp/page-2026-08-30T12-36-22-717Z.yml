@@ -1,0 +1,81 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - button "empty" [ref=f2e3] [cursor=pointer]
+    - button "loading" [ref=f2e4] [cursor=pointer]
+  - generic [ref=f2e5]:
+    - generic [ref=f2e6]:
+      - generic [ref=f2e7]: Меню сервера
+      - generic [ref=f2e8] [cursor=pointer]: ✕
+    - generic [ref=f2e9]:
+      - generic [ref=f2e10]:
+        - generic [ref=f2e11]: Поиск…
+        - generic [ref=f2e12]:
+          - generic [ref=f2e13] [cursor=pointer]:
+            - generic [ref=f2e15]: События
+            - generic [ref=f2e16]: "2"
+          - generic [ref=f2e17] [cursor=pointer]:
+            - generic [ref=f2e19]: Почта
+            - generic [ref=f2e20]: "3"
+        - generic [ref=f2e21]: Гайды
+        - generic [ref=f2e24]:
+          - generic [ref=f2e25] [cursor=pointer]: Как начать
+          - generic [ref=f2e28] [cursor=pointer]: Правила сервера
+      - generic [ref=f2e32]:
+        - generic [ref=f2e33]: Почта
+        - generic [ref=f2e34]: "Непрочитанных: 3"
+        - generic [ref=f2e36]:
+          - generic [ref=f2e37] [cursor=pointer]:
+            - generic [ref=f2e38]: Новое
+            - generic [ref=f2e41]: "Донат: набор «Странник»"
+            - generic [ref=f2e42]: system:donate · 2 мин назад
+            - generic [ref=f2e43]:
+              - generic [ref=f2e44]: "250"
+              - generic [ref=f2e46]:
+                - generic [ref=f2e47]: ▦
+                - text: ×1
+              - generic [ref=f2e48]:
+                - generic [ref=f2e49]: ▦
+                - text: ×3
+          - generic [ref=f2e50] [cursor=pointer]:
+            - generic [ref=f2e51]: Новое
+            - generic [ref=f2e54]: Награда за победу в Голодных играх
+            - generic [ref=f2e55]: admin:ripls · 1 ч назад
+            - generic [ref=f2e57]:
+              - generic [ref=f2e58]: ▦
+              - text: ×1
+          - generic [ref=f2e59] [cursor=pointer]:
+            - generic [ref=f2e60]: Новое
+            - generic [ref=f2e63]: "Всем: обновление сервера 1.22"
+            - generic [ref=f2e64]: admin:ripls · 3 ч назад
+            - generic [ref=f2e65]: "1000"
+          - generic [ref=f2e68] [cursor=pointer]:
+            - generic [ref=f2e69]: Прочитано
+            - generic [ref=f2e71]: Приветственное сообщение
+            - generic [ref=f2e72]: system · вчера
+            - generic [ref=f2e73]: Уведомление
+          - generic [ref=f2e74] [cursor=pointer]:
+            - generic [ref=f2e75]: Получено
+            - generic [ref=f2e77]: "Донат: 500 осколков"
+            - generic [ref=f2e78]: system:donate · 2 дн назад
+            - generic [ref=f2e79]: "500"
+          - generic [ref=f2e82] [cursor=pointer]:
+            - generic [ref=f2e83]: Срок истёк
+            - generic [ref=f2e85]: Ежедневный бонус (истёк)
+            - generic [ref=f2e86]: system · 8 дн назад
+            - generic [ref=f2e88]:
+              - generic [ref=f2e89]: ▦
+              - text: ×2
+          - generic [ref=f2e90] [cursor=pointer]:
+            - generic [ref=f2e91]: Отозвано
+            - generic [ref=f2e93]: Ошибочная выдача (отозвано)
+            - generic [ref=f2e94]: admin:ripls · 5 дн назад
+            - generic [ref=f2e96]:
+              - generic [ref=f2e97]: ▦
+              - text: ×5
+  - generic [ref=f2e98]:
+    - text: ✉
+    - generic [ref=f2e99]: "3"
+  - generic [ref=f2e100]:
+    - button "‹" [ref=f2e101] [cursor=pointer]
+    - generic [ref=f2e102]: C — Grid — карточки писем + модалка (как События)
+    - button "›" [ref=f2e103] [cursor=pointer]

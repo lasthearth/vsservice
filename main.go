@@ -9,7 +9,9 @@ import (
 	"github.com/lasthearth/vsservice/internal/discord"
 	"github.com/lasthearth/vsservice/internal/donate"
 	"github.com/lasthearth/vsservice/internal/hungergames"
+	"github.com/lasthearth/vsservice/internal/kitdef"
 	"github.com/lasthearth/vsservice/internal/leaderboard"
+	"github.com/lasthearth/vsservice/internal/mail"
 	"github.com/lasthearth/vsservice/internal/media"
 	"github.com/lasthearth/vsservice/internal/news"
 	"github.com/lasthearth/vsservice/internal/notification"
@@ -91,6 +93,8 @@ func main() {
 		hungergames.App,
 		serverinfo.App,
 		media.App,
+		mail.App,
+		kitdef.App,
 		progression.App,
 		discord.App,
 	)

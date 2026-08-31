@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package kitdef.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/timestamp.proto";
+
+// KitDefService — read model + metadata writer over the shared `kits`
+// collection.
+//
+// Ownership is split by field, not by document: the game (VintageAPI) is the
+// content writer via Mongo-direct ($setOnInsert code/items/created_at), while
+// vsservice writes only display metadata (title). The two writers touch
+// disjoint fields, so they never collide. vsservice NEVER inserts a kit and
+// NEVER writes content — an unknown code is NotFound, not a new document.
+//
+// attr_snapshot (the base64 TreeAttribute per item) is deliberately absent from
+// the wire types below: it is server-side only, mirroring DailyRewards keeping
+// attributes off the client. Both rpcs require the admin scope kit:edit.
+service KitDefService {
+  // Admin: list every captured kit with its display metadata and item icons.
+  //
+  // Returns all kits in one response — attr_snapshot is not exposed.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): missing kit:edit scope
+  //   - INTERNAL (500): database failure
+  rpc ListKits(ListKitsRequest) returns (ListKitsResponse) {
+    option (google.api.http) = {get: "/v1/kitdefs"};
+  }
+
+  // Admin: rename a kit (set its display title). Metadata-only $set, no upsert.
+  //
+  // NotFound when the kit was never captured by the game — vsservice does not
+  // insert. Only the title changes; code/items/created_at stay the game's.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): empty code or title
+  //   - NOT_FOUND (404): kit was never captured
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): missing kit:edit scope
+  //   - INTERNAL (500): database failure
+  rpc RenameKit(RenameKitRequest) returns (RenameKitResponse) {
+    option (google.api.http) = {
+      post: "/v1/kitdefs/{code}:rename"
+      body: "*"
+    };
+  }
+}
+
+// KitItem is one entry of a kit's contents. attr_snapshot is intentionally NOT
+// present here — it stays server-side.
+message KitItem {
+  // Full namespaced Collectible.Code (identifies the item/block).
+  string game_code = 1;
+  // "item" or "block".
+  string type = 2;
+  int32 quantity = 3;
+  // <CDN>/<bucket>/<uuidv7>.png
+  string image_url = 4;
+}
+
+// KitDef is a captured kit: game-owned content plus vsservice-owned title.
+message KitDef {
+  // Unique upsert key, written by the game.
+  string code = 1;
+  // Display name, written by RenameKit.
+  string title = 2;
+  repeated KitItem items = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message ListKitsRequest {}
+
+message ListKitsResponse {
+  repeated KitDef kits = 1;
+}
+
+message RenameKitRequest {
+  // Upsert key of the kit to rename.
+  string code = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+  // New display title.
+  string title = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+message RenameKitResponse {}
