@@ -1,0 +1,84 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # internal/pkg/image links h2non/bimg, a cgo binding to libvips.
+  CGO_ENABLED: "1"
+  # Keep in sync with ARG BUF_VERSION in the Dockerfile.
+  BUF_VERSION: "1.50.0"
+
+jobs:
+  test:
+    name: go test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            tools/modelguard/go.sum
+
+      # bimg needs the vips headers and pkg-config to compile. Without them every
+      # package that imports internal/pkg/image fails to build.
+      - name: Install libvips
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            libvips-dev
+          pkg-config --modversion vips
+
+      # gen/ is gitignored, so the protobuf stubs must be generated before the
+      # module compiles. buf.gen.docker.yaml uses only the module's `go tool`
+      # plugins, so it needs no buf.build remote plugin and no token.
+      - name: Install buf
+        run: go install "github.com/bufbuild/buf/cmd/buf@v${BUF_VERSION}"
+
+      - name: Generate protobuf stubs
+        run: buf generate --template buf.gen.docker.yaml
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+
+      # tools/modelguard is a separate module, so ./... does not cover it.
+      - name: Test modelguard plugin
+        run: go -C tools/modelguard test ./...
+
+      - name: Coverage summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo "### Test coverage"
+            echo
+            if [ -f coverage.out ]; then
+              echo '```'
+              go tool cover -func=coverage.out | tail -n 1
+              echo '```'
+            else
+              echo "No coverage profile. The test step did not finish."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
