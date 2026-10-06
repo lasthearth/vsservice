@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package reaction.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+
+// ReactionService keeps emoji reactions on site content: news, diplomacy
+// statements and events. A target is "<kind>:<id>", e.g. "news:6ac3…".
+// Each player may put each emoji on a target at most once (toggle).
+service ReactionService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Reaction counts for up to 50 targets. Public.
+  rpc ListReactions(ListReactionsRequest) returns (ListReactionsResponse) {
+    option (google.api.http) = {get: "/v1/reactions"};
+  }
+
+  // Which emojis the caller has put on the given targets.
+  rpc ListMyReactions(ListMyReactionsRequest) returns (ListMyReactionsResponse) {
+    option (google.api.http) = {get: "/v1/reactions/me"};
+  }
+
+  // Put the emoji on the target, or take it back if it is already there.
+  rpc ToggleReaction(ToggleReactionRequest) returns (ToggleReactionResponse) {
+    option (google.api.http) = {
+      post: "/v1/reactions:toggle"
+      body: "*"
+    };
+  }
+}
+
+message ReactionCount {
+  // One of: like, heart, fire, laugh, swords.
+  string emoji = 1;
+  int64 count = 2;
+}
+
+message TargetReactions {
+  string target = 1;
+  // Only emojis with a non-zero count, in the fixed emoji order.
+  repeated ReactionCount counts = 2;
+}
+
+message ListReactionsRequest {
+  repeated string targets = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 50
+    }
+  ];
+}
+
+message ListReactionsResponse {
+  // One entry per requested target, in request order.
+  repeated TargetReactions reactions = 1;
+}
+
+message MyReactions {
+  string target = 1;
+  repeated string emojis = 2;
+}
+
+message ListMyReactionsRequest {
+  repeated string targets = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 50
+    }
+  ];
+}
+
+message ListMyReactionsResponse {
+  // Only targets the caller has reacted to.
+  repeated MyReactions reactions = 1;
+}
+
+message ToggleReactionRequest {
+  string target = 1 [(google.api.field_behavior) = REQUIRED];
+  string emoji = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ToggleReactionResponse {
+  // Whether the caller's reaction is now on.
+  bool active = 1;
+  TargetReactions reactions = 2;
+}

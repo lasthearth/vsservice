@@ -6,6 +6,7 @@ import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 // Represent basic leaderboard
 service LeaderboardService {
@@ -46,6 +47,9 @@ message LeaderboardEntry {
   int32 kills = 3;
   float hours_played = 5;
   string user_id = 6;
+
+  // Last time the player was seen online, if the game has recorded it.
+  google.protobuf.Timestamp last_online = 7;
 }
 
 message LeaderboardResponse {

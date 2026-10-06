@@ -931,6 +931,154 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/donate.v1.ListWalletsResponse'
+  /v1/events:
+    get:
+      tags:
+        - EventService
+      summary: ListEvents
+      description: |-
+        List upcoming and ongoing events (soonest first) or, with `past`, the
+         events that are over (most recent first).
+      operationId: EventService_ListEvents
+      parameters:
+        - name: page_size
+          in: query
+          description: At most this many events, 1..100. Zero means 50.
+          schema:
+            type: integer
+            title: page_size
+            maximum: 100
+            minimum: 0
+            format: int32
+            description: At most this many events, 1..100. Zero means 50.
+        - name: past
+          in: query
+          description: List finished events instead of upcoming ones.
+          schema:
+            type: boolean
+            title: past
+            description: List finished events instead of upcoming ones.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event.v1.ListEventsResponse'
+    post:
+      tags:
+        - EventService
+      summary: CreateEvent
+      description: Create an event. Every player is notified about it.
+      operationId: EventService_CreateEvent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/event.v1.CreateEventRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event.v1.Event'
+  /v1/events/{id}:
+    get:
+      tags:
+        - EventService
+      summary: GetEvent
+      description: Get one event.
+      operationId: EventService_GetEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event.v1.Event'
+    delete:
+      tags:
+        - EventService
+      summary: DeleteEvent
+      description: Soft-delete an event.
+      operationId: EventService_DeleteEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.Empty'
+    patch:
+      tags:
+        - EventService
+      summary: UpdateEvent
+      description: Replace the editable fields of an event.
+      operationId: EventService_UpdateEvent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  title: title
+                  maxLength: 120
+                  minLength: 1
+                description:
+                  type: string
+                  title: description
+                  maxLength: 20000
+                cover:
+                  type: string
+                  title: cover
+                location:
+                  type: string
+                  title: location
+                  maxLength: 120
+                starts_at:
+                  title: starts_at
+                  $ref: '#/components/schemas/google.protobuf.Timestamp'
+                ends_at:
+                  title: ends_at
+                  $ref: '#/components/schemas/google.protobuf.Timestamp'
+              title: UpdateEventRequest
+              required:
+                - title
+                - starts_at
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event.v1.Event'
   /v1/hungergames/leaderboard:
     get:
       tags:
@@ -2235,6 +2383,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/progression.v1.TalentTree'
+  /v1/reactions:
+    get:
+      tags:
+        - ReactionService
+      summary: ListReactions
+      description: Reaction counts for up to 50 targets. Public.
+      operationId: ReactionService_ListReactions
+      parameters:
+        - name: targets
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+            title: targets
+            maxItems: 50
+            minItems: 1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reaction.v1.ListReactionsResponse'
+  /v1/reactions/me:
+    get:
+      tags:
+        - ReactionService
+      summary: ListMyReactions
+      description: Which emojis the caller has put on the given targets.
+      operationId: ReactionService_ListMyReactions
+      parameters:
+        - name: targets
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+            title: targets
+            maxItems: 50
+            minItems: 1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reaction.v1.ListMyReactionsResponse'
+  /v1/reactions:toggle:
+    post:
+      tags:
+        - ReactionService
+      summary: ToggleReaction
+      description: Put the emoji on the target, or take it back if it is already there.
+      operationId: ReactionService_ToggleReaction
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/reaction.v1.ToggleReactionRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/reaction.v1.ToggleReactionResponse'
   /v1/referral/my-code:
     get:
       tags:
@@ -4784,6 +5002,155 @@ components:
           format: int64
       title: WalletBalance
       additionalProperties: false
+    event.v1.CreateEventRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          title: title
+          maxLength: 120
+          minLength: 1
+        description:
+          type: string
+          title: description
+          maxLength: 20000
+        cover:
+          type: string
+          title: cover
+        location:
+          type: string
+          title: location
+          maxLength: 120
+        starts_at:
+          title: starts_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        ends_at:
+          title: ends_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: CreateEventRequest
+      required:
+        - title
+        - starts_at
+      additionalProperties: false
+    event.v1.DeleteEventRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: DeleteEventRequest
+      required:
+        - id
+      additionalProperties: false
+    event.v1.Event:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        title:
+          type: string
+          title: title
+        description:
+          type: string
+          title: description
+          description: Markup source from the site editor (Discord-flavoured Markdown); the site renders it.
+        cover:
+          type: string
+          title: cover
+          description: Cover image URL from MediaService, may be empty.
+        location:
+          type: string
+          title: location
+          description: Where it happens in game, free text, may be empty.
+        starts_at:
+          title: starts_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        ends_at:
+          title: ends_at
+          description: Absent for events without a set end; such an event counts as ongoing for two hours after its start.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        created_by:
+          type: string
+          title: created_by
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updated_at:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: Event
+      additionalProperties: false
+    event.v1.GetEventRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetEventRequest
+      required:
+        - id
+      additionalProperties: false
+    event.v1.ListEventsRequest:
+      type: object
+      properties:
+        page_size:
+          type: integer
+          title: page_size
+          maximum: 100
+          minimum: 0
+          format: int32
+          description: At most this many events, 1..100. Zero means 50.
+        past:
+          type: boolean
+          title: past
+          description: List finished events instead of upcoming ones.
+      title: ListEventsRequest
+      additionalProperties: false
+    event.v1.ListEventsResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/event.v1.Event'
+          title: events
+      title: ListEventsResponse
+      additionalProperties: false
+    event.v1.UpdateEventRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        title:
+          type: string
+          title: title
+          maxLength: 120
+          minLength: 1
+        description:
+          type: string
+          title: description
+          maxLength: 20000
+        cover:
+          type: string
+          title: cover
+        location:
+          type: string
+          title: location
+          maxLength: 120
+        starts_at:
+          title: starts_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        ends_at:
+          title: ends_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: UpdateEventRequest
+      required:
+        - id
+        - title
+        - starts_at
+      additionalProperties: false
     google.protobuf.Empty:
       type: object
       description: |-
@@ -5666,6 +6033,10 @@ components:
         user_id:
           type: string
           title: user_id
+        last_online:
+          title: last_online
+          description: Last time the player was seen online, if the game has recorded it.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: LeaderboardEntry
       additionalProperties: false
     leaderboard.v1.LeaderboardRequest:
@@ -6601,6 +6972,124 @@ components:
       title: UpdateTreeRequest
       required:
         - id
+      additionalProperties: false
+    reaction.v1.ListMyReactionsRequest:
+      type: object
+      properties:
+        targets:
+          type: array
+          items:
+            type: string
+          title: targets
+          maxItems: 50
+          minItems: 1
+      title: ListMyReactionsRequest
+      required:
+        - targets
+      additionalProperties: false
+    reaction.v1.ListMyReactionsResponse:
+      type: object
+      properties:
+        reactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/reaction.v1.MyReactions'
+          title: reactions
+          description: Only targets the caller has reacted to.
+      title: ListMyReactionsResponse
+      additionalProperties: false
+    reaction.v1.ListReactionsRequest:
+      type: object
+      properties:
+        targets:
+          type: array
+          items:
+            type: string
+          title: targets
+          maxItems: 50
+          minItems: 1
+      title: ListReactionsRequest
+      required:
+        - targets
+      additionalProperties: false
+    reaction.v1.ListReactionsResponse:
+      type: object
+      properties:
+        reactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/reaction.v1.TargetReactions'
+          title: reactions
+          description: One entry per requested target, in request order.
+      title: ListReactionsResponse
+      additionalProperties: false
+    reaction.v1.MyReactions:
+      type: object
+      properties:
+        target:
+          type: string
+          title: target
+        emojis:
+          type: array
+          items:
+            type: string
+          title: emojis
+      title: MyReactions
+      additionalProperties: false
+    reaction.v1.ReactionCount:
+      type: object
+      properties:
+        emoji:
+          type: string
+          title: emoji
+          description: 'One of: like, heart, fire, laugh, swords.'
+        count:
+          type:
+            - integer
+            - string
+          title: count
+          format: int64
+      title: ReactionCount
+      additionalProperties: false
+    reaction.v1.TargetReactions:
+      type: object
+      properties:
+        target:
+          type: string
+          title: target
+        counts:
+          type: array
+          items:
+            $ref: '#/components/schemas/reaction.v1.ReactionCount'
+          title: counts
+          description: Only emojis with a non-zero count, in the fixed emoji order.
+      title: TargetReactions
+      additionalProperties: false
+    reaction.v1.ToggleReactionRequest:
+      type: object
+      properties:
+        target:
+          type: string
+          title: target
+        emoji:
+          type: string
+          title: emoji
+      title: ToggleReactionRequest
+      required:
+        - target
+        - emoji
+      additionalProperties: false
+    reaction.v1.ToggleReactionResponse:
+      type: object
+      properties:
+        active:
+          type: boolean
+          title: active
+          description: Whether the caller's reaction is now on.
+        reactions:
+          title: reactions
+          $ref: '#/components/schemas/reaction.v1.TargetReactions'
+      title: ToggleReactionResponse
       additionalProperties: false
     referral.v1.GetMyReferralCodeResponse:
       type: object
@@ -8377,6 +8866,11 @@ tags:
     description: DiscordService proxies read-only Discord channel data and sends news webhooks.
   - name: DonateService
     description: Donate service — player wallet, shop, and manual coin management.
+  - name: EventService
+    description: |-
+      EventService is the server's calendar: wipes, sieges, fairs, tournaments.
+       Reading is public; writing reuses the news scopes, because the people who
+       publish news are the ones who announce events.
   - name: HungerGamesService
     description: "HungerGamesService manages the Hunger Games game mode: ELO ratings,\r\n season lifecycle, leaderboard, and reward distribution."
   - name: ImperialPointService
@@ -8419,6 +8913,11 @@ tags:
     description: Provides methods to manage user notifications
   - name: ProgressionService
     description: ProgressionService manages talent tree templates, presets, and settlement/point progression.
+  - name: ReactionService
+    description: |-
+      ReactionService keeps emoji reactions on site content: news, diplomacy
+       statements and events. A target is "<kind>:<id>", e.g. "news:6ac3…".
+       Each player may put each emoji on a target at most once (toggle).
   - name: ReferralService
   - name: RuleService
     description: Represents rules service

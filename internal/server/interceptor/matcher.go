@@ -29,6 +29,9 @@ var publicMethods = map[string]struct{}{
 	"/settlement.v1.SettlementTagService/GetTagsByIds":               {},
 	"/discord.v1.DiscordService/ListMessages":                        {},
 	"/discord.v1.DiscordService/ListImages":                          {},
+	"/event.v1.EventService/GetEvent":                                {},
+	"/event.v1.EventService/ListEvents":                              {},
+	"/reaction.v1.ReactionService/ListReactions":                     {},
 	"/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo": {},
 }
 
