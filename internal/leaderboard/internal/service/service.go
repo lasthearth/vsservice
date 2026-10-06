@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-faster/errors"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
@@ -52,13 +53,22 @@ func (s *Service) ListEntries(ctx context.Context, req *leaderboardv1.Leaderboar
 			HoursPlayed: float32(entry.TotalHours),
 			UserId:      entry.UserId,
 		}
-		if entry.LastOnline != nil {
-			out.LastOnline = timestamppb.New(*entry.LastOnline)
-		}
+		out.LastOnline = timestampOrNil(entry.LastOnline)
 		return out
 	})
 
 	return &leaderboardv1.LeaderboardResponse{
 		Entries: response,
 	}, nil
+}
+
+// timestampOrNil drops a mark that a protobuf Timestamp cannot carry. protojson
+// rejects seconds outside 0001-01-01..9999-12-31, and last_online comes from a
+// collection this service does not write, so one corrupt stored value would
+// otherwise fail the whole public response instead of just that row.
+func timestampOrNil(t *time.Time) *timestamppb.Timestamp {
+	if t == nil || t.Year() < 1 || t.Year() > 9999 {
+		return nil
+	}
+	return timestamppb.New(*t)
 }
