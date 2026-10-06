@@ -23,10 +23,32 @@ var (
 	ErrLocationTooLong = ierror.InvalidArgument("location is too long")
 	ErrDescriptionLong = ierror.InvalidArgument("description is too long")
 	ErrStartRequired   = ierror.InvalidArgument("starts_at is required")
+	ErrTimeOutOfRange  = ierror.InvalidArgument("event time is out of the supported range")
 	ErrEndBeforeStart  = ierror.InvalidArgument("ends_at must not be before starts_at")
 	ErrInvalidCoverURL = ierror.InvalidArgument("invalid cover url")
 	ErrCreatorRequired = ierror.InvalidArgument("created_by is required")
 )
+
+// The plausible window for an event's times.
+//
+// Lower bound: a present-but-empty protobuf Timestamp converts to the Unix
+// epoch, not to a nil pointer, and IsZero only matches year 1 — so "was a value
+// supplied at all" has to be a bound, not a zero check. Without it a 1970 event
+// is stored with a derived until that never satisfies the upcoming filter, and
+// it stays invisible forever.
+//
+// Upper bound: timestamppb.AsTime is best effort, and seconds near
+// math.MaxInt64 overflow the driver's Unix()*1000 conversion into a corrupt
+// 1969 datetime.
+var (
+	minTime = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	maxTime = time.Date(9999, 12, 31, 23, 59, 59, 0, time.UTC)
+)
+
+// inWindow reports whether t is a plausible event time.
+func inWindow(t time.Time) bool {
+	return !t.Before(minTime) && !t.After(maxTime)
+}
 
 // Details are the fields an editor sets on an event.
 type Details struct {
@@ -83,6 +105,10 @@ func (e *Event) Apply(d Details) error {
 		return ErrDescriptionLong
 	case d.StartsAt.IsZero():
 		return ErrStartRequired
+	case !inWindow(d.StartsAt):
+		return ErrTimeOutOfRange
+	case d.EndsAt != nil && !inWindow(*d.EndsAt):
+		return ErrTimeOutOfRange
 	case d.EndsAt != nil && d.EndsAt.Before(d.StartsAt):
 		return ErrEndBeforeStart
 	}
@@ -113,3 +139,7 @@ func (e *Event) Until() time.Time {
 	}
 	return e.StartsAt.Add(DefaultDuration)
 }
+
+// Touch stamps the persisted update time. mongox.UpdateDoc calls it, so a
+// caller sees the value that was actually written rather than the one it read.
+func (e *Event) Touch(t time.Time) { e.UpdatedAt = t }
