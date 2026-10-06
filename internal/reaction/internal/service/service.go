@@ -7,6 +7,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/reaction/internal/model"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
+	"go.uber.org/zap"
 )
 
 // ListReactions implements reactionv1.ReactionServiceServer.
@@ -72,9 +73,15 @@ func (s *Service) ToggleReaction(ctx context.Context, req *reactionv1.ToggleReac
 		return nil, err
 	}
 
+	// The toggle has already committed, so a failed follow-up read must not
+	// turn the call into an error: the client would retry and invert the
+	// reaction the player just set. active is the authoritative part of the
+	// response; the counts are a convenience that ListReactions also serves.
 	counts, err := s.repo.Counts(ctx, []string{req.GetTarget()})
 	if err != nil {
-		return nil, err
+		s.logger.Error("failed to read reaction counts after toggle",
+			zap.String("target", req.GetTarget()), zap.Error(err))
+		return &reactionv1.ToggleReactionResponse{Active: active}, nil
 	}
 
 	return &reactionv1.ToggleReactionResponse{

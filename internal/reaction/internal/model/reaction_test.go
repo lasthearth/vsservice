@@ -1,9 +1,12 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"testing"
+
+	"github.com/lasthearth/vsservice/internal/reaction/internal/ierror"
 )
 
 func TestValidateTarget(t *testing.T) {
@@ -12,7 +15,9 @@ func TestValidateTarget(t *testing.T) {
 			t.Errorf("%q: unexpected error %v", ok, err)
 		}
 	}
-	for _, bad := range []string{"", "news:", "news", "user:1", "news:a b", "news:a/b", "NEWS:1"} {
+	// The trailing-newline case matters: Go's $ without the m flag is
+	// end-of-text, so "event:abc\n" must not slip through as a valid target.
+	for _, bad := range []string{"", "news:", "news", "user:1", "news:a b", "news:a/b", "NEWS:1", "event:abc\n"} {
 		if err := ValidateTarget(bad); err == nil {
 			t.Errorf("%q: want error", bad)
 		}
@@ -37,7 +42,7 @@ func TestValidateTargets(t *testing.T) {
 		t.Errorf("want deduped in order, got %v", got)
 	}
 
-	if _, err := ValidateTargets(nil); err != ErrNoTargets {
+	if _, err := ValidateTargets(nil); !errors.Is(err, ierror.ErrNoTargets) {
 		t.Errorf("want ErrNoTargets, got %v", err)
 	}
 
@@ -45,11 +50,11 @@ func TestValidateTargets(t *testing.T) {
 	for i := range many {
 		many[i] = fmt.Sprintf("news:%d", i)
 	}
-	if _, err := ValidateTargets(many); err != ErrTooManyTargets {
+	if _, err := ValidateTargets(many); !errors.Is(err, ierror.ErrTooManyTargets) {
 		t.Errorf("want ErrTooManyTargets, got %v", err)
 	}
 
-	if _, err := ValidateTargets([]string{"news:a", "bad"}); err != ErrInvalidTarget {
+	if _, err := ValidateTargets([]string{"news:a", "bad"}); !errors.Is(err, ierror.ErrInvalidTarget) {
 		t.Errorf("want ErrInvalidTarget, got %v", err)
 	}
 }

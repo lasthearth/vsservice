@@ -41,7 +41,11 @@ func setupIndexes(log logger.Logger, coll *mongo.Collection) {
 	defer cancel()
 
 	models := []mongo.IndexModel{
-		// One reaction per (target, player, emoji): makes toggle race-safe.
+		// One reaction per (target, player, emoji). This is what stops Toggle's
+		// delete-then-insert from storing duplicates: a racing insert loses with
+		// a duplicate-key error, which Toggle reads as "already on". It does not
+		// serialize the pair, so under two concurrent toggles the stored state
+		// stays correct while each caller's `active` reflects only its own step.
 		{
 			Keys: bson.D{
 				{Key: "target", Value: 1},
