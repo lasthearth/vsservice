@@ -19,6 +19,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	discordv1 "github.com/lasthearth/vsservice/gen/discord/v1"
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
+	eventv1 "github.com/lasthearth/vsservice/gen/event/v1"
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
 	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
 	kitdefv1 "github.com/lasthearth/vsservice/gen/kitdef/v1"
@@ -28,6 +29,7 @@ import (
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
 	progressionv1 "github.com/lasthearth/vsservice/gen/progression/v1"
+	reactionv1 "github.com/lasthearth/vsservice/gen/reaction/v1"
 	referralv1 "github.com/lasthearth/vsservice/gen/referral/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
@@ -118,6 +120,8 @@ func (s *Server) Build() error {
 	progressionv1.RegisterProgressionServiceServer(srv, s.progressionV1)
 	imperialpointv1.RegisterImperialPointServiceServer(srv, s.imperialPointV1)
 	discordv1.RegisterDiscordServiceServer(srv, s.discordV1)
+	eventv1.RegisterEventServiceServer(srv, s.eventV1)
+	reactionv1.RegisterReactionServiceServer(srv, s.reactionV1)
 	reflection.Register(srv)
 
 	// After registration so GetServiceInfo() sees every service. Fails startup
@@ -228,6 +232,14 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := discordv1.RegisterDiscordServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register discord service handler")
+	}
+
+	if err := eventv1.RegisterEventServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register event service handler")
+	}
+
+	if err := reactionv1.RegisterReactionServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register reaction service handler")
 	}
 
 	handler := cors.New(cors.Options{

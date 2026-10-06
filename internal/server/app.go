@@ -5,6 +5,7 @@ import (
 
 	discordv1 "github.com/lasthearth/vsservice/gen/discord/v1"
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
+	eventv1 "github.com/lasthearth/vsservice/gen/event/v1"
 	hgv1 "github.com/lasthearth/vsservice/gen/hungergames/v1"
 	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
 	kitdefv1 "github.com/lasthearth/vsservice/gen/kitdef/v1"
@@ -14,6 +15,7 @@ import (
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
 	progressionv1 "github.com/lasthearth/vsservice/gen/progression/v1"
+	reactionv1 "github.com/lasthearth/vsservice/gen/reaction/v1"
 	referralv1 "github.com/lasthearth/vsservice/gen/referral/v1"
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
@@ -54,6 +56,8 @@ type Opts struct {
 	ProgressionV1   progressionv1.ProgressionServiceServer
 	ImperialPointV1 imperialpointv1.ImperialPointServiceServer
 	DiscordV1       discordv1.DiscordServiceServer
+	EventV1         eventv1.EventServiceServer
+	ReactionV1      reactionv1.ReactionServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -80,6 +84,8 @@ type Server struct {
 	progressionV1       progressionv1.ProgressionServiceServer
 	imperialPointV1     imperialpointv1.ImperialPointServiceServer
 	discordV1           discordv1.DiscordServiceServer
+	eventV1             eventv1.EventServiceServer
+	reactionV1          reactionv1.ReactionServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -111,6 +117,8 @@ func New(opts Opts) *Server {
 		progressionV1:       opts.ProgressionV1,
 		imperialPointV1:     opts.ImperialPointV1,
 		discordV1:           opts.DiscordV1,
+		eventV1:             opts.EventV1,
+		reactionV1:          opts.ReactionV1,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}

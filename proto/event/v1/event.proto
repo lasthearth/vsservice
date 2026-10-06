@@ -1,0 +1,167 @@
+syntax = "proto3";
+
+package event.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// EventService is the server's calendar: wipes, sieges, fairs, tournaments.
+// Reading is public; writing reuses the news scopes, because the people who
+// publish news are the ones who announce events.
+service EventService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Staff: create an event. Every player is notified about it.
+  //
+  // A failed broadcast does not undo the event; it is logged only.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): empty or over-long title, location or description, a
+  //     missing or implausible starts_at, ends_at before starts_at, or a cover that
+  //     is not a media CDN URL
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): caller lacks news:create
+  //   - INTERNAL (500): database failure
+  rpc CreateEvent(CreateEventRequest) returns (Event) {
+    option (google.api.http) = {
+      post: "/v1/events"
+      body: "*"
+    };
+  }
+
+  // Staff: replace the editable fields of an event.
+  //
+  // The edit is one version-guarded write. When another editor saved the same
+  // event first and the retry keeps losing, the call fails instead of silently
+  // discarding one of the two edits.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): same field rules as CreateEvent
+  //   - NOT_FOUND (404): no such event, or it was deleted
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): caller lacks news:create
+  //   - FAILED_PRECONDITION (412): the event kept changing under concurrent edits
+  //   - INTERNAL (500): database failure
+  rpc UpdateEvent(UpdateEventRequest) returns (Event) {
+    option (google.api.http) = {
+      patch: "/v1/events/{id}"
+      body: "*"
+    };
+    option (google.api.method_signature) = "id";
+  }
+
+  // Staff: soft-delete an event. The caller is recorded as deleted_by.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such event, or it was already deleted
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): caller lacks news:delete
+  //   - INTERNAL (500): database failure
+  rpc DeleteEvent(DeleteEventRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/v1/events/{id}"};
+    option (google.api.method_signature) = "id";
+  }
+
+  // Get one event. Public.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such event, or it was deleted
+  //   - INTERNAL (500): database failure
+  rpc GetEvent(GetEventRequest) returns (Event) {
+    option (google.api.http) = {get: "/v1/events/{id}"};
+    option (google.api.method_signature) = "id";
+  }
+
+  // List upcoming and ongoing events (soonest first) or, with `past`, the
+  // events that are over (most recent first). Public.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): page_size outside 0..100
+  //   - INTERNAL (500): database failure
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
+    option (google.api.http) = {get: "/v1/events"};
+  }
+}
+
+message Event {
+  string id = 1;
+  string title = 2;
+  // Markup source from the site editor (Discord-flavoured Markdown); the site renders it.
+  string description = 3;
+  // Cover image URL from MediaService, may be empty.
+  string cover = 4;
+  // Where it happens in game, free text, may be empty.
+  string location = 5;
+  google.protobuf.Timestamp starts_at = 6;
+  // Absent for events without a set end; such an event counts as ongoing for
+  // two hours after its start.
+  google.protobuf.Timestamp ends_at = 7;
+  string created_by = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message CreateEventRequest {
+  string title = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 120
+    }
+  ];
+  string description = 2 [(buf.validate.field).string.max_len = 20000];
+  // A MediaService cover URL, or empty. Bounded because the value is stored and
+  // then served verbatim to every unauthenticated ListEvents caller.
+  string cover = 3 [(buf.validate.field).string.max_len = 2048];
+  string location = 4 [(buf.validate.field).string.max_len = 120];
+  google.protobuf.Timestamp starts_at = 5 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).required = true
+  ];
+  google.protobuf.Timestamp ends_at = 6;
+}
+
+message UpdateEventRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string title = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 120
+    }
+  ];
+  string description = 3 [(buf.validate.field).string.max_len = 20000];
+  string cover = 4 [(buf.validate.field).string.max_len = 2048];
+  string location = 5 [(buf.validate.field).string.max_len = 120];
+  google.protobuf.Timestamp starts_at = 6 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).required = true
+  ];
+  google.protobuf.Timestamp ends_at = 7;
+}
+
+message DeleteEventRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetEventRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListEventsRequest {
+  // At most this many events, 1..100. Zero means 50.
+  int32 page_size = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  // List finished events instead of upcoming ones.
+  bool past = 2;
+}
+
+message ListEventsResponse {
+  repeated Event events = 1;
+}
