@@ -18,17 +18,14 @@ type Opts struct {
 }
 
 type Repository struct {
-	log   logger.Logger
-	coll  *mongo.Collection
-	pColl *mongo.Collection
+	log  logger.Logger
+	coll *mongo.Collection
 }
 
 func New(opts Opts) *Repository {
 	coll := opts.Database.Collection(collName)
-	playerColl := opts.Database.Collection(playerCollName)
 	return &Repository{
-		log:   opts.Log,
-		coll:  coll,
-		pColl: playerColl,
+		log:  opts.Log,
+		coll: coll,
 	}
 }

@@ -29,14 +29,7 @@ func (s *Service) CreateEvent(ctx context.Context, req *eventv1.CreateEventReque
 		return nil, err
 	}
 
-	event, err := model.New(model.Details{
-		Title:       req.GetTitle(),
-		Description: req.GetDescription(),
-		Cover:       req.GetCover(),
-		Location:    req.GetLocation(),
-		StartsAt:    timeOf(req.GetStartsAt()),
-		EndsAt:      timePtr(req.GetEndsAt()),
-	}, userID)
+	event, err := model.New(s.mapper.CreateRequestToDetails(req), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +50,7 @@ func (s *Service) CreateEvent(ctx context.Context, req *eventv1.CreateEventReque
 		s.logger.Error("failed to broadcast event notification", zap.String("event_id", created.Id), zap.Error(err))
 	}
 
-	return toProto(created), nil
+	return s.mapper.ToProto(*created), nil
 }
 
 // UpdateEvent implements eventv1.EventServiceServer.
@@ -66,28 +59,19 @@ func (s *Service) UpdateEvent(ctx context.Context, req *eventv1.UpdateEventReque
 		return nil, err
 	}
 
-	event, err := s.repo.Get(ctx, req.GetId())
+	details := s.mapper.UpdateRequestToDetails(req)
+
+	updated, err := s.repo.UpdateEvent(ctx, req.GetId(), func(_ context.Context, e *model.Event) (*model.Event, error) {
+		if err := e.Apply(details); err != nil {
+			return nil, err
+		}
+		return e, nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := event.Apply(model.Details{
-		Title:       req.GetTitle(),
-		Description: req.GetDescription(),
-		Cover:       req.GetCover(),
-		Location:    req.GetLocation(),
-		StartsAt:    timeOf(req.GetStartsAt()),
-		EndsAt:      timePtr(req.GetEndsAt()),
-	}); err != nil {
-		return nil, err
-	}
-
-	updated, err := s.repo.Update(ctx, event)
-	if err != nil {
-		return nil, err
-	}
-
-	return toProto(updated), nil
+	return s.mapper.ToProto(*updated), nil
 }
 
 // DeleteEvent implements eventv1.EventServiceServer.
@@ -111,7 +95,7 @@ func (s *Service) GetEvent(ctx context.Context, req *eventv1.GetEventRequest) (*
 		return nil, err
 	}
 
-	return toProto(event), nil
+	return s.mapper.ToProto(*event), nil
 }
 
 // ListEvents implements eventv1.EventServiceServer.
@@ -133,7 +117,7 @@ func (s *Service) ListEvents(ctx context.Context, req *eventv1.ListEventsRequest
 		return nil, err
 	}
 
-	return &eventv1.ListEventsResponse{Events: toProtos(events)}, nil
+	return &eventv1.ListEventsResponse{Events: s.mapper.ToProtos(events)}, nil
 }
 
 // validateCover accepts an empty cover or a URL from the media CDN.

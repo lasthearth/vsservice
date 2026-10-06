@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"github.com/lasthearth/vsservice/internal/leaderboard/internal/dto/mongodto"
 	"github.com/lasthearth/vsservice/internal/leaderboard/internal/model"
@@ -85,46 +84,9 @@ func (r *Repository) listEntries(
 			TotalHours:  item.TotalHours,
 			TotalDeaths: item.TotalDeaths,
 			TotalKills:  item.TotalKills,
-			LastOnline:  lastOnline(item.LastOnline),
+			LastOnline:  item.LastOnline,
 		}
 	})
 
 	return entries, nil
-}
-
-// lastOnline reads the game-written last-online mark whatever BSON type it
-// was stored as: a date, an RFC 3339 string, or unix seconds/milliseconds.
-// Zero or unreadable values mean "unknown" and yield nil.
-func lastOnline(raw bson.RawValue) *time.Time {
-	var t time.Time
-
-	switch raw.Type {
-	case bson.TypeDateTime:
-		t = raw.Time()
-	case bson.TypeString:
-		parsed, err := time.Parse(time.RFC3339Nano, raw.StringValue())
-		if err != nil {
-			return nil
-		}
-		t = parsed
-	case bson.TypeInt64, bson.TypeInt32, bson.TypeDouble:
-		n, ok := raw.AsInt64OK()
-		if !ok {
-			return nil
-		}
-		if n > 1e11 {
-			t = time.UnixMilli(n)
-		} else {
-			t = time.Unix(n, 0)
-		}
-	default:
-		return nil
-	}
-
-	if t.IsZero() || t.Year() < 2000 {
-		return nil
-	}
-
-	t = t.UTC()
-	return &t
 }

@@ -17,11 +17,13 @@ type Opts struct {
 	fx.In
 	Logger logger.Logger
 	Db     *mongo.Database
+	Mapper Mapper
 }
 
 type Repository struct {
 	logger logger.Logger
 	coll   *mongo.Collection
+	mapper Mapper
 }
 
 func New(opts Opts) *Repository {
@@ -32,6 +34,7 @@ func New(opts Opts) *Repository {
 	return &Repository{
 		logger: l,
 		coll:   coll,
+		mapper: opts.Mapper,
 	}
 }
 

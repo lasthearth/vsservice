@@ -1,3 +1,4 @@
+//go:generate go tool goverter gen github.com/lasthearth/vsservice/internal/event/internal/repository
 package repository
 
 import (
@@ -6,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lasthearth/vsservice/internal/event/internal/dto"
+	"github.com/lasthearth/vsservice/internal/event/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/event/internal/model"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -14,102 +16,116 @@ import (
 	"go.uber.org/zap"
 )
 
+// goverter:converter
+// goverter:output:file repomapper/mapper.go
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:ObjectIdToString
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTime
+type Mapper interface {
+	// goverter:ignore Model Until DeletedAt DeletedBy
+	FromModel(model.Event) dto.Event
+
+	// goverter:autoMap Model
+	// goverter:map Id Id
+	ToModel(dto.Event) model.Event
+	ToModels([]dto.Event) []model.Event
+}
+
 // notDeleted matches events that were not soft-deleted.
-var notDeleted = bson.M{"deleted_at": bson.M{"$exists": false}}
+func notDeleted(filter bson.M) bson.M {
+	filter["deleted_at"] = bson.M{"$exists": false}
+	return filter
+}
+
+// toDTO maps the model and fills the denormalized Until.
+func (r *Repository) toDTO(event *model.Event) dto.Event {
+	doc := r.mapper.FromModel(*event)
+	doc.Until = event.Until()
+	return doc
+}
 
 // Create stores a new event and returns it with id and timestamps.
 func (r *Repository) Create(ctx context.Context, event *model.Event) (*model.Event, error) {
-	doc := fromModel(event)
+	l := r.logger.WithMethod("Create")
+
+	doc := r.toDTO(event)
 	doc.Model = mongox.NewModel()
 
 	if _, err := r.coll.InsertOne(ctx, doc); err != nil {
-		r.logger.Error("failed to insert event", zap.Error(err))
+		l.Error("failed to insert event", zap.Error(err))
 		return nil, err
 	}
 
-	created := toModel(doc)
+	created := r.mapper.ToModel(doc)
 	return &created, nil
 }
 
 // Get returns a not-deleted event by id.
 func (r *Repository) Get(ctx context.Context, id string) (*model.Event, error) {
-	oid, err := mongox.ParseObjectID(id)
+	doc, err := r.find(ctx, id)
 	if err != nil {
-		return nil, model.ErrNotFound
-	}
-
-	filter := bson.M{"_id": oid, "deleted_at": bson.M{"$exists": false}}
-
-	var doc dto.Event
-	if err := r.coll.FindOne(ctx, filter).Decode(&doc); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, model.ErrNotFound
-		}
-		r.logger.Error("failed to find event", zap.String("id", id), zap.Error(err))
 		return nil, err
 	}
 
-	event := toModel(doc)
+	event := r.mapper.ToModel(*doc)
 	return &event, nil
 }
 
-// Update saves the editable fields of an existing, not-deleted event.
-func (r *Repository) Update(ctx context.Context, event *model.Event) (*model.Event, error) {
-	oid, err := mongox.ParseObjectID(event.Id)
+// UpdateEvent loads a not-deleted event, lets updateFn change it through its
+// methods and stores the result in place.
+func (r *Repository) UpdateEvent(
+	ctx context.Context,
+	id string,
+	updateFn func(ctx context.Context, e *model.Event) (*model.Event, error),
+) (*model.Event, error) {
+	l := r.logger.WithMethod("UpdateEvent").With(zap.String("id", id))
+
+	stored, err := r.find(ctx, id)
 	if err != nil {
-		return nil, model.ErrNotFound
-	}
-
-	doc := fromModel(event)
-	set := bson.M{
-		"title":       doc.Title,
-		"description": doc.Description,
-		"cover":       doc.Cover,
-		"location":    doc.Location,
-		"starts_at":   doc.StartsAt,
-		"until":       doc.Until,
-		"updated_at":  time.Now(),
-	}
-	update := bson.M{"$set": set, "$inc": bson.M{"version": 1}}
-	if doc.EndsAt != nil {
-		set["ends_at"] = *doc.EndsAt
-	} else {
-		update["$unset"] = bson.M{"ends_at": ""}
-	}
-
-	filter := bson.M{"_id": oid, "deleted_at": bson.M{"$exists": false}}
-	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
-
-	var updated dto.Event
-	if err := r.coll.FindOneAndUpdate(ctx, filter, update, opts).Decode(&updated); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, model.ErrNotFound
-		}
-		r.logger.Error("failed to update event", zap.String("id", event.Id), zap.Error(err))
 		return nil, err
 	}
 
-	result := toModel(updated)
+	event := r.mapper.ToModel(*stored)
+	updated, err := updateFn(ctx, &event)
+	if err != nil {
+		return nil, err
+	}
+
+	doc := r.toDTO(updated)
+	doc.Model = stored.Model
+	doc.Model.UpdatedAt = time.Now()
+
+	res, err := r.coll.ReplaceOne(ctx, notDeleted(bson.M{"_id": stored.Id()}), doc)
+	if err != nil {
+		l.Error("failed to replace event", zap.Error(err))
+		return nil, err
+	}
+	// Deleted between the read and the write.
+	if res.MatchedCount == 0 {
+		return nil, ierror.ErrNotFound
+	}
+
+	result := r.mapper.ToModel(doc)
 	return &result, nil
 }
 
 // SoftDelete marks an event deleted.
 func (r *Repository) SoftDelete(ctx context.Context, id, deletedBy string) error {
+	l := r.logger.WithMethod("SoftDelete").With(zap.String("id", id))
+
 	oid, err := mongox.ParseObjectID(id)
 	if err != nil {
-		return model.ErrNotFound
+		return ierror.ErrNotFound
 	}
 
-	filter := bson.M{"_id": oid, "deleted_at": bson.M{"$exists": false}}
 	update := bson.M{"$set": bson.M{"deleted_at": time.Now(), "deleted_by": deletedBy}}
 
-	res, err := r.coll.UpdateOne(ctx, filter, update)
+	res, err := r.coll.UpdateOne(ctx, notDeleted(bson.M{"_id": oid}), update)
 	if err != nil {
-		r.logger.Error("failed to delete event", zap.String("id", id), zap.Error(err))
+		l.Error("failed to delete event", zap.Error(err))
 		return err
 	}
 	if res.MatchedCount == 0 {
-		return model.ErrNotFound
+		return ierror.ErrNotFound
 	}
 
 	return nil
@@ -127,56 +143,40 @@ func (r *Repository) ListPast(ctx context.Context, now time.Time, limit int) ([]
 	return r.list(ctx, filter, bson.D{{Key: "until", Value: -1}}, limit)
 }
 
-func (r *Repository) list(ctx context.Context, filter bson.M, sort bson.D, limit int) ([]model.Event, error) {
-	for k, v := range notDeleted {
-		filter[k] = v
+// find returns the stored not-deleted document.
+func (r *Repository) find(ctx context.Context, id string) (*dto.Event, error) {
+	oid, err := mongox.ParseObjectID(id)
+	if err != nil {
+		return nil, ierror.ErrNotFound
 	}
 
+	var doc dto.Event
+	if err := r.coll.FindOne(ctx, notDeleted(bson.M{"_id": oid})).Decode(&doc); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ierror.ErrNotFound
+		}
+		r.logger.Error("failed to find event", zap.String("id", id), zap.Error(err))
+		return nil, err
+	}
+
+	return &doc, nil
+}
+
+func (r *Repository) list(ctx context.Context, filter bson.M, sort bson.D, limit int) ([]model.Event, error) {
+	l := r.logger.WithMethod("list")
+
 	opts := options.Find().SetSort(sort).SetLimit(int64(limit))
-	cursor, err := r.coll.Find(ctx, filter, opts)
+	cursor, err := r.coll.Find(ctx, notDeleted(filter), opts)
 	if err != nil {
-		r.logger.Error("failed to list events", zap.Error(err))
+		l.Error("failed to list events", zap.Error(err))
 		return nil, err
 	}
 
 	var docs []dto.Event
 	if err := cursor.All(ctx, &docs); err != nil {
-		r.logger.Error("failed to decode events", zap.Error(err))
+		l.Error("failed to decode events", zap.Error(err))
 		return nil, err
 	}
 
-	events := make([]model.Event, 0, len(docs))
-	for _, doc := range docs {
-		events = append(events, toModel(doc))
-	}
-
-	return events, nil
-}
-
-func fromModel(e *model.Event) dto.Event {
-	return dto.Event{
-		Title:       e.Title,
-		Description: e.Description,
-		Cover:       e.Cover,
-		Location:    e.Location,
-		StartsAt:    e.StartsAt,
-		EndsAt:      e.EndsAt,
-		Until:       e.Until(),
-		CreatedBy:   e.CreatedBy,
-	}
-}
-
-func toModel(d dto.Event) model.Event {
-	return model.Event{
-		Id:          d.Model.Id.Hex(),
-		Title:       d.Title,
-		Description: d.Description,
-		Cover:       d.Cover,
-		Location:    d.Location,
-		StartsAt:    d.StartsAt,
-		EndsAt:      d.EndsAt,
-		CreatedBy:   d.CreatedBy,
-		CreatedAt:   d.Model.CreatedAt,
-		UpdatedAt:   d.Model.UpdatedAt,
-	}
+	return r.mapper.ToModels(docs), nil
 }

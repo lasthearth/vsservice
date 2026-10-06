@@ -24,7 +24,6 @@ var (
 	ErrDescriptionLong = ierror.InvalidArgument("description is too long")
 	ErrStartRequired   = ierror.InvalidArgument("starts_at is required")
 	ErrEndBeforeStart  = ierror.InvalidArgument("ends_at must not be before starts_at")
-	ErrNotFound        = ierror.NotFound("event not found")
 	ErrInvalidCoverURL = ierror.InvalidArgument("invalid cover url")
 	ErrCreatorRequired = ierror.InvalidArgument("created_by is required")
 )
