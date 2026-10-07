@@ -2,6 +2,7 @@ package interceptor
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
@@ -16,17 +17,23 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/settlement.v1.SettlementTagService/GetTag",
 		"/settlement.v1.SettlementTagService/GetTags",
 		"/settlement.v1.SettlementTagService/GetTagsByIds",
+		"/event.v1.EventService/GetEvent",
+		"/event.v1.EventService/ListEvents",
+		"/reaction.v1.ReactionService/ListReactions",
 	}
 	protected := []string{
 		"/user.v1.UserService/SearchUsers",
 		"/user.v1.UserService/ChangeNickname",
 		"/settlement.v1.SettlementTagService/CreateTag",
+		"/event.v1.EventService/CreateEvent",
+		"/event.v1.EventService/UpdateEvent",
+		"/event.v1.EventService/DeleteEvent",
+		"/reaction.v1.ReactionService/ListMyReactions",
+		"/reaction.v1.ReactionService/ToggleReaction",
 	}
 
 	split := func(m string) interceptors.CallMeta {
-		i := len(m) - 1
-		for ; i >= 0 && m[i] != '/'; i-- {
-		}
+		i := strings.LastIndexByte(m, '/')
 		return interceptors.CallMeta{Service: m[1:i], Method: m[i+1:]}
 	}
 

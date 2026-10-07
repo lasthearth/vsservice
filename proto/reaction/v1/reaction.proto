@@ -14,16 +14,31 @@ service ReactionService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
   // Reaction counts for up to 50 targets. Public.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): no targets, more than 50, or a target that is not
+  //     "<news|diplomacy|event>:<id>"
+  //   - INTERNAL (500): database failure
   rpc ListReactions(ListReactionsRequest) returns (ListReactionsResponse) {
     option (google.api.http) = {get: "/v1/reactions"};
   }
 
   // Which emojis the caller has put on the given targets.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): same target rules as ListReactions
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc ListMyReactions(ListMyReactionsRequest) returns (ListMyReactionsResponse) {
     option (google.api.http) = {get: "/v1/reactions/me"};
   }
 
   // Put the emoji on the target, or take it back if it is already there.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): malformed target or unknown emoji
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
   rpc ToggleReaction(ToggleReactionRequest) returns (ToggleReactionResponse) {
     option (google.api.http) = {
       post: "/v1/reactions:toggle"
@@ -56,7 +71,9 @@ message ListReactionsRequest {
 }
 
 message ListReactionsResponse {
-  // One entry per requested target, in request order.
+  // One entry per distinct requested target, in request order. Duplicates in
+  // the request collapse, so this can be shorter than the request list; match
+  // entries by their target field, not by position.
   repeated TargetReactions reactions = 1;
 }
 
@@ -81,12 +98,29 @@ message ListMyReactionsResponse {
 }
 
 message ToggleReactionRequest {
-  string target = 1 [(google.api.field_behavior) = REQUIRED];
-  string emoji = 2 [(google.api.field_behavior) = REQUIRED];
+  // "<news|diplomacy|event>:<id>", at most 74 characters.
+  string target = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 74
+    }
+  ];
+  // One of: like, heart, fire, laugh, swords.
+  string emoji = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 16
+    }
+  ];
 }
 
 message ToggleReactionResponse {
-  // Whether the caller's reaction is now on.
+  // Whether the caller's reaction is now on. Authoritative even when the
+  // counts below could not be read.
   bool active = 1;
+  // Current counts for the target. Absent when the follow-up read failed; the
+  // toggle itself has still been applied.
   TargetReactions reactions = 2;
 }

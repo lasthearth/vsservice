@@ -79,33 +79,34 @@ func (r *Repository) UpdateEvent(
 ) (*model.Event, error) {
 	l := r.logger.WithMethod("UpdateEvent").With(zap.String("id", id))
 
-	stored, err := r.find(ctx, id)
+	oid, err := mongox.ParseObjectID(id)
 	if err != nil {
-		return nil, err
-	}
-
-	event := r.mapper.ToModel(*stored)
-	updated, err := updateFn(ctx, &event)
-	if err != nil {
-		return nil, err
-	}
-
-	doc := r.toDTO(updated)
-	doc.Model = stored.Model
-	doc.Model.UpdatedAt = time.Now()
-
-	res, err := r.coll.ReplaceOne(ctx, notDeleted(bson.M{"_id": stored.Id()}), doc)
-	if err != nil {
-		l.Error("failed to replace event", zap.Error(err))
-		return nil, err
-	}
-	// Deleted between the read and the write.
-	if res.MatchedCount == 0 {
 		return nil, ierror.ErrNotFound
 	}
 
-	result := r.mapper.ToModel(doc)
-	return &result, nil
+	// UpdateDoc owns the read-modify-write: it carries the stored envelope over,
+	// stamps updated_at, and pins the replace to the version it read, retrying
+	// before giving up. Without the pin two editors saving the same event both
+	// succeed and the second silently discards the first. The not-deleted clause
+	// stays in the filter, so an event deleted mid-cycle makes the guard miss
+	// and the retry reports not found instead of resurrecting it.
+	updated, err := mongox.UpdateDoc(
+		ctx,
+		r.coll,
+		notDeleted(bson.M{"_id": oid}),
+		ierror.ErrNotFound,
+		func(d dto.Event) *model.Event {
+			m := r.mapper.ToModel(d)
+			return &m
+		},
+		r.toDTO,
+		updateFn,
+	)
+	if err != nil && !errors.Is(err, ierror.ErrNotFound) {
+		l.Error("failed to update event", zap.Error(err))
+	}
+
+	return updated, err
 }
 
 // SoftDelete marks an event deleted.
@@ -132,15 +133,19 @@ func (r *Repository) SoftDelete(ctx context.Context, id, deletedBy string) error
 }
 
 // ListUpcoming returns events that have not ended by now, soonest first.
+// _id breaks ties, so events sharing a starts_at keep a stable order between
+// requests instead of swapping places.
 func (r *Repository) ListUpcoming(ctx context.Context, now time.Time, limit int) ([]model.Event, error) {
 	filter := bson.M{"until": bson.M{"$gte": now}}
-	return r.list(ctx, filter, bson.D{{Key: "starts_at", Value: 1}}, limit)
+	sort := bson.D{{Key: "starts_at", Value: 1}, {Key: "_id", Value: 1}}
+	return r.list(ctx, filter, sort, limit)
 }
 
 // ListPast returns events that have ended by now, most recent first.
 func (r *Repository) ListPast(ctx context.Context, now time.Time, limit int) ([]model.Event, error) {
 	filter := bson.M{"until": bson.M{"$lt": now}}
-	return r.list(ctx, filter, bson.D{{Key: "until", Value: -1}}, limit)
+	sort := bson.D{{Key: "until", Value: -1}, {Key: "_id", Value: -1}}
+	return r.list(ctx, filter, sort, limit)
 }
 
 // find returns the stored not-deleted document.

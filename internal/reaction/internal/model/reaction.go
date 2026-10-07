@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"slices"
 
-	"github.com/lasthearth/vsservice/internal/pkg/ierror"
+	"github.com/lasthearth/vsservice/internal/reaction/internal/ierror"
 )
 
 // Emojis are the reactions a player can put, in display order. Keys only:
@@ -32,17 +32,10 @@ const MaxTargets = 50
 // ids are Mongo ObjectIDs or Discord snowflakes.
 var targetPattern = regexp.MustCompile(`^(news|diplomacy|event):[A-Za-z0-9_-]{1,64}$`)
 
-var (
-	ErrInvalidTarget  = ierror.InvalidArgument("invalid target, expected <news|diplomacy|event>:<id>")
-	ErrInvalidEmoji   = ierror.InvalidArgument("unknown emoji")
-	ErrNoTargets      = ierror.InvalidArgument("targets are required")
-	ErrTooManyTargets = ierror.InvalidArgument("too many targets")
-)
-
 // ValidateTarget checks the "<kind>:<id>" shape.
 func ValidateTarget(target string) error {
 	if !targetPattern.MatchString(target) {
-		return ErrInvalidTarget
+		return ierror.ErrInvalidTarget
 	}
 	return nil
 }
@@ -50,19 +43,21 @@ func ValidateTarget(target string) error {
 // ValidateEmoji checks the emoji is one of Emojis.
 func ValidateEmoji(emoji string) error {
 	if !slices.Contains(Emojis, emoji) {
-		return ErrInvalidEmoji
+		return ierror.ErrInvalidEmoji
 	}
 	return nil
 }
 
 // ValidateTargets checks a request's target list and returns it without
-// duplicates, order kept.
+// duplicates, order kept. Callers that zip the response against their own
+// request list must match by target, not by position, because duplicates
+// collapse.
 func ValidateTargets(targets []string) ([]string, error) {
 	if len(targets) == 0 {
-		return nil, ErrNoTargets
+		return nil, ierror.ErrNoTargets
 	}
 	if len(targets) > MaxTargets {
-		return nil, ErrTooManyTargets
+		return nil, ierror.ErrTooManyTargets
 	}
 
 	seen := make(map[string]struct{}, len(targets))

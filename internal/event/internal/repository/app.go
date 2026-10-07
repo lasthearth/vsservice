@@ -42,9 +42,19 @@ func setupIndexes(log logger.Logger, coll *mongo.Collection) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if _, err := coll.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: bson.D{{Key: "until", Value: 1}},
-	}); err != nil {
-		log.Error("failed to create index", zap.String("collection", collName), zap.Error(err))
+	models := []mongo.IndexModel{
+		// Serves ListPast: a range on until, returned in until order.
+		{Keys: bson.D{{Key: "until", Value: 1}}},
+		// Serves ListUpcoming, which filters on until but returns starts_at
+		// order. A range on the leading until field cannot yield that order, so
+		// without this index the planner adds a blocking in-memory sort over
+		// every upcoming event on a public endpoint. Scanning starts_at in order
+		// and filtering until per document keeps the sort indexed and lets the
+		// limit stop the scan early.
+		{Keys: bson.D{{Key: "starts_at", Value: 1}}},
+	}
+
+	if _, err := coll.Indexes().CreateMany(ctx, models); err != nil {
+		log.Error("failed to create indexes", zap.String("collection", collName), zap.Error(err))
 	}
 }

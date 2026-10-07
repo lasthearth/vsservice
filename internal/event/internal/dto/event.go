@@ -9,13 +9,18 @@ import (
 
 // Event is the `events` collection document.
 type Event struct {
-	Model       mongox.Model `bson:",inline"`
-	Title       string       `bson:"title"`
-	Description string       `bson:"description"`
-	Cover       string       `bson:"cover,omitempty"`
-	Location    string       `bson:"location,omitempty"`
-	StartsAt    time.Time    `bson:"starts_at"`
-	EndsAt      *time.Time   `bson:"ends_at,omitempty"`
+	// Embedded, not named: mongox.UpdateDoc locates the version guard by
+	// reflecting on an anonymous Model field, and it needs the promoted
+	// envelope methods. The driver inlines _id/created_at/updated_at/version at
+	// the top level either way.
+	mongox.Model `bson:",inline"`
+
+	Title       string     `bson:"title"`
+	Description string     `bson:"description"`
+	Cover       string     `bson:"cover,omitempty"`
+	Location    string     `bson:"location,omitempty"`
+	StartsAt    time.Time  `bson:"starts_at"`
+	EndsAt      *time.Time `bson:"ends_at,omitempty"`
 	// Until is EndsAt, or StartsAt + model.DefaultDuration when there is no end. Denormalized so the
 	// upcoming/past split is a single indexed range query.
 	Until     time.Time  `bson:"until"`

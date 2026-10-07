@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"strings"
 
 	eventv1 "github.com/lasthearth/vsservice/gen/event/v1"
 	"github.com/lasthearth/vsservice/internal/event/internal/model"
@@ -44,7 +44,7 @@ func (s *Service) CreateEvent(ctx context.Context, req *eventv1.CreateEventReque
 	if err := s.cnuc.CreateNotification(
 		ctx,
 		"Новое событие",
-		fmt.Sprintf("Событие: %s", created.Title),
+		"Событие: "+created.Title,
 		notificationuc.WithBroadcast(),
 	); err != nil {
 		s.logger.Error("failed to broadcast event notification", zap.String("event_id", created.Id), zap.Error(err))
@@ -120,8 +120,12 @@ func (s *Service) ListEvents(ctx context.Context, req *eventv1.ListEventsRequest
 	return &eventv1.ListEventsResponse{Events: s.mapper.ToProtos(events)}, nil
 }
 
-// validateCover accepts an empty cover or a URL from the media CDN.
+// validateCover accepts an empty cover or a URL from the media CDN. It trims
+// first, because model.Apply stores the trimmed value: validating the raw
+// string would reject a pasted URL with stray whitespace that stores fine,
+// while the same request's title is trimmed and accepted.
 func (s *Service) validateCover(cover string) error {
+	cover = strings.TrimSpace(cover)
 	if cover == "" {
 		return nil
 	}

@@ -15,7 +15,17 @@ import "google/protobuf/timestamp.proto";
 service EventService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
-  // Create an event. Every player is notified about it.
+  // Staff: create an event. Every player is notified about it.
+  //
+  // A failed broadcast does not undo the event; it is logged only.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): empty or over-long title, location or description, a
+  //     missing or implausible starts_at, ends_at before starts_at, or a cover that
+  //     is not a media CDN URL
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): caller lacks news:create
+  //   - INTERNAL (500): database failure
   rpc CreateEvent(CreateEventRequest) returns (Event) {
     option (google.api.http) = {
       post: "/v1/events"
@@ -23,7 +33,19 @@ service EventService {
     };
   }
 
-  // Replace the editable fields of an event.
+  // Staff: replace the editable fields of an event.
+  //
+  // The edit is one version-guarded write. When another editor saved the same
+  // event first and the retry keeps losing, the call fails instead of silently
+  // discarding one of the two edits.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): same field rules as CreateEvent
+  //   - NOT_FOUND (404): no such event, or it was deleted
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): caller lacks news:create
+  //   - FAILED_PRECONDITION (412): the event kept changing under concurrent edits
+  //   - INTERNAL (500): database failure
   rpc UpdateEvent(UpdateEventRequest) returns (Event) {
     option (google.api.http) = {
       patch: "/v1/events/{id}"
@@ -32,20 +54,34 @@ service EventService {
     option (google.api.method_signature) = "id";
   }
 
-  // Soft-delete an event.
+  // Staff: soft-delete an event. The caller is recorded as deleted_by.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such event, or it was already deleted
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): caller lacks news:delete
+  //   - INTERNAL (500): database failure
   rpc DeleteEvent(DeleteEventRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/v1/events/{id}"};
     option (google.api.method_signature) = "id";
   }
 
-  // Get one event.
+  // Get one event. Public.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such event, or it was deleted
+  //   - INTERNAL (500): database failure
   rpc GetEvent(GetEventRequest) returns (Event) {
     option (google.api.http) = {get: "/v1/events/{id}"};
     option (google.api.method_signature) = "id";
   }
 
   // List upcoming and ongoing events (soonest first) or, with `past`, the
-  // events that are over (most recent first).
+  // events that are over (most recent first). Public.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): page_size outside 0..100
+  //   - INTERNAL (500): database failure
   rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
     option (google.api.http) = {get: "/v1/events"};
   }
@@ -78,7 +114,9 @@ message CreateEventRequest {
     }
   ];
   string description = 2 [(buf.validate.field).string.max_len = 20000];
-  string cover = 3;
+  // A MediaService cover URL, or empty. Bounded because the value is stored and
+  // then served verbatim to every unauthenticated ListEvents caller.
+  string cover = 3 [(buf.validate.field).string.max_len = 2048];
   string location = 4 [(buf.validate.field).string.max_len = 120];
   google.protobuf.Timestamp starts_at = 5 [
     (google.api.field_behavior) = REQUIRED,
@@ -97,7 +135,7 @@ message UpdateEventRequest {
     }
   ];
   string description = 3 [(buf.validate.field).string.max_len = 20000];
-  string cover = 4;
+  string cover = 4 [(buf.validate.field).string.max_len = 2048];
   string location = 5 [(buf.validate.field).string.max_len = 120];
   google.protobuf.Timestamp starts_at = 6 [
     (google.api.field_behavior) = REQUIRED,
