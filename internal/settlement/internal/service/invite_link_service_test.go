@@ -28,6 +28,7 @@ type inviteRepo struct {
 	links     map[string]*model.InviteLink
 	active    int64
 	created   *model.InviteLink
+	joined    *model.InviteLink
 	getByCode *model.InviteLink
 }
 
@@ -54,13 +55,15 @@ func (r *inviteRepo) CreateInviteLink(_ context.Context, link *model.InviteLink)
 	return link, nil
 }
 
+// UpdateInviteLink mirrors production's {_id, settlement_id} filter: a link that
+// belongs to another settlement must not be reachable through this one.
 func (r *inviteRepo) UpdateInviteLink(
 	ctx context.Context,
-	_, linkID string,
+	settlementID, linkID string,
 	fn func(context.Context, *model.InviteLink) (*model.InviteLink, error),
 ) (*model.InviteLink, error) {
 	link, ok := r.links[linkID]
-	if !ok {
+	if !ok || link.SettlementId != settlementID {
 		return nil, ierror.ErrInviteLinkNotFound
 	}
 	working := *link
@@ -75,7 +78,9 @@ func (r *inviteRepo) JoinByInviteLink(
 	for _, link := range r.links {
 		if link.Code == code {
 			working := *link
-			return fn(ctx, &working)
+			updated, err := fn(ctx, &working)
+			r.joined = updated
+			return updated, err
 		}
 	}
 	return nil, ierror.ErrInviteLinkNotFound
@@ -201,5 +206,77 @@ func TestGetInviteLinkPreview(t *testing.T) {
 	}
 	if got.GetSettlement().GetName() != "Северный Оплот" || got.GetMaxUses() != 10 || got.GetExpiresAt() != nil {
 		t.Fatalf("unexpected preview %+v", got)
+	}
+	if got.GetStatus() != settlementv1.InviteLinkStatus_INVITE_LINK_STATUS_ACTIVE {
+		t.Fatalf("want active, got %v", got.GetStatus())
+	}
+}
+
+// TestJoinByInviteLinkSucceeds covers the success path: the refusal cases were
+// the only ones tested, so a handler that returned an empty settlement id or
+// forgot to spend the use still passed.
+func TestJoinByInviteLinkSucceeds(t *testing.T) {
+	svc, repo := newInviteService(t)
+	link, _ := model.NewInviteLink("s1", "owner", time.Hour, 5, linkNow)
+	repo.links["l1"] = link
+
+	got, err := svc.JoinByInviteLink(asUser("newcomer"), &settlementv1.JoinByInviteLinkRequest{Code: link.Code})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetSettlementId() != "s1" {
+		t.Fatalf("want settlement s1 in the response, got %q", got.GetSettlementId())
+	}
+	if repo.joined == nil || repo.joined.Uses != 1 {
+		t.Fatalf("the join must spend exactly one use, got %+v", repo.joined)
+	}
+}
+
+// TestRevokeInviteLinkIsScopedToSettlement pins the cross-settlement isolation
+// the real filter {_id, settlement_id} provides: holding invite_member in one
+// settlement must not let a caller revoke another settlement's link by id.
+func TestRevokeInviteLinkIsScopedToSettlement(t *testing.T) {
+	svc, repo := newInviteService(t)
+	foreign, _ := model.NewInviteLink("s2", "other-owner", time.Hour, 0, linkNow)
+	repo.links["foreign"] = foreign
+
+	_, err := svc.RevokeInviteLink(asUser("owner"), &settlementv1.RevokeInviteLinkRequest{
+		SettlementId: "s1",
+		LinkId:       "foreign",
+	})
+	if !errors.Is(err, ierror.ErrInviteLinkNotFound) {
+		t.Fatalf("want ErrInviteLinkNotFound for another settlement's link, got %v", err)
+	}
+	if foreign.RevokedAt != nil {
+		t.Fatal("the other settlement's link must not be revoked")
+	}
+}
+
+// TestGetInviteLinkPreviewReportsWhyUnusable covers the status branches the
+// other tests leave out. Swapping EXPIRED and EXHAUSTED would otherwise ship:
+// the client would tell a player "no uses left" for a link that merely expired.
+func TestGetInviteLinkPreviewReportsWhyUnusable(t *testing.T) {
+	expired, _ := model.NewInviteLink("s1", "owner", time.Hour, 0, linkNow.Add(-2*time.Hour))
+	exhausted, _ := model.NewInviteLink("s1", "owner", 0, 1, linkNow)
+	_ = exhausted.Use(linkNow)
+
+	cases := map[string]struct {
+		link *model.InviteLink
+		want settlementv1.InviteLinkStatus
+	}{
+		"expired":   {expired, settlementv1.InviteLinkStatus_INVITE_LINK_STATUS_EXPIRED},
+		"exhausted": {exhausted, settlementv1.InviteLinkStatus_INVITE_LINK_STATUS_EXHAUSTED},
+	}
+	for name, c := range cases {
+		svc, repo := newInviteService(t)
+		repo.getByCode = c.link
+
+		got, err := svc.GetInviteLink(context.Background(), &settlementv1.GetInviteLinkRequest{Code: c.link.Code})
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if got.GetStatus() != c.want {
+			t.Errorf("%s: want %v, got %v", name, c.want, got.GetStatus())
+		}
 	}
 }
