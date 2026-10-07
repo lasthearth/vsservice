@@ -24,6 +24,7 @@ import (
 	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
 	kitdefv1 "github.com/lasthearth/vsservice/gen/kitdef/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
+	lfgv1 "github.com/lasthearth/vsservice/gen/lfg/v1"
 	mailv1 "github.com/lasthearth/vsservice/gen/mail/v1"
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
@@ -122,6 +123,7 @@ func (s *Server) Build() error {
 	discordv1.RegisterDiscordServiceServer(srv, s.discordV1)
 	eventv1.RegisterEventServiceServer(srv, s.eventV1)
 	reactionv1.RegisterReactionServiceServer(srv, s.reactionV1)
+	lfgv1.RegisterLfgServiceServer(srv, s.lfgV1)
 	reflection.Register(srv)
 
 	// After registration so GetServiceInfo() sees every service. Fails startup
@@ -240,6 +242,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := reactionv1.RegisterReactionServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register reaction service handler")
+	}
+
+	if err := lfgv1.RegisterLfgServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register lfg service handler")
 	}
 
 	handler := cors.New(cors.Options{

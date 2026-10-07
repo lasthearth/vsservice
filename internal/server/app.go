@@ -10,6 +10,7 @@ import (
 	imperialpointv1 "github.com/lasthearth/vsservice/gen/imperialpoint/v1"
 	kitdefv1 "github.com/lasthearth/vsservice/gen/kitdef/v1"
 	leaderboardv1 "github.com/lasthearth/vsservice/gen/leaderboard/v1"
+	lfgv1 "github.com/lasthearth/vsservice/gen/lfg/v1"
 	mailv1 "github.com/lasthearth/vsservice/gen/mail/v1"
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
@@ -58,6 +59,7 @@ type Opts struct {
 	DiscordV1       discordv1.DiscordServiceServer
 	EventV1         eventv1.EventServiceServer
 	ReactionV1      reactionv1.ReactionServiceServer
+	LfgV1           lfgv1.LfgServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -86,6 +88,7 @@ type Server struct {
 	discordV1           discordv1.DiscordServiceServer
 	eventV1             eventv1.EventServiceServer
 	reactionV1          reactionv1.ReactionServiceServer
+	lfgV1               lfgv1.LfgServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -119,6 +122,7 @@ func New(opts Opts) *Server {
 		discordV1:           opts.DiscordV1,
 		eventV1:             opts.EventV1,
 		reactionV1:          opts.ReactionV1,
+		lfgV1:               opts.LfgV1,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}

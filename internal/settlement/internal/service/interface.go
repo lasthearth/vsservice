@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
@@ -15,6 +16,7 @@ import (
 // goverter:extend TagIdsToProto
 // goverter:extend PermissionToProto
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTimestamp
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimePtrToTimestamp
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToInt64
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:IntToInt32
 type Mapper interface {
@@ -55,6 +57,10 @@ type Mapper interface {
 	// goverter:map CreatedAt | github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToInt64
 	ToImperialFavorLogProto(model.ImperialFavorLog) *settlementv1.ImperialFavorLog
 	ToImperialFavorLogsProto([]model.ImperialFavorLog) []*settlementv1.ImperialFavorLog
+
+	// Status depends on the moment of the read; the service fills it in.
+	// goverter:ignore state sizeCache unknownFields Status
+	ToInviteLinkProto(model.InviteLink) *settlementv1.InviteLink
 }
 
 type SettlementRepository interface {
@@ -104,6 +110,25 @@ type SettlementDbRepository interface {
 	// request and all other pending requests of that user, in one transaction.
 	ApproveJoinRequest(ctx context.Context, joinRequestID string) (userID string, err error)
 	DeleteJoinRequest(ctx context.Context, joinRequestID, settlementID string) error
+
+	CreateInviteLink(ctx context.Context, link *model.InviteLink) (*model.InviteLink, error)
+	// CountActiveInviteLinks counts links still usable at now.
+	CountActiveInviteLinks(ctx context.Context, settlementID string, now time.Time) (int64, error)
+	// ListInviteLinks returns links that were not revoked, newest first.
+	ListInviteLinks(ctx context.Context, settlementID string) ([]model.InviteLink, error)
+	GetInviteLinkByCode(ctx context.Context, code string) (*model.InviteLink, error)
+	UpdateInviteLink(
+		ctx context.Context,
+		settlementID, linkID string,
+		updateFn func(ctx context.Context, link *model.InviteLink) (*model.InviteLink, error),
+	) (*model.InviteLink, error)
+	// JoinByInviteLink spends a use of the link through useFn and adds userID
+	// to its settlement; the use is given back if the player cannot be added.
+	JoinByInviteLink(
+		ctx context.Context,
+		code, userID string,
+		useFn func(ctx context.Context, link *model.InviteLink) (*model.InviteLink, error),
+	) (*model.InviteLink, error)
 }
 
 type SettlementRequestDbRepository interface {

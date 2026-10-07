@@ -1,0 +1,309 @@
+syntax = "proto3";
+
+package lfg.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/timestamp.proto";
+
+// LfgService is the "looking for company" board. It holds two kinds of posts:
+// a session ("going to the mines in 20 minutes, need two more", others respond
+// "I'm in") and a teammate search ("looking for someone to play with
+// regularly", others mark "interested" and reach the author by the contact in
+// the post). Reading is public, except the contact; posting and responding need
+// a signed-in player.
+service LfgService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Post an announcement. A player may keep at most 3 open session posts and one
+  // open teammate post.
+  //
+  // A session stays on the board until four hours after starts_at; a teammate
+  // post stays 14 days and can be renewed (RenewPost). Either leaves earlier if
+  // its author closes it.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): unknown kind; activities not 1..4 distinct known
+  //     ones; title shorter than 3 or longer than 80 characters; description over
+  //     500; slots outside 1..10; contact not 3..64 characters (required for a
+  //     teammate post); a session without starts_at, or with starts_at more than an
+  //     hour in the past or over 7 days ahead; a teammate post with repeated or
+  //     unknown play days or play times, or unknown experience
+  //   - RESOURCE_EXHAUSTED (429): the caller already has 3 open sessions, or an open
+  //     teammate post
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc CreatePost(CreatePostRequest) returns (Post) {
+    option (google.api.http) = {
+      post: "/v1/lfg/posts"
+      body: "*"
+    };
+  }
+
+  // Open posts of one kind: sessions soonest first, teammate posts freshest
+  // (posted or renewed) first. Public; contacts are not included.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): kind unset, or page_size outside 0..100
+  //   - INTERNAL (500): database failure
+  rpc ListPosts(ListPostsRequest) returns (ListPostsResponse) {
+    option (google.api.http) = {get: "/v1/lfg/posts"};
+  }
+
+  // One post, open or not. Public, for shared links; the contact is not
+  // included.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such post
+  //   - INTERNAL (500): database failure
+  rpc GetPost(GetPostRequest) returns (Post) {
+    option (google.api.http) = {get: "/v1/lfg/posts/{id}"};
+    option (google.api.method_signature) = "id";
+  }
+
+  // Join a session (or mark interest in a teammate post), or withdraw if the
+  // caller already responded. Responding notifies the author.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such post
+  //   - FAILED_PRECONDITION (412): the post is closed or over, it is the caller's own
+  //     post, all slots are taken (50 interested for a teammate post), or the post
+  //     kept changing under concurrent writes
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc RespondToPost(RespondToPostRequest) returns (RespondToPostResponse) {
+    option (google.api.http) = {post: "/v1/lfg/posts/{id}:respond"};
+  }
+
+  // Close a post so it leaves the board. Author only.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such post
+  //   - PERMISSION_DENIED (403): the caller is not the author
+  //   - FAILED_PRECONDITION (412): the post kept changing under concurrent writes
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ClosePost(ClosePostRequest) returns (Post) {
+    option (google.api.http) = {post: "/v1/lfg/posts/{id}:close"};
+  }
+
+  // Keep a teammate post up for another 14 days and lift it to the top of the
+  // board. Author only, once a day; an expired post can be renewed while it is
+  // still stored (a day after expiry).
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such post
+  //   - PERMISSION_DENIED (403): the caller is not the author
+  //   - FAILED_PRECONDITION (412): the post is a session or closed, it was renewed
+  //     less than a day ago, or it kept changing under concurrent writes
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc RenewPost(RenewPostRequest) returns (Post) {
+    option (google.api.http) = {post: "/v1/lfg/posts/{id}:renew"};
+  }
+
+  // How to reach the author. Signed-in players only, so contacts are not
+  // scraped from the public board.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such post
+  //   - FAILED_PRECONDITION (412): the post is closed
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc GetPostContact(GetPostContactRequest) returns (GetPostContactResponse) {
+    option (google.api.http) = {get: "/v1/lfg/posts/{id}/contact"};
+  }
+}
+
+// Which board a post is on.
+enum PostKind {
+  POST_KIND_UNSPECIFIED = 0;
+  // A one-off outing with a start time.
+  POST_KIND_SESSION = 1;
+  // A search for someone to play with regularly.
+  POST_KIND_TEAMMATE = 2;
+}
+
+// A part of the day a teammate usually plays.
+enum PlayTime {
+  PLAY_TIME_UNSPECIFIED = 0;
+  PLAY_TIME_MORNING = 1;
+  PLAY_TIME_DAY = 2;
+  PLAY_TIME_EVENING = 3;
+  PLAY_TIME_NIGHT = 4;
+}
+
+// How long the author has played Vintage Story.
+enum Experience {
+  // Not said.
+  EXPERIENCE_UNSPECIFIED = 0;
+  EXPERIENCE_NEWBIE = 1;
+  EXPERIENCE_EXPERIENCED = 2;
+  EXPERIENCE_VETERAN = 3;
+}
+
+// What the company is going to do.
+enum Activity {
+  ACTIVITY_UNSPECIFIED = 0;
+  // Mines and caves.
+  ACTIVITY_MINING = 1;
+  // Exploring the world: ruins, new lands.
+  ACTIVITY_EXPLORING = 2;
+  ACTIVITY_BUILDING = 3;
+  ACTIVITY_HUNTING = 4;
+  // A trading trip.
+  ACTIVITY_TRADING = 5;
+  ACTIVITY_FARMING = 6;
+  // Fights, raids, sieges.
+  ACTIVITY_COMBAT = 7;
+  ACTIVITY_OTHER = 8;
+}
+
+message Post {
+  string id = 1;
+  string author_id = 2;
+  PostKind kind = 3;
+  // What the author wants to do, 1 to 4.
+  repeated Activity activities = 4;
+  string title = 5;
+  string description = 6;
+  // Set for a session only.
+  google.protobuf.Timestamp starts_at = 7;
+  // How many companions the author is looking for (the author not counted).
+  int32 slots = 8;
+  // Players who joined a session, or who are interested in a teammate post, in
+  // the order they responded.
+  repeated string responders = 9;
+  // Closed by the author.
+  bool closed = 10;
+  // When the post leaves the board: four hours after starts_at for a session,
+  // 14 days after posting or renewal for a teammate post.
+  google.protobuf.Timestamp expires_at = 11;
+  google.protobuf.Timestamp created_at = 12;
+  // When the post was posted or last renewed.
+  google.protobuf.Timestamp bumped_at = 13;
+  // Teammate post: days the author usually plays, 1 = Monday … 7 = Sunday,
+  // ascending. Empty means any day.
+  repeated int32 play_days = 14;
+  // Teammate post: parts of the day the author usually plays. Empty means any
+  // time.
+  repeated PlayTime play_times = 15;
+  // Teammate post: the author's experience.
+  Experience experience = 16;
+  // Teammate post: the author plays with voice chat.
+  bool voice = 17;
+  // The post has a contact; read it with GetPostContact.
+  bool has_contact = 18;
+}
+
+message CreatePostRequest {
+  PostKind kind = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  repeated Activity activities = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+  string title = 3 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 3
+      max_len: 80
+    }
+  ];
+  string description = 4 [(buf.validate.field).string.max_len = 500];
+  // Required for a session, ignored for a teammate post.
+  google.protobuf.Timestamp starts_at = 5;
+  int32 slots = 6 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10
+  }];
+  // Teammate post only: 1 = Monday … 7 = Sunday.
+  repeated int32 play_days = 7 [(buf.validate.field).repeated = {
+    max_items: 7
+    unique: true
+    items: {
+      int32: {
+        gte: 1
+        lte: 7
+      }
+    }
+  }];
+  // Teammate post only.
+  repeated PlayTime play_times = 8 [(buf.validate.field).repeated = {
+    max_items: 4
+    unique: true
+    items: {
+      enum: {
+        defined_only: true
+        not_in: [0]
+      }
+    }
+  }];
+  // Teammate post only.
+  Experience experience = 9 [(buf.validate.field).enum.defined_only = true];
+  // Teammate post only.
+  bool voice = 10;
+  // How to reach the author: Discord, Telegram… Required for a teammate post,
+  // optional for a session. Shown to signed-in players only.
+  string contact = 11 [(buf.validate.field).string.max_len = 64];
+}
+
+message ListPostsRequest {
+  PostKind kind = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  // Defaults to 50.
+  int32 page_size = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  // Only posts listing this activity; unset means all.
+  Activity activity = 2 [(buf.validate.field).enum.defined_only = true];
+}
+
+message ListPostsResponse {
+  repeated Post posts = 1;
+}
+
+message GetPostRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message RespondToPostRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message RespondToPostResponse {
+  // Whether the caller is in the company (or interested) after the call.
+  bool joined = 1;
+  Post post = 2;
+}
+
+message ClosePostRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message RenewPostRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetPostContactRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetPostContactResponse {
+  // Empty when the author gave none.
+  string contact = 1;
+}

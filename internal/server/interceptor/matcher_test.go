@@ -14,12 +14,15 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/user.v1.UserService/GetUser",
 		"/user.v1.UserService/BatchGetUsers",
 		"/settlement.v1.SettlementService/List",
+		"/settlement.v1.SettlementService/GetInviteLink",
 		"/settlement.v1.SettlementTagService/GetTag",
 		"/settlement.v1.SettlementTagService/GetTags",
 		"/settlement.v1.SettlementTagService/GetTagsByIds",
 		"/event.v1.EventService/GetEvent",
 		"/event.v1.EventService/ListEvents",
 		"/reaction.v1.ReactionService/ListReactions",
+		"/lfg.v1.LfgService/ListPosts",
+		"/lfg.v1.LfgService/GetPost",
 	}
 	protected := []string{
 		"/user.v1.UserService/SearchUsers",
@@ -30,6 +33,16 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/event.v1.EventService/DeleteEvent",
 		"/reaction.v1.ReactionService/ListMyReactions",
 		"/reaction.v1.ReactionService/ToggleReaction",
+		"/settlement.v1.SettlementService/CreateInviteLink",
+		"/settlement.v1.SettlementService/ListInviteLinks",
+		"/settlement.v1.SettlementService/RevokeInviteLink",
+		"/settlement.v1.SettlementService/JoinByInviteLink",
+		"/lfg.v1.LfgService/CreatePost",
+		"/lfg.v1.LfgService/RespondToPost",
+		"/lfg.v1.LfgService/ClosePost",
+		"/lfg.v1.LfgService/RenewPost",
+		// GetPostContact returns the author's contact, so it must never be public.
+		"/lfg.v1.LfgService/GetPostContact",
 	}
 
 	split := func(m string) interceptors.CallMeta {

@@ -7,6 +7,7 @@ import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 import "settlement/v1/tag.proto";
 
 // Represents settlement management service
@@ -519,6 +520,79 @@ service SettlementService {
   rpc DeleteSettlement(DeleteSettlementRequest) returns (DeleteSettlementResponse) {
     option (google.api.http) = {delete: "/v1/admin/settlements/{settlement_id}"};
   }
+
+  // Create a shareable invite link. Requires the invite_member permission (owners pass).
+  //
+  // Whoever opens the link and is not in a settlement joins straight away, with no
+  // join request: the link is an invitation accepted in advance. A settlement keeps
+  // at most 10 usable links at once.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): ttl_hours outside 0..720 or max_uses outside 0..100
+  //   - NOT_FOUND (404): settlement not found
+  //   - PERMISSION_DENIED (403): caller lacks the invite_member permission
+  //   - RESOURCE_EXHAUSTED (429): the settlement already has 10 usable links
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc CreateInviteLink(CreateInviteLinkRequest) returns (InviteLink) {
+    option (google.api.http) = {
+      post: "/v1/settlements/{settlement_id}/invite-links"
+      body: "*"
+    };
+  }
+
+  // List a settlement's invite links that were not revoked, newest first (up to 50).
+  // Requires the invite_member permission (owners pass).
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - PERMISSION_DENIED (403): caller lacks the invite_member permission
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ListInviteLinks(ListInviteLinksRequest) returns (ListInviteLinksResponse) {
+    option (google.api.http) = {get: "/v1/settlements/{settlement_id}/invite-links"};
+  }
+
+  // Revoke an invite link so it stops working. Requires the invite_member permission.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement or link not found
+  //   - PERMISSION_DENIED (403): caller lacks the invite_member permission
+  //   - FAILED_PRECONDITION (412): the link kept changing under concurrent writes
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc RevokeInviteLink(RevokeInviteLinkRequest) returns (InviteLink) {
+    option (google.api.http) = {post: "/v1/settlements/{settlement_id}/invite-links/{link_id}:revoke"};
+  }
+
+  // Preview an invite link: its status and the settlement it leads to. Public, so
+  // the invite page works for guests before they sign in.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no link with this code, or its settlement is gone
+  //   - INTERNAL (500): database failure
+  rpc GetInviteLink(GetInviteLinkRequest) returns (InviteLinkPreview) {
+    option (google.api.http) = {get: "/v1/invite-links/{code}"};
+  }
+
+  // Join the settlement behind an invite link. Spends one use of the link, adds the
+  // caller as a plain member and drops the caller's pending join requests. The
+  // link's creator is notified.
+  //
+  // Not atomic. The deployment has no replica set, so the use is reserved first and
+  // given back if adding the member fails, and that give-back can itself fail and is
+  // then only logged. A caller that gets an error must re-read the link rather than
+  // assume nothing changed: the use may be spent without the join having landed.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no link with this code, or its settlement is gone
+  //   - ALREADY_EXISTS (409): caller already belongs to a settlement
+  //   - FAILED_PRECONDITION (412): the link expired, ran out of uses or was revoked
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc JoinByInviteLink(JoinByInviteLinkRequest) returns (JoinByInviteLinkResponse) {
+    option (google.api.http) = {post: "/v1/invite-links/{code}:join"};
+  }
 }
 
 message GetUserInvitationsRequest {
@@ -596,6 +670,88 @@ message JoinRequest {
   string id = 1;
   string user_id = 2;
   string settlement_id = 3;
+}
+
+// Whether an invite link can still be used, and if not, why.
+enum InviteLinkStatus {
+  INVITE_LINK_STATUS_UNSPECIFIED = 0;
+  INVITE_LINK_STATUS_ACTIVE = 1;
+  INVITE_LINK_STATUS_EXPIRED = 2;
+  INVITE_LINK_STATUS_EXHAUSTED = 3;
+  INVITE_LINK_STATUS_REVOKED = 4;
+}
+
+message InviteLink {
+  string id = 1;
+  string settlement_id = 2;
+  // Ten characters of Crockford base32; the site serves it at /join/{code}.
+  string code = 3;
+  string created_by = 4;
+  // 0 means unlimited.
+  int32 max_uses = 5;
+  int32 uses = 6;
+  // Absent for a link that never expires.
+  google.protobuf.Timestamp expires_at = 7;
+  google.protobuf.Timestamp revoked_at = 8;
+  google.protobuf.Timestamp created_at = 9;
+  // Computed at read time.
+  InviteLinkStatus status = 10;
+}
+
+message CreateInviteLinkRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  // How long the link works, in hours; 0 means it never expires. At most 30 days.
+  int32 ttl_hours = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 720
+  }];
+  // How many players may use the link; 0 means unlimited.
+  int32 max_uses = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+}
+
+message ListInviteLinksRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+}
+
+message ListInviteLinksResponse {
+  repeated InviteLink invite_links = 1;
+}
+
+message RevokeInviteLinkRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  string link_id = 2 [(buf.validate.field).required = true];
+}
+
+message GetInviteLinkRequest {
+  string code = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 32
+  }];
+}
+
+// What a guest sees when opening an invite link.
+message InviteLinkPreview {
+  InviteLinkStatus status = 1;
+  google.protobuf.Timestamp expires_at = 2;
+  // 0 means unlimited.
+  int32 max_uses = 3;
+  int32 uses = 4;
+  string created_by = 5;
+  Settlement settlement = 6;
+}
+
+message JoinByInviteLinkRequest {
+  string code = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 32
+  }];
+}
+
+message JoinByInviteLinkResponse {
+  string settlement_id = 1;
 }
 
 message SubmitRequest {

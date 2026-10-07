@@ -56,6 +56,14 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "LeaveSettlement"):    interceptor.ScopeAuthenticated,
 		interceptor.Method(srvName + "UpdateContactInfo"):  interceptor.ScopeAuthenticated,
 
+		// Invite links: creation, listing and revocation are gated in-handler by
+		// the invite_member permission; joining needs only a signed-in caller.
+		// GetInviteLink is public (see matcher.go).
+		interceptor.Method(srvName + "CreateInviteLink"): interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "ListInviteLinks"):  interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "RevokeInviteLink"): interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "JoinByInviteLink"): interceptor.ScopeAuthenticated,
+
 		// Admin-only owner and moderation operations.
 		interceptor.Method(srvName + "AddOwner"):         interceptor.Scope(manageScope),
 		interceptor.Method(srvName + "RemoveOwner"):      interceptor.Scope(manageScope),
