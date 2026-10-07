@@ -65,6 +65,19 @@ func (c *MapperImpl) ToInvProtos(source []model.Invitation) []*v1.Invitation {
 	}
 	return pSettlementv1InvitationList
 }
+func (c *MapperImpl) ToInviteLinkProto(source model.InviteLink) *v1.InviteLink {
+	var settlementv1InviteLink v1.InviteLink
+	settlementv1InviteLink.Id = source.Id
+	settlementv1InviteLink.SettlementId = source.SettlementId
+	settlementv1InviteLink.Code = source.Code
+	settlementv1InviteLink.CreatedBy = source.CreatedBy
+	settlementv1InviteLink.MaxUses = source.MaxUses
+	settlementv1InviteLink.Uses = source.Uses
+	settlementv1InviteLink.ExpiresAt = goverter.TimePtrToTimestamp(source.ExpiresAt)
+	settlementv1InviteLink.RevokedAt = goverter.TimePtrToTimestamp(source.RevokedAt)
+	settlementv1InviteLink.CreatedAt = goverter.TimeToTimestamp(source.CreatedAt)
+	return &settlementv1InviteLink
+}
 func (c *MapperImpl) ToJoinRequestProto(source model.JoinRequest) *v1.JoinRequest {
 	var settlementv1JoinRequest v1.JoinRequest
 	settlementv1JoinRequest.Id = source.Id

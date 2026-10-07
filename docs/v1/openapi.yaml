@@ -1413,6 +1413,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/imperialpoint.v1.ImperialPoint'
+  /v1/invite-links/{code}:
+    get:
+      tags:
+        - SettlementService
+      summary: |-
+        Preview an invite link: its status and the settlement it leads to. Public, so
+         the invite page works for guests before they sign in.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no link with this code, or its settlement is gone
+           - INTERNAL (500): database failure
+      operationId: SettlementService_GetInviteLink
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            title: code
+            maxLength: 32
+            minLength: 1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.InviteLinkPreview'
+  /v1/invite-links/{code}:join:
+    post:
+      tags:
+        - SettlementService
+      summary: |-
+        Join the settlement behind an invite link. Spends one use of the link, adds the
+         caller as a plain member and drops the caller's pending join requests, in one
+         transaction. The link's creator is notified.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no link with this code, or its settlement is gone
+           - ALREADY_EXISTS (409): caller already belongs to a settlement
+           - FAILED_PRECONDITION (412): the link expired, ran out of uses or was revoked
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_JoinByInviteLink
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            title: code
+            maxLength: 32
+            minLength: 1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.JoinByInviteLinkResponse'
   /v1/items:
     post:
       tags:
@@ -1583,6 +1643,229 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/leaderboard.v1.LeaderboardResponse'
+  /v1/lfg/posts:
+    get:
+      tags:
+        - LfgService
+      summary: |-
+        Open posts of one kind: sessions soonest first, teammate posts freshest
+         (posted or renewed) first. Public; contacts are not included.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): kind unset, or page_size outside 0..100
+           - INTERNAL (500): database failure
+      operationId: LfgService_ListPosts
+      parameters:
+        - name: kind
+          in: query
+          schema:
+            not:
+              enum:
+                - POST_KIND_UNSPECIFIED
+            title: kind
+            $ref: '#/components/schemas/lfg.v1.PostKind'
+        - name: page_size
+          in: query
+          description: Defaults to 50.
+          schema:
+            type: integer
+            title: page_size
+            maximum: 100
+            minimum: 0
+            format: int32
+            description: Defaults to 50.
+        - name: activity
+          in: query
+          description: Only posts listing this activity; unset means all.
+          schema:
+            title: activity
+            description: Only posts listing this activity; unset means all.
+            $ref: '#/components/schemas/lfg.v1.Activity'
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/lfg.v1.ListPostsResponse'
+    post:
+      tags:
+        - LfgService
+      summary: |-
+        Post an announcement. A player may keep at most 3 open session posts and one
+         open teammate post.
+      description: |-
+        A session stays on the board until four hours after starts_at; a teammate
+         post stays 14 days and can be renewed (RenewPost). Either leaves earlier if
+         its author closes it.
+
+         Errors:
+           - INVALID_ARGUMENT (400): unknown kind; activities not 1..4 distinct known
+             ones; title shorter than 3 or longer than 80 characters; description over
+             500; slots outside 1..10; contact not 3..64 characters (required for a
+             teammate post); a session without starts_at, or with starts_at more than an
+             hour in the past or over 7 days ahead; a teammate post with repeated or
+             unknown play days or play times, or unknown experience
+           - RESOURCE_EXHAUSTED (429): the caller already has 3 open sessions, or an open
+             teammate post
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: LfgService_CreatePost
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/lfg.v1.CreatePostRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/lfg.v1.Post'
+  /v1/lfg/posts/{id}:
+    get:
+      tags:
+        - LfgService
+      summary: |-
+        One post, open or not. Public, for shared links; the contact is not
+         included.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such post
+           - INTERNAL (500): database failure
+      operationId: LfgService_GetPost
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/lfg.v1.Post'
+  /v1/lfg/posts/{id}/contact:
+    get:
+      tags:
+        - LfgService
+      summary: |-
+        How to reach the author. Signed-in players only, so contacts are not
+         scraped from the public board.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such post
+           - FAILED_PRECONDITION (412): the post is closed
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: LfgService_GetPostContact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/lfg.v1.GetPostContactResponse'
+  /v1/lfg/posts/{id}:close:
+    post:
+      tags:
+        - LfgService
+      summary: Close a post so it leaves the board. Author only.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such post
+           - PERMISSION_DENIED (403): the caller is not the author
+           - FAILED_PRECONDITION (412): the post kept changing under concurrent writes
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: LfgService_ClosePost
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/lfg.v1.Post'
+  /v1/lfg/posts/{id}:renew:
+    post:
+      tags:
+        - LfgService
+      summary: |-
+        Keep a teammate post up for another 14 days and lift it to the top of the
+         board. Author only, once a day; an expired post can be renewed while it is
+         still stored (a day after expiry).
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such post
+           - PERMISSION_DENIED (403): the caller is not the author
+           - FAILED_PRECONDITION (412): the post is a session or closed, it was renewed
+             less than a day ago, or it kept changing under concurrent writes
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: LfgService_RenewPost
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/lfg.v1.Post'
+  /v1/lfg/posts/{id}:respond:
+    post:
+      tags:
+        - LfgService
+      summary: |-
+        Join a session (or mark interest in a teammate post), or withdraw if the
+         caller already responded. Responding notifies the author.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such post
+           - FAILED_PRECONDITION (412): the post is closed or over, it is the caller's own
+             post, all slots are taken (50 interested for a teammate post), or the post
+             kept changing under concurrent writes
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: LfgService_RespondToPost
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/lfg.v1.RespondToPostResponse'
   /v1/mail:
     get:
       tags:
@@ -3192,6 +3475,126 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/settlement.v1.RevokeInvitationResponse'
+  /v1/settlements/{settlement_id}/invite-links:
+    get:
+      tags:
+        - SettlementService
+      summary: |-
+        List a settlement's invite links that were not revoked, newest first (up to 50).
+         Requires the invite_member permission (owners pass).
+      description: |-
+        Errors:
+           - NOT_FOUND (404): settlement not found
+           - PERMISSION_DENIED (403): caller lacks the invite_member permission
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_ListInviteLinks
+      parameters:
+        - name: settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: settlement_id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.ListInviteLinksResponse'
+    post:
+      tags:
+        - SettlementService
+      summary: Create a shareable invite link. Requires the invite_member permission (owners pass).
+      description: |-
+        Whoever opens the link and is not in a settlement joins straight away, with no
+         join request: the link is an invitation accepted in advance. A settlement keeps
+         at most 10 usable links at once.
+
+         Errors:
+           - INVALID_ARGUMENT (400): ttl_hours outside 0..720 or max_uses outside 0..100
+           - NOT_FOUND (404): settlement not found
+           - PERMISSION_DENIED (403): caller lacks the invite_member permission
+           - RESOURCE_EXHAUSTED (429): the settlement already has 10 usable links
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_CreateInviteLink
+      parameters:
+        - name: settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: settlement_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                settlement_id:
+                  type: string
+                  title: settlement_id
+                ttl_hours:
+                  type: integer
+                  title: ttl_hours
+                  maximum: 720
+                  minimum: 0
+                  format: int32
+                  description: How long the link works, in hours; 0 means it never expires. At most 30 days.
+                max_uses:
+                  type: integer
+                  title: max_uses
+                  maximum: 100
+                  minimum: 0
+                  format: int32
+                  description: How many players may use the link; 0 means unlimited.
+              title: CreateInviteLinkRequest
+              required:
+                - settlement_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.InviteLink'
+  /v1/settlements/{settlement_id}/invite-links/{link_id}:revoke:
+    post:
+      tags:
+        - SettlementService
+      summary: Revoke an invite link so it stops working. Requires the invite_member permission.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): settlement or link not found
+           - PERMISSION_DENIED (403): caller lacks the invite_member permission
+           - FAILED_PRECONDITION (412): the link kept changing under concurrent writes
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_RevokeInviteLink
+      parameters:
+        - name: settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: settlement_id
+        - name: link_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: link_id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.InviteLink'
   /v1/settlements/{settlement_id}/join-requests:
     get:
       tags:
@@ -6073,6 +6476,313 @@ components:
           title: entries
       title: LeaderboardResponse
       additionalProperties: false
+    lfg.v1.Activity:
+      type: string
+      title: Activity
+      enum:
+        - ACTIVITY_UNSPECIFIED
+        - ACTIVITY_MINING
+        - ACTIVITY_EXPLORING
+        - ACTIVITY_BUILDING
+        - ACTIVITY_HUNTING
+        - ACTIVITY_TRADING
+        - ACTIVITY_FARMING
+        - ACTIVITY_COMBAT
+        - ACTIVITY_OTHER
+      description: What the company is going to do.
+    lfg.v1.ClosePostRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: ClosePostRequest
+      required:
+        - id
+      additionalProperties: false
+    lfg.v1.CreatePostRequest:
+      type: object
+      properties:
+        kind:
+          not:
+            enum:
+              - POST_KIND_UNSPECIFIED
+          title: kind
+          $ref: '#/components/schemas/lfg.v1.PostKind'
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/lfg.v1.Activity'
+          title: activities
+          maxItems: 4
+          minItems: 1
+          uniqueItems: true
+        title:
+          type: string
+          title: title
+          maxLength: 80
+          minLength: 3
+        description:
+          type: string
+          title: description
+          maxLength: 500
+        starts_at:
+          title: starts_at
+          description: Required for a session, ignored for a teammate post.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        slots:
+          type: integer
+          title: slots
+          maximum: 10
+          minimum: 1
+          format: int32
+        play_days:
+          type: array
+          items:
+            type: integer
+            maximum: 7
+            minimum: 1
+            format: int32
+          title: play_days
+          maxItems: 7
+          uniqueItems: true
+          description: 'Teammate post only: 1 = Monday … 7 = Sunday.'
+        play_times:
+          type: array
+          items:
+            $ref: '#/components/schemas/lfg.v1.PlayTime'
+          title: play_times
+          maxItems: 4
+          uniqueItems: true
+          description: Teammate post only.
+        experience:
+          title: experience
+          description: Teammate post only.
+          $ref: '#/components/schemas/lfg.v1.Experience'
+        voice:
+          type: boolean
+          title: voice
+          description: Teammate post only.
+        contact:
+          type: string
+          title: contact
+          maxLength: 64
+          description: |-
+            How to reach the author: Discord, Telegram… Required for a teammate post,
+             optional for a session. Shown to signed-in players only.
+      title: CreatePostRequest
+      required:
+        - title
+      additionalProperties: false
+    lfg.v1.Experience:
+      type: string
+      title: Experience
+      enum:
+        - EXPERIENCE_UNSPECIFIED
+        - EXPERIENCE_NEWBIE
+        - EXPERIENCE_EXPERIENCED
+        - EXPERIENCE_VETERAN
+      description: How long the author has played Vintage Story.
+    lfg.v1.GetPostContactRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetPostContactRequest
+      required:
+        - id
+      additionalProperties: false
+    lfg.v1.GetPostContactResponse:
+      type: object
+      properties:
+        contact:
+          type: string
+          title: contact
+          description: Empty when the author gave none.
+      title: GetPostContactResponse
+      additionalProperties: false
+    lfg.v1.GetPostRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetPostRequest
+      required:
+        - id
+      additionalProperties: false
+    lfg.v1.ListPostsRequest:
+      type: object
+      properties:
+        kind:
+          not:
+            enum:
+              - POST_KIND_UNSPECIFIED
+          title: kind
+          $ref: '#/components/schemas/lfg.v1.PostKind'
+        page_size:
+          type: integer
+          title: page_size
+          maximum: 100
+          minimum: 0
+          format: int32
+          description: Defaults to 50.
+        activity:
+          title: activity
+          description: Only posts listing this activity; unset means all.
+          $ref: '#/components/schemas/lfg.v1.Activity'
+      title: ListPostsRequest
+      additionalProperties: false
+    lfg.v1.ListPostsResponse:
+      type: object
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: '#/components/schemas/lfg.v1.Post'
+          title: posts
+      title: ListPostsResponse
+      additionalProperties: false
+    lfg.v1.PlayTime:
+      type: string
+      title: PlayTime
+      enum:
+        - PLAY_TIME_UNSPECIFIED
+        - PLAY_TIME_MORNING
+        - PLAY_TIME_DAY
+        - PLAY_TIME_EVENING
+        - PLAY_TIME_NIGHT
+      description: A part of the day a teammate usually plays.
+    lfg.v1.Post:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        author_id:
+          type: string
+          title: author_id
+        kind:
+          title: kind
+          $ref: '#/components/schemas/lfg.v1.PostKind'
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/lfg.v1.Activity'
+          title: activities
+          description: What the author wants to do, 1 to 4.
+        title:
+          type: string
+          title: title
+        description:
+          type: string
+          title: description
+        starts_at:
+          title: starts_at
+          description: Set for a session only.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        slots:
+          type: integer
+          title: slots
+          format: int32
+          description: How many companions the author is looking for (the author not counted).
+        responders:
+          type: array
+          items:
+            type: string
+          title: responders
+          description: |-
+            Players who joined a session, or who are interested in a teammate post, in
+             the order they responded.
+        closed:
+          type: boolean
+          title: closed
+          description: Closed by the author.
+        expires_at:
+          title: expires_at
+          description: |-
+            When the post leaves the board: four hours after starts_at for a session,
+             14 days after posting or renewal for a teammate post.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        bumped_at:
+          title: bumped_at
+          description: When the post was posted or last renewed.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        play_days:
+          type: array
+          items:
+            type: integer
+            format: int32
+          title: play_days
+          description: |-
+            Teammate post: days the author usually plays, 1 = Monday … 7 = Sunday,
+             ascending. Empty means any day.
+        play_times:
+          type: array
+          items:
+            $ref: '#/components/schemas/lfg.v1.PlayTime'
+          title: play_times
+          description: |-
+            Teammate post: parts of the day the author usually plays. Empty means any
+             time.
+        experience:
+          title: experience
+          description: 'Teammate post: the author''s experience.'
+          $ref: '#/components/schemas/lfg.v1.Experience'
+        voice:
+          type: boolean
+          title: voice
+          description: 'Teammate post: the author plays with voice chat.'
+        has_contact:
+          type: boolean
+          title: has_contact
+          description: The post has a contact; read it with GetPostContact.
+      title: Post
+      additionalProperties: false
+    lfg.v1.PostKind:
+      type: string
+      title: PostKind
+      enum:
+        - POST_KIND_UNSPECIFIED
+        - POST_KIND_SESSION
+        - POST_KIND_TEAMMATE
+      description: Which board a post is on.
+    lfg.v1.RenewPostRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: RenewPostRequest
+      required:
+        - id
+      additionalProperties: false
+    lfg.v1.RespondToPostRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: RespondToPostRequest
+      required:
+        - id
+      additionalProperties: false
+    lfg.v1.RespondToPostResponse:
+      type: object
+      properties:
+        joined:
+          type: boolean
+          title: joined
+          description: Whether the caller is in the company (or interested) after the call.
+        post:
+          title: post
+          $ref: '#/components/schemas/lfg.v1.Post'
+      title: RespondToPostResponse
+      additionalProperties: false
     mail.v1.Attachment:
       type: object
       oneOf:
@@ -7442,6 +8152,30 @@ components:
       type: object
       title: CancelJoinRequestResponse
       additionalProperties: false
+    settlement.v1.CreateInviteLinkRequest:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+        ttl_hours:
+          type: integer
+          title: ttl_hours
+          maximum: 720
+          minimum: 0
+          format: int32
+          description: How long the link works, in hours; 0 means it never expires. At most 30 days.
+        max_uses:
+          type: integer
+          title: max_uses
+          maximum: 100
+          minimum: 0
+          format: int32
+          description: How many players may use the link; 0 means unlimited.
+      title: CreateInviteLinkRequest
+      required:
+        - settlement_id
+      additionalProperties: false
     settlement.v1.CreateJoinRequestRequest:
       type: object
       properties:
@@ -7597,6 +8331,16 @@ components:
           title: invitations
       title: GetInvitationsResponse
       additionalProperties: false
+    settlement.v1.GetInviteLinkRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          title: code
+          maxLength: 32
+          minLength: 1
+      title: GetInviteLinkRequest
+      additionalProperties: false
     settlement.v1.GetMyJoinRequestsRequest:
       type: object
       properties:
@@ -7748,6 +8492,84 @@ components:
           title: settlement_id
       title: Invitation
       additionalProperties: false
+    settlement.v1.InviteLink:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        settlement_id:
+          type: string
+          title: settlement_id
+        code:
+          type: string
+          title: code
+          description: Ten characters of Crockford base32; the site serves it at /join/{code}.
+        created_by:
+          type: string
+          title: created_by
+        max_uses:
+          type: integer
+          title: max_uses
+          format: int32
+          description: 0 means unlimited.
+        uses:
+          type: integer
+          title: uses
+          format: int32
+        expires_at:
+          title: expires_at
+          description: Absent for a link that never expires.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        revoked_at:
+          title: revoked_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        status:
+          title: status
+          description: Computed at read time.
+          $ref: '#/components/schemas/settlement.v1.InviteLinkStatus'
+      title: InviteLink
+      additionalProperties: false
+    settlement.v1.InviteLinkPreview:
+      type: object
+      properties:
+        status:
+          title: status
+          $ref: '#/components/schemas/settlement.v1.InviteLinkStatus'
+        expires_at:
+          title: expires_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        max_uses:
+          type: integer
+          title: max_uses
+          format: int32
+          description: 0 means unlimited.
+        uses:
+          type: integer
+          title: uses
+          format: int32
+        created_by:
+          type: string
+          title: created_by
+        settlement:
+          title: settlement
+          $ref: '#/components/schemas/settlement.v1.Settlement'
+      title: InviteLinkPreview
+      additionalProperties: false
+      description: What a guest sees when opening an invite link.
+    settlement.v1.InviteLinkStatus:
+      type: string
+      title: InviteLinkStatus
+      enum:
+        - INVITE_LINK_STATUS_UNSPECIFIED
+        - INVITE_LINK_STATUS_ACTIVE
+        - INVITE_LINK_STATUS_EXPIRED
+        - INVITE_LINK_STATUS_EXHAUSTED
+        - INVITE_LINK_STATUS_REVOKED
+      description: Whether an invite link can still be used, and if not, why.
     settlement.v1.InviteMemberRequest:
       type: object
       properties:
@@ -7765,6 +8587,24 @@ components:
     settlement.v1.InviteMemberResponse:
       type: object
       title: InviteMemberResponse
+      additionalProperties: false
+    settlement.v1.JoinByInviteLinkRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          title: code
+          maxLength: 32
+          minLength: 1
+      title: JoinByInviteLinkRequest
+      additionalProperties: false
+    settlement.v1.JoinByInviteLinkResponse:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+      title: JoinByInviteLinkResponse
       additionalProperties: false
     settlement.v1.JoinRequest:
       type: object
@@ -7830,6 +8670,26 @@ components:
           type: string
           title: next_token
       title: ListImperialFavorLogsResponse
+      additionalProperties: false
+    settlement.v1.ListInviteLinksRequest:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+      title: ListInviteLinksRequest
+      required:
+        - settlement_id
+      additionalProperties: false
+    settlement.v1.ListInviteLinksResponse:
+      type: object
+      properties:
+        invite_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/settlement.v1.InviteLink'
+          title: invite_links
+      title: ListInviteLinksResponse
       additionalProperties: false
     settlement.v1.ListJoinRequestsRequest:
       type: object
@@ -8037,6 +8897,20 @@ components:
             type: string
           title: invitation_ids
       title: RevokeInvitationResponse
+      additionalProperties: false
+    settlement.v1.RevokeInviteLinkRequest:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+        link_id:
+          type: string
+          title: link_id
+      title: RevokeInviteLinkRequest
+      required:
+        - settlement_id
+        - link_id
       additionalProperties: false
     settlement.v1.Role:
       type: object
@@ -8895,6 +9769,14 @@ tags:
        attributes off the client. Both rpcs require the admin scope kit:edit.
   - name: LeaderboardService
     description: Represent basic leaderboard
+  - name: LfgService
+    description: |-
+      LfgService is the "looking for company" board. It holds two kinds of posts:
+       a session ("going to the mines in 20 minutes, need two more", others respond
+       "I'm in") and a teammate search ("looking for someone to play with
+       regularly", others mark "interested" and reach the author by the contact in
+       the post). Reading is public, except the contact; posting and responding need
+       a signed-in player.
   - name: MailService
     description: |-
       MailService — player inbox plus admin compose/revoke.

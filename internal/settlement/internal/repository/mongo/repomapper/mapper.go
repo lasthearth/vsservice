@@ -8,12 +8,14 @@ import (
 	mongox "github.com/lasthearth/vsservice/internal/pkg/mongox"
 	attachment "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/attachment"
 	invitation "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
+	invitelink "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitelink"
 	member "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
 	role "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/role"
 	settlement "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	vector2 "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
 	verification "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/verification"
 	model "github.com/lasthearth/vsservice/internal/settlement/model"
+	"time"
 )
 
 type MapperImpl struct{}
@@ -33,6 +35,17 @@ func (c *MapperImpl) FromInvModels(source []model.Invitation) []invitation.Invit
 		}
 	}
 	return invitationdtoInvitationList
+}
+func (c *MapperImpl) FromInviteLinkModel(source model.InviteLink) invitelink.InviteLink {
+	var invitelinkdtoInviteLink invitelink.InviteLink
+	invitelinkdtoInviteLink.SettlementId = source.SettlementId
+	invitelinkdtoInviteLink.Code = source.Code
+	invitelinkdtoInviteLink.CreatedBy = source.CreatedBy
+	invitelinkdtoInviteLink.MaxUses = source.MaxUses
+	invitelinkdtoInviteLink.Uses = source.Uses
+	invitelinkdtoInviteLink.ExpiresAt = c.pTimeTimeToPTimeTime(source.ExpiresAt)
+	invitelinkdtoInviteLink.RevokedAt = c.pTimeTimeToPTimeTime(source.RevokedAt)
+	return invitelinkdtoInviteLink
 }
 func (c *MapperImpl) FromSettlementDTO(source settlement.Settlement) model.Settlement {
 	var modelSettlement model.Settlement
@@ -117,6 +130,30 @@ func (c *MapperImpl) ToInvModels(source []invitation.Invitation) []model.Invitat
 		}
 	}
 	return modelInvitationList
+}
+func (c *MapperImpl) ToInviteLinkModel(source invitelink.InviteLink) model.InviteLink {
+	var modelInviteLink model.InviteLink
+	modelInviteLink.Id = goverter.ObjectIdToString(source.Model.Id)
+	modelInviteLink.SettlementId = source.SettlementId
+	modelInviteLink.Code = source.Code
+	modelInviteLink.CreatedBy = source.CreatedBy
+	modelInviteLink.MaxUses = source.MaxUses
+	modelInviteLink.Uses = source.Uses
+	modelInviteLink.ExpiresAt = c.pTimeTimeToPTimeTime(source.ExpiresAt)
+	modelInviteLink.RevokedAt = c.pTimeTimeToPTimeTime(source.RevokedAt)
+	modelInviteLink.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
+	modelInviteLink.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)
+	return modelInviteLink
+}
+func (c *MapperImpl) ToInviteLinkModels(source []invitelink.InviteLink) []model.InviteLink {
+	var modelInviteLinkList []model.InviteLink
+	if source != nil {
+		modelInviteLinkList = make([]model.InviteLink, len(source))
+		for i := 0; i < len(source); i++ {
+			modelInviteLinkList[i] = c.ToInviteLinkModel(source[i])
+		}
+	}
+	return modelInviteLinkList
 }
 func (c *MapperImpl) ToSettlementDTO(source model.Settlement) settlement.Settlement {
 	var settlementdtoSettlement settlement.Settlement
@@ -234,6 +271,14 @@ func (c *MapperImpl) mongoxModelToMongoxModel(source mongox.Model) mongox.Model 
 	mongoxModel.UpdatedAt = goverter.TimeToTime(source.UpdatedAt)
 	mongoxModel.Version = source.Version
 	return mongoxModel
+}
+func (c *MapperImpl) pTimeTimeToPTimeTime(source *time.Time) *time.Time {
+	var pTimeTime *time.Time
+	if source != nil {
+		timeTime := goverter.TimeToTime((*source))
+		pTimeTime = &timeTime
+	}
+	return pTimeTime
 }
 func (c *MapperImpl) roledtoRoleToModelRole(source role.Role) model.Role {
 	var modelRole model.Role

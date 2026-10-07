@@ -7,6 +7,7 @@ import (
 
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	invitationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
+	invitelinkdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitelink"
 	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	verificationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service"
@@ -24,6 +25,7 @@ const (
 	settlementInvitationCollName  = "settlement_invitations"
 	settlementJoinRequestCollName = "settlement_join_requests"
 	imperialFavorLogCollName      = "imperial_favor_logs"
+	settlementInviteLinkCollName  = "settlement_invite_links"
 )
 
 var _ service.SettlementRepository = (*Repository)(nil)
@@ -50,6 +52,13 @@ type Mapper interface {
 
 	// goverter:ignore Model
 	ToSettlementDTO(model.Settlement) settlementdto.Settlement
+
+	// goverter:autoMap Model
+	ToInviteLinkModel(invitelinkdto.InviteLink) model.InviteLink
+	ToInviteLinkModels([]invitelinkdto.InviteLink) []model.InviteLink
+
+	// goverter:ignore Model
+	FromInviteLinkModel(model.InviteLink) invitelinkdto.InviteLink
 }
 
 type Opts struct {
@@ -72,6 +81,8 @@ type Repository struct {
 	setJoinReqColl *mongo.Collection
 	// Imperial favor log collection
 	favorLogColl *mongo.Collection
+	// Settlement invite links collection
+	inviteLinkColl *mongo.Collection
 	// MongoDB client used for transactions
 	client *mongo.Client
 	mapper Mapper
@@ -83,8 +94,9 @@ func New(opts Opts) *Repository {
 	siColl := opts.Database.Collection(settlementInvitationCollName)
 	sjrColl := opts.Database.Collection(settlementJoinRequestCollName)
 	flColl := opts.Database.Collection(imperialFavorLogCollName)
+	ilColl := opts.Database.Collection(settlementInviteLinkCollName)
 	logger := opts.Log.WithComponent("settlement-mongo-repository")
-	setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl)
+	setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl, ilColl)
 	return &Repository{
 		log:            logger,
 		setColl:        sColl,
@@ -92,6 +104,7 @@ func New(opts Opts) *Repository {
 		setInvColl:     siColl,
 		setJoinReqColl: sjrColl,
 		favorLogColl:   flColl,
+		inviteLinkColl: ilColl,
 		client:         opts.Client,
 		mapper:         opts.Mapper,
 	}
@@ -104,6 +117,7 @@ func setupIndexes(
 	setInvColl *mongo.Collection,
 	setJoinReqColl *mongo.Collection,
 	favorLogColl *mongo.Collection,
+	inviteLinkColl *mongo.Collection,
 ) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -155,5 +169,14 @@ func setupIndexes(
 
 	createIndex(favorLogColl, mongo.IndexModel{
 		Keys: bson.D{{Key: "settlement_id", Value: -1}},
+	})
+
+	// The code is what a link is opened by; unique so a collision fails loudly.
+	createIndex(inviteLinkColl, mongo.IndexModel{
+		Keys:    bson.D{{Key: "code", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+	createIndex(inviteLinkColl, mongo.IndexModel{
+		Keys: bson.D{{Key: "settlement_id", Value: 1}, {Key: "_id", Value: -1}},
 	})
 }

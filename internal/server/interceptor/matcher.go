@@ -22,6 +22,7 @@ var publicMethods = map[string]struct{}{
 	"/donate.v1.DonateService/ListShopItems":                         {},
 	"/settlement.v1.SettlementService/Get":                           {},
 	"/settlement.v1.SettlementService/List":                          {},
+	"/settlement.v1.SettlementService/GetInviteLink":                 {},
 	"/user.v1.UserService/GetUser":                                   {},
 	"/user.v1.UserService/BatchGetUsers":                             {},
 	"/settlement.v1.SettlementTagService/GetTag":                     {},
@@ -32,6 +33,8 @@ var publicMethods = map[string]struct{}{
 	"/event.v1.EventService/GetEvent":                                {},
 	"/event.v1.EventService/ListEvents":                              {},
 	"/reaction.v1.ReactionService/ListReactions":                     {},
+	"/lfg.v1.LfgService/ListPosts":                                   {},
+	"/lfg.v1.LfgService/GetPost":                                     {},
 	"/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo": {},
 }
 

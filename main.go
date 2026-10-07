@@ -12,6 +12,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/hungergames"
 	"github.com/lasthearth/vsservice/internal/kitdef"
 	"github.com/lasthearth/vsservice/internal/leaderboard"
+	"github.com/lasthearth/vsservice/internal/lfg"
 	"github.com/lasthearth/vsservice/internal/mail"
 	"github.com/lasthearth/vsservice/internal/media"
 	"github.com/lasthearth/vsservice/internal/news"
@@ -101,6 +102,7 @@ func main() {
 		discord.App,
 		event.App,
 		reaction.App,
+		lfg.App,
 	)
 
 	a.Run()

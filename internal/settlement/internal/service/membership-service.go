@@ -243,6 +243,14 @@ func mapModelErr(err error) error {
 		return ierror.ErrAlreadyOwner
 	case errors.Is(err, model.ErrNotOwnerRole):
 		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, model.ErrInviteTTLInvalid), errors.Is(err, model.ErrInviteMaxUsesInvalid):
+		return status.Error(codes.InvalidArgument, err.Error())
+	case errors.Is(err, model.ErrInviteExpired):
+		return ierror.ErrInviteLinkExpired
+	case errors.Is(err, model.ErrInviteExhausted):
+		return ierror.ErrInviteLinkExhausted
+	case errors.Is(err, model.ErrInviteRevoked):
+		return ierror.ErrInviteLinkRevoked
 	default:
 		return err
 	}
