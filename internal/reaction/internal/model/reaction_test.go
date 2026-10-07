@@ -58,3 +58,19 @@ func TestValidateTargets(t *testing.T) {
 		t.Errorf("want ErrInvalidTarget, got %v", err)
 	}
 }
+
+func TestEmojisAreUniqueKeys(t *testing.T) {
+	seen := make(map[string]bool, len(Emojis))
+	for _, e := range Emojis {
+		if seen[e] {
+			t.Errorf("duplicate emoji %q", e)
+		}
+		seen[e] = true
+		if err := ValidateEmoji(e); err != nil {
+			t.Errorf("%q should be valid: %v", e, err)
+		}
+	}
+	if len(Emojis) != 48 {
+		t.Errorf("want 48 emojis (keep in sync with the site), got %d", len(Emojis))
+	}
+}

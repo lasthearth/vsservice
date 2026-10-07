@@ -7042,7 +7042,9 @@ components:
         emoji:
           type: string
           title: emoji
-          description: 'One of: like, heart, fire, laugh, swords.'
+          description: |-
+            One of the 48 reaction keys (like, heart, swords, crown, ale, dragon, …);
+             the full list is model.Emojis in internal/reaction.
         count:
           type:
             - integer

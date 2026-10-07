@@ -48,7 +48,8 @@ service ReactionService {
 }
 
 message ReactionCount {
-  // One of: like, heart, fire, laugh, swords.
+  // One of the 48 reaction keys (like, heart, swords, crown, ale, dragon, …);
+  // the full list is model.Emojis in internal/reaction.
   string emoji = 1;
   int64 count = 2;
 }
