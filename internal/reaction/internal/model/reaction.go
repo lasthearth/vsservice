@@ -7,8 +7,23 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 )
 
-// Emojis are the reactions a player can put, in display order.
-var Emojis = []string{"like", "heart", "fire", "laugh", "swords"}
+// Emojis are the reactions a player can put, in display order. Keys only:
+// the site maps them to glyphs (entities/reaction/model/reaction-emojis.constant.ts
+// in the landing repo), so both lists must change together.
+var Emojis = []string{
+	// feelings
+	"like", "heart", "laugh", "wow", "sad", "think", "angry", "clap",
+	// battle
+	"swords", "shield", "dagger", "bow", "axe", "skull", "castle", "trophy",
+	// court and honour
+	"crown", "scroll", "scales", "deal", "thanks", "bell", "horn", "key",
+	// feast
+	"fire", "ale", "wine", "feast", "bread", "honey", "party", "candle",
+	// craft
+	"smith", "pick", "brick", "pottery", "gold", "gem", "harvest", "compass",
+	// wilds
+	"dragon", "wolf", "bear", "horse", "drifter", "storm", "winter", "mushroom",
+}
 
 // MaxTargets is how many targets one request may ask about.
 const MaxTargets = 50
