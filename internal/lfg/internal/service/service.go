@@ -163,7 +163,11 @@ func (s *Service) GetPostContact(ctx context.Context, req *lfgv1.GetPostContactR
 	if err != nil {
 		return nil, err
 	}
-	if post.ClosedAt != nil {
+	// IsOpen, not just ClosedAt: an expired post leaves the board but the TTL
+	// index keeps its document for another day, and Respond already refuses it.
+	// Checking only ClosedAt would hand out the author's contact for up to 24h
+	// after the post stopped being joinable.
+	if !post.IsOpen(s.now()) {
 		return nil, ierror.ErrPostClosed
 	}
 
@@ -218,7 +222,8 @@ func mapModelErr(err error) error {
 		errors.Is(err, model.ErrStartInvalid),
 		errors.Is(err, model.ErrScheduleInvalid),
 		errors.Is(err, model.ErrExperienceInvalid),
-		errors.Is(err, model.ErrContactInvalid):
+		errors.Is(err, model.ErrContactInvalid),
+		errors.Is(err, model.ErrAuthorRequired):
 		return pkgerr.InvalidArgument(err.Error())
 	default:
 		return err
