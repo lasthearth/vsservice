@@ -61,7 +61,13 @@ func (r *Repository) AddCoinsToWallet(ctx context.Context, playerID, playerName 
 	}
 
 	update := bson.D{
-		{Key: "$inc", Value: bson.D{{Key: "coins", Value: amount}}},
+		// The version moves with every credit. A $inc that leaves version
+		// alone is invisible to UpdateWallet's guarded ReplaceOne: an
+		// in-flight withdrawal that read the document before the credit
+		// still matches the old version and replaces the whole document,
+		// silently erasing the credited coins. Moving the version makes the
+		// guard lose, reload and re-apply the withdrawal on fresh state.
+		{Key: "$inc", Value: bson.D{{Key: "coins", Value: amount}, {Key: "version", Value: int64(1)}}},
 		{Key: "$set", Value: setFields},
 		{Key: "$setOnInsert", Value: setOnInsertFields},
 	}

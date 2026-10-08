@@ -7,6 +7,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/appearance/internal/dto"
 	"github.com/lasthearth/vsservice/internal/appearance/internal/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
 )
@@ -40,12 +41,19 @@ func (r *Repository) List(ctx context.Context) ([]model.Appearance, error) {
 // Save stores the player's appearance, replacing the previous one.
 func (r *Repository) Save(ctx context.Context, a *model.Appearance) error {
 	doc := r.mapper.FromModel(*a)
-	_, err := r.coll.ReplaceOne(
-		ctx,
-		bson.M{"user_id": doc.UserId},
-		doc,
-		options.Replace().SetUpsert(true),
-	)
+	filter := bson.M{"user_id": doc.UserId}
+	replace := func() error {
+		_, err := r.coll.ReplaceOne(ctx, filter, doc, options.Replace().SetUpsert(true))
+		return err
+	}
+	err := replace()
+	// Two first-time saves racing on the unique {user_id} index: this insert
+	// lost, so a 500 would reach one of two identical requests. The document
+	// exists now, so one retry lands on the replace path and this caller's
+	// choice wins — the same outcome as two saves arriving in order.
+	if mongo.IsDuplicateKeyError(err) {
+		err = replace()
+	}
 	if err != nil {
 		r.logger.WithMethod("Save").Error("failed to save appearance", zap.Error(err))
 	}

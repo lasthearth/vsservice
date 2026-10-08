@@ -92,6 +92,12 @@ func setupIndexes(log logger.Logger, playerStatsColl, seasonsColl, seasonResultC
 		Keys:    bson.D{{Key: "season_id", Value: 1}, {Key: "player_id", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
+	// Per-player reads across every archived season (appearance standings
+	// sum lifetime wins here); the unique index above has season_id first,
+	// so it cannot serve a player_id-only filter.
+	createIndex(seasonResultColl, mgo.IndexModel{
+		Keys: bson.D{{Key: "player_id", Value: 1}},
+	})
 }
 
 // newModel is a local alias to avoid repeating the package path everywhere.

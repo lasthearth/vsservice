@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"time"
 
 	appearancev1 "github.com/lasthearth/vsservice/gen/appearance/v1"
 	"github.com/lasthearth/vsservice/internal/appearance/internal/ierror"
@@ -13,6 +14,11 @@ import (
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/zap"
 )
+
+// refundTimeout bounds the shard refund after a failed purchase record: the
+// request that started the buy may already be gone, so the refund cannot use
+// its context.
+const refundTimeout = 5 * time.Second
 
 // GetMyStanding implements appearancev1.AppearanceServiceServer.
 func (s *Service) GetMyStanding(
@@ -63,7 +69,12 @@ func (s *Service) BuyBanner(
 	}
 
 	if err := s.repo.AddPurchase(ctx, userID, bannerID, price, s.now()); err != nil {
-		if cerr := s.wallet.Credit(ctx, userID, "", price, "refund: "+reason); cerr != nil {
+		// Detached context: whatever canceled the request between the debit
+		// and the refund must not also cancel the refund, or the shards are
+		// simply gone.
+		refundCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), refundTimeout)
+		defer cancel()
+		if cerr := s.wallet.Credit(refundCtx, userID, "", price, "refund: "+reason); cerr != nil {
 			s.logger.WithMethod("BuyBanner").Error(
 				"shards were taken but neither the purchase nor the refund was saved",
 				zap.String("user_id", userID), zap.String("banner_id", bannerID),

@@ -74,6 +74,11 @@ func setupIndexes(log logger.Logger, codesColl, eventsColl *mgo.Collection) {
 		Keys:    bson.D{{Key: "referee_player_id", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
+	// Per-player counts over every invited player: this domain's stats
+	// aggregation and the cross-domain readers (appearance standings).
+	createIndex(eventsColl, mgo.IndexModel{
+		Keys: bson.D{{Key: "referrer_player_id", Value: 1}},
+	})
 }
 
 func codeFromDTO(d dto.ReferralCode) *model.ReferralCode {

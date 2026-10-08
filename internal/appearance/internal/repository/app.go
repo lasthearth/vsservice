@@ -17,12 +17,13 @@ const (
 	purchasesCollName = "appearance_purchases"
 
 	// Read-only: owned by other domains, read here to check unlocks.
-	statsCollName       = "stats"
-	playerCollName      = "verification_requests"
-	settlementsCollName = "settlements"
-	hgStatsCollName     = "hg_player_stats"
-	referralsCollName   = "referral_events"
-	attendeesCollName   = "event_attendees"
+	statsCollName             = "stats"
+	playerCollName            = "verification_requests"
+	settlementsCollName       = "settlements"
+	hgStatsCollName           = "hg_player_stats"
+	hgSeasonResultsCollName   = "hg_season_results"
+	referralsCollName         = "referral_events"
+	attendeesCollName         = "event_attendees"
 )
 
 type Opts struct {
@@ -89,27 +90,29 @@ type StandingOpts struct {
 // settlements, Hunger Games, referrals, event sign-ups and shard purchases.
 // Everything but the purchases is owned by other domains and only read here.
 type Standings struct {
-	logger      logger.Logger
-	stats       *mongo.Collection
-	players     *mongo.Collection
-	settlements *mongo.Collection
-	hgStats     *mongo.Collection
-	referrals   *mongo.Collection
-	attendees   *mongo.Collection
-	purchases   *mongo.Collection
-	now         func() time.Time
+	logger        logger.Logger
+	stats         *mongo.Collection
+	players       *mongo.Collection
+	settlements   *mongo.Collection
+	hgStats       *mongo.Collection
+	seasonResults *mongo.Collection
+	referrals     *mongo.Collection
+	attendees     *mongo.Collection
+	purchases     *mongo.Collection
+	now           func() time.Time
 }
 
 func NewStandings(opts StandingOpts) *Standings {
 	return &Standings{
-		logger:      opts.Logger.WithComponent("standings"),
-		stats:       opts.Db.Collection(statsCollName),
-		players:     opts.Db.Collection(playerCollName),
-		settlements: opts.Db.Collection(settlementsCollName),
-		hgStats:     opts.Db.Collection(hgStatsCollName),
-		referrals:   opts.Db.Collection(referralsCollName),
-		attendees:   opts.Db.Collection(attendeesCollName),
-		purchases:   opts.Db.Collection(purchasesCollName),
-		now:         time.Now,
+		logger:        opts.Logger.WithComponent("standings"),
+		stats:         opts.Db.Collection(statsCollName),
+		players:       opts.Db.Collection(playerCollName),
+		settlements:   opts.Db.Collection(settlementsCollName),
+		hgStats:       opts.Db.Collection(hgStatsCollName),
+		seasonResults: opts.Db.Collection(hgSeasonResultsCollName),
+		referrals:     opts.Db.Collection(referralsCollName),
+		attendees:     opts.Db.Collection(attendeesCollName),
+		purchases:     opts.Db.Collection(purchasesCollName),
+		now:           time.Now,
 	}
 }

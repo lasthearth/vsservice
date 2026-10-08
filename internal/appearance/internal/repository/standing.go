@@ -136,29 +136,44 @@ func (s *Standings) player(ctx context.Context, userID string) (player, error) {
 	return doc, err
 }
 
-// hungerGamesWins sums the player's wins over every season.
+// hungerGamesWins sums the player's wins over every season: the completed
+// seasons archived in hg_season_results plus the current one in hg_player_stats.
+// ResetSeason archives the standings and then wipes hg_player_stats, so the
+// current collection alone would drop every past win on each reset.
 func (s *Standings) hungerGamesWins(ctx context.Context, userID string) (int, error) {
-	pipeline := bson.A{
-		bson.D{{Key: "$match", Value: bson.M{"player_id": userID}}},
-		bson.D{{Key: "$group", Value: bson.D{
-			{Key: "_id", Value: nil},
-			{Key: "wins", Value: bson.D{{Key: "$sum", Value: "$wins"}}},
-		}}},
+	sumWins := func(coll *mongo.Collection) (int, error) {
+		pipeline := bson.A{
+			bson.D{{Key: "$match", Value: bson.M{"player_id": userID}}},
+			bson.D{{Key: "$group", Value: bson.D{
+				{Key: "_id", Value: nil},
+				{Key: "wins", Value: bson.D{{Key: "$sum", Value: "$wins"}}},
+			}}},
+		}
+		cursor, err := coll.Aggregate(ctx, pipeline)
+		if err != nil {
+			return 0, err
+		}
+		var out []struct {
+			Wins int `bson:"wins"`
+		}
+		if err := cursor.All(ctx, &out); err != nil {
+			return 0, err
+		}
+		if len(out) == 0 {
+			return 0, nil
+		}
+		return out[0].Wins, nil
 	}
-	cursor, err := s.hgStats.Aggregate(ctx, pipeline)
+
+	archived, err := sumWins(s.seasonResults)
 	if err != nil {
 		return 0, err
 	}
-	var out []struct {
-		Wins int `bson:"wins"`
-	}
-	if err := cursor.All(ctx, &out); err != nil {
+	current, err := sumWins(s.hgStats)
+	if err != nil {
 		return 0, err
 	}
-	if len(out) == 0 {
-		return 0, nil
-	}
-	return out[0].Wins, nil
+	return archived + current, nil
 }
 
 // allTotals sums every player's stats by in-game name.
@@ -184,11 +199,16 @@ func (s *Standings) allTotals(ctx context.Context) ([]totals, error) {
 }
 
 // settlementRole finds the settlement the player belongs to.
+//
+// Leadership is read from the member's owner role only, the way the
+// settlement domain itself decides it (IsLeaderOfSettlement). The stored
+// `leader` field is deliberately ignored: the settlement model keeps it only
+// to populate a deprecated proto field, and it goes stale the moment
+// ownership is transferred or the founder leaves. The unique index on
+// members.user_id also guarantees one settlement per player, so this match
+// never needs the $or the stale leader field would force.
 func (s *Standings) settlementRole(ctx context.Context, userID string) (model.SettlementRole, error) {
 	var doc struct {
-		Leader struct {
-			UserId string `bson:"user_id"`
-		} `bson:"leader"`
 		Members []struct {
 			UserId  string   `bson:"user_id"`
 			RoleIds []string `bson:"role_ids"`
@@ -196,11 +216,8 @@ func (s *Standings) settlementRole(ctx context.Context, userID string) (model.Se
 	}
 	err := s.settlements.FindOne(
 		ctx,
-		bson.M{"$or": bson.A{
-			bson.M{"leader.user_id": userID},
-			bson.M{"members.user_id": userID},
-		}},
-		options.FindOne().SetProjection(bson.M{"leader": 1, "members": 1}),
+		bson.M{"members.user_id": userID},
+		options.FindOne().SetProjection(bson.M{"members.user_id": 1, "members.role_ids": 1}),
 	).Decode(&doc)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return model.SettlementNone, nil
@@ -209,9 +226,6 @@ func (s *Standings) settlementRole(ctx context.Context, userID string) (model.Se
 		return model.SettlementNone, err
 	}
 
-	if doc.Leader.UserId == userID {
-		return model.SettlementLeader, nil
-	}
 	for _, m := range doc.Members {
 		if m.UserId != userID {
 			continue
