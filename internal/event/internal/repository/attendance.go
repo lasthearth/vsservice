@@ -16,6 +16,21 @@ import (
 // maxMyEvents bounds how many sign-ups of one player are looked at.
 const maxMyEvents = 500
 
+// reminderScanLimit bounds how many events one reminder pass considers. It has
+// to cover every event that can start within the same hour, or attendees of the
+// ones past the limit silently get no reminder.
+const reminderScanLimit = 1000
+
+// The attendee sorts. Each must be served by an index in attendeeIndexes —
+// index_covers_sort_test.go checks that, because the mismatch is silent.
+var (
+	// sortAttendees orders one event's sign-ups; the equality is on event_id.
+	sortAttendees = bson.D{{Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}
+	// sortNewestSignup orders a player's own sign-ups; the equality is on
+	// user_id.
+	sortNewestSignup = bson.D{{Key: "created_at", Value: -1}}
+)
+
 // SetAttendance signs userID up for eventID or withdraws them. Idempotent: an
 // upsert keyed by the unique (event_id, user_id) pair keeps the first sign-up
 // time, and withdrawing twice is a no-op.
@@ -56,7 +71,7 @@ func (r *Repository) Attendees(ctx context.Context, eventIDs []string) (map[stri
 
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: bson.M{"event_id": bson.M{"$in": eventIDs}}}},
-		{{Key: "$sort", Value: bson.D{{Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}}},
+		{{Key: "$sort", Value: sortAttendees}},
 		{{Key: "$group", Value: bson.M{
 			"_id":   "$event_id",
 			"count": bson.M{"$sum": 1},
@@ -123,7 +138,7 @@ func (r *Repository) ListMine(ctx context.Context, userID string, now time.Time,
 		bson.M{"user_id": userID},
 		options.Find().
 			SetProjection(bson.M{"event_id": 1}).
-			SetSort(bson.D{{Key: "created_at", Value: -1}}).
+			SetSort(sortNewestSignup).
 			SetLimit(maxMyEvents),
 	)
 	if err != nil {
@@ -158,8 +173,7 @@ func (r *Repository) ListMine(ctx context.Context, userID string, now time.Time,
 // ListStartingWithin returns not-deleted events that start in (from, to].
 func (r *Repository) ListStartingWithin(ctx context.Context, from, to time.Time) ([]model.Event, error) {
 	filter := bson.M{"starts_at": bson.M{"$gt": from, "$lte": to}}
-	sort := bson.D{{Key: "starts_at", Value: 1}, {Key: "_id", Value: 1}}
-	return r.list(ctx, filter, sort, 100)
+	return r.list(ctx, filter, sortUpcoming, reminderScanLimit)
 }
 
 // ClaimReminders marks the attendees of eventID who were not yet reminded
@@ -198,10 +212,29 @@ func (r *Repository) ClaimReminders(ctx context.Context, eventID string, startsA
 	return claimed, nil
 }
 
+// UnclaimReminder gives a claimed reminder back, so a pass that claimed it but
+// failed to deliver the notification retries on the next tick instead of
+// silently costing that player their only reminder.
+//
+// It runs right after a failed send, which on a rolling deploy means the
+// lifecycle context is already cancelled — the same reason it fails. Detached,
+// with its own short deadline, like the invite-link compensation.
+func (r *Repository) UnclaimReminder(ctx context.Context, eventID, userID string, startsAt time.Time) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+
+	_, err := r.attendees.UpdateOne(
+		ctx,
+		bson.M{"event_id": eventID, "user_id": userID, "reminded_for": startsAt},
+		bson.M{"$unset": bson.M{"reminded_for": ""}},
+	)
+	return err
+}
+
 func (r *Repository) userIDs(ctx context.Context, filter bson.M, limit int64) ([]string, error) {
 	opts := options.Find().
 		SetProjection(bson.M{"user_id": 1}).
-		SetSort(bson.D{{Key: "created_at", Value: 1}, {Key: "_id", Value: 1}})
+		SetSort(sortAttendees)
 	if limit > 0 {
 		opts.SetLimit(limit)
 	}

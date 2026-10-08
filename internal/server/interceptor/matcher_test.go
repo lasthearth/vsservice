@@ -20,6 +20,7 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/settlement.v1.SettlementTagService/GetTagsByIds",
 		"/event.v1.EventService/GetEvent",
 		"/event.v1.EventService/ListEvents",
+		"/event.v1.EventService/ListAttendees",
 		"/reaction.v1.ReactionService/ListReactions",
 		"/lfg.v1.LfgService/ListPosts",
 		"/lfg.v1.LfgService/GetPost",
@@ -31,6 +32,9 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/event.v1.EventService/CreateEvent",
 		"/event.v1.EventService/UpdateEvent",
 		"/event.v1.EventService/DeleteEvent",
+		// SetAttendance writes a per-player row, so it must never be public.
+		"/event.v1.EventService/SetAttendance",
+		"/event.v1.EventService/ListMyEvents",
 		"/reaction.v1.ReactionService/ListMyReactions",
 		"/reaction.v1.ReactionService/ToggleReaction",
 		"/settlement.v1.SettlementService/CreateInviteLink",
