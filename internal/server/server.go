@@ -17,6 +17,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	appearancev1 "github.com/lasthearth/vsservice/gen/appearance/v1"
 	discordv1 "github.com/lasthearth/vsservice/gen/discord/v1"
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	eventv1 "github.com/lasthearth/vsservice/gen/event/v1"
@@ -124,6 +125,7 @@ func (s *Server) Build() error {
 	eventv1.RegisterEventServiceServer(srv, s.eventV1)
 	reactionv1.RegisterReactionServiceServer(srv, s.reactionV1)
 	lfgv1.RegisterLfgServiceServer(srv, s.lfgV1)
+	appearancev1.RegisterAppearanceServiceServer(srv, s.appearanceV1)
 	reflection.Register(srv)
 
 	// After registration so GetServiceInfo() sees every service. Fails startup
@@ -246,6 +248,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := lfgv1.RegisterLfgServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register lfg service handler")
+	}
+
+	if err := appearancev1.RegisterAppearanceServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register appearance service handler")
 	}
 
 	handler := cors.New(cors.Options{

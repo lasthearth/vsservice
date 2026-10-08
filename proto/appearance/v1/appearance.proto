@@ -1,0 +1,244 @@
+syntax = "proto3";
+
+package appearance.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// AppearanceService keeps how players look on the site: the banner behind the
+// profile, the frame around the avatar, an animation for each, and the title
+// under the name. A player who never chose anything has no record; the site
+// then draws the rarest banner and frame the player has unlocked.
+//
+// Banners, frames and animations unlock with hours played, player kills or
+// deaths, surviving long without dying, settlement membership or leadership,
+// a top-10 place by hours or kills, Hunger Games wins, invited players, event
+// sign-ups or days on the server. A few banners are bought with shards.
+// The server checks the unlocks when a choice is saved; the site checks them
+// again when it draws, so an item the player has since lost falls back to the
+// default.
+service AppearanceService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Every saved appearance. Public: the site draws other players' frames and
+  // banners in lists, chips and profiles.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
+  rpc ListAppearances(ListAppearancesRequest) returns (ListAppearancesResponse) {
+    option (google.api.http) = {get: "/v1/appearances"};
+  }
+
+  // Save the caller's appearance, replacing the previous choice.
+  //
+  // title_key is one of the badge keys, or empty for no title. Whether the
+  // player still has that badge is checked by the site when it draws the title.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): unknown banner, frame, animation or title key
+  //   - FAILED_PRECONDITION (412): a chosen banner, frame or animation is not
+  //     unlocked yet; the message names it
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc UpdateMyAppearance(UpdateMyAppearanceRequest) returns (Appearance) {
+    option (google.api.http) = {
+      put: "/v1/appearances/me"
+      body: "*"
+    };
+  }
+
+  // What the caller has earned and bought: the numbers every unlock is
+  // checked against, and the banners bought with shards.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc GetMyStanding(GetMyStandingRequest) returns (Standing) {
+    option (google.api.http) = {get: "/v1/appearances/me/standing"};
+  }
+
+  // Buy a banner sold for shards. The price leaves the caller's wallet and
+  // the banner is the caller's for good. Returns the standing after the buy.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): unknown banner
+  //   - FAILED_PRECONDITION (412): the banner is earned, not sold, or there
+  //     are not enough shards in the wallet
+  //   - ALREADY_EXISTS (409): the banner is already bought
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc BuyBanner(BuyBannerRequest) returns (Standing) {
+    option (google.api.http) = {
+      post: "/v1/appearances/banners/{banner_id}:buy"
+      body: "*"
+    };
+  }
+
+  // Forget the caller's choice, so the site draws the default again.
+  // Succeeds when there was nothing saved.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ResetMyAppearance(ResetMyAppearanceRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/v1/appearances/me"};
+  }
+}
+
+// How one player looks.
+message Appearance {
+  string user_id = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // Banner id, e.g. "procession".
+  string banner_id = 2;
+  // Banner animation: none, dust, clouds, leaves, rain, fog, snow, fireflies,
+  // embers, lightning, starfall or aurora.
+  string banner_effect = 3;
+  // Frame id: none, wood, copper, bronze, iron, blood or gold.
+  string frame_id = 4;
+  // Frame animation: none, wind, fire, fog, frost, storm, comet or aurora.
+  string frame_effect = 5;
+  // Badge shown as the title under the name; empty for no title.
+  string title_key = 6;
+  google.protobuf.Timestamp updated_at = 7 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+// What unlocks the player's items.
+message Standing {
+  double hours = 1;
+  int32 kills = 2;
+  int32 deaths = 3;
+  // Places by hours and by kills, 1-based; 0 when the player is not in the table.
+  int32 hours_rank = 4;
+  int32 kills_rank = 5;
+  // Place in a settlement: empty, "resident" or "leader".
+  string settlement_role = 6;
+  // Hunger Games wins over every season.
+  int32 hunger_games_wins = 7;
+  // Players who joined with the player's referral code.
+  int32 referrals = 8;
+  // Events the player signed up for.
+  int32 events = 9;
+  // Days since the player applied to the server.
+  int32 days = 10;
+  // Banners bought with shards.
+  repeated string purchased_banner_ids = 11;
+}
+
+message GetMyStandingRequest {}
+
+message BuyBannerRequest {
+  string banner_id = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+message ListAppearancesRequest {}
+
+message ListAppearancesResponse {
+  repeated Appearance appearances = 1;
+}
+
+message UpdateMyAppearanceRequest {
+  string banner_id = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      in: [
+        "procession",
+        "jesters",
+        "wrestlers",
+        "merry-company",
+        "unicorn-tapestry",
+        "shot-monkey",
+        "mummers",
+        "scholar-cat",
+        "duel",
+        "monk-lion",
+        "odd-joust",
+        "bad-manners",
+        "bestiary",
+        "war-horse",
+        "gallows",
+        "temptation",
+        "battle-courtrai",
+        "wonder-city",
+        "azure-goat",
+        "three-dead",
+        "piper"
+      ]
+    }
+  ];
+  string banner_effect = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      in: [
+        "none",
+        "dust",
+        "clouds",
+        "leaves",
+        "rain",
+        "fog",
+        "snow",
+        "fireflies",
+        "embers",
+        "lightning",
+        "starfall",
+        "aurora"
+      ]
+    }
+  ];
+  string frame_id = 3 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      in: [
+        "none",
+        "wood",
+        "copper",
+        "bronze",
+        "iron",
+        "blood",
+        "gold"
+      ]
+    }
+  ];
+  string frame_effect = 4 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      in: [
+        "none",
+        "wind",
+        "fire",
+        "fog",
+        "frost",
+        "storm",
+        "comet",
+        "aurora"
+      ]
+    }
+  ];
+  // Empty for no title.
+  string title_key = 5 [(buf.validate.field).string = {
+    in: [
+      "",
+      "verified",
+      "newcomer",
+      "settler",
+      "veteran",
+      "oldTimer",
+      "founder",
+      "resident",
+      "warrior",
+      "slayer",
+      "survivor",
+      "topHours",
+      "topKills",
+      "gladiator"
+    ]
+  }];
+}
+
+message ResetMyAppearanceRequest {}

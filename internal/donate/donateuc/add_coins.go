@@ -3,12 +3,20 @@ package donateuc
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"go.uber.org/fx"
 )
 
-// ErrNonPositiveAmount is returned when a caller credits a non-positive amount.
-var ErrNonPositiveAmount = errors.New("amount must be positive")
+var (
+	// ErrNonPositiveAmount is returned when a caller credits or debits a
+	// non-positive amount.
+	ErrNonPositiveAmount = errors.New("amount must be positive")
+	// ErrInsufficientFunds is returned by Debit when the player has no wallet
+	// or not enough coins in it. Nothing is withdrawn.
+	ErrInsufficientFunds = errors.New("insufficient funds")
+)
 
 // WalletRepo is the donate-side write port used by other domains. It is
 // deliberately primitive-typed so donate's internal model and DTO types never
@@ -16,6 +24,10 @@ var ErrNonPositiveAmount = errors.New("amount must be positive")
 type WalletRepo interface {
 	AddCoinsToWallet(ctx context.Context, playerID, playerName string, amount int64) (int64, error)
 	CreateCreditTransaction(ctx context.Context, playerID string, amount int64, reason string) error
+	// WithdrawCoins takes amount from the wallet, or returns
+	// ErrInsufficientFunds and takes nothing.
+	WithdrawCoins(ctx context.Context, playerID string, amount int64) error
+	CreateDebitTransaction(ctx context.Context, playerID string, amount int64, reason string) error
 }
 
 type Opts struct {
@@ -63,4 +75,44 @@ func (uc *AddCoinsUseCase) Credit(ctx context.Context, playerID, playerName stri
 	}
 
 	return uc.repo.CreateCreditTransaction(ctx, playerID, amount, reason)
+}
+
+// refundTimeout bounds a compensation write that runs after the operation
+// failed: long enough for one Mongo round-trip, short enough not to pin a
+// request that is already gone.
+const refundTimeout = 5 * time.Second
+
+// Debit takes amount coins from playerID's wallet for something bought outside
+// the donate shop and records a debit entry in the ledger. A player without a
+// wallet or without enough coins gets ErrInsufficientFunds and loses nothing.
+//
+// The caller aborts its own flow when Debit returns an error (the purchase it
+// was paying for did not happen), so the withdrawal is compensated: if the
+// ledger write fails, the coins go back. Unlike the donate shop's own Buy —
+// where a failed ledger row leaves the purchase standing and the player with
+// what they paid for — here nothing was granted yet. The refund runs on a
+// detached context, because the failure that stopped the ledger write (a
+// canceled request among them) must not stop the refund too. If the refund
+// fails as well the coins are lost and the joined error names both failures —
+// no self-healing, it needs a human.
+func (uc *AddCoinsUseCase) Debit(ctx context.Context, playerID string, amount int64, reason string) error {
+	if amount <= 0 {
+		return ErrNonPositiveAmount
+	}
+	if err := uc.repo.WithdrawCoins(ctx, playerID, amount); err != nil {
+		return err
+	}
+
+	if err := uc.repo.CreateDebitTransaction(ctx, playerID, amount, reason); err != nil {
+		refundCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), refundTimeout)
+		defer cancel()
+		if _, cerr := uc.repo.AddCoinsToWallet(refundCtx, playerID, "", amount); cerr != nil {
+			return fmt.Errorf(
+				"debit ledger write failed (%w) and returning the %d withdrawn coins failed: %w",
+				err, amount, cerr,
+			)
+		}
+		return err
+	}
+	return nil
 }
