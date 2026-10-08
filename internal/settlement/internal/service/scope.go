@@ -69,6 +69,7 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "RemoveOwner"):      interceptor.Scope(manageScope),
 		interceptor.Method(srvName + "SetRolesEnabled"):  interceptor.Scope(manageScope),
 		interceptor.Method(srvName + "DeleteSettlement"): interceptor.Scope(manageScope),
+		interceptor.Method(srvName + "ReissueNotifier"):  interceptor.Scope(manageScope),
 
 		// Self-service: scoped to the JWT subject.
 		interceptor.Method(srvName + "Submit"):             interceptor.ScopeAuthenticated,

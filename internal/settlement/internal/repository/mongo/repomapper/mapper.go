@@ -10,6 +10,7 @@ import (
 	invitation "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
 	invitelink "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitelink"
 	member "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/member"
+	notifier "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/notifier"
 	role "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/role"
 	settlement "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	vector2 "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/vector2"
@@ -83,6 +84,7 @@ func (c *MapperImpl) FromSettlementDTO(source settlement.Settlement) model.Settl
 	}
 	modelSettlement.RolesEnabled = source.RolesEnabled
 	modelSettlement.ContactInfo = source.ContactInfo
+	modelSettlement.NotifierReissues = source.NotifierReissues
 	modelSettlement.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)
 	modelSettlement.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
 	return modelSettlement
@@ -155,6 +157,14 @@ func (c *MapperImpl) ToInviteLinkModels(source []invitelink.InviteLink) []model.
 	}
 	return modelInviteLinkList
 }
+func (c *MapperImpl) ToNotifierPlacement(source notifier.Notifier) model.NotifierPlacement {
+	var modelNotifierPlacement model.NotifierPlacement
+	modelNotifierPlacement.SettlementId = source.SettlementId
+	modelNotifierPlacement.Position = c.notifierdtoPositionToModelVector3(source.Position)
+	modelNotifierPlacement.PlacedBy = source.PlacedBy
+	modelNotifierPlacement.PlacedAt = goverter.TimeToTime(source.PlacedAt)
+	return modelNotifierPlacement
+}
 func (c *MapperImpl) ToSettlementDTO(source model.Settlement) settlement.Settlement {
 	var settlementdtoSettlement settlement.Settlement
 	settlementdtoSettlement.Name = source.Name
@@ -190,6 +200,7 @@ func (c *MapperImpl) ToSettlementDTO(source model.Settlement) settlement.Settlem
 	}
 	settlementdtoSettlement.RolesEnabled = source.RolesEnabled
 	settlementdtoSettlement.ContactInfo = source.ContactInfo
+	settlementdtoSettlement.NotifierReissues = source.NotifierReissues
 	return settlementdtoSettlement
 }
 func (c *MapperImpl) attachmentdtoAttachmentToAttachmentdtoAttachment(source attachment.Attachment) attachment.Attachment {
@@ -271,6 +282,13 @@ func (c *MapperImpl) mongoxModelToMongoxModel(source mongox.Model) mongox.Model 
 	mongoxModel.UpdatedAt = goverter.TimeToTime(source.UpdatedAt)
 	mongoxModel.Version = source.Version
 	return mongoxModel
+}
+func (c *MapperImpl) notifierdtoPositionToModelVector3(source notifier.Position) model.Vector3 {
+	var modelVector3 model.Vector3
+	modelVector3.X = source.X
+	modelVector3.Y = source.Y
+	modelVector3.Z = source.Z
+	return modelVector3
 }
 func (c *MapperImpl) pTimeTimeToPTimeTime(source *time.Time) *time.Time {
 	var pTimeTime *time.Time

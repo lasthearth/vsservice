@@ -30,5 +30,7 @@ var (
 	ErrInviteLinkLimit         = ierror.ResourceExhausted("active invite link limit reached")
 	ErrInviteLinkExpired       = ierror.FailedPrecondition("invite link has expired")
 	ErrInviteLinkExhausted     = ierror.FailedPrecondition("invite link has no uses left")
+	ErrNotifierUnavailable     = ierror.FailedPrecondition("settlement type has no notifier block")
+	ErrNoOwnerToDeliver        = ierror.FailedPrecondition("recipient is not an owner of the settlement")
 	ErrInviteLinkRevoked       = ierror.FailedPrecondition("invite link was revoked")
 )

@@ -84,6 +84,17 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		return nil, err
 	}
 
+	// The settlement id is the request id. While its notifier block stands the
+	// block's position is authoritative, and whatever the client sent is dropped.
+	placement, hasNotifier, err := s.dbRepo.GetNotifier(ctx, found.Id)
+	if err != nil {
+		s.log.Error("failed to read settlement notifier", zap.Error(err), zap.String("settlement_id", found.Id))
+		return nil, err
+	}
+	if hasNotifier {
+		opts.Coordinates, _ = model.ResolveCoordinates(opts.Coordinates, &placement)
+	}
+
 	// User already has a request, handle level up or update
 	if found.Status == model.SettlementStatusPending {
 		s.log.Info("request already submitted", zap.String("user_id", userID))
@@ -124,7 +135,7 @@ func (s *Service) Get(ctx context.Context, req *settlementv1.GetRequest) (*settl
 	}
 
 	return &settlementv1.GetResponse{
-		Settlement: s.mapper.ToSettlementProto(*settlement),
+		Settlement: s.settlementProto(ctx, *settlement),
 	}, nil
 }
 
@@ -176,10 +187,30 @@ func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest)
 		return nil, ierror.ErrAlreadyApproved
 	}
 
-	if err := s.dbRepo.Approve(ctx, req.GetId()); err != nil {
+	var result *ApprovalResult
+	err = s.dbRepo.InTransaction(ctx, func(ctx context.Context) error {
+		res, err := s.dbRepo.Approve(ctx, req.GetId())
+		if err != nil {
+			return err
+		}
+		result = res
+
+		// The mail is written through the transaction's ctx, so it commits with
+		// the request and the settlement or not at all.
+		if res.Created {
+			return s.deliverNotifier(ctx, res.Settlement)
+		}
+		return s.mailOwnersAboutUpgrade(ctx, *res)
+	})
+	if err != nil {
 		s.log.Error("failed to approve settlement", zap.Error(err))
 		return nil, err
 	}
+
+	// Site notifications are best effort and go out after the commit: a failing
+	// notification must not undo an approval, and a rolled-back one must not
+	// have notified anyone.
+	s.notifyMembersAboutUpgrade(ctx, *result)
 
 	return &settlementv1.ApproveResponse{}, nil
 }
@@ -388,7 +419,7 @@ func (s *Service) GetByUserId(ctx context.Context, req *settlementv1.GetByUserId
 	}
 
 	return &settlementv1.GetByUserIdResponse{
-		Settlement: s.mapper.ToSettlementProto(*settlement),
+		Settlement: s.settlementProto(ctx, *settlement),
 	}, nil
 }
 

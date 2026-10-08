@@ -112,98 +112,122 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 	return nil
 }
 
-// Approve implements service.SettlementDbRepository.
-func (r *Repository) Approve(ctx context.Context, id string) error {
+// Approve implements service.SettlementRequestDbRepository.
+//
+// It writes through ctx and starts no transaction of its own: the caller wraps
+// it, together with the mails and notices that belong to the approval, in
+// InTransaction. ctx must carry that transaction's session, or the three
+// writes (request status, settlement, and the caller's mail) are no longer
+// atomic.
+func (r *Repository) Approve(ctx context.Context, id string) (*service.ApprovalResult, error) {
 	l := r.log.
 		With(zap.String("settlement_id", id)).
 		WithMethod("approve")
 	l.Info("approving settlement request")
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
 	objectID, err := mongomodel.ParseObjectID(id)
 	if err != nil {
 		l.Error("invalid settlement ID format", zap.Error(err))
-		return err
+		return nil, err
 	}
 
-	l.Debug("executing update query")
-
-	session, err := r.client.StartSession()
-	if err != nil {
-		l.Error("failed to start session", zap.Error(err))
-		return err
-	}
-
-	defer session.EndSession(ctx)
-
-	return mongo.WithSession(ctx, session, func(context.Context) error {
-		found := r.setReqColl.FindOneAndUpdate(
-			ctx,
-			bson.M{"_id": objectID},
-			bson.D{
-				{
-					Key: "$set",
-					Value: bson.D{
-						{Key: "status", Value: model.SettlementStatusApproved},
-						{Key: "updated_at", Value: time.Now()},
-					},
+	// The status filter makes a second approval fail instead of rewriting the
+	// settlement a second time. Inside a transaction two concurrent approvals
+	// conflict on this document, and the loser retries into this branch.
+	found := r.setReqColl.FindOneAndUpdate(
+		ctx,
+		bson.M{"_id": objectID, "status": bson.M{"$ne": string(model.SettlementStatusApproved)}},
+		bson.D{
+			{
+				Key: "$set",
+				Value: bson.D{
+					{Key: "status", Value: model.SettlementStatusApproved},
+					{Key: "updated_at", Value: time.Now()},
 				},
 			},
-		)
+		},
+	)
 
-		err = found.Err()
-		if err != nil {
-			if errors.Is(err, mongo.ErrNoDocuments) {
-				l.Warn("settlement not found", zap.Error(err))
-				return repoerr.ErrNotFound
-			}
-
+	if err := found.Err(); err != nil {
+		if !errors.Is(err, mongo.ErrNoDocuments) {
 			l.Error("update error", zap.Error(err))
-			return err
+			return nil, err
 		}
 
-		var dto verificationdto.SettlementVerification
+		exists, cerr := r.setReqColl.CountDocuments(ctx, bson.M{"_id": objectID})
+		if cerr != nil {
+			l.Error("count error", zap.Error(cerr))
+			return nil, cerr
+		}
+		if exists > 0 {
+			return nil, repoerr.ErrAlreadyApproved
+		}
+		l.Warn("settlement request not found")
+		return nil, repoerr.ErrNotFound
+	}
 
-		err = found.Decode(&dto)
-		if err != nil {
-			l.Error("decode error", zap.Error(err))
-			return err
+	// FindOneAndUpdate returns the document as it was before the update.
+	var dto verificationdto.SettlementVerification
+	if err := found.Decode(&dto); err != nil {
+		l.Error("decode error", zap.Error(err))
+		return nil, err
+	}
+
+	l.Info("successfully approved settlement request")
+	l.Debug("leader here", zap.String("leader_id", dto.Leader.UserId))
+
+	// The settlement id is the request id. Create it, or update it when an
+	// earlier approval already did (a level-up).
+	existing, err := r.GetSettlement(ctx, dto.Id.Hex())
+	if err != nil {
+		if !errors.Is(err, repoerr.ErrNotFound) {
+			return nil, err
 		}
 
-		l.Info("successfully approved settlement request")
-		l.Debug("leader here", zap.String("leader_id", dto.Leader.UserId))
-		// check existence if exists update instead of create
-		_, err := r.GetSettlement(ctx, dto.Id.Hex())
-		if err != nil {
-			if errors.Is(err, repoerr.ErrNotFound) {
-				cdto := r.mapper.FromVerification(dto)
-				cdto.Members = []memberdto.Member{{
-					UserId:  dto.Leader.UserId,
-					RoleIds: []string{model.OwnerRoleId},
-				}}
-				cdto.TagIds = make([]string, 0)
-				cdto.Roles = make([]roledto.Role, 0)
-				cdto.RolesEnabled = true
-				return r.Create(ctx, cdto)
-			}
-
-			return err
+		cdto := r.mapper.FromVerification(dto)
+		cdto.Members = []memberdto.Member{{
+			UserId:  dto.Leader.UserId,
+			RoleIds: []string{model.OwnerRoleId},
+		}}
+		cdto.TagIds = make([]string, 0)
+		cdto.Roles = make([]roledto.Role, 0)
+		cdto.RolesEnabled = true
+		if err := r.Create(ctx, cdto); err != nil {
+			return nil, err
 		}
 
-		setModel := dto.ToModel()
-		return r.Update(ctx, service.UpdateSettlementOpts{
-			ID:          id,
-			Name:        dto.Name,
-			Type:        setModel.Type,
-			Coordinates: setModel.Coordinates,
-			Attachments: setModel.Attachments,
-			Diplomacy:   setModel.Diplomacy,
-			Description: setModel.Description,
-			Leader:      *dto.Leader.ToModel(),
-		})
-	})
+		created := r.mapper.FromSettlementDTO(cdto)
+		created.DeriveLeader()
+		return &service.ApprovalResult{
+			Created:     true,
+			Settlement:  created,
+			RequestedAt: dto.UpdatedAt,
+		}, nil
+	}
+
+	setModel := dto.ToModel()
+	if err := r.Update(ctx, service.UpdateSettlementOpts{
+		ID:          id,
+		Name:        dto.Name,
+		Type:        setModel.Type,
+		Coordinates: setModel.Coordinates,
+		Attachments: setModel.Attachments,
+		Diplomacy:   setModel.Diplomacy,
+		Description: setModel.Description,
+		Leader:      *dto.Leader.ToModel(),
+	}); err != nil {
+		return nil, err
+	}
+
+	updated, err := r.GetSettlement(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &service.ApprovalResult{
+		PreviousType: existing.Type,
+		Settlement:   *updated,
+		RequestedAt:  dto.UpdatedAt,
+	}, nil
 }
 
 // Reject implements service.SettlementDbRepository.
