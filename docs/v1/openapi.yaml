@@ -1562,8 +1562,10 @@ paths:
         - SettlementService
       summary: |-
         Join the settlement behind an invite link. Spends one use of the link, adds the
-         caller as a plain member and drops the caller's pending join requests, in one
-         transaction. The link's creator is notified.
+         caller as a plain member and drops the caller's pending join requests. The
+         link's creator is notified. Not atomic: the use is reserved first and given
+         back if adding the member fails, so on error re-read the link rather than
+         assume nothing changed.
       description: |-
         Errors:
            - NOT_FOUND (404): no link with this code, or its settlement is gone

@@ -159,7 +159,15 @@ func (r *Repository) JoinByInviteLink(
 
 	if err := r.pushMember(ctx, link.SettlementId, userID); err != nil {
 		// The player did not get in: give the use back.
-		if _, rerr := r.inviteLinkColl.UpdateOne(ctx,
+		//
+		// The refund must not run on the caller's context. When pushMember failed
+		// because that context was cancelled or hit its deadline, a refund on the
+		// same context fails for the same reason and the use is burned
+		// permanently — the failure is correlated by construction. Detach it and
+		// give it its own short deadline.
+		refundCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		if _, rerr := r.inviteLinkColl.UpdateOne(refundCtx,
 			bson.M{"code": code, "uses": bson.M{"$gt": 0}},
 			bson.M{"$inc": bson.M{"uses": -1, "version": 1}},
 		); rerr != nil {
@@ -192,6 +200,13 @@ func (r *Repository) pushMember(ctx context.Context, settlementID, userID string
 		bson.D{
 			{Key: "$push", Value: bson.D{{Key: "members", Value: member}}},
 			{Key: "$set", Value: bson.D{{Key: "updated_at", Value: time.Now()}}},
+			// Bump version. UpdateSettlement replaces the WHOLE document under a
+			// {version: N} guard (mongox.UpdateDoc), so a $push that leaves
+			// version alone is invisible to it: a concurrent settlement edit
+			// would still match the guard and write back its own snapshot of
+			// members, silently erasing a player who was already told the join
+			// succeeded and whose link use was already spent.
+			{Key: "$inc", Value: bson.D{{Key: "version", Value: 1}}},
 		},
 	)
 	if err != nil {
