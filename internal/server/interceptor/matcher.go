@@ -32,6 +32,7 @@ var publicMethods = map[string]struct{}{
 	"/discord.v1.DiscordService/ListImages":                          {},
 	"/event.v1.EventService/GetEvent":                                {},
 	"/event.v1.EventService/ListEvents":                              {},
+	"/event.v1.EventService/ListAttendees":                           {},
 	"/reaction.v1.ReactionService/ListReactions":                     {},
 	"/lfg.v1.LfgService/ListPosts":                                   {},
 	"/lfg.v1.LfgService/GetPost":                                     {},

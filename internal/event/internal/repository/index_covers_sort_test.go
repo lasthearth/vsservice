@@ -27,6 +27,42 @@ func TestListSortsAreIndexServed(t *testing.T) {
 	}
 }
 
+// TestAttendeeSortsAreIndexServed pins the agreement between the attendee sorts
+// and the declared indexes.
+//
+// The attendee queries constrain one field by equality — event_id for an
+// event's list, user_id for a player's own sign-ups — and sort on the rest, so
+// the index must lead with that equality field and carry the sort keys right
+// after it. A trailing _id in the sort that the index lacks is the same silent
+// blocking-sort defect as above: the public ListAttendees call and the
+// notification fan-out would pay it on every call.
+func TestAttendeeSortsAreIndexServed(t *testing.T) {
+	cases := []struct {
+		name string
+		eq   string
+		sort bson.D
+	}{
+		{"the per-event attendee lists", "event_id", sortAttendees},
+		{"the per-player sign-up scan", "user_id", sortNewestSignup},
+	}
+
+	for _, c := range cases {
+		served := false
+		for _, im := range attendeeIndexes {
+			keys, ok := im.Keys.(bson.D)
+			if !ok || len(keys) == 0 || keys[0].Key != c.eq {
+				continue
+			}
+			if isPrefix(keys[1:], c.sort) || isPrefix(reverseKeys(keys[1:]), c.sort) {
+				served = true
+			}
+		}
+		if !served {
+			t.Errorf("%s filter on %s and sort on %v, which no index in attendeeIndexes serves; the planner will add a blocking in-memory sort", c.name, c.eq, c.sort)
+		}
+	}
+}
+
 // indexServes reports whether some declared index yields the sort order, scanned
 // either forward or backward.
 func indexServes(sort bson.D) bool {

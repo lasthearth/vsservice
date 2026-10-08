@@ -7,11 +7,15 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
-const collName = "events"
+const (
+	collName          = "events"
+	attendeesCollName = "event_attendees"
+)
 
 type Opts struct {
 	fx.In
@@ -21,20 +25,24 @@ type Opts struct {
 }
 
 type Repository struct {
-	logger logger.Logger
-	coll   *mongo.Collection
-	mapper Mapper
+	logger    logger.Logger
+	coll      *mongo.Collection
+	attendees *mongo.Collection
+	mapper    Mapper
 }
 
 func New(opts Opts) *Repository {
 	l := opts.Logger.WithComponent("repository")
 	coll := opts.Db.Collection(collName)
+	attendees := opts.Db.Collection(attendeesCollName)
 	setupIndexes(l, coll)
+	setupAttendeeIndexes(l, attendees)
 
 	return &Repository{
-		logger: l,
-		coll:   coll,
-		mapper: opts.Mapper,
+		logger:    l,
+		coll:      coll,
+		attendees: attendees,
+		mapper:    opts.Mapper,
 	}
 }
 
@@ -67,5 +75,34 @@ func setupIndexes(log logger.Logger, coll *mongo.Collection) {
 
 	if _, err := coll.Indexes().CreateMany(ctx, eventIndexes); err != nil {
 		log.Error("failed to create indexes", zap.String("collection", collName), zap.Error(err))
+	}
+}
+
+// attendeeIndexes are the indexes the event_attendees collection needs.
+//
+// The per-event list index must carry _id: userIDs sorts on {created_at, _id}
+// under an equality on event_id, and MongoDB does not treat _id as an implicit
+// suffix of a secondary index, so without it every attendee list — including
+// the public ListAttendees call and the notification fan-out — does a blocking
+// in-memory sort. index_covers_sort_test.go pins the agreement, because the
+// mismatch is silent.
+var attendeeIndexes = []mongo.IndexModel{
+	// One sign-up per player and event.
+	{
+		Keys:    bson.D{{Key: "event_id", Value: 1}, {Key: "user_id", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	},
+	// The per-event lists in sign-up order.
+	{Keys: bson.D{{Key: "event_id", Value: 1}, {Key: "created_at", Value: 1}, {Key: "_id", Value: 1}}},
+	// "My events": a player's sign-ups, newest first.
+	{Keys: bson.D{{Key: "user_id", Value: 1}, {Key: "created_at", Value: -1}}},
+}
+
+func setupAttendeeIndexes(log logger.Logger, coll *mongo.Collection) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := coll.Indexes().CreateMany(ctx, attendeeIndexes); err != nil {
+		log.Error("failed to create indexes", zap.String("collection", attendeesCollName), zap.Error(err))
 	}
 }

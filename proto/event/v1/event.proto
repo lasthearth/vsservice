@@ -85,6 +85,43 @@ service EventService {
   rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
     option (google.api.http) = {get: "/v1/events"};
   }
+
+  // Sign up for an event ("I'm going") or withdraw. Idempotent: the request says
+  // which state the caller wants. Attendees get a reminder an hour before the
+  // start, and a notification when the event is moved or cancelled.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such event, or it was deleted
+  //   - FAILED_PRECONDITION (412): the event is over
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc SetAttendance(SetAttendanceRequest) returns (SetAttendanceResponse) {
+    option (google.api.http) = {
+      post: "/v1/events/{id}/attendance"
+      body: "*"
+    };
+  }
+
+  // Who is going, in sign-up order. Public.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): page_size outside 0..200
+  //   - NOT_FOUND (404): no such event, or it was deleted
+  //   - INTERNAL (500): database failure
+  rpc ListAttendees(ListAttendeesRequest) returns (ListAttendeesResponse) {
+    option (google.api.http) = {get: "/v1/events/{id}/attendees"};
+  }
+
+  // Events the caller signed up for: upcoming and ongoing (soonest first) or,
+  // with `past`, the ones that are over (most recent first).
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): page_size outside 0..100
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ListMyEvents(ListMyEventsRequest) returns (ListEventsResponse) {
+    option (google.api.http) = {get: "/v1/events:mine"};
+  }
 }
 
 message Event {
@@ -103,6 +140,10 @@ message Event {
   string created_by = 8;
   google.protobuf.Timestamp created_at = 9;
   google.protobuf.Timestamp updated_at = 10;
+  // How many players signed up.
+  int32 attendee_count = 11;
+  // The first players who signed up (at most 5), for avatars on the card.
+  repeated string attendee_preview = 12;
 }
 
 message CreateEventRequest {
@@ -164,4 +205,41 @@ message ListEventsRequest {
 
 message ListEventsResponse {
   repeated Event events = 1;
+}
+
+message SetAttendanceRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  // true to sign up, false to withdraw.
+  bool attending = 2;
+}
+
+message SetAttendanceResponse {
+  bool attending = 1;
+  int32 attendee_count = 2;
+  repeated string attendee_preview = 3;
+}
+
+message ListAttendeesRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  // At most this many players, 1..200. Zero means 100.
+  int32 page_size = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 200
+  }];
+}
+
+message ListAttendeesResponse {
+  // User ids in sign-up order.
+  repeated string user_ids = 1;
+  int32 total = 2;
+}
+
+message ListMyEventsRequest {
+  // At most this many events, 1..100. Zero means 50.
+  int32 page_size = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  // List finished events instead of upcoming ones.
+  bool past = 2;
 }
