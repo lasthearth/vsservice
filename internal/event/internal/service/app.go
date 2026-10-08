@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"time"
 
 	eventv1 "github.com/lasthearth/vsservice/gen/event/v1"
@@ -21,22 +22,31 @@ type Opts struct {
 	MediaURL             *mediaurl.Validator
 }
 
+// notifier sends a notification; *notificationuc.Create in production.
+type notifier interface {
+	CreateNotification(ctx context.Context, title, message string, opts ...notificationuc.NotificationOpts) error
+}
+
 type Service struct {
 	logger   logger.Logger
 	repo     Repository
 	mapper   Mapper
-	cnuc     *notificationuc.Create
+	cnuc     notifier
 	mediaURL *mediaurl.Validator
 	now      func() time.Time
 }
 
 func New(opts Opts) *Service {
-	return &Service{
+	s := &Service{
 		logger:   opts.Logger.WithComponent("service"),
 		repo:     opts.Repo,
 		mapper:   opts.Mapper,
-		cnuc:     opts.CreateNotificationUC,
 		mediaURL: opts.MediaURL,
 		now:      time.Now,
 	}
+	// A nil *Create stored in the interface would not compare equal to nil.
+	if opts.CreateNotificationUC != nil {
+		s.cnuc = opts.CreateNotificationUC
+	}
+	return s
 }

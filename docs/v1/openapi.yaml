@@ -1079,6 +1079,121 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/event.v1.Event'
+  /v1/events/{id}/attendance:
+    post:
+      tags:
+        - EventService
+      summary: |-
+        Sign up for an event ("I'm going") or withdraw. Idempotent: the request says
+         which state the caller wants. Attendees get a reminder an hour before the
+         start, and a notification when the event is moved or cancelled.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such event, or it was deleted
+           - FAILED_PRECONDITION (412): the event is over
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: EventService_SetAttendance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                attending:
+                  type: boolean
+                  title: attending
+                  description: true to sign up, false to withdraw.
+              title: SetAttendanceRequest
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event.v1.SetAttendanceResponse'
+  /v1/events/{id}/attendees:
+    get:
+      tags:
+        - EventService
+      summary: Who is going, in sign-up order. Public.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): page_size outside 0..200
+           - NOT_FOUND (404): no such event, or it was deleted
+           - INTERNAL (500): database failure
+      operationId: EventService_ListAttendees
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+        - name: page_size
+          in: query
+          description: At most this many players, 1..200. Zero means 100.
+          schema:
+            type: integer
+            title: page_size
+            maximum: 200
+            minimum: 0
+            format: int32
+            description: At most this many players, 1..200. Zero means 100.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event.v1.ListAttendeesResponse'
+  /v1/events:mine:
+    get:
+      tags:
+        - EventService
+      summary: |-
+        Events the caller signed up for: upcoming and ongoing (soonest first) or,
+         with `past`, the ones that are over (most recent first).
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): page_size outside 0..100
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: EventService_ListMyEvents
+      parameters:
+        - name: page_size
+          in: query
+          description: At most this many events, 1..100. Zero means 50.
+          schema:
+            type: integer
+            title: page_size
+            maximum: 100
+            minimum: 0
+            format: int32
+            description: At most this many events, 1..100. Zero means 50.
+        - name: past
+          in: query
+          description: List finished events instead of upcoming ones.
+          schema:
+            type: boolean
+            title: past
+            description: List finished events instead of upcoming ones.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event.v1.ListEventsResponse'
   /v1/hungergames/leaderboard:
     get:
       tags:
@@ -5482,6 +5597,17 @@ components:
         updated_at:
           title: updated_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
+        attendee_count:
+          type: integer
+          title: attendee_count
+          format: int32
+          description: How many players signed up.
+        attendee_preview:
+          type: array
+          items:
+            type: string
+          title: attendee_preview
+          description: The first players who signed up (at most 5), for avatars on the card.
       title: Event
       additionalProperties: false
     event.v1.GetEventRequest:
@@ -5493,6 +5619,38 @@ components:
       title: GetEventRequest
       required:
         - id
+      additionalProperties: false
+    event.v1.ListAttendeesRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        page_size:
+          type: integer
+          title: page_size
+          maximum: 200
+          minimum: 0
+          format: int32
+          description: At most this many players, 1..200. Zero means 100.
+      title: ListAttendeesRequest
+      required:
+        - id
+      additionalProperties: false
+    event.v1.ListAttendeesResponse:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: string
+          title: user_ids
+          description: User ids in sign-up order.
+        total:
+          type: integer
+          title: total
+          format: int32
+      title: ListAttendeesResponse
       additionalProperties: false
     event.v1.ListEventsRequest:
       type: object
@@ -5519,6 +5677,53 @@ components:
             $ref: '#/components/schemas/event.v1.Event'
           title: events
       title: ListEventsResponse
+      additionalProperties: false
+    event.v1.ListMyEventsRequest:
+      type: object
+      properties:
+        page_size:
+          type: integer
+          title: page_size
+          maximum: 100
+          minimum: 0
+          format: int32
+          description: At most this many events, 1..100. Zero means 50.
+        past:
+          type: boolean
+          title: past
+          description: List finished events instead of upcoming ones.
+      title: ListMyEventsRequest
+      additionalProperties: false
+    event.v1.SetAttendanceRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        attending:
+          type: boolean
+          title: attending
+          description: true to sign up, false to withdraw.
+      title: SetAttendanceRequest
+      required:
+        - id
+      additionalProperties: false
+    event.v1.SetAttendanceResponse:
+      type: object
+      properties:
+        attending:
+          type: boolean
+          title: attending
+        attendee_count:
+          type: integer
+          title: attendee_count
+          format: int32
+        attendee_preview:
+          type: array
+          items:
+            type: string
+          title: attendee_preview
+      title: SetAttendanceResponse
       additionalProperties: false
     event.v1.UpdateEventRequest:
       type: object

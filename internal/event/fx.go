@@ -1,6 +1,8 @@
 package event
 
 import (
+	"context"
+
 	eventv1 "github.com/lasthearth/vsservice/gen/event/v1"
 	"github.com/lasthearth/vsservice/internal/event/internal/repository"
 	"github.com/lasthearth/vsservice/internal/event/internal/repository/repomapper"
@@ -40,15 +42,39 @@ var App = fx.Options(
 		),
 
 		fx.Provide(
+			fx.Private,
+			service.New,
+		),
+
+		fx.Provide(
+			func(s *service.Service) eventv1.EventServiceServer { return s },
 			fx.Annotate(
-				service.New,
-				fx.As(new(eventv1.EventServiceServer)),
-			),
-			fx.Annotate(
-				service.New,
-				fx.As(new(interceptor.Scoper)),
+				func(s *service.Service) interceptor.Scoper { return s },
 				fx.ResultTags(`group:"scopers"`),
 			),
 		),
+
+		// Reminds attendees an hour before an event starts.
+		fx.Invoke(func(lc fx.Lifecycle, s *service.Service) {
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan struct{})
+			lc.Append(fx.Hook{
+				OnStart: func(context.Context) error {
+					go func() {
+						defer close(done)
+						s.RunReminders(ctx)
+					}()
+					return nil
+				},
+				OnStop: func(stopCtx context.Context) error {
+					cancel()
+					select {
+					case <-done:
+					case <-stopCtx.Done():
+					}
+					return nil
+				},
+			})
+		}),
 	),
 )

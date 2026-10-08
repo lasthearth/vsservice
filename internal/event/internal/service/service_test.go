@@ -19,6 +19,10 @@ type fakeRepo struct {
 	Repository
 	id    string
 	event *model.Event
+	// attendees holds sign-ups of e1 in order; reminded maps a user to the
+	// start time they were reminded about.
+	attendees []string
+	reminded  map[string]time.Time
 }
 
 func (r *fakeRepo) UpdateEvent(

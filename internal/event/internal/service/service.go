@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
 	eventv1 "github.com/lasthearth/vsservice/gen/event/v1"
 	"github.com/lasthearth/vsservice/internal/event/internal/model"
@@ -41,6 +43,9 @@ func (s *Service) CreateEvent(ctx context.Context, req *eventv1.CreateEventReque
 
 	// The calendar entry is the source of truth; a failed broadcast must not
 	// undo it, so it is only logged.
+	if s.cnuc == nil {
+		return s.mapper.ToProto(*created), nil
+	}
 	if err := s.cnuc.CreateNotification(
 		ctx,
 		"Новое событие",
@@ -61,7 +66,11 @@ func (s *Service) UpdateEvent(ctx context.Context, req *eventv1.UpdateEventReque
 
 	details := s.mapper.UpdateRequestToDetails(req)
 
+	// The start before the edit, from the attempt that won (UpdateDoc may retry
+	// the callback; the last call is the one that was stored).
+	var oldStart time.Time
 	updated, err := s.repo.UpdateEvent(ctx, req.GetId(), func(_ context.Context, e *model.Event) (*model.Event, error) {
+		oldStart = e.StartsAt
 		if err := e.Apply(details); err != nil {
 			return nil, err
 		}
@@ -71,7 +80,12 @@ func (s *Service) UpdateEvent(ctx context.Context, req *eventv1.UpdateEventReque
 		return nil, err
 	}
 
-	return s.mapper.ToProto(*updated), nil
+	if !updated.StartsAt.Equal(oldStart) && updated.StartsAt.After(s.now()) {
+		s.notifyAttendees(ctx, updated.Id, "Событие перенесено",
+			fmt.Sprintf("«%s» теперь начнётся %s (МСК)", updated.Title, formatMoscow(updated.StartsAt)))
+	}
+
+	return s.withAttendees(ctx, *updated)
 }
 
 // DeleteEvent implements eventv1.EventServiceServer.
@@ -81,8 +95,17 @@ func (s *Service) DeleteEvent(ctx context.Context, req *eventv1.DeleteEventReque
 		return nil, ierror.Unauthenticated(err.Error())
 	}
 
+	event, err := s.repo.Get(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
 	if err := s.repo.SoftDelete(ctx, req.GetId(), userID); err != nil {
 		return nil, err
+	}
+
+	if event.Until().After(s.now()) {
+		s.notifyAttendees(ctx, event.Id, "Событие отменено", fmt.Sprintf("«%s» не состоится", event.Title))
 	}
 
 	return &emptypb.Empty{}, nil
@@ -95,7 +118,7 @@ func (s *Service) GetEvent(ctx context.Context, req *eventv1.GetEventRequest) (*
 		return nil, err
 	}
 
-	return s.mapper.ToProto(*event), nil
+	return s.withAttendees(ctx, *event)
 }
 
 // ListEvents implements eventv1.EventServiceServer.
@@ -117,7 +140,7 @@ func (s *Service) ListEvents(ctx context.Context, req *eventv1.ListEventsRequest
 		return nil, err
 	}
 
-	return &eventv1.ListEventsResponse{Events: s.mapper.ToProtos(events)}, nil
+	return s.listWithAttendees(ctx, events)
 }
 
 // validateCover accepts an empty cover or a URL from the media CDN. It trims
