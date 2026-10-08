@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/lasthearth/vsservice/internal/donate/donateuc"
 	dto "github.com/lasthearth/vsservice/internal/donate/internal/dto/mongo"
 	"github.com/lasthearth/vsservice/internal/donate/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
@@ -118,6 +119,21 @@ func (r *Repository) UpdateWallet(
 	)
 	if err != nil && !errors.Is(err, ierror.ErrNotFound) {
 		l.Error("failed to update wallet", zap.Error(err))
+	}
+	return err
+}
+
+// WithdrawCoins takes amount from the player's wallet. A missing wallet or a
+// short balance is donateuc.ErrInsufficientFunds and changes nothing.
+func (r *Repository) WithdrawCoins(ctx context.Context, playerID string, amount int64) error {
+	err := r.UpdateWallet(ctx, playerID, func(_ context.Context, w *model.Wallet) (*model.Wallet, error) {
+		if err := w.Withdraw(amount); err != nil {
+			return nil, donateuc.ErrInsufficientFunds
+		}
+		return w, nil
+	})
+	if errors.Is(err, ierror.ErrNotFound) {
+		return donateuc.ErrInsufficientFunds
 	}
 	return err
 }

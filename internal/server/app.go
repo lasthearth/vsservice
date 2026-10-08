@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 
+	appearancev1 "github.com/lasthearth/vsservice/gen/appearance/v1"
 	discordv1 "github.com/lasthearth/vsservice/gen/discord/v1"
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	eventv1 "github.com/lasthearth/vsservice/gen/event/v1"
@@ -60,6 +61,7 @@ type Opts struct {
 	EventV1         eventv1.EventServiceServer
 	ReactionV1      reactionv1.ReactionServiceServer
 	LfgV1           lfgv1.LfgServiceServer
+	AppearanceV1    appearancev1.AppearanceServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -89,6 +91,7 @@ type Server struct {
 	eventV1             eventv1.EventServiceServer
 	reactionV1          reactionv1.ReactionServiceServer
 	lfgV1               lfgv1.LfgServiceServer
+	appearanceV1        appearancev1.AppearanceServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -123,6 +126,7 @@ func New(opts Opts) *Server {
 		eventV1:             opts.EventV1,
 		reactionV1:          opts.ReactionV1,
 		lfgV1:               opts.LfgV1,
+		appearanceV1:        opts.AppearanceV1,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}

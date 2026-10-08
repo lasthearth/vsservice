@@ -15,9 +15,16 @@ type fakeWalletRepo struct {
 	coins map[string]int64
 	names map[string]string
 	txs   []creditTx
+	debts []debitTx
 
 	addErr error
 	txErr  error
+}
+
+type debitTx struct {
+	playerID string
+	amount   int64
+	reason   string
 }
 
 type creditTx struct {
@@ -42,6 +49,19 @@ func (f *fakeWalletRepo) AddCoinsToWallet(_ context.Context, playerID, playerNam
 		f.names[playerID] = playerName
 	}
 	return f.coins[playerID], nil
+}
+
+func (f *fakeWalletRepo) WithdrawCoins(_ context.Context, playerID string, amount int64) error {
+	if f.coins[playerID] < amount {
+		return donateuc.ErrInsufficientFunds
+	}
+	f.coins[playerID] -= amount
+	return nil
+}
+
+func (f *fakeWalletRepo) CreateDebitTransaction(_ context.Context, playerID string, amount int64, reason string) error {
+	f.debts = append(f.debts, debitTx{playerID: playerID, amount: amount, reason: reason})
+	return nil
 }
 
 func (f *fakeWalletRepo) CreateCreditTransaction(_ context.Context, playerID string, amount int64, reason string) error {
@@ -134,5 +154,41 @@ func TestCreditSkipsLedgerWhenWalletFails(t *testing.T) {
 	}
 	if len(repo.txs) != 0 {
 		t.Fatalf("transactions = %+v, want none when the wallet write failed", repo.txs)
+	}
+}
+
+func TestDebitWithdrawsAndRecords(t *testing.T) {
+	repo := newFakeWalletRepo()
+	repo.coins["p1"] = 5000
+	uc := donateuc.NewAddCoinsUseCase(donateuc.Opts{Repo: repo})
+
+	if err := uc.Debit(context.Background(), "p1", 3000, "appearance: banner piper"); err != nil {
+		t.Fatal(err)
+	}
+	if repo.coins["p1"] != 2000 {
+		t.Fatalf("balance = %d, want 2000", repo.coins["p1"])
+	}
+	if len(repo.debts) != 1 || repo.debts[0].amount != 3000 || repo.debts[0].reason != "appearance: banner piper" {
+		t.Fatalf("ledger = %+v", repo.debts)
+	}
+}
+
+func TestDebitWithoutEnoughCoinsTakesNothing(t *testing.T) {
+	repo := newFakeWalletRepo()
+	repo.coins["p1"] = 100
+	uc := donateuc.NewAddCoinsUseCase(donateuc.Opts{Repo: repo})
+
+	if err := uc.Debit(context.Background(), "p1", 3000, "x"); !errors.Is(err, donateuc.ErrInsufficientFunds) {
+		t.Fatalf("err = %v, want ErrInsufficientFunds", err)
+	}
+	if repo.coins["p1"] != 100 || len(repo.debts) != 0 {
+		t.Fatalf("something changed: coins=%d debts=%v", repo.coins["p1"], repo.debts)
+	}
+}
+
+func TestDebitRejectsNonPositiveAmount(t *testing.T) {
+	uc := donateuc.NewAddCoinsUseCase(donateuc.Opts{Repo: newFakeWalletRepo()})
+	if err := uc.Debit(context.Background(), "p1", 0, "x"); !errors.Is(err, donateuc.ErrNonPositiveAmount) {
+		t.Fatalf("err = %v, want ErrNonPositiveAmount", err)
 	}
 }

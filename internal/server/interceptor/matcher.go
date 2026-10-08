@@ -36,6 +36,7 @@ var publicMethods = map[string]struct{}{
 	"/reaction.v1.ReactionService/ListReactions":                     {},
 	"/lfg.v1.LfgService/ListPosts":                                   {},
 	"/lfg.v1.LfgService/GetPost":                                     {},
+	"/appearance.v1.AppearanceService/ListAppearances":               {},
 	"/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo": {},
 }
 

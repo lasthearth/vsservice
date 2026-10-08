@@ -7,8 +7,14 @@ import (
 	"go.uber.org/fx"
 )
 
-// ErrNonPositiveAmount is returned when a caller credits a non-positive amount.
-var ErrNonPositiveAmount = errors.New("amount must be positive")
+var (
+	// ErrNonPositiveAmount is returned when a caller credits or debits a
+	// non-positive amount.
+	ErrNonPositiveAmount = errors.New("amount must be positive")
+	// ErrInsufficientFunds is returned by Debit when the player has no wallet
+	// or not enough coins in it. Nothing is withdrawn.
+	ErrInsufficientFunds = errors.New("insufficient funds")
+)
 
 // WalletRepo is the donate-side write port used by other domains. It is
 // deliberately primitive-typed so donate's internal model and DTO types never
@@ -16,6 +22,10 @@ var ErrNonPositiveAmount = errors.New("amount must be positive")
 type WalletRepo interface {
 	AddCoinsToWallet(ctx context.Context, playerID, playerName string, amount int64) (int64, error)
 	CreateCreditTransaction(ctx context.Context, playerID string, amount int64, reason string) error
+	// WithdrawCoins takes amount from the wallet, or returns
+	// ErrInsufficientFunds and takes nothing.
+	WithdrawCoins(ctx context.Context, playerID string, amount int64) error
+	CreateDebitTransaction(ctx context.Context, playerID string, amount int64, reason string) error
 }
 
 type Opts struct {
@@ -63,4 +73,21 @@ func (uc *AddCoinsUseCase) Credit(ctx context.Context, playerID, playerName stri
 	}
 
 	return uc.repo.CreateCreditTransaction(ctx, playerID, amount, reason)
+}
+
+// Debit takes amount coins from playerID's wallet for something bought outside
+// the donate shop and records a debit entry in the ledger. A player without a
+// wallet or without enough coins gets ErrInsufficientFunds and loses nothing.
+//
+// The withdrawal is the operation that matters: if the ledger write fails the
+// coins stay withdrawn and the error is returned so the caller can log it.
+func (uc *AddCoinsUseCase) Debit(ctx context.Context, playerID string, amount int64, reason string) error {
+	if amount <= 0 {
+		return ErrNonPositiveAmount
+	}
+	if err := uc.repo.WithdrawCoins(ctx, playerID, amount); err != nil {
+		return err
+	}
+
+	return uc.repo.CreateDebitTransaction(ctx, playerID, amount, reason)
 }
