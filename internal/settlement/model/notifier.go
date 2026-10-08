@@ -104,3 +104,12 @@ func ResolveCoordinates(submitted Vector2, placement *NotifierPlacement) (resolv
 	}
 	return placement.Coordinates(), true
 }
+
+// UpgradeNoticeKey is the mail idempotency key of the notice one owner gets when
+// an upgrade request is approved. Mail keys are unique per mail, so it names the
+// recipient too. requestedAt is when the request was submitted, so a second
+// upgrade to a tier the settlement already held (after a downgrade on the site)
+// still sends its notice.
+func UpgradeNoticeKey(settlementId string, to SettlementType, requestedAt time.Time, userId string) string {
+	return fmt.Sprintf("settlement-upgrade:%s:%s:%d:%s", settlementId, to, requestedAt.UnixMilli(), userId)
+}
