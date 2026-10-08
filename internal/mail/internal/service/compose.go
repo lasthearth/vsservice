@@ -128,6 +128,37 @@ func (c *Composer) ComposeItemMail(ctx context.Context, recipientPlayerID, title
 	return nil
 }
 
+// ComposeSystemItemMail composes a targeted mail granting the given items on
+// behalf of a system sender. Idempotent on idempotencyKey.
+func (c *Composer) ComposeSystemItemMail(ctx context.Context, sender, recipientPlayerID, title, body, idempotencyKey string, items []mailcompose.ItemSpec) error {
+	mail := model.NewMail(
+		recipientPlayerID,
+		sender,
+		title,
+		body,
+		itemSpecsToAttachments(items),
+		nil,
+		idempotencyKey,
+	)
+	if _, err := c.repo.CreateMail(ctx, mail); err != nil {
+		c.log.Error("failed to compose system item mail", zap.String("idempotency_key", idempotencyKey), zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+// ComposeNotificationMail composes a targeted mail with no attachments — a
+// notice the player only reads. The mail never expires. Idempotent on
+// idempotencyKey.
+func (c *Composer) ComposeNotificationMail(ctx context.Context, sender, recipientPlayerID, title, body, idempotencyKey string) error {
+	mail := model.NewMail(recipientPlayerID, sender, title, body, nil, nil, idempotencyKey)
+	if _, err := c.repo.CreateMail(ctx, mail); err != nil {
+		c.log.Error("failed to compose notification mail", zap.String("idempotency_key", idempotencyKey), zap.Error(err))
+		return err
+	}
+	return nil
+}
+
 // ComposeKitMail expands kitID into item attachments then composes a targeted
 // mail. Sender is "system:donate"; the mail never expires. Idempotent on
 // purchaseID. Fail-loud on a missing/empty kit (ErrKitNotFound / ErrKitEmpty).
