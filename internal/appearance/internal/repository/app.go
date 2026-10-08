@@ -17,13 +17,13 @@ const (
 	purchasesCollName = "appearance_purchases"
 
 	// Read-only: owned by other domains, read here to check unlocks.
-	statsCollName             = "stats"
-	playerCollName            = "verification_requests"
-	settlementsCollName       = "settlements"
-	hgStatsCollName           = "hg_player_stats"
-	hgSeasonResultsCollName   = "hg_season_results"
-	referralsCollName         = "referral_events"
-	attendeesCollName         = "event_attendees"
+	statsCollName           = "stats"
+	playerCollName          = "verification_requests"
+	settlementsCollName     = "settlements"
+	hgStatsCollName         = "hg_player_stats"
+	hgSeasonResultsCollName = "hg_season_results"
+	referralsCollName       = "referral_events"
+	attendeesCollName       = "event_attendees"
 )
 
 type Opts struct {

@@ -24,6 +24,7 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/reaction.v1.ReactionService/ListReactions",
 		"/lfg.v1.LfgService/ListPosts",
 		"/lfg.v1.LfgService/GetPost",
+		"/appearance.v1.AppearanceService/ListAppearances",
 	}
 	protected := []string{
 		"/user.v1.UserService/SearchUsers",
@@ -47,6 +48,11 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/lfg.v1.LfgService/RenewPost",
 		// GetPostContact returns the author's contact, so it must never be public.
 		"/lfg.v1.LfgService/GetPostContact",
+		// The look, the standing and the purchases are the caller's own.
+		"/appearance.v1.AppearanceService/UpdateMyAppearance",
+		"/appearance.v1.AppearanceService/ResetMyAppearance",
+		"/appearance.v1.AppearanceService/GetMyStanding",
+		"/appearance.v1.AppearanceService/BuyBanner",
 	}
 
 	split := func(m string) interceptors.CallMeta {

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/lasthearth/vsservice/internal/appearance/internal/model"
@@ -230,10 +231,8 @@ func (s *Standings) settlementRole(ctx context.Context, userID string) (model.Se
 		if m.UserId != userID {
 			continue
 		}
-		for _, r := range m.RoleIds {
-			if r == ownerRoleID {
-				return model.SettlementLeader, nil
-			}
+		if slices.Contains(m.RoleIds, ownerRoleID) {
+			return model.SettlementLeader, nil
 		}
 		return model.SettlementResident, nil
 	}

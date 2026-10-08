@@ -106,7 +106,7 @@ func (uc *AddCoinsUseCase) Debit(ctx context.Context, playerID string, amount in
 	if err := uc.repo.CreateDebitTransaction(ctx, playerID, amount, reason); err != nil {
 		refundCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), refundTimeout)
 		defer cancel()
-		if cerr := uc.repo.AddCoinsToWallet(refundCtx, playerID, "", amount); cerr != nil {
+		if _, cerr := uc.repo.AddCoinsToWallet(refundCtx, playerID, "", amount); cerr != nil {
 			return fmt.Errorf(
 				"debit ledger write failed (%w) and returning the %d withdrawn coins failed: %w",
 				err, amount, cerr,

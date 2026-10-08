@@ -57,6 +57,8 @@ type fakeWallet struct {
 	refunded int64
 }
 
+// Debit ignores the context on purpose: the test interleaving it models is
+// "the withdrawal already committed, the request died right after".
 func (w *fakeWallet) Debit(_ context.Context, _ string, amount int64, _ string) error {
 	if w.coins < amount {
 		return donateuc.ErrInsufficientFunds
@@ -66,7 +68,12 @@ func (w *fakeWallet) Debit(_ context.Context, _ string, amount int64, _ string) 
 	return nil
 }
 
-func (w *fakeWallet) Credit(_ context.Context, _, _ string, amount int64, _ string) error {
+// Credit behaves like a wallet write: a dead context fails it, so a refund
+// that runs on the request's context fails the way the real one would.
+func (w *fakeWallet) Credit(ctx context.Context, _, _ string, amount int64, _ string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	w.coins += amount
 	w.refunded += amount
 	return nil
@@ -305,6 +312,25 @@ func TestBuyBannerRefundsWhenRecordFails(t *testing.T) {
 	}
 	if wallet.coins != 3000 || wallet.refunded != 3000 {
 		t.Fatalf("shards not returned: %+v", wallet)
+	}
+}
+
+// The refund after a failed purchase record must not die with the request
+// that started the buy: a player who hangs up between the debit and the
+// record still gets the shards back.
+func TestBuyBannerRefundSurvivesCanceledRequest(t *testing.T) {
+	svc, repo, _, wallet := newServiceWithWallet(t, model.Standing{}, 3000)
+	repo.purchaseErr = errors.New("record failed")
+
+	ctx, cancel := context.WithCancel(as("u1"))
+	cancel()
+
+	_, err := svc.BuyBanner(ctx, buy("piper"))
+	if err == nil {
+		t.Fatal("want the purchase error")
+	}
+	if wallet.coins != 3000 || wallet.refunded != 3000 {
+		t.Fatalf("shards lost on a canceled request: %+v", wallet)
 	}
 }
 
