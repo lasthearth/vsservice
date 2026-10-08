@@ -53,6 +53,39 @@ func (r *fakeRepo) AllAttendees(context.Context, string) ([]string, error) {
 	return slices.Clone(r.attendees), nil
 }
 
+func (r *fakeRepo) ListAttendees(_ context.Context, _ string, limit int) ([]string, int64, error) {
+	if limit <= 0 || limit > len(r.attendees) {
+		limit = len(r.attendees)
+	}
+	return slices.Clone(r.attendees[:limit]), int64(len(r.attendees)), nil
+}
+
+func (r *fakeRepo) ListMine(_ context.Context, _ string, now time.Time, past bool, _ int) ([]model.Event, error) {
+	// The player is signed up iff the fake carries attendees; the event's own
+	// state decides which list it lands on.
+	if len(r.attendees) == 0 {
+		return nil, nil
+	}
+	if !r.event.Until().After(now) != past {
+		return nil, nil
+	}
+	return []model.Event{*r.event}, nil
+}
+
+func (r *fakeRepo) SoftDelete(_ context.Context, id, _ string) error {
+	if id != r.id {
+		return ierror.ErrNotFound
+	}
+	return nil
+}
+
+func (r *fakeRepo) UnclaimReminder(_ context.Context, _, userID string, startsAt time.Time) error {
+	if at, ok := r.reminded[userID]; ok && at.Equal(startsAt) {
+		delete(r.reminded, userID)
+	}
+	return nil
+}
+
 func (r *fakeRepo) ListStartingWithin(_ context.Context, from, to time.Time) ([]model.Event, error) {
 	if r.event.StartsAt.After(from) && !r.event.StartsAt.After(to) {
 		return []model.Event{*r.event}, nil
@@ -78,9 +111,19 @@ func (r *fakeRepo) ClaimReminders(_ context.Context, _ string, startsAt time.Tim
 // sent is a notification captured by fakeNotifier.
 type sent struct{ title, text string }
 
-type fakeNotifier struct{ sent []sent }
+// fakeNotifier records notifications; the first `fails` attempts fail, to
+// exercise the retry paths.
+type fakeNotifier struct {
+	sent  []sent
+	fails int
+	tries int
+}
 
 func (n *fakeNotifier) CreateNotification(_ context.Context, title, text string, _ ...notificationuc.NotificationOpts) error {
+	n.tries++
+	if n.tries <= n.fails {
+		return errors.New("send failed")
+	}
 	n.sent = append(n.sent, sent{title, text})
 	return nil
 }
@@ -217,5 +260,127 @@ func TestUnchangedStartDoesNotNotify(t *testing.T) {
 	}
 	if len(n.sent) != 0 {
 		t.Fatalf("title edit notified attendees: %+v", n.sent)
+	}
+}
+
+// TestSubMillisecondStartChangeDoesNotNotify pins the BSON granularity of the
+// move check: a start that differs only below the millisecond round-trips to
+// the same stored date, so nobody should hear about a "move" that did not
+// happen.
+func TestSubMillisecondStartChangeDoesNotNotify(t *testing.T) {
+	svc, repo, n := attendService(t)
+	repo.attendees = []string{"u1"}
+
+	if _, err := svc.UpdateEvent(context.Background(), &eventv1.UpdateEventRequest{
+		Id: "e1", Title: "Ярмарка", StartsAt: timestamppb.New(repo.event.StartsAt.Add(500 * time.Nanosecond)),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(n.sent) != 0 {
+		t.Fatalf("a sub-millisecond change notified attendees: %+v", n.sent)
+	}
+}
+
+func TestListAttendees(t *testing.T) {
+	svc, repo, _ := attendService(t)
+	repo.attendees = []string{"u1", "u2", "u3"}
+
+	got, err := svc.ListAttendees(context.Background(), &eventv1.ListAttendeesRequest{Id: "e1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetTotal() != 3 || !slices.Equal(got.GetUserIds(), []string{"u1", "u2", "u3"}) {
+		t.Fatalf("attendees %v total %d", got.GetUserIds(), got.GetTotal())
+	}
+
+	// A page smaller than the total still reports the true total.
+	got, err = svc.ListAttendees(context.Background(), &eventv1.ListAttendeesRequest{Id: "e1", PageSize: 2})
+	if err != nil || len(got.GetUserIds()) != 2 || got.GetTotal() != 3 {
+		t.Fatalf("page: ids %v total %d err %v", got.GetUserIds(), got.GetTotal(), err)
+	}
+
+	if _, err := svc.ListAttendees(context.Background(), &eventv1.ListAttendeesRequest{Id: "nope"}); !errors.Is(err, ierror.ErrNotFound) {
+		t.Fatalf("unknown event: want ErrNotFound, got %v", err)
+	}
+}
+
+func TestListMyEvents(t *testing.T) {
+	svc, repo, _ := attendService(t)
+	repo.attendees = []string{"u1"}
+
+	got, err := svc.ListMyEvents(as("u1"), &eventv1.ListMyEventsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.GetEvents()) != 1 || got.GetEvents()[0].GetAttendeeCount() != 1 {
+		t.Fatalf("upcoming: %+v", got.GetEvents())
+	}
+
+	// The event is over: it leaves the upcoming list and moves to the past one.
+	svc.now = func() time.Time { return repo.event.Until() }
+	got, err = svc.ListMyEvents(as("u1"), &eventv1.ListMyEventsRequest{Past: true})
+	if err != nil || len(got.GetEvents()) != 1 {
+		t.Fatalf("past: %+v %v", got.GetEvents(), err)
+	}
+	got, err = svc.ListMyEvents(as("u1"), &eventv1.ListMyEventsRequest{})
+	if err != nil || len(got.GetEvents()) != 0 {
+		t.Fatalf("a finished event must leave the upcoming list: %+v", got.GetEvents())
+	}
+
+	if _, err := svc.ListMyEvents(context.Background(), &eventv1.ListMyEventsRequest{}); err == nil {
+		t.Fatal("a guest must not list their events")
+	}
+}
+
+func TestDeleteEventNotifiesAttendees(t *testing.T) {
+	svc, repo, n := attendService(t)
+	repo.attendees = []string{"u1", "u2"}
+
+	if _, err := svc.DeleteEvent(as("admin"), &eventv1.DeleteEventRequest{Id: "e1"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(n.sent) != 2 || n.sent[0].title != "Событие отменено" || !strings.Contains(n.sent[0].text, "Ярмарка") {
+		t.Fatalf("cancel notifications: %+v", n.sent)
+	}
+}
+
+func TestDeleteEventAfterTheEndDoesNotNotify(t *testing.T) {
+	svc, repo, n := attendService(t)
+	repo.attendees = []string{"u1"}
+	// The event is long over: nobody needs to hear about a cancellation.
+	svc.now = func() time.Time { return repo.event.Until().Add(time.Hour) }
+
+	if _, err := svc.DeleteEvent(as("admin"), &eventv1.DeleteEventRequest{Id: "e1"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(n.sent) != 0 {
+		t.Fatalf("a finished event notified: %+v", n.sent)
+	}
+}
+
+// TestFailedReminderSendIsRetried pins the claim give-back: without it a send
+// that fails after the claim — a rolling deploy cancelling the context mid-loop,
+// a transient insert failure — silently costs the player their only reminder.
+func TestFailedReminderSendIsRetried(t *testing.T) {
+	svc, repo, n := attendService(t)
+	repo.attendees = []string{"u1"}
+	n.fails = 1
+	start := repo.event.StartsAt
+
+	svc.RemindDue(context.Background(), start.Add(-45*time.Minute))
+	if len(n.sent) != 0 {
+		t.Fatalf("the failing send must not be recorded: %+v", n.sent)
+	}
+
+	// The claim was given back, so the next tick retries and delivers.
+	svc.RemindDue(context.Background(), start.Add(-44*time.Minute))
+	if len(n.sent) != 1 {
+		t.Fatalf("the reminder was lost instead of retried: %+v", n.sent)
+	}
+
+	// And the retry does not repeat once delivered.
+	svc.RemindDue(context.Background(), start.Add(-43*time.Minute))
+	if len(n.sent) != 1 {
+		t.Fatalf("reminded twice: %+v", n.sent)
 	}
 }

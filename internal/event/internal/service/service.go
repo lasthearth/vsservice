@@ -80,7 +80,12 @@ func (s *Service) UpdateEvent(ctx context.Context, req *eventv1.UpdateEventReque
 		return nil, err
 	}
 
-	if !updated.StartsAt.Equal(oldStart) && updated.StartsAt.After(s.now()) {
+	// BSON keeps milliseconds, so compare the persisted granularity: a start
+	// that differs only below the millisecond round-trips to the same stored
+	// date, and notifying every attendee about a "move" that did not happen is
+	// the kind of noise that teaches people to ignore notifications.
+	startMoved := !updated.StartsAt.Truncate(time.Millisecond).Equal(oldStart.Truncate(time.Millisecond))
+	if startMoved && updated.StartsAt.After(s.now()) {
 		s.notifyAttendees(ctx, updated.Id, "Событие перенесено",
 			fmt.Sprintf("«%s» теперь начнётся %s (МСК)", updated.Title, formatMoscow(updated.StartsAt)))
 	}

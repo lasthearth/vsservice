@@ -14,6 +14,11 @@ import (
 // start.
 const ReminderInterval = time.Minute
 
+// remindTimeout bounds one pass. Without it a single hung Mongo call stalls the
+// loop while the reminder window slides forward, and an event whose start
+// passes in the meantime is never reminded again — with no error anywhere.
+const remindTimeout = 15 * time.Second
+
 // RemindDue reminds attendees of every event that starts within
 // model.ReminderLead of now. Each attendee is reminded once per start time,
 // even with several service instances (see Repository.ClaimReminders).
@@ -21,6 +26,9 @@ func (s *Service) RemindDue(ctx context.Context, now time.Time) {
 	if s.cnuc == nil {
 		return
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, remindTimeout)
+	defer cancel()
 
 	events, err := s.repo.ListStartingWithin(ctx, now, now.Add(model.ReminderLead))
 	if err != nil {
@@ -44,6 +52,14 @@ func (s *Service) RemindDue(ctx context.Context, now time.Time) {
 		for _, id := range ids {
 			if err := s.cnuc.CreateNotification(ctx, "Скоро событие", text, notificationuc.WithUserId(id)); err != nil {
 				s.logger.Error("failed to send reminder", zap.String("event_id", e.Id), zap.Error(err))
+				// The claim is given back, so the next tick retries instead of
+				// silently costing this player their only reminder. This is the
+				// case a rolling deploy hits: the lifecycle context is cancelled
+				// mid-loop, every remaining send fails, and without the give-back
+				// the claims would outlive the notifications.
+				if uerr := s.repo.UnclaimReminder(ctx, e.Id, id, e.StartsAt); uerr != nil {
+					s.logger.Error("failed to give the reminder claim back", zap.String("event_id", e.Id), zap.Error(uerr))
+				}
 			}
 		}
 	}
