@@ -50,4 +50,5 @@ type Repository interface {
 	ListMine(ctx context.Context, userID string, now time.Time, past bool, limit int) ([]model.Event, error)
 	ListStartingWithin(ctx context.Context, from, to time.Time) ([]model.Event, error)
 	ClaimReminders(ctx context.Context, eventID string, startsAt time.Time) ([]string, error)
+	UnclaimReminder(ctx context.Context, eventID, userID string, startsAt time.Time) error
 }

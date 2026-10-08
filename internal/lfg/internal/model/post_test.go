@@ -13,12 +13,10 @@ func validDetails() Details {
 		Kind:       KindSession,
 		Activities: []Activity{ActivityMining},
 		Title:      "  Идём в шахту  ",
-		StartsAt:   timePtr(postNow.Add(20 * time.Minute)),
+		StartsAt:   new(postNow.Add(20 * time.Minute)),
 		Slots:      2,
 	}
 }
-
-func timePtr(t time.Time) *time.Time { return &t }
 
 func newTestPost(t *testing.T) *Post {
 	t.Helper()
@@ -48,8 +46,8 @@ func TestNewPostValidates(t *testing.T) {
 		"long description":   {func(d *Details) { d.Description = string(make([]rune, DescriptionMaxLen+1)) }, ErrDescriptionTooLong},
 		"zero slots":         {func(d *Details) { d.Slots = 0 }, ErrSlotsInvalid},
 		"too many slots":     {func(d *Details) { d.Slots = SlotsMax + 1 }, ErrSlotsInvalid},
-		"starts long ago":    {func(d *Details) { d.StartsAt = timePtr(postNow.Add(-MaxLag - time.Minute)) }, ErrStartInvalid},
-		"starts too far out": {func(d *Details) { d.StartsAt = timePtr(postNow.Add(MaxLead + time.Minute)) }, ErrStartInvalid},
+		"starts long ago":    {func(d *Details) { d.StartsAt = new(postNow.Add(-MaxLag - time.Minute)) }, ErrStartInvalid},
+		"starts too far out": {func(d *Details) { d.StartsAt = new(postNow.Add(MaxLead + time.Minute)) }, ErrStartInvalid},
 	}
 	for name, c := range cases {
 		d := validDetails()
@@ -144,7 +142,7 @@ func teammateDetails() Details {
 		Voice:      true,
 		Contact:    " discord: fox ",
 		// A teammate post has no start; a stray one is ignored.
-		StartsAt: timePtr(postNow.Add(-30 * 24 * time.Hour)),
+		StartsAt: new(postNow.Add(-30 * 24 * time.Hour)),
 	}
 }
 

@@ -132,20 +132,25 @@ func (r *Repository) SoftDelete(ctx context.Context, id, deletedBy string) error
 	return nil
 }
 
+// The list sort orders. Both end in _id, so the order is total: two events that
+// tie on the leading key keep their relative order between requests, which a
+// page_token cursor would otherwise need. Every sort here must be served by a
+// declared index — index_covers_sort_test.go checks that.
+var (
+	sortUpcoming = bson.D{{Key: "starts_at", Value: 1}, {Key: "_id", Value: 1}}
+	sortPast     = bson.D{{Key: "until", Value: -1}, {Key: "_id", Value: -1}}
+)
+
 // ListUpcoming returns events that have not ended by now, soonest first.
-// _id breaks ties, so events sharing a starts_at keep a stable order between
-// requests instead of swapping places.
 func (r *Repository) ListUpcoming(ctx context.Context, now time.Time, limit int) ([]model.Event, error) {
 	filter := bson.M{"until": bson.M{"$gte": now}}
-	sort := bson.D{{Key: "starts_at", Value: 1}, {Key: "_id", Value: 1}}
-	return r.list(ctx, filter, sort, limit)
+	return r.list(ctx, filter, sortUpcoming, limit)
 }
 
 // ListPast returns events that have ended by now, most recent first.
 func (r *Repository) ListPast(ctx context.Context, now time.Time, limit int) ([]model.Event, error) {
 	filter := bson.M{"until": bson.M{"$lt": now}}
-	sort := bson.D{{Key: "until", Value: -1}, {Key: "_id", Value: -1}}
-	return r.list(ctx, filter, sort, limit)
+	return r.list(ctx, filter, sortPast, limit)
 }
 
 // find returns the stored not-deleted document.

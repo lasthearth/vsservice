@@ -122,8 +122,6 @@ func (s *Service) GetInviteLink(ctx context.Context, req *settlementv1.GetInvite
 
 // JoinByInviteLink implements settlementv1.SettlementServiceServer.
 func (s *Service) JoinByInviteLink(ctx context.Context, req *settlementv1.JoinByInviteLinkRequest) (*settlementv1.JoinByInviteLinkResponse, error) {
-	l := s.log.WithMethod("JoinByInviteLink")
-
 	uid, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -142,20 +140,33 @@ func (s *Service) JoinByInviteLink(ctx context.Context, req *settlementv1.JoinBy
 		return nil, err
 	}
 
-	// Tell whoever shared the link. A failed notification must not undo the join.
+	s.notifyCreator(ctx, link)
+
+	return &settlementv1.JoinByInviteLinkResponse{SettlementId: link.SettlementId}, nil
+}
+
+// notifyCreator tells whoever shared the link that a player joined. The join has
+// already been committed, so a failing or unconfigured notifier must not undo it
+// — the failure is only logged. The nil guard mirrors lfg's notifyAuthor and
+// keeps the success path testable without a notification stack.
+func (s *Service) notifyCreator(ctx context.Context, link *model.InviteLink) {
+	if s.notifier == nil {
+		return
+	}
+
 	name := link.SettlementId
 	if set, gerr := s.dbRepo.GetSettlement(ctx, link.SettlementId); gerr == nil {
 		name = set.Name
 	}
+
 	if nerr := s.notifier.CreateNotification(ctx,
 		"Новый житель",
 		"По вашей ссылке-приглашению в поселение «"+name+"» вступил новый житель",
 		notificationuc.WithUserId(link.CreatedBy),
 	); nerr != nil {
-		l.Warn("failed to send invite-link notification", zap.Error(nerr), zap.String("user_id", link.CreatedBy))
+		s.log.WithMethod("JoinByInviteLink").Warn("failed to send invite-link notification",
+			zap.Error(nerr), zap.String("user_id", link.CreatedBy))
 	}
-
-	return &settlementv1.JoinByInviteLinkResponse{SettlementId: link.SettlementId}, nil
 }
 
 // inviteLinkProto maps a link and fills in its status at now.

@@ -39,6 +39,13 @@ func open(filter bson.M, now time.Time) bson.M {
 	return filter
 }
 
+// The board sort orders. Each must be served by a matching index in lfgIndexes;
+// index_covers_sort_test.go pins the agreement, because a mismatch is silent.
+var (
+	sortSessions  = bson.D{{Key: "starts_at", Value: 1}, {Key: "_id", Value: 1}}
+	sortTeammates = bson.D{{Key: "bumped_at", Value: -1}, {Key: "_id", Value: -1}}
+)
+
 // toDTO maps the model and fills the TTL field.
 func (r *Repository) toDTO(post *model.Post) dto.Post {
 	doc := r.mapper.FromModel(*post)
@@ -107,9 +114,9 @@ func (r *Repository) ListOpen(
 	if activity != "" {
 		filter["activities"] = string(activity)
 	}
-	sort := bson.D{{Key: "starts_at", Value: 1}, {Key: "_id", Value: 1}}
+	sort := sortSessions
 	if kind == model.KindTeammate {
-		sort = bson.D{{Key: "bumped_at", Value: -1}, {Key: "_id", Value: -1}}
+		sort = sortTeammates
 	}
 	opts := options.Find().SetSort(sort).SetLimit(int64(limit))
 
@@ -170,12 +177,15 @@ func (r *Repository) UpdatePost(
 	return updated, err
 }
 
-// isBusinessErr reports refusals coming from the model, not worth an error log.
+// isBusinessErr reports outcomes the caller is told about and that are not worth
+// an error log: model refusals, and losing the version guard under contention,
+// which the proto documents as a normal FAILED_PRECONDITION.
 func isBusinessErr(err error) bool {
 	return errors.Is(err, ierror.ErrPostClosed) ||
 		errors.Is(err, ierror.ErrOwnPost) ||
 		errors.Is(err, ierror.ErrPostFull) ||
 		errors.Is(err, ierror.ErrNotAuthor) ||
 		errors.Is(err, ierror.ErrNotRenewable) ||
-		errors.Is(err, ierror.ErrRenewTooSoon)
+		errors.Is(err, ierror.ErrRenewTooSoon) ||
+		errors.Is(err, mongox.ErrConflict)
 }
