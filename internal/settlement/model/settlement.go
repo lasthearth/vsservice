@@ -94,6 +94,9 @@ type Settlement struct {
 	Roles         []Role
 	RolesEnabled  bool
 	ContactInfo   string
+	// NotifierReissues counts the notifier blocks an admin has re-sent; it
+	// numbers the idempotency key of the next reissue.
+	NotifierReissues int
 
 	UpdatedAt time.Time
 	CreatedAt time.Time
@@ -159,6 +162,24 @@ func (s *Settlement) HasPermission(userId string, perm Permission) bool {
 		}
 	}
 	return false
+}
+
+// MemberIds returns the user ids of every member, owners included.
+func (s *Settlement) MemberIds() []string {
+	return lo.Map(s.Members, func(m Member, _ int) string { return m.UserId })
+}
+
+// OwnerIds returns the user ids of the members holding the owner role.
+func (s *Settlement) OwnerIds() []string {
+	owners := lo.Filter(s.Members, func(m Member, _ int) bool { return m.IsOwner() })
+	return lo.Map(owners, func(m Member, _ int) string { return m.UserId })
+}
+
+// NextNotifierReissue counts one more reissue of the notifier block and returns
+// its number (1 for the first).
+func (s *Settlement) NextNotifierReissue() int {
+	s.NotifierReissues++
+	return s.NotifierReissues
 }
 
 func (s *Settlement) IsOwner(userId string) bool {
