@@ -5367,7 +5367,7 @@ components:
         banner_id:
           type: string
           title: banner_id
-          description: Banner id, e.g. "procession".
+          description: 'Banner id: "none" for no banner, otherwise e.g. "procession".'
         banner_effect:
           type: string
           title: banner_effect
@@ -5490,6 +5490,7 @@ components:
           type: string
           title: banner_id
           enum:
+            - none
             - procession
             - jesters
             - wrestlers

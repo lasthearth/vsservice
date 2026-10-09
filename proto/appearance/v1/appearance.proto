@@ -92,7 +92,7 @@ service AppearanceService {
 // How one player looks.
 message Appearance {
   string user_id = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
-  // Banner id, e.g. "procession".
+  // Banner id: "none" for no banner, otherwise e.g. "procession".
   string banner_id = 2;
   // Banner animation: none, dust, clouds, leaves, rain, fog, snow, fireflies,
   // embers, lightning, starfall or aurora.
@@ -148,6 +148,7 @@ message UpdateMyAppearanceRequest {
     (google.api.field_behavior) = REQUIRED,
     (buf.validate.field).string = {
       in: [
+        "none",
         "procession",
         "jesters",
         "wrestlers",
