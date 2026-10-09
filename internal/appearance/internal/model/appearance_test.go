@@ -25,6 +25,18 @@ func basic() model.Choice {
 	return pick("procession", "none", "wood", "none", "")
 }
 
+// «Без баннера» — не элемент каталога, а его отсутствие: сохраняется при
+// любом standing и не влияет на «ровно один бесплатный баннер».
+func TestNewAppearanceAcceptsNoBanner(t *testing.T) {
+	a, err := model.NewAppearance("u1", pick("none", "none", "wood", "none", ""), model.Standing{}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.BannerId != "none" {
+		t.Fatalf("BannerId = %q, want none", a.BannerId)
+	}
+}
+
 // A newcomer gets exactly one banner: the rest are earned.
 func TestOnlyOneBannerIsFree(t *testing.T) {
 	var free []string

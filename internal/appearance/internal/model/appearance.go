@@ -61,6 +61,11 @@ func (a *Appearance) Choose(choice Choice, standing Standing, now time.Time) err
 		{"frame animation", choice.FrameEffect, FrameEffects},
 	}
 	for _, item := range items {
+		// «Без баннера» — не элемент каталога, а отсутствие баннера:
+		// условий не спрашивает, не продаётся.
+		if item.kind == "banner" && item.id == BannerNone {
+			continue
+		}
 		req, ok := item.catalog[item.id]
 		if !ok {
 			return fmt.Errorf("%w: %s %q", ErrUnknownItem, item.kind, item.id)
