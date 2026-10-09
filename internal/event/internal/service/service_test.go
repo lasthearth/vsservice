@@ -10,6 +10,8 @@ import (
 	"github.com/lasthearth/vsservice/internal/event/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/event/internal/model"
 	"github.com/lasthearth/vsservice/internal/event/internal/service/sermapper"
+	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -19,6 +21,10 @@ type fakeRepo struct {
 	Repository
 	id    string
 	event *model.Event
+	// attendees holds sign-ups of e1 in order; reminded maps a user to the
+	// start time they were reminded about.
+	attendees []string
+	reminded  map[string]time.Time
 }
 
 func (r *fakeRepo) UpdateEvent(
@@ -46,8 +52,13 @@ func newTestService(t *testing.T) (*Service, *fakeRepo) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	zc := zap.NewProductionConfig()
+	log, err := logger.New(&zc)
+	if err != nil {
+		t.Fatal(err)
+	}
 	repo := &fakeRepo{id: "e1", event: event}
-	return &Service{repo: repo, mapper: &sermapper.MapperImpl{}, now: time.Now}, repo
+	return &Service{logger: log, repo: repo, mapper: &sermapper.MapperImpl{}, now: time.Now}, repo
 }
 
 func TestUpdateEventAppliesDetailsThroughModel(t *testing.T) {

@@ -20,9 +20,11 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/settlement.v1.SettlementTagService/GetTagsByIds",
 		"/event.v1.EventService/GetEvent",
 		"/event.v1.EventService/ListEvents",
+		"/event.v1.EventService/ListAttendees",
 		"/reaction.v1.ReactionService/ListReactions",
 		"/lfg.v1.LfgService/ListPosts",
 		"/lfg.v1.LfgService/GetPost",
+		"/appearance.v1.AppearanceService/ListAppearances",
 	}
 	protected := []string{
 		"/user.v1.UserService/SearchUsers",
@@ -31,6 +33,9 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/event.v1.EventService/CreateEvent",
 		"/event.v1.EventService/UpdateEvent",
 		"/event.v1.EventService/DeleteEvent",
+		// SetAttendance writes a per-player row, so it must never be public.
+		"/event.v1.EventService/SetAttendance",
+		"/event.v1.EventService/ListMyEvents",
 		"/reaction.v1.ReactionService/ListMyReactions",
 		"/reaction.v1.ReactionService/ToggleReaction",
 		"/settlement.v1.SettlementService/CreateInviteLink",
@@ -43,6 +48,11 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/lfg.v1.LfgService/RenewPost",
 		// GetPostContact returns the author's contact, so it must never be public.
 		"/lfg.v1.LfgService/GetPostContact",
+		// The look, the standing and the purchases are the caller's own.
+		"/appearance.v1.AppearanceService/UpdateMyAppearance",
+		"/appearance.v1.AppearanceService/ResetMyAppearance",
+		"/appearance.v1.AppearanceService/GetMyStanding",
+		"/appearance.v1.AppearanceService/BuyBanner",
 	}
 
 	split := func(m string) interceptors.CallMeta {

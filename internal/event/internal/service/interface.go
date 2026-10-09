@@ -18,6 +18,7 @@ import (
 // goverter:extend github.com/lasthearth/vsservice/internal/event/internal/goverter:TimestampToTimePtr
 type Mapper interface {
 	// goverter:ignore state sizeCache unknownFields
+	// goverter:ignore AttendeeCount AttendeePreview
 	ToProto(model.Event) *eventv1.Event
 	ToProtos([]model.Event) []*eventv1.Event
 
@@ -41,4 +42,13 @@ type Repository interface {
 	SoftDelete(ctx context.Context, id, deletedBy string) error
 	ListUpcoming(ctx context.Context, now time.Time, limit int) ([]model.Event, error)
 	ListPast(ctx context.Context, now time.Time, limit int) ([]model.Event, error)
+
+	SetAttendance(ctx context.Context, eventID, userID string, attending bool, now time.Time) error
+	Attendees(ctx context.Context, eventIDs []string) (map[string]model.Attendees, error)
+	ListAttendees(ctx context.Context, eventID string, limit int) ([]string, int64, error)
+	AllAttendees(ctx context.Context, eventID string) ([]string, error)
+	ListMine(ctx context.Context, userID string, now time.Time, past bool, limit int) ([]model.Event, error)
+	ListStartingWithin(ctx context.Context, from, to time.Time) ([]model.Event, error)
+	ClaimReminders(ctx context.Context, eventID string, startsAt time.Time) ([]string, error)
+	UnclaimReminder(ctx context.Context, eventID, userID string, startsAt time.Time) error
 }

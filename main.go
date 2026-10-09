@@ -6,6 +6,7 @@ import (
 
 	"github.com/eapache/go-resiliency/retrier"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/lasthearth/vsservice/internal/appearance"
 	"github.com/lasthearth/vsservice/internal/discord"
 	"github.com/lasthearth/vsservice/internal/donate"
 	"github.com/lasthearth/vsservice/internal/event"
@@ -103,6 +104,7 @@ func main() {
 		event.App,
 		reaction.App,
 		lfg.App,
+		appearance.App,
 	)
 
 	a.Run()

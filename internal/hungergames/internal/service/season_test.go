@@ -76,6 +76,14 @@ func (c *creditRecorder) CreateCreditTransaction(context.Context, string, int64,
 	return nil
 }
 
+func (c *creditRecorder) WithdrawCoins(context.Context, string, int64) error {
+	return nil
+}
+
+func (c *creditRecorder) CreateDebitTransaction(context.Context, string, int64, string) error {
+	return nil
+}
+
 func newResetService(t *testing.T, repo Repository, wallet donateuc.WalletRepo) *Service {
 	t.Helper()
 	zc := zap.NewProductionConfig()

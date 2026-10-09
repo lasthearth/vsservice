@@ -46,6 +46,13 @@ func (r *Repository) CreateCreditTransaction(ctx context.Context, playerID strin
 	return err
 }
 
+// CreateDebitTransaction records a debit entry in the ledger for a cross-domain
+// purchase (donateuc.Debit).
+func (r *Repository) CreateDebitTransaction(ctx context.Context, playerID string, amount int64, reason string) error {
+	_, err := r.CreateTransaction(ctx, model.NewDebitTransaction(playerID, amount, reason))
+	return err
+}
+
 func (r *Repository) ListTransactionsByPlayerID(ctx context.Context, playerID string) ([]*model.Transaction, error) {
 	l := r.log.With(zap.String("method", "ListTransactionsByPlayerID"), zap.String("player_id", playerID))
 
