@@ -228,6 +228,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/settlement.v1.DeductImperialFavorResponse'
+  /v1/admin/settlements/{settlement_id}/notifier:reissue:
+    post:
+      tags:
+        - SettlementService
+      summary: |-
+        Admin: send the settlement's notifier block again by in-game mail, e.g. after it was lost.
+         Requires settlements:manage scope. Every call sends one more block.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): settlement not found
+           - FAILED_PRECONDITION (412): the settlement type has no notifier block, or user_id is not an owner
+           - PERMISSION_DENIED (403): missing settlements:manage scope
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_ReissueNotifier
+      parameters:
+        - name: settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: settlement_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                settlement_id:
+                  type: string
+                  title: settlement_id
+                user_id:
+                  type: string
+                  title: user_id
+                  description: (OPTIONAL) Owner who receives the block. Defaults to the first owner.
+              title: ReissueNotifierRequest
+              required:
+                - settlement_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.ReissueNotifierResponse'
   /v1/admin/settlements/{settlement_id}/owners:
     post:
       tags:
@@ -3579,6 +3626,10 @@ paths:
       description: |-
         On first call creates a new request; on subsequent calls upgrades an approved settlement.
 
+         While the settlement's notifier block stands, coordinates is ignored on an upgrade: the
+         server takes the block's position instead (see Settlement.notifier_position), so clients
+         should pre-fill the field from it and show it read-only.
+
          Errors:
            - INVALID_ARGUMENT (400): attachments is empty; invalid settlement type
            - ALREADY_EXISTS (409): settlement request is already pending
@@ -3862,7 +3913,7 @@ paths:
     get:
       tags:
         - SettlementService
-      summary: Get settlement by ID.
+      summary: Get settlement by ID. notifier_position is set while the settlement's notifier block stands.
       description: |-
         Errors:
            - NOT_FOUND (404): settlement not found
@@ -3938,7 +3989,12 @@ paths:
         - SettlementService
       summary: Approve a settlement request. Requires admin privileges.
       description: |-
-        Errors:
+        One transaction: the request becomes approved and the settlement is created (its id is the
+         request id) or upgraded. A new settlement gets a mail with its notifier block for the leader;
+         an upgrade notifies every member on the site and mails the owners in game. Nothing is
+         written if any of these fails.
+
+         Errors:
            - NOT_FOUND (404): settlement request not found
            - FAILED_PRECONDITION (400): settlement request already approved
            - UNAUTHENTICATED (401): missing or invalid auth token
@@ -9850,6 +9906,30 @@ components:
         - PERMISSION_INVITE_MEMBER
         - PERMISSION_REVIEW_JOIN_REQUEST
       description: Permission a custom role can grant. The owner role holds all permissions implicitly.
+    settlement.v1.ReissueNotifierRequest:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+        user_id:
+          type: string
+          title: user_id
+          description: (OPTIONAL) Owner who receives the block. Defaults to the first owner.
+      title: ReissueNotifierRequest
+      required:
+        - settlement_id
+      additionalProperties: false
+    settlement.v1.ReissueNotifierResponse:
+      type: object
+      properties:
+        number:
+          type: integer
+          title: number
+          format: int32
+          description: Ordinal of this reissue (1 for the first), the suffix of the mail's idempotency key.
+      title: ReissueNotifierResponse
+      additionalProperties: false
     settlement.v1.RejectInvitationRequest:
       type: object
       properties:
@@ -10110,6 +10190,12 @@ components:
           type: string
           title: contact_info
           description: (OPTIONAL) Public contact information for the settlement (free text).
+        notifier_position:
+          title: notifier_position
+          description: |-
+            (OPTIONAL) Where the settlement's notifier block stands in the world. Unset while no block is placed.
+             The server owns it: a block placed in game writes it, the site only reads it.
+          $ref: '#/components/schemas/settlement.v1.Vector3'
       title: Settlement
       additionalProperties: false
     settlement.v1.SettlementTag:
@@ -10417,6 +10503,24 @@ components:
           format: int32
       title: Vector2
       additionalProperties: false
+    settlement.v1.Vector3:
+      type: object
+      properties:
+        x:
+          type: integer
+          title: x
+          format: int32
+        y:
+          type: integer
+          title: y
+          format: int32
+        z:
+          type: integer
+          title: z
+          format: int32
+      title: Vector3
+      additionalProperties: false
+      description: A block position in the game world.
     settlement.v1.VerificationStatusRequest:
       type: object
       properties:
