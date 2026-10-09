@@ -113,6 +113,12 @@ func BannerPrice(bannerID string) (int64, error) {
 // BannerShardPrice is what each banner sold for shards costs.
 const BannerShardPrice = 3000
 
+// BannerNone is the player's choice to show no banner at all. It mirrors the
+// site's BANNER_NONE (entities/player-style/lib/player-style.constant.ts):
+// not a catalog item, so it is never for sale and never counts as the one
+// free banner — just the absence of a banner.
+const BannerNone = "none"
+
 // Banners by id. Only one is open from the start; most are earned in the game
 // or on the site, three are bought with shards.
 var Banners = map[string]Requirement{
