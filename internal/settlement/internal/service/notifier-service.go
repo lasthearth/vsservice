@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
 
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	"github.com/lasthearth/vsservice/internal/mail/mailcompose"
@@ -46,10 +47,13 @@ func (s *Service) settlementProto(ctx context.Context, set model.Settlement) *se
 
 // deliverNotifier mails the new settlement's leader the notifier block of the
 // settlement's type. It runs inside the approval transaction: ctx carries its
-// session, so the mail commits or rolls back with the settlement. The key
-// makes a retried transaction hand out one block only.
-func (s *Service) deliverNotifier(ctx context.Context, set model.Settlement) error {
-	return s.sendNotifierMail(ctx, set, set.Leader.UserId, model.NotifierDeliveryKey(set.Id),
+// session, so the mail commits or rolls back with the settlement. The key names
+// the submission, so a retried transaction hands out one block only while a
+// settlement re-created under the same id gets its own.
+func (s *Service) deliverNotifier(ctx context.Context, res ApprovalResult) error {
+	set := res.Settlement
+	return s.sendNotifierMail(ctx, set, set.Leader.UserId,
+		model.NotifierDeliveryKey(set.Id, res.RequestedAt),
 		"Глашатай вашего поселения",
 		"Поселение «"+set.Name+"» одобрено. В этом письме блок глашатая ("+set.Type.Title()+
 			"): поставьте его на земле поселения, и оно появится на карте.")
@@ -119,6 +123,19 @@ func (s *Service) notifyMembersAboutUpgrade(ctx context.Context, res ApprovalRes
 	}
 }
 
+// submissionStamp returns the timestamp that tells one life of a settlement id
+// apart from the next. The settlement id is the request id, and DeleteSettlement
+// removes the settlement but never the request, so a re-created settlement is
+// always approved from a request that was written again: its last-write time is
+// a stable per-life stamp that the mail keys carry.
+func (s *Service) submissionStamp(ctx context.Context, settlementID string) (time.Time, error) {
+	sreq, err := s.dbRepo.GetSettlementRequest(ctx, settlementID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return sreq.UpdatedAt, nil
+}
+
 // ReissueNotifier implements settlementv1.SettlementServiceServer.
 func (s *Service) ReissueNotifier(ctx context.Context, req *settlementv1.ReissueNotifierRequest) (*settlementv1.ReissueNotifierResponse, error) {
 	l := s.log.WithMethod("ReissueNotifier").With(zap.String("settlement_id", req.GetSettlementId()))
@@ -135,6 +152,12 @@ func (s *Service) ReissueNotifier(ctx context.Context, req *settlementv1.Reissue
 		return nil, ierror.ErrNoOwnerToDeliver
 	}
 
+	requestedAt, err := s.submissionStamp(ctx, req.GetSettlementId())
+	if err != nil {
+		l.Error("failed to read the settlement request", zap.Error(err))
+		return nil, err
+	}
+
 	var number int
 	err = s.dbRepo.InTransaction(ctx, func(ctx context.Context) error {
 		// The counter and the mail commit together, so a number is never spent
@@ -148,8 +171,15 @@ func (s *Service) ReissueNotifier(ctx context.Context, req *settlementv1.Reissue
 			return err
 		}
 
+		// The request document is what a re-created settlement is built from, so
+		// it carries a copy of the counter: without it an owner who re-creates a
+		// deleted settlement would start counting again at zero.
+		if err := s.dbRepo.SetRequestNotifierReissues(ctx, req.GetSettlementId(), number); err != nil {
+			return err
+		}
+
 		return s.sendNotifierMail(ctx, *updated, recipient,
-			model.NotifierReissueKey(updated.Id, number),
+			model.NotifierReissueKey(updated.Id, requestedAt, number),
 			"Глашатай вашего поселения",
 			"Администрация повторно выдала блок глашатая поселения «"+updated.Name+"» ("+updated.Type.Title()+").")
 	})

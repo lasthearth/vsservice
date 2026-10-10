@@ -46,7 +46,10 @@ type Mapper interface {
 	ToInvModels(dto []invitationdto.Invitation) []model.Invitation
 	ToInvModel(dto invitationdto.Invitation) model.Invitation
 
-	// goverter:ignore Members TagIds ImperialFavor Roles RolesEnabled ContactInfo NotifierReissues
+	// NotifierReissues is mapped: the request keeps a copy of the counter so a
+	// settlement re-created under the same id continues where the deleted one
+	// left off.
+	// goverter:ignore Members TagIds ImperialFavor Roles RolesEnabled ContactInfo
 	FromVerification(dto verificationdto.SettlementVerification) settlementdto.Settlement
 
 	FromSettlementsDTO([]settlementdto.Settlement) []model.Settlement

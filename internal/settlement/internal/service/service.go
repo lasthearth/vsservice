@@ -198,7 +198,7 @@ func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest)
 		// The mail is written through the transaction's ctx, so it commits with
 		// the request and the settlement or not at all.
 		if res.Created {
-			return s.deliverNotifier(ctx, res.Settlement)
+			return s.deliverNotifier(ctx, *res)
 		}
 		return s.mailOwnersAboutUpgrade(ctx, *res)
 	})

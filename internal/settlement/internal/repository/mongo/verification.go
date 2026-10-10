@@ -76,6 +76,8 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 		return *attachmentdto.FromModel(&item)
 	})
 
+	// notifier_reissues is deliberately absent: a resubmission must not reset the
+	// counter the request mirrors for a settlement re-created later.
 	updateFields := bson.D{
 		{Key: "name", Value: opts.Name},
 		{Key: "type", Value: string(opts.Type)},
@@ -109,6 +111,33 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 	r.log.Info("successfully updated verification request",
 		zap.String("user_id", opts.Leader.UserId),
 		zap.Int64("modified_count", result.ModifiedCount))
+	return nil
+}
+
+// SetRequestNotifierReissues implements service.SettlementRequestDbRepository.
+//
+// The $set touches only the counter, so a request that no longer exists simply
+// matches nothing: the copy is a convenience for a settlement re-created under
+// the same id, not a precondition of the reissue that writes it.
+func (r *Repository) SetRequestNotifierReissues(ctx context.Context, id string, reissues int) error {
+	l := r.log.WithMethod("set_request_notifier_reissues").
+		With(zap.String("req_id", id), zap.Int("reissues", reissues))
+
+	objectID, err := mongomodel.ParseObjectID(id)
+	if err != nil {
+		l.Error("invalid settlement request ID format", zap.Error(err))
+		return err
+	}
+
+	res, err := r.setReqColl.UpdateOne(ctx, bson.M{"_id": objectID},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "notifier_reissues", Value: reissues}}}})
+	if err != nil {
+		l.Error("failed to mirror the reissue counter", zap.Error(err))
+		return err
+	}
+	if res.MatchedCount == 0 {
+		l.Warn("settlement request not found, reissue counter not mirrored")
+	}
 	return nil
 }
 

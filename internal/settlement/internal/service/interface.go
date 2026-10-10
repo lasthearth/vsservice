@@ -152,6 +152,12 @@ type SettlementRequestDbRepository interface {
 	GetSettlementRequest(ctx context.Context, id string) (*model.SettlementVerification, error)
 	GetSettlementRequestByLeader(ctx context.Context, leaderID string) (*model.SettlementVerification, error)
 	GetPendingSettlements(ctx context.Context) ([]model.SettlementVerification, error)
+	// SetRequestNotifierReissues stores a copy of the settlement's notifier
+	// reissue counter on its request. The request outlives the settlement —
+	// DeleteSettlement does not touch it — and a settlement re-created under the
+	// same id is built from that request, so the copy is what keeps the counter
+	// continuous. A request that no longer exists is not an error.
+	SetRequestNotifierReissues(ctx context.Context, id string, reissues int) error
 	// Approve marks the request approved and creates the settlement from it
 	// (the settlement id is the request id), or upgrades the settlement when it
 	// already exists. Call it inside InTransaction so the caller can write the

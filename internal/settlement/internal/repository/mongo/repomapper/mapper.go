@@ -114,6 +114,7 @@ func (c *MapperImpl) FromVerification(source verification.SettlementVerification
 	}
 	settlementdtoSettlement.Diplomacy = source.Diplomacy
 	settlementdtoSettlement.Description = source.Description
+	settlementdtoSettlement.NotifierReissues = source.NotifierReissues
 	return settlementdtoSettlement
 }
 func (c *MapperImpl) ToInvModel(source invitation.Invitation) model.Invitation {

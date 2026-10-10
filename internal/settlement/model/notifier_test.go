@@ -3,6 +3,7 @@ package model
 import (
 	"slices"
 	"testing"
+	"time"
 )
 
 func TestNotifierBlockCode(t *testing.T) {
@@ -46,11 +47,46 @@ func TestEveryLevelUpTypeHasBlock(t *testing.T) {
 }
 
 func TestNotifierIdempotencyKeys(t *testing.T) {
-	if got := NotifierDeliveryKey("s1"); got != "settlement-notifier:s1" {
+	at := time.UnixMilli(1700000000000)
+	if got := NotifierDeliveryKey("s1", at); got != "settlement-notifier:s1:1700000000000" {
 		t.Errorf("delivery key = %q", got)
 	}
-	if got := NotifierReissueKey("s1", 3); got != "settlement-notifier:s1:3" {
+	if got := NotifierReissueKey("s1", at, 3); got != "settlement-notifier:s1:1700000000000:3" {
 		t.Errorf("reissue key = %q", got)
+	}
+}
+
+// The settlement id is the request id and mails outlive settlements, so a
+// settlement deleted and re-created under the same id must not reuse the keys of
+// its earlier life: the first life's mail would satisfy the second one's write
+// and the new owner would never get a block.
+func TestNotifierKeysDifferAcrossSettlementLives(t *testing.T) {
+	firstLife := time.UnixMilli(1700000000000)
+	secondLife := time.UnixMilli(1800000000000)
+
+	if NotifierDeliveryKey("s1", firstLife) == NotifierDeliveryKey("s1", secondLife) {
+		t.Error("delivery key is the same for two submissions of one settlement id")
+	}
+	for n := 1; n <= 3; n++ {
+		if NotifierReissueKey("s1", firstLife, n) == NotifierReissueKey("s1", secondLife, n) {
+			t.Errorf("reissue key %d is the same for two submissions of one settlement id", n)
+		}
+	}
+}
+
+// A retried approval carries the same RequestedAt, so the retry deduplicates
+// onto the mail the first attempt already wrote.
+func TestNotifierDeliveryKeyIsStableForOneSubmission(t *testing.T) {
+	at := time.UnixMilli(1700000000000)
+	if NotifierDeliveryKey("s1", at) != NotifierDeliveryKey("s1", at) {
+		t.Error("delivery key is not stable for one submission")
+	}
+	if NotifierReissueKey("s1", at, 2) != NotifierReissueKey("s1", at, 2) {
+		t.Error("reissue key is not stable for one submission")
+	}
+	// The delivery and reissue namespaces never collide, whatever the stamp.
+	if NotifierDeliveryKey("s1", at) == NotifierReissueKey("s1", at, 1) {
+		t.Error("delivery key collides with reissue key 1")
 	}
 }
 

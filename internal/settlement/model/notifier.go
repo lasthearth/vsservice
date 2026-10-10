@@ -62,13 +62,22 @@ func (t SettlementType) Title() string {
 
 // NotifierDeliveryKey is the mail idempotency key of the notifier handed out
 // when a settlement is created.
-func NotifierDeliveryKey(settlementId string) string {
-	return "settlement-notifier:" + settlementId
+//
+// requestedAt names the submission the settlement was approved from. Mails are
+// never deleted with a settlement, and the settlement id is the request id, so
+// an owner who re-creates a deleted settlement reuses that id: without the
+// submission in the key the second creation would find the first one's mail and
+// hand out no block at all. Two retries of the same approval carry the same
+// requestedAt, so the key still deduplicates what it must.
+func NotifierDeliveryKey(settlementId string, requestedAt time.Time) string {
+	return fmt.Sprintf("settlement-notifier:%s:%d", settlementId, requestedAt.UnixMilli())
 }
 
-// NotifierReissueKey is the mail idempotency key of the n-th reissue.
-func NotifierReissueKey(settlementId string, n int) string {
-	return fmt.Sprintf("settlement-notifier:%s:%d", settlementId, n)
+// NotifierReissueKey is the mail idempotency key of the n-th reissue. It carries
+// the same submission stamp as NotifierDeliveryKey, for the same reason: the
+// counter alone does not survive a delete-and-recreate of the settlement.
+func NotifierReissueKey(settlementId string, requestedAt time.Time, n int) string {
+	return fmt.Sprintf("settlement-notifier:%s:%d:%d", settlementId, requestedAt.UnixMilli(), n)
 }
 
 // Vector3 is a block position in the game world.

@@ -36,6 +36,10 @@ type fakeMail struct {
 
 type txKey struct{}
 
+// submittedAt is when the request under test was last submitted. The mail keys
+// carry it, so it is what tells one life of a settlement id from the next.
+var submittedAt = time.UnixMilli(1700000000000)
+
 func (f *fakeMail) add(ctx context.Context, m sentMail) error {
 	if f.err != nil {
 		return f.err
@@ -90,6 +94,11 @@ type notifierRepo struct {
 	approved    bool
 	updatedReq  *service.SettlementOpts
 	txCommitted bool
+
+	// reissue counter mirrored onto the request
+	mirroredReissues int
+	mirrorCalls      int
+	mirrorInTx       bool
 }
 
 func (r *notifierRepo) InTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
@@ -101,7 +110,19 @@ func (r *notifierRepo) InTransaction(ctx context.Context, fn func(ctx context.Co
 }
 
 func (r *notifierRepo) GetSettlementRequest(context.Context, string) (*model.SettlementVerification, error) {
+	if r.request == nil {
+		return nil, ierror.ErrNotFound
+	}
 	return r.request, nil
+}
+
+// SetRequestNotifierReissues records the counter copy the reissue mirrors onto
+// the request document.
+func (r *notifierRepo) SetRequestNotifierReissues(ctx context.Context, _ string, reissues int) error {
+	r.mirrorCalls++
+	r.mirroredReissues = reissues
+	r.mirrorInTx, _ = ctx.Value(txKey{}).(bool)
+	return nil
 }
 
 func (r *notifierRepo) Approve(context.Context, string) (*service.ApprovalResult, error) {
@@ -195,8 +216,10 @@ func newNotifierService(t *testing.T, repo *notifierRepo) (*service.Service, *fa
 func TestApproveCreationMailsTheBlockToTheLeaderInTheTransaction(t *testing.T) {
 	set := newSet(model.SettlementTypeCamp)
 	repo := &notifierRepo{
-		request:  &model.SettlementVerification{Id: "s1", Status: model.SettlementStatusPending},
-		approval: &service.ApprovalResult{Created: true, Settlement: *set},
+		request: &model.SettlementVerification{Id: "s1", Status: model.SettlementStatusPending, UpdatedAt: submittedAt},
+		approval: &service.ApprovalResult{
+			Created: true, Settlement: *set, RequestedAt: submittedAt,
+		},
 	}
 	svc, mail, notices := newNotifierService(t, repo)
 
@@ -208,7 +231,7 @@ func TestApproveCreationMailsTheBlockToTheLeaderInTheTransaction(t *testing.T) {
 		t.Fatalf("mails = %+v, want exactly the block mail", mail.sent)
 	}
 	m := mail.sent[0]
-	if m.recipient != "owner1" || m.sender != mailcompose.SenderSettlement || m.key != "settlement-notifier:s1" {
+	if m.recipient != "owner1" || m.sender != mailcompose.SenderSettlement || m.key != "settlement-notifier:s1:1700000000000" {
 		t.Errorf("mail = %+v", m)
 	}
 	if len(m.items) != 1 || m.items[0].GameCode != "lhgui:notifier-camp" || m.items[0].Type != "block" ||
@@ -369,7 +392,7 @@ func TestGetExposesTheNotifierPosition(t *testing.T) {
 
 func TestReissueNotifierNumbersEachMail(t *testing.T) {
 	set := memberSet(model.SettlementTypeTownship)
-	repo := &notifierRepo{set: set}
+	repo := &notifierRepo{set: set, request: &model.SettlementVerification{Id: "s1", UpdatedAt: submittedAt}}
 	svc, mail, _ := newNotifierService(t, repo)
 
 	for want := int32(1); want <= 2; want++ {
@@ -385,7 +408,8 @@ func TestReissueNotifierNumbersEachMail(t *testing.T) {
 	if len(mail.sent) != 2 {
 		t.Fatalf("mails = %+v, want one per reissue", mail.sent)
 	}
-	if mail.sent[0].key != "settlement-notifier:s1:1" || mail.sent[1].key != "settlement-notifier:s1:2" {
+	if mail.sent[0].key != "settlement-notifier:s1:1700000000000:1" ||
+		mail.sent[1].key != "settlement-notifier:s1:1700000000000:2" {
 		t.Errorf("keys = %q, %q", mail.sent[0].key, mail.sent[1].key)
 	}
 	if mail.sent[1].recipient != "owner1" || mail.sent[1].items[0].GameCode != "lhgui:notifier-town" {
@@ -394,11 +418,50 @@ func TestReissueNotifierNumbersEachMail(t *testing.T) {
 	if repo.set.NotifierReissues != 2 {
 		t.Errorf("persisted counter = %d, want 2", repo.set.NotifierReissues)
 	}
+	// The request keeps a copy, in the same transaction, so a settlement
+	// re-created under this id continues at 3 instead of restarting at 1.
+	if repo.mirroredReissues != 2 || repo.mirrorCalls != 2 || !repo.mirrorInTx {
+		t.Errorf("mirrored counter = %d after %d calls (in tx %v), want 2 after 2 in a transaction",
+			repo.mirroredReissues, repo.mirrorCalls, repo.mirrorInTx)
+	}
+}
+
+// Two lives of one settlement id must not share mail keys: DeleteSettlement
+// leaves the mails and the request behind, so a re-created settlement that
+// reuses the id would otherwise find the earlier life's mail and hand out
+// nothing while Approve reports success.
+func TestReissueKeyChangesWithTheSubmission(t *testing.T) {
+	set := memberSet(model.SettlementTypeCamp)
+	repo := &notifierRepo{set: set, request: &model.SettlementVerification{Id: "s1", UpdatedAt: submittedAt}}
+	svc, mail, _ := newNotifierService(t, repo)
+
+	if _, err := svc.ReissueNotifier(context.Background(), &settlementv1.ReissueNotifierRequest{SettlementId: "s1"}); err != nil {
+		t.Fatal(err)
+	}
+
+	// The settlement is deleted and re-created: a new submission, and the counter
+	// the request mirrored keeps the numbering going.
+	repo.request.UpdatedAt = time.UnixMilli(1800000000000)
+	repo.set.NotifierReissues = repo.mirroredReissues
+
+	if _, err := svc.ReissueNotifier(context.Background(), &settlementv1.ReissueNotifierRequest{SettlementId: "s1"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(mail.sent) != 2 {
+		t.Fatalf("mails = %+v, want one per life", mail.sent)
+	}
+	if mail.sent[0].key == mail.sent[1].key {
+		t.Errorf("both lives wrote the same key %q", mail.sent[0].key)
+	}
+	if mail.sent[1].key != "settlement-notifier:s1:1800000000000:2" {
+		t.Errorf("second life key = %q, want the new stamp and the continued number", mail.sent[1].key)
+	}
 }
 
 func TestReissueNotifierRecipientMustBeOwner(t *testing.T) {
 	set := memberSet(model.SettlementTypeCamp)
-	repo := &notifierRepo{set: set}
+	repo := &notifierRepo{set: set, request: &model.SettlementVerification{Id: "s1", UpdatedAt: submittedAt}}
 	svc, mail, _ := newNotifierService(t, repo)
 
 	_, err := svc.ReissueNotifier(context.Background(), &settlementv1.ReissueNotifierRequest{SettlementId: "s1", UserId: "resident"})
@@ -416,7 +479,7 @@ func TestReissueNotifierRecipientMustBeOwner(t *testing.T) {
 
 func TestReissueNotifierRefusesTypesWithoutBlock(t *testing.T) {
 	set := memberSet(model.SettlementType("khutor"))
-	repo := &notifierRepo{set: set}
+	repo := &notifierRepo{set: set, request: &model.SettlementVerification{Id: "s1", UpdatedAt: submittedAt}}
 	svc, mail, _ := newNotifierService(t, repo)
 
 	_, err := svc.ReissueNotifier(context.Background(), &settlementv1.ReissueNotifierRequest{SettlementId: "s1"})
