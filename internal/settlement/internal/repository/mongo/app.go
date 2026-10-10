@@ -8,6 +8,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	invitationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitation"
 	invitelinkdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/invitelink"
+	notifierdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/notifier"
 	settlementdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/settlement"
 	verificationdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service"
@@ -26,6 +27,9 @@ const (
 	settlementJoinRequestCollName = "settlement_join_requests"
 	imperialFavorLogCollName      = "imperial_favor_logs"
 	settlementInviteLinkCollName  = "settlement_invite_links"
+	// settlementNotifierCollName is written by the game server; vsservice only
+	// reads it and creates its unique index.
+	settlementNotifierCollName = "settlement_notifiers"
 )
 
 var _ service.SettlementRepository = (*Repository)(nil)
@@ -42,10 +46,15 @@ type Mapper interface {
 	ToInvModels(dto []invitationdto.Invitation) []model.Invitation
 	ToInvModel(dto invitationdto.Invitation) model.Invitation
 
+	// NotifierReissues is mapped: the request keeps a copy of the counter so a
+	// settlement re-created under the same id continues where the deleted one
+	// left off.
 	// goverter:ignore Members TagIds ImperialFavor Roles RolesEnabled ContactInfo
 	FromVerification(dto verificationdto.SettlementVerification) settlementdto.Settlement
 
 	FromSettlementsDTO([]settlementdto.Settlement) []model.Settlement
+
+	ToNotifierPlacement(dto notifierdto.Notifier) model.NotifierPlacement
 
 	// goverter:autoMap Model
 	FromSettlementDTO(dto settlementdto.Settlement) model.Settlement
@@ -83,6 +92,8 @@ type Repository struct {
 	favorLogColl *mongo.Collection
 	// Settlement invite links collection
 	inviteLinkColl *mongo.Collection
+	// Settlement notifier placements collection (read-only here)
+	notifierColl *mongo.Collection
 	// MongoDB client used for transactions
 	client *mongo.Client
 	mapper Mapper
@@ -95,8 +106,9 @@ func New(opts Opts) *Repository {
 	sjrColl := opts.Database.Collection(settlementJoinRequestCollName)
 	flColl := opts.Database.Collection(imperialFavorLogCollName)
 	ilColl := opts.Database.Collection(settlementInviteLinkCollName)
+	snColl := opts.Database.Collection(settlementNotifierCollName)
 	logger := opts.Log.WithComponent("settlement-mongo-repository")
-	setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl, ilColl)
+	setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl, ilColl, snColl)
 	return &Repository{
 		log:            logger,
 		setColl:        sColl,
@@ -105,6 +117,7 @@ func New(opts Opts) *Repository {
 		setJoinReqColl: sjrColl,
 		favorLogColl:   flColl,
 		inviteLinkColl: ilColl,
+		notifierColl:   snColl,
 		client:         opts.Client,
 		mapper:         opts.Mapper,
 	}
@@ -118,6 +131,7 @@ func setupIndexes(
 	setJoinReqColl *mongo.Collection,
 	favorLogColl *mongo.Collection,
 	inviteLinkColl *mongo.Collection,
+	notifierColl *mongo.Collection,
 ) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -178,5 +192,12 @@ func setupIndexes(
 	})
 	createIndex(inviteLinkColl, mongo.IndexModel{
 		Keys: bson.D{{Key: "settlement_id", Value: 1}, {Key: "_id", Value: -1}},
+	})
+
+	// One notifier block stands per settlement. The game server inserts here
+	// when a block is placed, so this index is what stops a second one.
+	createIndex(notifierColl, mongo.IndexModel{
+		Keys:    bson.D{{Key: "settlement_id", Value: 1}},
+		Options: options.Index().SetUnique(true),
 	})
 }

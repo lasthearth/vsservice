@@ -196,7 +196,11 @@ func (s *Service) UpdateContactInfo(ctx context.Context, req *settlementv1.Updat
 	if err != nil {
 		return nil, err
 	}
-	return &settlementv1.UpdateContactInfoResponse{Settlement: s.mapper.ToSettlementProto(*updated)}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.UpdateContactInfoResponse{Settlement: proto}, nil
 }
 
 // TransferOwnership implements settlementv1.SettlementServiceServer.
@@ -220,7 +224,11 @@ func (s *Service) TransferOwnership(ctx context.Context, req *settlementv1.Trans
 	if err != nil {
 		return nil, err
 	}
-	return &settlementv1.TransferOwnershipResponse{Settlement: s.mapper.ToSettlementProto(*updated)}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.TransferOwnershipResponse{Settlement: proto}, nil
 }
 
 // mapModelErr converts a settlement-model business error into a typed domain

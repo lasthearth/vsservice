@@ -18,10 +18,16 @@ service SettlementService {
   //
   // On first call creates a new request; on subsequent calls upgrades an approved settlement.
   //
+  // While the settlement's notifier block stands, coordinates is ignored on an upgrade: the
+  // server takes the block's position instead (see Settlement.notifier_position), so clients
+  // should pre-fill the field from it and show it read-only. SubmitResponse.coordinates_locked
+  // reports that the server did so.
+  //
   // Errors:
   //   - INVALID_ARGUMENT (400): attachments is empty; invalid settlement type
   //   - ALREADY_EXISTS (409): settlement request is already pending
   //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - UNAVAILABLE (503): the notifier position could not be read; retry
   //   - INTERNAL (500): storage upload or database failure
   rpc Submit(SubmitRequest) returns (SubmitResponse) {
     option (google.api.http) = {
@@ -30,7 +36,7 @@ service SettlementService {
     };
   }
 
-  // Get settlement by ID.
+  // Get settlement by ID. notifier_position is set while the settlement's notifier block stands.
   //
   // Errors:
   //   - NOT_FOUND (404): settlement not found
@@ -67,6 +73,11 @@ service SettlementService {
   }
 
   // Approve a settlement request. Requires admin privileges.
+  //
+  // One transaction: the request becomes approved and the settlement is created (its id is the
+  // request id) or upgraded. A new settlement gets a mail with its notifier block for the leader;
+  // an upgrade notifies every member on the site and mails the owners in game. Nothing is
+  // written if any of these fails.
   //
   // Errors:
   //   - NOT_FOUND (404): settlement request not found
@@ -521,6 +532,22 @@ service SettlementService {
     option (google.api.http) = {delete: "/v1/admin/settlements/{settlement_id}"};
   }
 
+  // Admin: send the settlement's notifier block again by in-game mail, e.g. after it was lost.
+  // Requires settlements:manage scope. Every call sends one more block.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - FAILED_PRECONDITION (412): the settlement type has no notifier block, or user_id is not an owner
+  //   - PERMISSION_DENIED (403): missing settlements:manage scope
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ReissueNotifier(ReissueNotifierRequest) returns (ReissueNotifierResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/settlements/{settlement_id}/notifier:reissue"
+      body: "*"
+    };
+  }
+
   // Create a shareable invite link. Requires the invite_member permission (owners pass).
   //
   // Whoever opens the link and is not in a settlement joins straight away, with no
@@ -636,6 +663,11 @@ message Settlement {
   bool roles_enabled = 22;
   // Public contact information for the settlement (free text).
   string contact_info = 23 [(google.api.field_behavior) = OPTIONAL];
+  // Where the settlement's notifier block stands in the world. Unset while no block is placed.
+  // The server owns it: a block placed in game writes it, the site only reads it.
+  // Filled by every rpc that returns a single settlement. Deliberately unset in List and
+  // ListPending, which would need one extra read per row.
+  Vector3 notifier_position = 24 [(google.api.field_behavior) = OPTIONAL];
 }
 
 enum SettlementType {
@@ -778,12 +810,25 @@ message Vector2 {
   int32 y = 2;
 }
 
+// A block position in the game world.
+message Vector3 {
+  int32 x = 1;
+  int32 y = 2;
+  int32 z = 3;
+}
+
 message Attachment {
   string desc = 1 [(google.api.field_behavior) = REQUIRED];
   string url = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
-message SubmitResponse {}
+message SubmitResponse {
+  // True when the server dropped the submitted coordinates because the settlement's notifier
+  // block stands. The request then stores the block's position instead (Settlement.notifier_position),
+  // and the client must show coordinates as read-only rather than as the value it sent.
+  // Always false on a first submission: it has no settlement, so it has no block.
+  bool coordinates_locked = 1 [(google.api.field_behavior) = OPTIONAL];
+}
 
 message GetRequest {
   string id = 1 [(google.api.field_behavior) = REQUIRED];
@@ -1132,3 +1177,14 @@ message DeleteSettlementRequest {
 }
 
 message DeleteSettlementResponse {}
+
+message ReissueNotifierRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  // Owner who receives the block. Defaults to the first owner.
+  string user_id = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message ReissueNotifierResponse {
+  // Ordinal of this reissue (1 for the first), the suffix of the mail's idempotency key.
+  int32 number = 1;
+}

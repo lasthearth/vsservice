@@ -184,6 +184,13 @@ func (c *MapperImpl) ToVector2Protos(source []model.Vector2) []*v1.Vector2 {
 	}
 	return pSettlementv1Vector2List
 }
+func (c *MapperImpl) ToVector3Proto(source model.Vector3) *v1.Vector3 {
+	var settlementv1Vector3 v1.Vector3
+	settlementv1Vector3.X = goverter.IntToInt32(source.X)
+	settlementv1Vector3.Y = goverter.IntToInt32(source.Y)
+	settlementv1Vector3.Z = goverter.IntToInt32(source.Z)
+	return &settlementv1Vector3
+}
 func (c *MapperImpl) VerifToSettlementProto(source model.SettlementVerification) *v1.Settlement {
 	var settlementv1Settlement v1.Settlement
 	settlementv1Settlement.Id = source.Id

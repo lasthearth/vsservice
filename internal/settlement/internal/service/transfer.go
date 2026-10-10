@@ -67,8 +67,16 @@ func (s *Service) TransferImperialFavor(ctx context.Context, req *settlementv1.T
 		Reason:       "transfer from " + req.GetFromSettlementId(),
 	})
 
+	fromProto, err := s.settlementProto(ctx, *from)
+	if err != nil {
+		return nil, err
+	}
+	toProto, err := s.settlementProto(ctx, *to)
+	if err != nil {
+		return nil, err
+	}
 	return &settlementv1.TransferImperialFavorResponse{
-		FromSettlement: s.mapper.ToSettlementProto(*from),
-		ToSettlement:   s.mapper.ToSettlementProto(*to),
+		FromSettlement: fromProto,
+		ToSettlement:   toProto,
 	}, nil
 }

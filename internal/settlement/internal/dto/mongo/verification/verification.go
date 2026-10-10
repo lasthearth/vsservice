@@ -21,6 +21,11 @@ type SettlementVerification struct {
 
 	Status          string `bson:"status"`
 	RejectionReason string `bson:"rejection_reason"`
+
+	// NotifierReissues mirrors the settlement's notifier reissue counter. The
+	// request outlives the settlement, and a settlement re-created under the same
+	// id is built from this document, so the copy keeps the counter continuous.
+	NotifierReissues int `bson:"notifier_reissues"`
 }
 
 func (s *SettlementVerification) ToModel() *model.SettlementVerification {

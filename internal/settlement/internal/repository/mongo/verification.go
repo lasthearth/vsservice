@@ -76,6 +76,8 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 		return *attachmentdto.FromModel(&item)
 	})
 
+	// notifier_reissues is deliberately absent: a resubmission must not reset the
+	// counter the request mirrors for a settlement re-created later.
 	updateFields := bson.D{
 		{Key: "name", Value: opts.Name},
 		{Key: "type", Value: string(opts.Type)},
@@ -112,98 +114,197 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 	return nil
 }
 
-// Approve implements service.SettlementDbRepository.
-func (r *Repository) Approve(ctx context.Context, id string) error {
+// SetRequestNotifierReissues implements service.SettlementRequestDbRepository.
+//
+// The $set touches only the counter, so a request that no longer exists simply
+// matches nothing: the copy is a convenience for a settlement re-created under
+// the same id, not a precondition of the reissue that writes it.
+func (r *Repository) SetRequestNotifierReissues(ctx context.Context, id string, reissues int) error {
+	l := r.log.WithMethod("set_request_notifier_reissues").
+		With(zap.String("req_id", id), zap.Int("reissues", reissues))
+
+	objectID, err := mongomodel.ParseObjectID(id)
+	if err != nil {
+		l.Error("invalid settlement request ID format", zap.Error(err))
+		return err
+	}
+
+	res, err := r.setReqColl.UpdateOne(ctx, bson.M{"_id": objectID},
+		bson.D{{Key: "$set", Value: bson.D{{Key: "notifier_reissues", Value: reissues}}}})
+	if err != nil {
+		l.Error("failed to mirror the reissue counter", zap.Error(err))
+		return err
+	}
+	if res.MatchedCount == 0 {
+		l.Warn("settlement request not found, reissue counter not mirrored")
+	}
+	return nil
+}
+
+// approvalCoordinates applies the standing notifier's authority to the
+// coordinates a request carries. A nil placement keeps the submitted value.
+func approvalCoordinates(submitted model.Vector2, placement *model.NotifierPlacement) model.Vector2 {
+	resolved, _ := model.ResolveCoordinates(submitted, placement)
+	return resolved
+}
+
+// readApprovalCoordinates resolves the coordinates of settlementID at the moment
+// of an approval.
+//
+// Submit applies the same rule, but a block can be placed or moved between the
+// submission and the approval, and the block stays authoritative: without this
+// the approval overwrites the settlement's coordinates with the stale request
+// value and the map pin diverges from notifier_position. The read runs on ctx, so
+// it belongs to the caller's transaction and sees the same snapshot as the writes.
+func (r *Repository) readApprovalCoordinates(ctx context.Context, settlementID string, submitted model.Vector2) (model.Vector2, error) {
+	placement, found, err := r.GetNotifier(ctx, settlementID)
+	if err != nil {
+		return submitted, err
+	}
+	if !found {
+		return submitted, nil
+	}
+
+	resolved := approvalCoordinates(submitted, &placement)
+	if resolved != submitted {
+		r.log.Info("notifier position overrides the request coordinates",
+			zap.String("settlement_id", settlementID),
+			zap.Int("submitted_x", submitted.X), zap.Int("submitted_y", submitted.Y),
+			zap.Int("resolved_x", resolved.X), zap.Int("resolved_y", resolved.Y))
+	}
+	return resolved, nil
+}
+
+// Approve implements service.SettlementRequestDbRepository.
+//
+// It writes through ctx and starts no transaction of its own: the caller wraps
+// it, together with the mails and notices that belong to the approval, in
+// InTransaction. ctx must carry that transaction's session, or the three
+// writes (request status, settlement, and the caller's mail) are no longer
+// atomic.
+func (r *Repository) Approve(ctx context.Context, id string) (*service.ApprovalResult, error) {
 	l := r.log.
 		With(zap.String("settlement_id", id)).
 		WithMethod("approve")
 	l.Info("approving settlement request")
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
 	objectID, err := mongomodel.ParseObjectID(id)
 	if err != nil {
 		l.Error("invalid settlement ID format", zap.Error(err))
-		return err
+		return nil, err
 	}
 
-	l.Debug("executing update query")
-
-	session, err := r.client.StartSession()
-	if err != nil {
-		l.Error("failed to start session", zap.Error(err))
-		return err
-	}
-
-	defer session.EndSession(ctx)
-
-	return mongo.WithSession(ctx, session, func(context.Context) error {
-		found := r.setReqColl.FindOneAndUpdate(
-			ctx,
-			bson.M{"_id": objectID},
-			bson.D{
-				{
-					Key: "$set",
-					Value: bson.D{
-						{Key: "status", Value: model.SettlementStatusApproved},
-						{Key: "updated_at", Value: time.Now()},
-					},
+	// The status filter makes a second approval fail instead of rewriting the
+	// settlement a second time. Inside a transaction two concurrent approvals
+	// conflict on this document, and the loser retries into this branch.
+	found := r.setReqColl.FindOneAndUpdate(
+		ctx,
+		bson.M{"_id": objectID, "status": bson.M{"$ne": string(model.SettlementStatusApproved)}},
+		bson.D{
+			{
+				Key: "$set",
+				Value: bson.D{
+					{Key: "status", Value: model.SettlementStatusApproved},
+					{Key: "updated_at", Value: time.Now()},
 				},
 			},
-		)
+		},
+	)
 
-		err = found.Err()
-		if err != nil {
-			if errors.Is(err, mongo.ErrNoDocuments) {
-				l.Warn("settlement not found", zap.Error(err))
-				return repoerr.ErrNotFound
-			}
-
+	if err := found.Err(); err != nil {
+		if !errors.Is(err, mongo.ErrNoDocuments) {
 			l.Error("update error", zap.Error(err))
-			return err
+			return nil, err
 		}
 
-		var dto verificationdto.SettlementVerification
+		exists, cerr := r.setReqColl.CountDocuments(ctx, bson.M{"_id": objectID})
+		if cerr != nil {
+			l.Error("count error", zap.Error(cerr))
+			return nil, cerr
+		}
+		if exists > 0 {
+			return nil, repoerr.ErrAlreadyApproved
+		}
+		l.Warn("settlement request not found")
+		return nil, repoerr.ErrNotFound
+	}
 
-		err = found.Decode(&dto)
-		if err != nil {
-			l.Error("decode error", zap.Error(err))
-			return err
+	// FindOneAndUpdate returns the document as it was before the update.
+	var dto verificationdto.SettlementVerification
+	if err := found.Decode(&dto); err != nil {
+		l.Error("decode error", zap.Error(err))
+		return nil, err
+	}
+
+	l.Info("successfully approved settlement request")
+	l.Debug("leader here", zap.String("leader_id", dto.Leader.UserId))
+
+	// The settlement id is the request id. Create it, or update it when an
+	// earlier approval already did (a level-up).
+	existing, err := r.GetSettlement(ctx, dto.Id.Hex())
+	if err != nil {
+		if !errors.Is(err, repoerr.ErrNotFound) {
+			return nil, err
 		}
 
-		l.Info("successfully approved settlement request")
-		l.Debug("leader here", zap.String("leader_id", dto.Leader.UserId))
-		// check existence if exists update instead of create
-		_, err := r.GetSettlement(ctx, dto.Id.Hex())
-		if err != nil {
-			if errors.Is(err, repoerr.ErrNotFound) {
-				cdto := r.mapper.FromVerification(dto)
-				cdto.Members = []memberdto.Member{{
-					UserId:  dto.Leader.UserId,
-					RoleIds: []string{model.OwnerRoleId},
-				}}
-				cdto.TagIds = make([]string, 0)
-				cdto.Roles = make([]roledto.Role, 0)
-				cdto.RolesEnabled = true
-				return r.Create(ctx, cdto)
-			}
-
-			return err
+		cdto := r.mapper.FromVerification(dto)
+		// A notifier placement survives DeleteSettlement, so a settlement
+		// re-created under the same id can already have a block standing, and that
+		// block owns the coordinates of the settlement being created.
+		coords, cerr := r.readApprovalCoordinates(ctx, dto.Id.Hex(), *cdto.Coordinates.ToModel())
+		if cerr != nil {
+			return nil, cerr
+		}
+		cdto.Coordinates = *vector2dto.FromModel(&coords)
+		cdto.Members = []memberdto.Member{{
+			UserId:  dto.Leader.UserId,
+			RoleIds: []string{model.OwnerRoleId},
+		}}
+		cdto.TagIds = make([]string, 0)
+		cdto.Roles = make([]roledto.Role, 0)
+		cdto.RolesEnabled = true
+		if err := r.Create(ctx, cdto); err != nil {
+			return nil, err
 		}
 
-		setModel := dto.ToModel()
-		return r.Update(ctx, service.UpdateSettlementOpts{
-			ID:          id,
-			Name:        dto.Name,
-			Type:        setModel.Type,
-			Coordinates: setModel.Coordinates,
-			Attachments: setModel.Attachments,
-			Diplomacy:   setModel.Diplomacy,
-			Description: setModel.Description,
-			Leader:      *dto.Leader.ToModel(),
-		})
-	})
+		created := r.mapper.FromSettlementDTO(cdto)
+		created.DeriveLeader()
+		return &service.ApprovalResult{
+			Created:     true,
+			Settlement:  created,
+			RequestedAt: dto.UpdatedAt,
+		}, nil
+	}
+
+	setModel := dto.ToModel()
+	// A block placed or moved between Submit and Approve keeps its authority, so
+	// the coordinates written here are resolved again, on the transaction's ctx.
+	coordinates, err := r.readApprovalCoordinates(ctx, id, setModel.Coordinates)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.Update(ctx, service.UpdateSettlementOpts{
+		ID:          id,
+		Name:        dto.Name,
+		Type:        setModel.Type,
+		Coordinates: coordinates,
+		Attachments: setModel.Attachments,
+		Diplomacy:   setModel.Diplomacy,
+		Description: setModel.Description,
+		Leader:      *dto.Leader.ToModel(),
+	}); err != nil {
+		return nil, err
+	}
+
+	updated, err := r.GetSettlement(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &service.ApprovalResult{
+		PreviousType: existing.Type,
+		Settlement:   *updated,
+		RequestedAt:  dto.UpdatedAt,
+	}, nil
 }
 
 // Reject implements service.SettlementDbRepository.

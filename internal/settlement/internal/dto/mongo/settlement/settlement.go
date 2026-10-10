@@ -23,4 +23,6 @@ type Settlement struct {
 	Roles         []roledto.Role             `bson:"roles"`
 	RolesEnabled  bool                       `bson:"roles_enabled"`
 	ContactInfo   string                     `bson:"contact_info"`
+	// NotifierReissues counts the notifier blocks an admin has re-sent.
+	NotifierReissues int `bson:"notifier_reissues"`
 }

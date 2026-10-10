@@ -84,7 +84,11 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		return nil, err
 	}
 
-	// User already has a request, handle level up or update
+	// User already has a request, handle level up or update.
+	//
+	// Checked before the notifier read: a pending request is refused outright, and
+	// a first-time rejected one has no settlement behind it, so neither can have a
+	// block standing. Both used to pay for a query whose result was thrown away.
 	if found.Status == model.SettlementStatusPending {
 		s.log.Info("request already submitted", zap.String("user_id", userID))
 		return nil, status.Error(codes.AlreadyExists, "settlement request already pending")
@@ -98,6 +102,30 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		)
 	}
 
+	// The settlement id is the request id. While its notifier block stands the
+	// block's position is authoritative, and whatever the client sent is dropped.
+	// Only a request that reached approval can have a settlement document, and only
+	// a settlement can have a block, so a first-time rejected request skips the
+	// read: it is guaranteed to come back empty.
+	coordinatesLocked := false
+	if found.Status == model.SettlementStatusApproved || found.Status == model.SettlementStatusUpdateRejected {
+		placement, hasNotifier, err := s.readNotifier(ctx, found.Id)
+		if err != nil {
+			return nil, err
+		}
+		if hasNotifier {
+			opts.Coordinates, coordinatesLocked = model.ResolveCoordinates(opts.Coordinates, &placement)
+		}
+		if coordinatesLocked {
+			// Deterministic, so a support request can be answered from the log alone:
+			// the player typed coordinates and the block overrode them.
+			s.log.Info("notifier position overrides the submitted coordinates",
+				zap.String("settlement_id", found.Id),
+				zap.Int("resolved_x", opts.Coordinates.X),
+				zap.Int("resolved_y", opts.Coordinates.Y))
+		}
+	}
+
 	opts.Type = found.Type
 	if err := s.dbRepo.UpdateRequest(ctx, opts); err != nil {
 		s.log.Error("failed to update settlement request", zap.Error(err))
@@ -106,7 +134,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 	s.log.Info("settlement req created", zap.Int("attachment", len(attachs)))
 
-	return &settlementv1.SubmitResponse{}, nil
+	return &settlementv1.SubmitResponse{CoordinatesLocked: coordinatesLocked}, nil
 }
 
 // Get implements settlementv1.SettlementServiceServer
@@ -123,9 +151,11 @@ func (s *Service) Get(ctx context.Context, req *settlementv1.GetRequest) (*settl
 		return nil, status.Error(codes.NotFound, ierror.ErrNotFound.Error())
 	}
 
-	return &settlementv1.GetResponse{
-		Settlement: s.mapper.ToSettlementProto(*settlement),
-	}, nil
+	proto, err := s.settlementProto(ctx, *settlement)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.GetResponse{Settlement: proto}, nil
 }
 
 // List implements settlementv1.SettlementServiceServer
@@ -138,6 +168,10 @@ func (s *Service) List(ctx context.Context, req *settlementv1.ListRequest) (*set
 		return nil, err
 	}
 
+	// notifier_position is deliberately unset here. It lives in its own
+	// collection, so filling it would cost one extra read per row on the map's
+	// full listing — an N+1 over every settlement the server has. The map reads a
+	// single settlement with Get when it needs the block.
 	return &settlementv1.ListResponse{
 		Settlements: s.mapper.ToSettlementProtos(settlements),
 	}, nil
@@ -153,6 +187,8 @@ func (s *Service) ListPending(ctx context.Context, req *settlementv1.ListPending
 		return nil, err
 	}
 
+	// These are requests, not settlements: no settlement document exists for a
+	// pending one, so there is no notifier block and no position to fill.
 	return &settlementv1.ListPendingResponse{
 		Settlements: s.mapper.VerifsToSettlementProtos(settlements),
 	}, nil
@@ -176,10 +212,30 @@ func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest)
 		return nil, ierror.ErrAlreadyApproved
 	}
 
-	if err := s.dbRepo.Approve(ctx, req.GetId()); err != nil {
+	var result *ApprovalResult
+	err = s.dbRepo.InTransaction(ctx, func(ctx context.Context) error {
+		res, err := s.dbRepo.Approve(ctx, req.GetId())
+		if err != nil {
+			return err
+		}
+		result = res
+
+		// The mail is written through the transaction's ctx, so it commits with
+		// the request and the settlement or not at all.
+		if res.Created {
+			return s.deliverNotifier(ctx, *res)
+		}
+		return s.mailOwnersAboutUpgrade(ctx, *res)
+	})
+	if err != nil {
 		s.log.Error("failed to approve settlement", zap.Error(err))
 		return nil, err
 	}
+
+	// Site notifications are best effort and go out after the commit: a failing
+	// notification must not undo an approval, and a rolled-back one must not
+	// have notified anyone.
+	s.notifyMembersAboutUpgrade(ctx, *result)
 
 	return &settlementv1.ApproveResponse{}, nil
 }
@@ -387,9 +443,11 @@ func (s *Service) GetByUserId(ctx context.Context, req *settlementv1.GetByUserId
 		return nil, err
 	}
 
-	return &settlementv1.GetByUserIdResponse{
-		Settlement: s.mapper.ToSettlementProto(*settlement),
-	}, nil
+	proto, err := s.settlementProto(ctx, *settlement)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.GetByUserIdResponse{Settlement: proto}, nil
 }
 
 // VerificationStatus implements settlementv1.SettlementServiceServer.

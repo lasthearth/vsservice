@@ -17,9 +17,21 @@ type ItemSpec struct {
 	Type         string
 }
 
+// Sender tags for system mails. The tag is shown to the player as the mail's
+// sender.
+const (
+	// SenderDonate marks mails the donate domain sends for a purchase.
+	SenderDonate = "system:donate"
+	// SenderSettlement marks mails the settlement domain sends on its own
+	// (notifier delivery, level-up notices).
+	SenderSettlement = "system:settlement"
+)
+
 // MailComposer composes a mail addressed to a single player. Implemented inside
-// the mail domain and bound via fx.As in internal/mail/fx.go. Both methods are
-// idempotent on purchaseID: the same purchaseID returns the same mail.
+// the mail domain and bound via fx.As in internal/mail/fx.go. Every method is
+// idempotent on its key: the same key returns the same mail. When the context
+// carries a Mongo session, the mail is written inside that session's
+// transaction, so a caller can make the mail atomic with its own writes.
 type MailComposer interface {
 	// ComposeItemMail creates a mail granting the given items to recipientPlayerID.
 	ComposeItemMail(ctx context.Context, recipientPlayerID, title, body, purchaseID string, items []ItemSpec) error
@@ -27,4 +39,10 @@ type MailComposer interface {
 	// expanded server-side. NotFound if the kit was never captured;
 	// FailedPrecondition if it is empty.
 	ComposeKitMail(ctx context.Context, recipientPlayerID, kitID, title, body, purchaseID string) error
+	// ComposeSystemItemMail is ComposeItemMail with a caller-chosen sender tag
+	// (see the Sender* constants), for mails that are not donate purchases.
+	ComposeSystemItemMail(ctx context.Context, sender, recipientPlayerID, title, body, idempotencyKey string, items []ItemSpec) error
+	// ComposeNotificationMail creates a plain mail without attachments: a
+	// notice the player only reads. The mail never expires.
+	ComposeNotificationMail(ctx context.Context, sender, recipientPlayerID, title, body, idempotencyKey string) error
 }

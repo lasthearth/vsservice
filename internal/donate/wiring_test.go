@@ -26,6 +26,12 @@ func (stubComposer) ComposeItemMail(context.Context, string, string, string, str
 func (stubComposer) ComposeKitMail(context.Context, string, string, string, string, string) error {
 	return nil
 }
+func (stubComposer) ComposeSystemItemMail(context.Context, string, string, string, string, string, []mailcompose.ItemSpec) error {
+	return nil
+}
+func (stubComposer) ComposeNotificationMail(context.Context, string, string, string, string, string) error {
+	return nil
+}
 
 // TestWiring pins that donate's graph still resolves after the purchase rules
 // moved into internal/usecase behind fx.Private — the failure mode a compile

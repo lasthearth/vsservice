@@ -109,6 +109,11 @@ func (s *Service) GetInviteLink(ctx context.Context, req *settlementv1.GetInvite
 		return nil, err
 	}
 
+	setProto, err := s.settlementProto(ctx, *set)
+	if err != nil {
+		return nil, err
+	}
+
 	proto := s.inviteLinkProto(*link, time.Now())
 	return &settlementv1.InviteLinkPreview{
 		Status:     proto.GetStatus(),
@@ -116,7 +121,7 @@ func (s *Service) GetInviteLink(ctx context.Context, req *settlementv1.GetInvite
 		MaxUses:    proto.GetMaxUses(),
 		Uses:       proto.GetUses(),
 		CreatedBy:  proto.GetCreatedBy(),
-		Settlement: s.mapper.ToSettlementProto(*set),
+		Settlement: setProto,
 	}, nil
 }
 

@@ -25,6 +25,9 @@ type Mapper interface {
 	ToVector2Protos([]model.Vector2) []*settlementv1.Vector2
 
 	// goverter:ignore state sizeCache unknownFields
+	ToVector3Proto(model.Vector3) *settlementv1.Vector3
+
+	// goverter:ignore state sizeCache unknownFields
 	ToAttachmentProto(model.Attachment) *settlementv1.Attachment
 	ToAttachmentsProto([]model.Attachment) []*settlementv1.Attachment
 
@@ -40,12 +43,13 @@ type Mapper interface {
 	ToJoinRequestProto(model.JoinRequest) *settlementv1.JoinRequest
 	ToJoinRequestsProto([]model.JoinRequest) []*settlementv1.JoinRequest
 
-	// goverter:ignore state sizeCache unknownFields
+	// NotifierPosition lives in another collection; the service fills it in.
+	// goverter:ignore state sizeCache unknownFields NotifierPosition
 	// goverter:map TagIds Tags
 	ToSettlementProto(model.Settlement) *settlementv1.Settlement
 	ToSettlementProtos([]model.Settlement) []*settlementv1.Settlement
 	// goverter:ignore state sizeCache unknownFields
-	// goverter:ignore Members Tags ImperialFavor Roles RolesEnabled ContactInfo
+	// goverter:ignore Members Tags ImperialFavor Roles RolesEnabled ContactInfo NotifierPosition
 	VerifToSettlementProto(model.SettlementVerification) *settlementv1.Settlement
 	VerifsToSettlementProtos([]model.SettlementVerification) []*settlementv1.Settlement
 
@@ -85,6 +89,17 @@ type SettlementDbRepository interface {
 	) (*model.Settlement, error)
 
 	DeleteSettlement(ctx context.Context, settlementID string) error
+
+	// GetNotifier returns where the settlement's notifier block stands; found is
+	// false while none is placed. The collection is written by the game server;
+	// vsservice only reads it.
+	GetNotifier(ctx context.Context, settlementID string) (placement model.NotifierPlacement, found bool, err error)
+
+	// InTransaction runs fn in one MongoDB transaction: every repository call and
+	// every mail written with the ctx fn receives commits or rolls back together.
+	// fn may run more than once on transient errors, so it must be idempotent and
+	// must return, never swallow, the errors of the calls it makes.
+	InTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 
 	AddTag(ctx context.Context, settlementID, tagID string) error
 	RemoveTag(ctx context.Context, settlementID, tagID string) error
@@ -137,6 +152,30 @@ type SettlementRequestDbRepository interface {
 	GetSettlementRequest(ctx context.Context, id string) (*model.SettlementVerification, error)
 	GetSettlementRequestByLeader(ctx context.Context, leaderID string) (*model.SettlementVerification, error)
 	GetPendingSettlements(ctx context.Context) ([]model.SettlementVerification, error)
-	Approve(ctx context.Context, id string) error
+	// SetRequestNotifierReissues stores a copy of the settlement's notifier
+	// reissue counter on its request. The request outlives the settlement —
+	// DeleteSettlement does not touch it — and a settlement re-created under the
+	// same id is built from that request, so the copy is what keeps the counter
+	// continuous. A request that no longer exists is not an error.
+	SetRequestNotifierReissues(ctx context.Context, id string, reissues int) error
+	// Approve marks the request approved and creates the settlement from it
+	// (the settlement id is the request id), or upgrades the settlement when it
+	// already exists. Call it inside InTransaction so the caller can write the
+	// mails and notices that belong to the approval atomically.
+	Approve(ctx context.Context, id string) (*ApprovalResult, error)
 	Reject(ctx context.Context, id string, rejectionReason string) error
+}
+
+// ApprovalResult is what an approval changed.
+type ApprovalResult struct {
+	// Created is true when the approval created the settlement and false when
+	// it updated an existing one.
+	Created bool
+	// PreviousType is the settlement type before an update; empty when Created.
+	PreviousType model.SettlementType
+	// Settlement is the settlement as stored after the approval.
+	Settlement model.Settlement
+	// RequestedAt is when the approved request was last submitted. It tells two
+	// upgrades to the same tier apart.
+	RequestedAt time.Time
 }

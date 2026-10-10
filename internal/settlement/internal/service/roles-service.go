@@ -41,7 +41,11 @@ func (s *Service) CreateRole(ctx context.Context, req *settlementv1.CreateRoleRe
 	if err != nil {
 		return nil, err
 	}
-	return &settlementv1.CreateRoleResponse{Settlement: s.mapper.ToSettlementProto(*updated)}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.CreateRoleResponse{Settlement: proto}, nil
 }
 
 // UpdateRole implements settlementv1.SettlementServiceServer.
@@ -65,7 +69,11 @@ func (s *Service) UpdateRole(ctx context.Context, req *settlementv1.UpdateRoleRe
 	if err != nil {
 		return nil, err
 	}
-	return &settlementv1.UpdateRoleResponse{Settlement: s.mapper.ToSettlementProto(*updated)}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.UpdateRoleResponse{Settlement: proto}, nil
 }
 
 // DeleteRole implements settlementv1.SettlementServiceServer.
@@ -89,7 +97,11 @@ func (s *Service) DeleteRole(ctx context.Context, req *settlementv1.DeleteRoleRe
 	if err != nil {
 		return nil, err
 	}
-	return &settlementv1.DeleteRoleResponse{Settlement: s.mapper.ToSettlementProto(*updated)}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.DeleteRoleResponse{Settlement: proto}, nil
 }
 
 // AssignRole implements settlementv1.SettlementServiceServer.
@@ -113,7 +125,11 @@ func (s *Service) AssignRole(ctx context.Context, req *settlementv1.AssignRoleRe
 	if err != nil {
 		return nil, err
 	}
-	return &settlementv1.AssignRoleResponse{Settlement: s.mapper.ToSettlementProto(*updated)}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.AssignRoleResponse{Settlement: proto}, nil
 }
 
 // UnassignRole implements settlementv1.SettlementServiceServer.
@@ -137,7 +153,11 @@ func (s *Service) UnassignRole(ctx context.Context, req *settlementv1.UnassignRo
 	if err != nil {
 		return nil, err
 	}
-	return &settlementv1.UnassignRoleResponse{Settlement: s.mapper.ToSettlementProto(*updated)}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.UnassignRoleResponse{Settlement: proto}, nil
 }
 
 // AddOwner implements settlementv1.SettlementServiceServer (admin).
@@ -153,7 +173,11 @@ func (s *Service) AddOwner(ctx context.Context, req *settlementv1.AddOwnerReques
 	if err != nil {
 		return nil, err
 	}
-	return &settlementv1.AddOwnerResponse{Settlement: s.mapper.ToSettlementProto(*updated)}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.AddOwnerResponse{Settlement: proto}, nil
 }
 
 // RemoveOwner implements settlementv1.SettlementServiceServer (admin).
@@ -169,7 +193,11 @@ func (s *Service) RemoveOwner(ctx context.Context, req *settlementv1.RemoveOwner
 	if err != nil {
 		return nil, err
 	}
-	return &settlementv1.RemoveOwnerResponse{Settlement: s.mapper.ToSettlementProto(*updated)}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.RemoveOwnerResponse{Settlement: proto}, nil
 }
 
 // SetRolesEnabled implements settlementv1.SettlementServiceServer (admin).
@@ -183,7 +211,11 @@ func (s *Service) SetRolesEnabled(ctx context.Context, req *settlementv1.SetRole
 	if err != nil {
 		return nil, err
 	}
-	return &settlementv1.SetRolesEnabledResponse{Settlement: s.mapper.ToSettlementProto(*updated)}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.SetRolesEnabledResponse{Settlement: proto}, nil
 }
 
 // DeleteSettlement implements settlementv1.SettlementServiceServer (admin).
