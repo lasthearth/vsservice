@@ -388,6 +388,38 @@ func TestApproveFailsWhenTheMailFails(t *testing.T) {
 	}
 }
 
+// An owner without a user id has no mailbox. The upgrade-notice path had no
+// guard, so it composed a mail addressed to nobody while Approve reported
+// success. sendNotifierMail already refused the same input.
+func TestApproveUpgradeRefusesAnOwnerWithoutUserId(t *testing.T) {
+	set := &model.Settlement{
+		Id:      "s1",
+		Name:    "Северный Оплот",
+		Type:    model.SettlementTypeVillage,
+		Members: []model.Member{{UserId: "", RoleIds: []string{model.OwnerRoleId}}},
+	}
+	repo := &notifierRepo{
+		request: &model.SettlementVerification{Id: "s1", Status: model.SettlementStatusPending},
+		approval: &service.ApprovalResult{
+			Settlement:   *set,
+			PreviousType: model.SettlementTypeCamp,
+			RequestedAt:  submittedAt,
+		},
+	}
+	svc, mail, _ := newNotifierService(t, repo)
+
+	_, err := svc.Approve(context.Background(), &settlementv1.ApproveRequest{Id: "s1"})
+	if !errors.Is(err, ierror.ErrNoOwnerToDeliver) {
+		t.Fatalf("want ErrNoOwnerToDeliver, got %v", err)
+	}
+	if len(mail.sent) != 0 {
+		t.Errorf("mails = %+v, want none", mail.sent)
+	}
+	if repo.txCommitted {
+		t.Error("transaction committed although the notice had no recipient")
+	}
+}
+
 func TestSubmitUpgradeKeepsClientCoordinatesWithoutNotifier(t *testing.T) {
 	repo := &notifierRepo{request: &model.SettlementVerification{
 		Id: "s1", Status: model.SettlementStatusApproved, Type: model.SettlementTypeCamp,

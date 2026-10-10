@@ -122,6 +122,120 @@ func TestComposeNotificationMailHasNoAttachments(t *testing.T) {
 	}
 }
 
+// A system item mail with nothing to grant is a caller mistake, and it must not
+// be persisted: the body promises a block, ClaimAll skips an attachment-less
+// mail, and the player loses the grant with nothing in the logs to explain it.
+func TestComposeSystemItemMailRefusesEmptyItems(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		items []mailcompose.ItemSpec
+	}{
+		{"nil", nil},
+		{"empty slice", []mailcompose.ItemSpec{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, repo := newTestComposer(t)
+
+			err := c.ComposeSystemItemMail(context.Background(), mailcompose.SenderSettlement, "u1", "t", "b", "key-1", tc.items)
+			if !errors.Is(err, mailerr.ErrNoItems) {
+				t.Fatalf("got %v, want ErrNoItems", err)
+			}
+			if len(repo.created) != 0 {
+				t.Fatalf("created = %+v, want no mail written", repo.created)
+			}
+		})
+	}
+}
+
+// The donate item path lost the same guard the kit path has as ErrKitEmpty.
+func TestComposeItemMailRefusesEmptyItems(t *testing.T) {
+	c, repo := newTestComposer(t)
+
+	err := c.ComposeItemMail(context.Background(), "u1", "t", "b", "purchase-1", nil)
+	if !errors.Is(err, mailerr.ErrNoItems) {
+		t.Fatalf("got %v, want ErrNoItems", err)
+	}
+	if len(repo.created) != 0 {
+		t.Fatalf("created = %+v, want no mail written", repo.created)
+	}
+}
+
+// A mail that cannot be attributed or delivered is never written, on any of the
+// composer's paths.
+func TestComposeValidatesSenderAndRecipient(t *testing.T) {
+	items := []mailcompose.ItemSpec{{GameCode: "lhgui:notifier-camp", Quantity: 1, Type: "block"}}
+
+	cases := []struct {
+		name    string
+		sender  string
+		to      string
+		want    error
+		compose func(*Composer) error
+	}{
+		{
+			name: "notification without recipient", sender: mailcompose.SenderSettlement, to: "",
+			want: mailerr.ErrNoRecipient,
+			compose: func(c *Composer) error {
+				return c.ComposeNotificationMail(context.Background(), mailcompose.SenderSettlement, "", "t", "b", "k")
+			},
+		},
+		{
+			name: "notification without sender", sender: "", to: "u1",
+			want: mailerr.ErrNoSender,
+			compose: func(c *Composer) error {
+				return c.ComposeNotificationMail(context.Background(), "", "u1", "t", "b", "k")
+			},
+		},
+		{
+			name: "system item mail without recipient", sender: mailcompose.SenderSettlement, to: "",
+			want: mailerr.ErrNoRecipient,
+			compose: func(c *Composer) error {
+				return c.ComposeSystemItemMail(context.Background(), mailcompose.SenderSettlement, "", "t", "b", "k", items)
+			},
+		},
+		{
+			name: "system item mail without sender", sender: "", to: "u1",
+			want: mailerr.ErrNoSender,
+			compose: func(c *Composer) error {
+				return c.ComposeSystemItemMail(context.Background(), "", "u1", "t", "b", "k", items)
+			},
+		},
+		{
+			name: "item mail without recipient", sender: "system:donate", to: "",
+			want: mailerr.ErrNoRecipient,
+			compose: func(c *Composer) error {
+				return c.ComposeItemMail(context.Background(), "", "t", "b", "k", items)
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, repo := newTestComposer(t)
+
+			if err := tc.compose(c); !errors.Is(err, tc.want) {
+				t.Fatalf("got %v, want %v", err, tc.want)
+			}
+			if len(repo.created) != 0 {
+				t.Fatalf("created = %+v, want no mail written", repo.created)
+			}
+		})
+	}
+}
+
+// A notification mail is the one path that legitimately carries no attachments,
+// so the item guard must not reach it.
+func TestComposeNotificationMailAllowsNoItems(t *testing.T) {
+	c, repo := newTestComposer(t)
+
+	if err := c.ComposeNotificationMail(context.Background(), mailcompose.SenderSettlement, "u1", "t", "b", "k"); err != nil {
+		t.Fatalf("ComposeNotificationMail: %v", err)
+	}
+	if len(repo.created) != 1 {
+		t.Fatalf("created = %d mails, want 1", len(repo.created))
+	}
+}
+
 // A system item mail keeps the caller's sender and key and maps the item.
 func TestComposeSystemItemMail(t *testing.T) {
 	c, repo := newTestComposer(t)

@@ -107,6 +107,12 @@ func (s *Service) mailOwnersAboutUpgrade(ctx context.Context, res ApprovalResult
 	}
 	set := res.Settlement
 	for _, owner := range set.OwnerIds() {
+		// Same guard sendNotifierMail has: an owner without a user id has no
+		// mailbox, and the approval must say so instead of composing a mail that
+		// nobody can ever read.
+		if owner == "" {
+			return ierror.ErrNoOwnerToDeliver
+		}
 		if err := s.mail.ComposeNotificationMail(ctx, mailcompose.SenderSettlement, owner,
 			"Поселение повышено",
 			"Поселение «"+set.Name+"» повышено: "+set.Type.Title()+
