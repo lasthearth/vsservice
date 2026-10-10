@@ -141,6 +141,40 @@ func (r *Repository) SetRequestNotifierReissues(ctx context.Context, id string, 
 	return nil
 }
 
+// approvalCoordinates applies the standing notifier's authority to the
+// coordinates a request carries. A nil placement keeps the submitted value.
+func approvalCoordinates(submitted model.Vector2, placement *model.NotifierPlacement) model.Vector2 {
+	resolved, _ := model.ResolveCoordinates(submitted, placement)
+	return resolved
+}
+
+// readApprovalCoordinates resolves the coordinates of settlementID at the moment
+// of an approval.
+//
+// Submit applies the same rule, but a block can be placed or moved between the
+// submission and the approval, and the block stays authoritative: without this
+// the approval overwrites the settlement's coordinates with the stale request
+// value and the map pin diverges from notifier_position. The read runs on ctx, so
+// it belongs to the caller's transaction and sees the same snapshot as the writes.
+func (r *Repository) readApprovalCoordinates(ctx context.Context, settlementID string, submitted model.Vector2) (model.Vector2, error) {
+	placement, found, err := r.GetNotifier(ctx, settlementID)
+	if err != nil {
+		return submitted, err
+	}
+	if !found {
+		return submitted, nil
+	}
+
+	resolved := approvalCoordinates(submitted, &placement)
+	if resolved != submitted {
+		r.log.Info("notifier position overrides the request coordinates",
+			zap.String("settlement_id", settlementID),
+			zap.Int("submitted_x", submitted.X), zap.Int("submitted_y", submitted.Y),
+			zap.Int("resolved_x", resolved.X), zap.Int("resolved_y", resolved.Y))
+	}
+	return resolved, nil
+}
+
 // Approve implements service.SettlementRequestDbRepository.
 //
 // It writes through ctx and starts no transaction of its own: the caller wraps
@@ -214,6 +248,14 @@ func (r *Repository) Approve(ctx context.Context, id string) (*service.ApprovalR
 		}
 
 		cdto := r.mapper.FromVerification(dto)
+		// A notifier placement survives DeleteSettlement, so a settlement
+		// re-created under the same id can already have a block standing, and that
+		// block owns the coordinates of the settlement being created.
+		coords, cerr := r.readApprovalCoordinates(ctx, dto.Id.Hex(), *cdto.Coordinates.ToModel())
+		if cerr != nil {
+			return nil, cerr
+		}
+		cdto.Coordinates = *vector2dto.FromModel(&coords)
 		cdto.Members = []memberdto.Member{{
 			UserId:  dto.Leader.UserId,
 			RoleIds: []string{model.OwnerRoleId},
@@ -235,11 +277,17 @@ func (r *Repository) Approve(ctx context.Context, id string) (*service.ApprovalR
 	}
 
 	setModel := dto.ToModel()
+	// A block placed or moved between Submit and Approve keeps its authority, so
+	// the coordinates written here are resolved again, on the transaction's ctx.
+	coordinates, err := r.readApprovalCoordinates(ctx, id, setModel.Coordinates)
+	if err != nil {
+		return nil, err
+	}
 	if err := r.Update(ctx, service.UpdateSettlementOpts{
 		ID:          id,
 		Name:        dto.Name,
 		Type:        setModel.Type,
-		Coordinates: setModel.Coordinates,
+		Coordinates: coordinates,
 		Attachments: setModel.Attachments,
 		Diplomacy:   setModel.Diplomacy,
 		Description: setModel.Description,
