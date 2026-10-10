@@ -11,6 +11,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/settlement/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 // UserNotifier sends a site notification to one user.
@@ -125,24 +126,37 @@ func (s *Service) mailOwnersAboutUpgrade(ctx context.Context, res ApprovalResult
 	return nil
 }
 
+// notifyWorkers bounds how many site notifications go out at once. The members of
+// a large settlement must not turn into one sequential database write each on the
+// Approve response path, where the admin is waiting for the answer.
+const notifyWorkers = 8
+
 // notifyMembersAboutUpgrade tells every member, owners included, on the site.
 // The approval has been committed, so a failing notifier must not undo it: the
-// failure is only logged.
+// failure is only logged. The group bounds concurrency and nothing else — no task
+// returns an error, so it never cancels the rest and never changes the response.
 func (s *Service) notifyMembersAboutUpgrade(ctx context.Context, res ApprovalResult) {
 	if s.notices == nil || !upgraded(res) {
 		return
 	}
 	set := res.Settlement
 	l := s.log.WithMethod("Approve").With(zap.String("settlement_id", set.Id))
+	title := "Поселение повышено"
+	body := "Поселение «" + set.Name + "» повышено: " + set.Type.Title() + "."
+
+	var g errgroup.Group
+	g.SetLimit(notifyWorkers)
 	for _, id := range set.MemberIds() {
-		if err := s.notices.NotifyUser(ctx,
-			id,
-			"Поселение повышено",
-			"Поселение «"+set.Name+"» повышено: "+set.Type.Title()+".",
-		); err != nil {
-			l.Warn("failed to send upgrade notification", zap.Error(err), zap.String("user_id", id))
-		}
+		g.Go(func() error {
+			if err := s.notices.NotifyUser(ctx, id, title, body); err != nil {
+				l.Warn("failed to send upgrade notification", zap.Error(err), zap.String("user_id", id))
+			}
+			return nil
+		})
 	}
+	// Every task returns nil, so Wait returns nil; it is only the barrier that
+	// keeps the best-effort notifications from outliving the request.
+	_ = g.Wait()
 }
 
 // submissionStamp returns the timestamp that tells one life of a settlement id

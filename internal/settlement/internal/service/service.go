@@ -84,26 +84,11 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		return nil, err
 	}
 
-	// The settlement id is the request id. While its notifier block stands the
-	// block's position is authoritative, and whatever the client sent is dropped.
-	placement, hasNotifier, err := s.readNotifier(ctx, found.Id)
-	if err != nil {
-		return nil, err
-	}
-	coordinatesLocked := false
-	if hasNotifier {
-		opts.Coordinates, coordinatesLocked = model.ResolveCoordinates(opts.Coordinates, &placement)
-	}
-	if coordinatesLocked {
-		// Deterministic, so a support request can be answered from the log alone:
-		// the player typed coordinates and the block overrode them.
-		s.log.Info("notifier position overrides the submitted coordinates",
-			zap.String("settlement_id", found.Id),
-			zap.Int("resolved_x", opts.Coordinates.X),
-			zap.Int("resolved_y", opts.Coordinates.Y))
-	}
-
-	// User already has a request, handle level up or update
+	// User already has a request, handle level up or update.
+	//
+	// Checked before the notifier read: a pending request is refused outright, and
+	// a first-time rejected one has no settlement behind it, so neither can have a
+	// block standing. Both used to pay for a query whose result was thrown away.
 	if found.Status == model.SettlementStatusPending {
 		s.log.Info("request already submitted", zap.String("user_id", userID))
 		return nil, status.Error(codes.AlreadyExists, "settlement request already pending")
@@ -115,6 +100,30 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 			zap.String("before", string(opts.Type)),
 			zap.String("after", string(found.Type)),
 		)
+	}
+
+	// The settlement id is the request id. While its notifier block stands the
+	// block's position is authoritative, and whatever the client sent is dropped.
+	// Only a request that reached approval can have a settlement document, and only
+	// a settlement can have a block, so a first-time rejected request skips the
+	// read: it is guaranteed to come back empty.
+	coordinatesLocked := false
+	if found.Status == model.SettlementStatusApproved || found.Status == model.SettlementStatusUpdateRejected {
+		placement, hasNotifier, err := s.readNotifier(ctx, found.Id)
+		if err != nil {
+			return nil, err
+		}
+		if hasNotifier {
+			opts.Coordinates, coordinatesLocked = model.ResolveCoordinates(opts.Coordinates, &placement)
+		}
+		if coordinatesLocked {
+			// Deterministic, so a support request can be answered from the log alone:
+			// the player typed coordinates and the block overrode them.
+			s.log.Info("notifier position overrides the submitted coordinates",
+				zap.String("settlement_id", found.Id),
+				zap.Int("resolved_x", opts.Coordinates.X),
+				zap.Int("resolved_y", opts.Coordinates.Y))
+		}
 	}
 
 	opts.Type = found.Type

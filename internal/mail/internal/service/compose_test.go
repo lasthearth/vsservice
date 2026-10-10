@@ -167,44 +167,49 @@ func TestComposeValidatesSenderAndRecipient(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		sender  string
-		to      string
 		want    error
 		compose func(*Composer) error
 	}{
 		{
-			name: "notification without recipient", sender: mailcompose.SenderSettlement, to: "",
+			name: "notification without recipient",
 			want: mailerr.ErrNoRecipient,
 			compose: func(c *Composer) error {
 				return c.ComposeNotificationMail(context.Background(), mailcompose.SenderSettlement, "", "t", "b", "k")
 			},
 		},
 		{
-			name: "notification without sender", sender: "", to: "u1",
+			name: "notification without sender",
 			want: mailerr.ErrNoSender,
 			compose: func(c *Composer) error {
 				return c.ComposeNotificationMail(context.Background(), "", "u1", "t", "b", "k")
 			},
 		},
 		{
-			name: "system item mail without recipient", sender: mailcompose.SenderSettlement, to: "",
+			name: "system item mail without recipient",
 			want: mailerr.ErrNoRecipient,
 			compose: func(c *Composer) error {
 				return c.ComposeSystemItemMail(context.Background(), mailcompose.SenderSettlement, "", "t", "b", "k", items)
 			},
 		},
 		{
-			name: "system item mail without sender", sender: "", to: "u1",
+			name: "system item mail without sender",
 			want: mailerr.ErrNoSender,
 			compose: func(c *Composer) error {
 				return c.ComposeSystemItemMail(context.Background(), "", "u1", "t", "b", "k", items)
 			},
 		},
 		{
-			name: "item mail without recipient", sender: "system:donate", to: "",
+			name: "item mail without recipient",
 			want: mailerr.ErrNoRecipient,
 			compose: func(c *Composer) error {
 				return c.ComposeItemMail(context.Background(), "", "t", "b", "k", items)
+			},
+		},
+		{
+			name: "kit mail without recipient",
+			want: mailerr.ErrNoRecipient,
+			compose: func(c *Composer) error {
+				return c.ComposeKitMail(context.Background(), "", "kit", "t", "b", "k")
 			},
 		},
 	}

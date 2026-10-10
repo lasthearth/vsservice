@@ -85,8 +85,8 @@ func itemSpecsToAttachments(items []mailcompose.ItemSpec) []model.Attachment {
 }
 
 // Composer implements mailcompose.MailComposer — the mail domain's outward port
-// other domains (donate) call to have a mail composed. Both methods use
-// purchaseID as the idempotency key, so a retry returns the same mail.
+// other domains (donate) call to have a mail composed. Every method uses the
+// caller's idempotency key, so a retry returns the same mail.
 type Composer struct {
 	repo MailRepository
 	kits KitReader
@@ -110,7 +110,8 @@ func NewComposer(opts ComposerOpts) *Composer {
 }
 
 // validateEnvelope rejects a mail that cannot be attributed or cannot be
-// delivered. Every composer calls it, so no path persists an addressless mail.
+// delivered. composeMail calls it, so no exported path can persist an
+// addressless mail.
 func (c *Composer) validateEnvelope(sender, recipient, key string) error {
 	var err error
 	switch {
@@ -142,95 +143,70 @@ func (c *Composer) validateItems(items []mailcompose.ItemSpec, key string) error
 	return mailerr.ErrNoItems
 }
 
-// ComposeItemMail composes a targeted mail granting the given items. Sender is
-// "system:donate"; the mail never expires. Idempotent on purchaseID.
-func (c *Composer) ComposeItemMail(ctx context.Context, recipientPlayerID, title, body, purchaseID string, items []mailcompose.ItemSpec) error {
-	if err := c.validateEnvelope("system:donate", recipientPlayerID, purchaseID); err != nil {
+// composeMail is the one primitive every exported method funnels through:
+// validate the envelope, build the mail, write it, and log a failure with the
+// key that identifies it. Nil attachments mean a notice with nothing to claim.
+// The mail never expires; expiry is the admin ComposeMail rpc's business, not
+// this port's.
+func (c *Composer) composeMail(ctx context.Context, sender, recipient, title, body, key string, attachments []model.Attachment) error {
+	if err := c.validateEnvelope(sender, recipient, key); err != nil {
 		return err
 	}
-	if err := c.validateItems(items, purchaseID); err != nil {
-		return err
-	}
-	mail := model.NewMail(
-		recipientPlayerID,
-		"system:donate",
-		title,
-		body,
-		itemSpecsToAttachments(items),
-		nil,
-		purchaseID,
-	)
+
+	mail := model.NewMail(recipient, sender, title, body, attachments, nil, key)
 	if _, err := c.repo.CreateMail(ctx, mail); err != nil {
-		c.log.Error("failed to compose item mail", zap.String("purchase_id", purchaseID), zap.Error(err))
+		c.log.Error("failed to compose mail",
+			zap.String("idempotency_key", key),
+			zap.String("sender", sender),
+			zap.String("recipient", recipient),
+			zap.Error(err))
 		return err
 	}
 	return nil
 }
 
+// composeItemMail is composeMail for a grant: it refuses to write a mail that
+// promises items and carries none.
+func (c *Composer) composeItemMail(ctx context.Context, sender, recipient, title, body, key string, items []mailcompose.ItemSpec) error {
+	if err := c.validateItems(items, key); err != nil {
+		return err
+	}
+	return c.composeMail(ctx, sender, recipient, title, body, key, itemSpecsToAttachments(items))
+}
+
+// ComposeItemMail composes a targeted mail granting the given items. Sender is
+// SenderDonate; the mail never expires. Idempotent on purchaseID.
+func (c *Composer) ComposeItemMail(ctx context.Context, recipientPlayerID, title, body, purchaseID string, items []mailcompose.ItemSpec) error {
+	return c.composeItemMail(ctx, mailcompose.SenderDonate, recipientPlayerID, title, body, purchaseID, items)
+}
+
 // ComposeSystemItemMail composes a targeted mail granting the given items on
 // behalf of a system sender. Idempotent on idempotencyKey.
 func (c *Composer) ComposeSystemItemMail(ctx context.Context, sender, recipientPlayerID, title, body, idempotencyKey string, items []mailcompose.ItemSpec) error {
-	if err := c.validateEnvelope(sender, recipientPlayerID, idempotencyKey); err != nil {
-		return err
-	}
-	if err := c.validateItems(items, idempotencyKey); err != nil {
-		return err
-	}
-	mail := model.NewMail(
-		recipientPlayerID,
-		sender,
-		title,
-		body,
-		itemSpecsToAttachments(items),
-		nil,
-		idempotencyKey,
-	)
-	if _, err := c.repo.CreateMail(ctx, mail); err != nil {
-		c.log.Error("failed to compose system item mail", zap.String("idempotency_key", idempotencyKey), zap.Error(err))
-		return err
-	}
-	return nil
+	return c.composeItemMail(ctx, sender, recipientPlayerID, title, body, idempotencyKey, items)
 }
 
 // ComposeNotificationMail composes a targeted mail with no attachments — a
 // notice the player only reads. The mail never expires. Idempotent on
 // idempotencyKey.
 func (c *Composer) ComposeNotificationMail(ctx context.Context, sender, recipientPlayerID, title, body, idempotencyKey string) error {
-	if err := c.validateEnvelope(sender, recipientPlayerID, idempotencyKey); err != nil {
-		return err
-	}
-	mail := model.NewMail(recipientPlayerID, sender, title, body, nil, nil, idempotencyKey)
-	if _, err := c.repo.CreateMail(ctx, mail); err != nil {
-		c.log.Error("failed to compose notification mail", zap.String("idempotency_key", idempotencyKey), zap.Error(err))
-		return err
-	}
-	return nil
+	return c.composeMail(ctx, sender, recipientPlayerID, title, body, idempotencyKey, nil)
 }
 
 // ComposeKitMail expands kitID into item attachments then composes a targeted
-// mail. Sender is "system:donate"; the mail never expires. Idempotent on
+// mail. Sender is SenderDonate; the mail never expires. Idempotent on
 // purchaseID. Fail-loud on a missing/empty kit (ErrKitNotFound / ErrKitEmpty).
 func (c *Composer) ComposeKitMail(ctx context.Context, recipientPlayerID, kitID, title, body, purchaseID string) error {
-	if err := c.validateEnvelope("system:donate", recipientPlayerID, purchaseID); err != nil {
+	// Checked before the kit read, so a bad recipient costs no lookup. composeMail
+	// checks it again; the second check is two string comparisons.
+	if err := c.validateEnvelope(mailcompose.SenderDonate, recipientPlayerID, purchaseID); err != nil {
 		return err
 	}
+
 	attachments, err := expandKit(ctx, c.kits, kitID)
 	if err != nil {
 		c.log.Error("failed to expand kit", zap.String("kit_id", kitID), zap.String("purchase_id", purchaseID), zap.Error(err))
 		return err
 	}
-	mail := model.NewMail(
-		recipientPlayerID,
-		"system:donate",
-		title,
-		body,
-		attachments,
-		nil,
-		purchaseID,
-	)
-	if _, err := c.repo.CreateMail(ctx, mail); err != nil {
-		c.log.Error("failed to compose kit mail", zap.String("purchase_id", purchaseID), zap.Error(err))
-		return err
-	}
-	return nil
+	return c.composeMail(ctx, mailcompose.SenderDonate, recipientPlayerID, title, body, purchaseID, attachments)
 }

@@ -221,12 +221,7 @@ func submitRepo(placement *model.NotifierPlacement) *notifierRepo {
 
 func submitFor(t *testing.T, svc *service.Service, x, y int32) *settlementv1.SubmitResponse {
 	t.Helper()
-	res, err := svc.Submit(asUser("owner1"), &settlementv1.SubmitRequest{
-		Type:        settlementv1.SubmitRequest_CAMP,
-		Name:        "Северный Оплот",
-		Coordinates: &settlementv1.Vector2{X: x, Y: y},
-		Attachments: []*settlementv1.SubmitRequest_SubmitAttachment{{Url: "https://cdn.test/a.png", Description: "d"}},
-	})
+	res, err := svc.Submit(asUser("owner1"), submitRequest(x, y))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,12 +286,7 @@ func TestSubmitFailsClosedOnNotifierRead(t *testing.T) {
 	repo.notifierErr = errors.New("connection reset")
 	svc, _, _ := newNotifierService(t, repo)
 
-	_, err := svc.Submit(asUser("owner1"), &settlementv1.SubmitRequest{
-		Type:        settlementv1.SubmitRequest_CAMP,
-		Name:        "Северный Оплот",
-		Coordinates: &settlementv1.Vector2{X: 10, Y: 20},
-		Attachments: []*settlementv1.SubmitRequest_SubmitAttachment{{Url: "https://cdn.test/a.png", Description: "d"}},
-	})
+	_, err := svc.Submit(asUser("owner1"), submitRequest(10, 20))
 	if !errors.Is(err, ierror.ErrNotifierRead) {
 		t.Fatalf("want ErrNotifierRead, got %v", err)
 	}

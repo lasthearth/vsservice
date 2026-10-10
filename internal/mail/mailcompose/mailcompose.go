@@ -20,6 +20,8 @@ type ItemSpec struct {
 // Sender tags for system mails. The tag is shown to the player as the mail's
 // sender.
 const (
+	// SenderDonate marks mails the donate domain sends for a purchase.
+	SenderDonate = "system:donate"
 	// SenderSettlement marks mails the settlement domain sends on its own
 	// (notifier delivery, level-up notices).
 	SenderSettlement = "system:settlement"

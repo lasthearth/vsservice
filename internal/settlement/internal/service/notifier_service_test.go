@@ -3,7 +3,9 @@ package service_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -71,12 +73,48 @@ func (f *fakeMail) recipients() []string {
 	return out
 }
 
-// fakeNotices records site notifications.
-type fakeNotices struct{ users []string }
+// fakeNotices records site notifications. The upgrade path notifies members
+// concurrently, so the recorder guards its own state and counts how many calls
+// were in flight at once.
+type fakeNotices struct {
+	mu       sync.Mutex
+	users    []string
+	inFlight int
+	peak     int
+	err      error
+}
 
 func (f *fakeNotices) NotifyUser(_ context.Context, userId, _, _ string) error {
+	f.mu.Lock()
+	f.inFlight++
+	if f.inFlight > f.peak {
+		f.peak = f.inFlight
+	}
+	f.mu.Unlock()
+
+	// Hold the slot long enough that an unbounded fan-out is observable.
+	time.Sleep(2 * time.Millisecond)
+
+	f.mu.Lock()
+	f.inFlight--
 	f.users = append(f.users, userId)
-	return nil
+	err := f.err
+	f.mu.Unlock()
+	return err
+}
+
+// notified returns the recorded recipients, in arrival order.
+func (f *fakeNotices) notified() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.users)
+}
+
+// peakConcurrency returns the largest number of notifications that ran at once.
+func (f *fakeNotices) peakConcurrency() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.peak
 }
 
 // notifierRepo fakes the slice of the repository the approval, submit and
@@ -93,6 +131,8 @@ type notifierRepo struct {
 	others map[string]*model.Settlement
 	// notifierErr makes GetNotifier fail, to pin the read-failure policy.
 	notifierErr error
+	// notifierReads counts the calls, to pin which Submit paths pay for one.
+	notifierReads int
 
 	// approval outcome
 	approval    *service.ApprovalResult
@@ -137,6 +177,7 @@ func (r *notifierRepo) Approve(context.Context, string) (*service.ApprovalResult
 }
 
 func (r *notifierRepo) GetNotifier(context.Context, string) (model.NotifierPlacement, bool, error) {
+	r.notifierReads++
 	if r.notifierErr != nil {
 		return model.NotifierPlacement{}, false, r.notifierErr
 	}
@@ -311,8 +352,8 @@ func TestApproveCreationMailsTheBlockToTheLeaderInTheTransaction(t *testing.T) {
 	if !m.inTx || !repo.txCommitted {
 		t.Errorf("mail written in transaction = %v, committed = %v; want both true", m.inTx, repo.txCommitted)
 	}
-	if len(notices.users) != 0 {
-		t.Errorf("creation must not send site notifications, got %v", notices.users)
+	if len(notices.notified()) != 0 {
+		t.Errorf("creation must not send site notifications, got %v", notices.notified())
 	}
 }
 
@@ -332,9 +373,11 @@ func TestApproveUpgradeNotifiesAllMembersAndMailsOnlyOwners(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	slices.Sort(notices.users)
-	if want := []string{"builder", "owner1", "owner2", "resident"}; !slices.Equal(notices.users, want) {
-		t.Errorf("site notifications to %v, want every member %v", notices.users, want)
+	// The notifications go out concurrently, so only the set is asserted.
+	notified := notices.notified()
+	slices.Sort(notified)
+	if want := []string{"builder", "owner1", "owner2", "resident"}; !slices.Equal(notified, want) {
+		t.Errorf("site notifications to %v, want every member %v", notified, want)
 	}
 	if want := []string{"owner1", "owner2"}; !slices.Equal(mail.recipients(), want) {
 		t.Errorf("mails to %v, want owners only %v", mail.recipients(), want)
@@ -363,8 +406,8 @@ func TestApproveWithoutTierChangeSendsNothing(t *testing.T) {
 	if _, err := svc.Approve(context.Background(), &settlementv1.ApproveRequest{Id: "s1"}); err != nil {
 		t.Fatal(err)
 	}
-	if len(mail.sent) != 0 || len(notices.users) != 0 {
-		t.Errorf("mails %+v, notices %v; want none for an edit that keeps the tier", mail.sent, notices.users)
+	if len(mail.sent) != 0 || len(notices.notified()) != 0 {
+		t.Errorf("mails %+v, notices %v; want none for an edit that keeps the tier", mail.sent, notices.notified())
 	}
 }
 
@@ -455,14 +498,135 @@ func TestSubmitUpgradeCoordinatesFollowTheStandingNotifier(t *testing.T) {
 
 func submitAt(t *testing.T, svc *service.Service, x, y int32) {
 	t.Helper()
-	_, err := svc.Submit(asUser("owner1"), &settlementv1.SubmitRequest{
+	_, err := svc.Submit(asUser("owner1"), submitRequest(x, y))
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// submitRequest is one upgrade submission with the given coordinates.
+func submitRequest(x, y int32) *settlementv1.SubmitRequest {
+	return &settlementv1.SubmitRequest{
 		Type:        settlementv1.SubmitRequest_CAMP,
 		Name:        "Северный Оплот",
 		Coordinates: &settlementv1.Vector2{X: x, Y: y},
 		Attachments: []*settlementv1.SubmitRequest_SubmitAttachment{{Url: "https://cdn.test/a.png", Description: "d"}},
-	})
+	}
+}
+
+// The notifier read answers one question: whether a block stands for this
+// request's settlement. A pending request is refused outright and a first-time
+// rejected one has no settlement behind it, so neither may pay for a query whose
+// result is thrown away or guaranteed empty.
+func TestSubmitSkipsTheNotifierReadWhenItCannotAnswer(t *testing.T) {
+	placement := &model.NotifierPlacement{SettlementId: "s1", Position: model.Vector3{X: 100, Y: 64, Z: -300}}
+
+	cases := []struct {
+		status    model.SettlementStatus
+		wantReads int
+		wantErr   bool
+	}{
+		{model.SettlementStatusPending, 0, true},
+		{model.SettlementStatusRejected, 0, false},
+		{model.SettlementStatusApproved, 1, false},
+		{model.SettlementStatusUpdateRejected, 1, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(string(tc.status), func(t *testing.T) {
+			repo := &notifierRepo{
+				request: &model.SettlementVerification{
+					Id: "s1", Status: tc.status, Type: model.SettlementTypeCamp, UpdatedAt: submittedAt,
+				},
+				placement: placement,
+			}
+			svc, _, _ := newNotifierService(t, repo)
+
+			res, err := svc.Submit(asUser("owner1"), submitRequest(10, 20))
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("status %s: want AlreadyExists, got %+v", tc.status, res)
+				}
+			} else if err != nil {
+				t.Fatalf("status %s: %v", tc.status, err)
+			}
+			if repo.notifierReads != tc.wantReads {
+				t.Errorf("status %s: notifier reads = %d, want %d", tc.status, repo.notifierReads, tc.wantReads)
+			}
+		})
+	}
+}
+
+// A rejected first-time request keeps the coordinates the player typed: there is
+// no settlement, so there is no block to override them with.
+func TestSubmitRejectedRequestKeepsTypedCoordinates(t *testing.T) {
+	repo := &notifierRepo{request: &model.SettlementVerification{
+		Id: "s1", Status: model.SettlementStatusRejected, Type: model.SettlementTypeCamp, UpdatedAt: submittedAt,
+	}}
+	svc, _, _ := newNotifierService(t, repo)
+
+	res, err := svc.Submit(asUser("owner1"), submitRequest(10, 20))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if res.GetCoordinatesLocked() {
+		t.Error("coordinates_locked = true, want false for a request that was never approved")
+	}
+	if got := repo.updatedReq.Coordinates; got != (model.Vector2{X: 10, Y: 20}) {
+		t.Errorf("stored coordinates = %+v, want the typed (10,20)", got)
+	}
+}
+
+// The upgrade notifications used to be one sequential database write per member
+// on the Approve response path, where the admin waits for the answer. They are
+// bounded and concurrent now, and every member is still told.
+func TestApproveUpgradeNotifiesMembersWithBoundedConcurrency(t *testing.T) {
+	set := memberSet(model.SettlementTypeVillage)
+	for i := range 40 {
+		set.Members = append(set.Members, model.Member{UserId: fmt.Sprintf("m%02d", i), RoleIds: []string{}})
+	}
+	repo := &notifierRepo{
+		request: &model.SettlementVerification{Id: "s1", Status: model.SettlementStatusPending},
+		approval: &service.ApprovalResult{
+			Settlement: *set, PreviousType: model.SettlementTypeCamp, RequestedAt: submittedAt,
+		},
+	}
+	svc, _, notices := newNotifierService(t, repo)
+
+	if _, err := svc.Approve(context.Background(), &settlementv1.ApproveRequest{Id: "s1"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := len(notices.notified()); got != len(set.Members) {
+		t.Errorf("notified %d members, want all %d", got, len(set.Members))
+	}
+	peak := notices.peakConcurrency()
+	if peak > 8 {
+		t.Errorf("peak concurrency = %d, want at most 8", peak)
+	}
+	if peak < 2 {
+		t.Errorf("peak concurrency = %d, want the members notified concurrently", peak)
+	}
+}
+
+// The approval is committed before the notifications go out, so a failing
+// notifier must not undo it and must not fail the response.
+func TestApproveUpgradeSucceedsWhenANotificationFails(t *testing.T) {
+	set := memberSet(model.SettlementTypeVillage)
+	repo := &notifierRepo{
+		request: &model.SettlementVerification{Id: "s1", Status: model.SettlementStatusPending},
+		approval: &service.ApprovalResult{
+			Settlement: *set, PreviousType: model.SettlementTypeCamp, RequestedAt: submittedAt,
+		},
+	}
+	svc, _, notices := newNotifierService(t, repo)
+	notices.err = errors.New("notification store down")
+
+	if _, err := svc.Approve(context.Background(), &settlementv1.ApproveRequest{Id: "s1"}); err != nil {
+		t.Fatalf("want the approval to succeed, got %v", err)
+	}
+	if got := len(notices.notified()); got != len(set.Members) {
+		t.Errorf("attempted %d notifications, want every member (%d)", got, len(set.Members))
 	}
 }
 
