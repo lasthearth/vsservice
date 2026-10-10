@@ -88,11 +88,17 @@ type notifierRepo struct {
 	set       *model.Settlement
 	request   *model.SettlementVerification
 	placement *model.NotifierPlacement
+	// others holds further settlements by id, for the handlers that answer with
+	// more than one settlement (TransferImperialFavor).
+	others map[string]*model.Settlement
+	// notifierErr makes GetNotifier fail, to pin the read-failure policy.
+	notifierErr error
 
 	// approval outcome
 	approval    *service.ApprovalResult
 	approved    bool
 	updatedReq  *service.SettlementOpts
+	createdReq  *service.SettlementOpts
 	txCommitted bool
 
 	// reissue counter mirrored onto the request
@@ -131,39 +137,103 @@ func (r *notifierRepo) Approve(context.Context, string) (*service.ApprovalResult
 }
 
 func (r *notifierRepo) GetNotifier(context.Context, string) (model.NotifierPlacement, bool, error) {
+	if r.notifierErr != nil {
+		return model.NotifierPlacement{}, false, r.notifierErr
+	}
 	if r.placement == nil {
 		return model.NotifierPlacement{}, false, nil
 	}
 	return *r.placement, true, nil
 }
 
-func (r *notifierRepo) GetSettlement(_ context.Context, id string) (*model.Settlement, error) {
-	if r.set == nil || r.set.Id != id {
-		return nil, ierror.ErrNotFound
+// lookup finds a stored settlement by id: the primary one first, then others.
+func (r *notifierRepo) lookup(id string) *model.Settlement {
+	if r.set != nil && r.set.Id == id {
+		return r.set
 	}
-	return r.set, nil
+	if s, ok := r.others[id]; ok {
+		return s
+	}
+	return nil
+}
+
+func (r *notifierRepo) GetSettlement(_ context.Context, id string) (*model.Settlement, error) {
+	if s := r.lookup(id); s != nil {
+		return s, nil
+	}
+	return nil, ierror.ErrNotFound
+}
+
+func (r *notifierRepo) GetSettlementByUserId(_ context.Context, userId string) (*model.Settlement, error) {
+	if r.set != nil && slices.Contains(r.set.MemberIds(), userId) {
+		return r.set, nil
+	}
+	for _, s := range r.others {
+		if slices.Contains(s.MemberIds(), userId) {
+			return s, nil
+		}
+	}
+	return nil, ierror.ErrNotFound
 }
 
 func (r *notifierRepo) UpdateSettlement(
 	ctx context.Context, id string,
 	fn func(context.Context, *model.Settlement) (*model.Settlement, error),
 ) (*model.Settlement, error) {
-	if r.set == nil || r.set.Id != id {
+	cur := r.lookup(id)
+	if cur == nil {
 		return nil, ierror.ErrNotFound
 	}
-	working := *r.set
+	working := *cur
 	updated, err := fn(ctx, &working)
 	if err != nil {
 		return nil, err
 	}
-	r.set = updated
+	if r.set != nil && r.set.Id == id {
+		r.set = updated
+	} else {
+		r.others[id] = updated
+	}
 	return updated, nil
 }
+
+func (r *notifierRepo) IsLeaderOfSettlement(_ context.Context, settlementID, userID string) error {
+	s := r.lookup(settlementID)
+	if s == nil || !s.IsOwner(userID) {
+		return ierror.ErrNotLeader
+	}
+	return nil
+}
+
+func (r *notifierRepo) AddTag(context.Context, string, string) error    { return nil }
+func (r *notifierRepo) RemoveTag(context.Context, string, string) error { return nil }
+
+func (r *notifierRepo) CreateFavorLog(context.Context, model.ImperialFavorLog) error { return nil }
 
 func (r *notifierRepo) IsMemberOfAnySettlement(context.Context, string) error { return nil }
 
 func (r *notifierRepo) GetSettlementRequestByLeader(context.Context, string) (*model.SettlementVerification, error) {
+	if r.request == nil {
+		return nil, ierror.ErrNotFound
+	}
 	return r.request, nil
+}
+
+func (r *notifierRepo) CreateRequest(_ context.Context, opts service.SettlementOpts) error {
+	r.createdReq = &opts
+	return nil
+}
+
+// GetAllSettlements serves List, which deliberately leaves notifier_position unset.
+func (r *notifierRepo) GetAllSettlements(context.Context) ([]model.Settlement, error) {
+	out := make([]model.Settlement, 0, len(r.others)+1)
+	if r.set != nil {
+		out = append(out, *r.set)
+	}
+	for _, s := range r.others {
+		out = append(out, *s)
+	}
+	return out, nil
 }
 
 func (r *notifierRepo) UpdateRequest(_ context.Context, opts service.SettlementOpts) error {

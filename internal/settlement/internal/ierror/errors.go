@@ -33,4 +33,11 @@ var (
 	ErrNotifierUnavailable     = ierror.FailedPrecondition("settlement type has no notifier block")
 	ErrNoOwnerToDeliver        = ierror.FailedPrecondition("recipient is not an owner of the settlement")
 	ErrInviteLinkRevoked       = ierror.FailedPrecondition("invite link was revoked")
+
+	// ErrNotifierRead reports that the position of a settlement's notifier block
+	// could not be read. "No block placed" is not this error: that is a normal
+	// answer and leaves notifier_position unset. A decode or connection failure is,
+	// and it fails closed — serving an unset position would render the upgrade form
+	// editable and let Submit drop the coordinates the player typed.
+	ErrNotifierRead = ierror.Unavailable("failed to read the settlement notifier position")
 )

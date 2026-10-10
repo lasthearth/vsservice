@@ -7,6 +7,7 @@ import (
 	"time"
 
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
+	pkgerr "github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/lasthearth/vsservice/internal/settlement/internal/ierror"
@@ -14,6 +15,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/settlement/internal/service/sermapper"
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
 )
 
 // linkNow is real time: the handlers read the clock themselves.
@@ -30,6 +32,21 @@ type inviteRepo struct {
 	created   *model.InviteLink
 	joined    *model.InviteLink
 	getByCode *model.InviteLink
+	// placement is the notifier block the preview's Settlement must report.
+	placement   *model.NotifierPlacement
+	notifierErr error
+}
+
+// GetNotifier serves the preview's notifier_position. The invite-link preview is
+// a single-settlement response, so it goes through the same shared read as Get.
+func (r *inviteRepo) GetNotifier(context.Context, string) (model.NotifierPlacement, bool, error) {
+	if r.notifierErr != nil {
+		return model.NotifierPlacement{}, false, r.notifierErr
+	}
+	if r.placement == nil {
+		return model.NotifierPlacement{}, false, nil
+	}
+	return *r.placement, true, nil
 }
 
 func (r *inviteRepo) GetInviteLinkByCode(_ context.Context, code string) (*model.InviteLink, error) {
@@ -199,6 +216,7 @@ func TestGetInviteLinkPreview(t *testing.T) {
 	link, _ := model.NewInviteLink("s1", "owner", 0, 10, linkNow)
 	repo.links["l1"] = link
 	repo.getByCode = link
+	repo.placement = &model.NotifierPlacement{SettlementId: "s1", Position: model.Vector3{X: 7, Y: 64, Z: -9}}
 
 	got, err := svc.GetInviteLink(context.Background(), &settlementv1.GetInviteLinkRequest{Code: link.Code})
 	if err != nil {
@@ -209,6 +227,32 @@ func TestGetInviteLinkPreview(t *testing.T) {
 	}
 	if got.GetStatus() != settlementv1.InviteLinkStatus_INVITE_LINK_STATUS_ACTIVE {
 		t.Fatalf("want active, got %v", got.GetStatus())
+	}
+	// The preview returns one settlement, so it fills notifier_position like Get
+	// does: a guest page that renders the upgrade form must see the block.
+	p := got.GetSettlement().GetNotifierPosition()
+	if p.GetX() != 7 || p.GetY() != 64 || p.GetZ() != -9 {
+		t.Errorf("notifier_position = %v, want (7,64,-9)", p)
+	}
+}
+
+// A notifier read that fails is not the same as "no block stands". Serving an
+// unset position would make the guest page show the settlement as editable, so
+// the preview fails closed instead.
+func TestGetInviteLinkPreviewFailsClosedOnNotifierRead(t *testing.T) {
+	svc, repo := newInviteService(t)
+	link, _ := model.NewInviteLink("s1", "owner", 0, 10, linkNow)
+	repo.links["l1"] = link
+	repo.getByCode = link
+	repo.notifierErr = errors.New("decode failed")
+
+	_, err := svc.GetInviteLink(context.Background(), &settlementv1.GetInviteLinkRequest{Code: link.Code})
+	if !errors.Is(err, ierror.ErrNotifierRead) {
+		t.Fatalf("want ErrNotifierRead, got %v", err)
+	}
+	var de *pkgerr.DomainError
+	if !errors.As(err, &de) || de.Code != codes.Unavailable {
+		t.Errorf("error = %v, want a typed Unavailable", err)
 	}
 }
 

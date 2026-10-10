@@ -18,7 +18,10 @@ func (s *Service) AddTagToSettlement(ctx context.Context, req *settlementv1.AddT
 		return nil, err
 	}
 
-	resp := s.mapper.ToSettlementProto(*set)
+	resp, err := s.settlementProto(ctx, *set)
+	if err != nil {
+		return nil, err
+	}
 	return &settlementv1.AddTagToSettlementResponse{
 		Settlement: resp,
 	}, nil
@@ -36,7 +39,10 @@ func (s *Service) RemoveTagFromSettlement(ctx context.Context, req *settlementv1
 		return nil, err
 	}
 
-	resp := s.mapper.ToSettlementProto(*set)
+	resp, err := s.settlementProto(ctx, *set)
+	if err != nil {
+		return nil, err
+	}
 	return &settlementv1.RemoveTagFromSettlementResponse{
 		Settlement: resp,
 	}, nil

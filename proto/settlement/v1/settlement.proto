@@ -20,12 +20,14 @@ service SettlementService {
   //
   // While the settlement's notifier block stands, coordinates is ignored on an upgrade: the
   // server takes the block's position instead (see Settlement.notifier_position), so clients
-  // should pre-fill the field from it and show it read-only.
+  // should pre-fill the field from it and show it read-only. SubmitResponse.coordinates_locked
+  // reports that the server did so.
   //
   // Errors:
   //   - INVALID_ARGUMENT (400): attachments is empty; invalid settlement type
   //   - ALREADY_EXISTS (409): settlement request is already pending
   //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - UNAVAILABLE (503): the notifier position could not be read; retry
   //   - INTERNAL (500): storage upload or database failure
   rpc Submit(SubmitRequest) returns (SubmitResponse) {
     option (google.api.http) = {
@@ -663,6 +665,8 @@ message Settlement {
   string contact_info = 23 [(google.api.field_behavior) = OPTIONAL];
   // Where the settlement's notifier block stands in the world. Unset while no block is placed.
   // The server owns it: a block placed in game writes it, the site only reads it.
+  // Filled by every rpc that returns a single settlement. Deliberately unset in List and
+  // ListPending, which would need one extra read per row.
   Vector3 notifier_position = 24 [(google.api.field_behavior) = OPTIONAL];
 }
 
@@ -818,7 +822,13 @@ message Attachment {
   string url = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
-message SubmitResponse {}
+message SubmitResponse {
+  // True when the server dropped the submitted coordinates because the settlement's notifier
+  // block stands. The request then stores the block's position instead (Settlement.notifier_position),
+  // and the client must show coordinates as read-only rather than as the value it sent.
+  // Always false on a first submission: it has no settlement, so it has no block.
+  bool coordinates_locked = 1 [(google.api.field_behavior) = OPTIONAL];
+}
 
 message GetRequest {
   string id = 1 [(google.api.field_behavior) = REQUIRED];

@@ -86,13 +86,21 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 	// The settlement id is the request id. While its notifier block stands the
 	// block's position is authoritative, and whatever the client sent is dropped.
-	placement, hasNotifier, err := s.dbRepo.GetNotifier(ctx, found.Id)
+	placement, hasNotifier, err := s.readNotifier(ctx, found.Id)
 	if err != nil {
-		s.log.Error("failed to read settlement notifier", zap.Error(err), zap.String("settlement_id", found.Id))
 		return nil, err
 	}
+	coordinatesLocked := false
 	if hasNotifier {
-		opts.Coordinates, _ = model.ResolveCoordinates(opts.Coordinates, &placement)
+		opts.Coordinates, coordinatesLocked = model.ResolveCoordinates(opts.Coordinates, &placement)
+	}
+	if coordinatesLocked {
+		// Deterministic, so a support request can be answered from the log alone:
+		// the player typed coordinates and the block overrode them.
+		s.log.Info("notifier position overrides the submitted coordinates",
+			zap.String("settlement_id", found.Id),
+			zap.Int("resolved_x", opts.Coordinates.X),
+			zap.Int("resolved_y", opts.Coordinates.Y))
 	}
 
 	// User already has a request, handle level up or update
@@ -117,7 +125,7 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 	s.log.Info("settlement req created", zap.Int("attachment", len(attachs)))
 
-	return &settlementv1.SubmitResponse{}, nil
+	return &settlementv1.SubmitResponse{CoordinatesLocked: coordinatesLocked}, nil
 }
 
 // Get implements settlementv1.SettlementServiceServer
@@ -134,9 +142,11 @@ func (s *Service) Get(ctx context.Context, req *settlementv1.GetRequest) (*settl
 		return nil, status.Error(codes.NotFound, ierror.ErrNotFound.Error())
 	}
 
-	return &settlementv1.GetResponse{
-		Settlement: s.settlementProto(ctx, *settlement),
-	}, nil
+	proto, err := s.settlementProto(ctx, *settlement)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.GetResponse{Settlement: proto}, nil
 }
 
 // List implements settlementv1.SettlementServiceServer
@@ -149,6 +159,10 @@ func (s *Service) List(ctx context.Context, req *settlementv1.ListRequest) (*set
 		return nil, err
 	}
 
+	// notifier_position is deliberately unset here. It lives in its own
+	// collection, so filling it would cost one extra read per row on the map's
+	// full listing — an N+1 over every settlement the server has. The map reads a
+	// single settlement with Get when it needs the block.
 	return &settlementv1.ListResponse{
 		Settlements: s.mapper.ToSettlementProtos(settlements),
 	}, nil
@@ -164,6 +178,8 @@ func (s *Service) ListPending(ctx context.Context, req *settlementv1.ListPending
 		return nil, err
 	}
 
+	// These are requests, not settlements: no settlement document exists for a
+	// pending one, so there is no notifier block and no position to fill.
 	return &settlementv1.ListPendingResponse{
 		Settlements: s.mapper.VerifsToSettlementProtos(settlements),
 	}, nil
@@ -418,9 +434,11 @@ func (s *Service) GetByUserId(ctx context.Context, req *settlementv1.GetByUserId
 		return nil, err
 	}
 
-	return &settlementv1.GetByUserIdResponse{
-		Settlement: s.settlementProto(ctx, *settlement),
-	}, nil
+	proto, err := s.settlementProto(ctx, *settlement)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.GetByUserIdResponse{Settlement: proto}, nil
 }
 
 // VerificationStatus implements settlementv1.SettlementServiceServer.

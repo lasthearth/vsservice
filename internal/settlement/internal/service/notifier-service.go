@@ -27,22 +27,38 @@ func (n createNotifier) NotifyUser(ctx context.Context, userId, title, message s
 	return n.uc.CreateNotification(ctx, title, message, notificationuc.WithUserId(userId))
 }
 
-// settlementProto maps a settlement and adds what lives outside its document:
-// the position of its notifier block. A failing read leaves the position unset
-// rather than failing the whole read.
-func (s *Service) settlementProto(ctx context.Context, set model.Settlement) *settlementv1.Settlement {
+// readNotifier is the one place that decides what a failing notifier read means,
+// so Submit and every response that carries a Settlement agree on it.
+//
+// found=false is a normal answer: no block stands, and notifier_position stays
+// unset. Anything else fails closed with ErrNotifierRead. Serving a position that
+// merely looks unset would make the site render the upgrade form as editable and
+// let Submit drop the coordinates the player typed.
+func (s *Service) readNotifier(ctx context.Context, settlementID string) (model.NotifierPlacement, bool, error) {
+	placement, found, err := s.dbRepo.GetNotifier(ctx, settlementID)
+	if err != nil {
+		s.log.Error("failed to read settlement notifier",
+			zap.Error(err), zap.String("settlement_id", settlementID))
+		return model.NotifierPlacement{}, false, ierror.ErrNotifierRead
+	}
+	return placement, found, nil
+}
+
+// settlementProto maps a settlement and adds what lives outside its document: the
+// position of its notifier block. Every rpc that returns a single settlement goes
+// through it, so the field the proto documents is filled wherever one settlement
+// is served, and not only by Get and GetByUserId.
+func (s *Service) settlementProto(ctx context.Context, set model.Settlement) (*settlementv1.Settlement, error) {
 	out := s.mapper.ToSettlementProto(set)
 
-	placement, found, err := s.dbRepo.GetNotifier(ctx, set.Id)
+	placement, found, err := s.readNotifier(ctx, set.Id)
 	if err != nil {
-		s.log.Warn("failed to read settlement notifier",
-			zap.Error(err), zap.String("settlement_id", set.Id))
-		return out
+		return nil, err
 	}
 	if found {
 		out.NotifierPosition = s.mapper.ToVector3Proto(placement.Position)
 	}
-	return out
+	return out, nil
 }
 
 // deliverNotifier mails the new settlement's leader the notifier block of the
