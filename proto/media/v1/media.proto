@@ -60,6 +60,7 @@ enum UploadPurpose {
   UPLOAD_PURPOSE_DONATE_SHOP = 1;
   UPLOAD_PURPOSE_SETTLEMENT = 2;
   UPLOAD_PURPOSE_NEWS = 3;
+  UPLOAD_PURPOSE_WIKI = 4;
 }
 
 message CreateUploadUrlsRequest {
