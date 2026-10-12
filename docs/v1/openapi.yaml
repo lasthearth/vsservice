@@ -8848,6 +8848,7 @@ components:
         - UPLOAD_PURPOSE_DONATE_SHOP
         - UPLOAD_PURPOSE_SETTLEMENT
         - UPLOAD_PURPOSE_NEWS
+        - UPLOAD_PURPOSE_WIKI
       description: |-
         UploadPurpose maps to a concrete bucket on the server side.
          The client never passes a bucket name directly (guards against writing to arbitrary buckets).

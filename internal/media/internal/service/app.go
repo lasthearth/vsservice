@@ -30,6 +30,14 @@ type purposeConfig struct {
 
 // purpose → config. Bucket names match the existing public domain buckets so
 // previously stored URLs are not orphaned.
+//
+// WIKI carries no scope: the site wiki editor uploads article and cover images,
+// and any signed-in player may propose an edit (SubmitSuggestion is
+// ScopeAuthenticated in the wiki domain). It writes to the news bucket, so wiki
+// image URLs stay on the CDN path the editor already uses. Staging an image is
+// not publishing — writing a page needs wiki:write and deciding a proposal needs
+// wiki:review, enforced by the wiki scopers — and NEWS itself stays admin-only
+// behind news:create.
 var purposes = map[mediav1.UploadPurpose]purposeConfig{
 	mediav1.UploadPurpose_UPLOAD_PURPOSE_DONATE_SHOP: {
 		bucket: "donate-shop", maxSize: 2 << 20,
@@ -45,6 +53,11 @@ var purposes = map[mediav1.UploadPurpose]purposeConfig{
 		bucket: "news", maxSize: 5 << 20,
 		contentTypes: []string{"image/webp", "image/png", "image/jpeg"},
 		scope:        "news:create",
+	},
+	mediav1.UploadPurpose_UPLOAD_PURPOSE_WIKI: {
+		bucket: "news", maxSize: 5 << 20,
+		contentTypes: []string{"image/webp", "image/png", "image/jpeg"},
+		scope:        "",
 	},
 }
 
