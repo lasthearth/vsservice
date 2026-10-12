@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox/pagination"
@@ -124,6 +125,59 @@ func (r *Repository) SaveSuggestion(
 	}
 
 	return saved, nil
+}
+
+// SetAppliedSuggestionArticle records the article an approved proposal produced.
+//
+// The write is separate from the decision, because the article does not exist
+// until the decision is reserved. Only one editor can reserve a proposal, so
+// only that editor ever writes an article for it.
+func (r *Repository) SetAppliedSuggestionArticle(ctx context.Context, id string, articleId string) error {
+	objID, err := mongox.ParseObjectID(id)
+	if err != nil {
+		return model.ErrSuggestionNotFound
+	}
+
+	res, err := r.collSuggestions.UpdateOne(ctx,
+		map[string]any{"_id": objID, "status": model.SuggestionApproved},
+		map[string]any{"$set": map[string]any{
+			"applied_article_id": articleId,
+			"updated_at":         time.Now().UTC().Truncate(time.Millisecond),
+		}},
+	)
+	if err != nil {
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return model.ErrSuggestionNotFound
+	}
+
+	return nil
+}
+
+// ReopenSuggestion returns a reserved proposal to the queue.
+//
+// The service calls it when writing the article failed, so a proposal is never
+// left approved with nothing behind it. The filter carries the approved state,
+// so the call cannot undo a decision that already moved on.
+func (r *Repository) ReopenSuggestion(ctx context.Context, id string) error {
+	objID, err := mongox.ParseObjectID(id)
+	if err != nil {
+		return model.ErrSuggestionNotFound
+	}
+
+	_, err = r.collSuggestions.UpdateOne(ctx,
+		map[string]any{"_id": objID, "status": model.SuggestionApproved},
+		map[string]any{
+			"$set": map[string]any{
+				"status":     model.SuggestionPending,
+				"updated_at": time.Now().UTC().Truncate(time.Millisecond),
+			},
+			"$unset": map[string]any{"reviewer_name": "", "reviewed_at": ""},
+		},
+	)
+
+	return err
 }
 
 // ensureSuggestionIndexes creates the indexes the review queue relies on.

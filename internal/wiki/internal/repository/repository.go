@@ -20,7 +20,7 @@ func (r *Repository) Create(ctx context.Context, article *model.Article) (*model
 	l := r.logger.WithMethod("create").With(zap.String("slug", article.Slug))
 	l.Info("creating wiki article")
 
-	stored := r.mapper.ToArticle(*article)
+	stored := assignRevisionIds(r.mapper.ToArticle(*article))
 	stored.Model = mongox.NewModel()
 
 	res, err := r.coll.InsertOne(ctx, stored)
@@ -123,7 +123,7 @@ func (r *Repository) Save(
 		ctx, r.coll, filter, model.ErrNotFound,
 		r.toModel,
 		func(article *model.Article) dto.Article {
-			return r.mapper.ToArticle(*article)
+			return assignRevisionIds(r.mapper.ToArticle(*article))
 		},
 		func(_ context.Context, current *model.Article) (*model.Article, error) {
 			if expectedVersion != 0 && expectedVersion != current.Envelope.Version {
@@ -214,6 +214,23 @@ func (r *Repository) toModel(stored dto.Article) *model.Article {
 	return &article
 }
 
+// assignRevisionIds gives every stored revision that has none an identifier of
+// its own.
+//
+// Revisions live inside the article document, and MongoDB assigns _id only to a
+// top-level document, never to an element of an array field. Without this the
+// history is readable but no revision can be addressed, so a restore has
+// nothing to name.
+func assignRevisionIds(stored dto.Article) dto.Article {
+	for i := range stored.Revisions {
+		if stored.Revisions[i].Id == "" {
+			stored.Revisions[i].Id = bson.NewObjectID().Hex()
+		}
+	}
+
+	return stored
+}
+
 // idFilter builds the filter matching one live article by id.
 func idFilter(id string) (map[string]any, error) {
 	objID, err := mongox.ParseObjectID(id)
@@ -232,9 +249,15 @@ func listFilter(filter model.Filter) map[string]any {
 		query["section"] = filter.Section
 	}
 
-	if filter.Status != "" {
+	// A status filter narrows the result; it never widens it. Drafts leave the
+	// repository only for a caller who may see them, so a reader who asks for
+	// drafts still gets the published pages and nothing else.
+	switch {
+	case filter.IncludeDrafts && filter.Status != "":
 		query["status"] = filter.Status
-	} else if !filter.IncludeDrafts {
+	case filter.IncludeDrafts:
+		// Every status: the caller may see drafts and published pages.
+	default:
 		query["status"] = model.StatusPublished
 	}
 

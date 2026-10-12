@@ -8,6 +8,15 @@ import "time"
 // states; older ones would only grow the document.
 const MaxRevisions = 40
 
+// MaxArticleBytes bounds one stored state of an article.
+//
+// A revision stores the whole article, and the document carries the current
+// state plus up to MaxRevisions of them, so 41 states of 300 KB is about 12 MB:
+// under MongoDB's 16 MB limit with room left for the write that replaces the
+// document. Without a bound one long page makes its own article unwritable,
+// because the history can only be pruned by a save that already does not fit.
+const MaxArticleBytes = 300_000
+
 // Publication states of an article. A plain string keeps the value readable in
 // the database and lets a new state be stored without a migration; the domain
 // validates it through IsKnownStatus.
@@ -162,7 +171,38 @@ func (a *Article) Validate() error {
 		return errStatusUnknown
 	}
 
+	if a.size() > MaxArticleBytes {
+		return errArticleTooLarge
+	}
+
 	return nil
+}
+
+// size adds up what one stored state of the article carries.
+//
+// Revisions are not part of it: a revision stores a state and not the history,
+// so counting them here would charge the same text twice.
+func (a *Article) size() int {
+	size := len(a.Slug) + len(a.Title) + len(a.Section) + len(a.Lead) +
+		len(a.Body) + len(a.GameVersion)
+
+	if a.Cover != nil {
+		size += len(a.Cover.Url)
+	}
+
+	if a.QuickAnswer != nil {
+		size += len(a.QuickAnswer.Question) + len(a.QuickAnswer.Answer)
+	}
+
+	for _, tag := range a.Tags {
+		size += len(tag)
+	}
+
+	for _, related := range a.Related {
+		size += len(related)
+	}
+
+	return size
 }
 
 // ApplyEdit replaces the editable fields with editor input, keeping the
@@ -276,6 +316,14 @@ func (a *Article) Adopt(input Article) {
 // Publish marks the article as visible to readers.
 func (a *Article) Publish() {
 	a.Status = StatusPublished
+}
+
+// VisibleTo reports whether a caller may read the article.
+//
+// A published page is public. A draft is visible only to a caller who may edit
+// the wiki, which is what keeps a half-written page off the public site.
+func (a *Article) VisibleTo(canEdit bool) bool {
+	return canEdit || a.Status == StatusPublished
 }
 
 // Touch keeps the model compatible with the shared update helper, which stamps

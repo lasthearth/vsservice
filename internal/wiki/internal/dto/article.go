@@ -51,9 +51,9 @@ type QuickAnswer struct {
 
 // Revision is the stored shape of a saved article state.
 //
-// The identifier is a plain string: it is generated when a revision is stored,
-// so a nil object id is written and Mongo assigns one, and it is read back in
-// its hex form.
+// The identifier is a plain hex string that the repository assigns when the
+// revision is stored: a revision is an element of an array field, and MongoDB
+// assigns _id only to a top-level document, so nothing else would ever fill it.
 type Revision struct {
 	Id         string    `bson:"_id,omitempty"`
 	ArticleId  string    `bson:"article_id"`

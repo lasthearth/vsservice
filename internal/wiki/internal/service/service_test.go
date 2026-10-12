@@ -15,6 +15,9 @@ import (
 	"go.uber.org/zap"
 )
 
+// errFakeWrite stands in for a storage failure on the article collection.
+var errFakeWrite = errors.New("fake article write failed")
+
 // fakeRepo is an in-memory stand-in for MongoDB: the service rules are what
 // these tests exercise, not the driver.
 type fakeRepo struct {
@@ -23,6 +26,12 @@ type fakeRepo struct {
 	saved       int
 	removed     string
 	nextId      int
+	// lastExpected is the version the last Save was pinned to, so a test can
+	// tell a guarded write from an unguarded one.
+	lastExpected int64
+	// failArticleWrite makes every article write fail, so a test can see what the
+	// service does when the wiki side of an approval does not land.
+	failArticleWrite bool
 }
 
 func (f *fakeRepo) CreateSuggestion(_ context.Context, suggestion *model.Suggestion) (*model.Suggestion, error) {
@@ -99,6 +108,31 @@ func (f *fakeRepo) SaveSuggestion(_ context.Context, suggestion *model.Suggestio
 	return &saved, nil
 }
 
+func (f *fakeRepo) SetAppliedSuggestionArticle(_ context.Context, id string, articleId string) error {
+	stored, ok := f.suggestions[id]
+	if !ok || stored.Status != model.SuggestionApproved {
+		return model.ErrSuggestionNotFound
+	}
+
+	stored.SetAppliedArticle(articleId)
+
+	return nil
+}
+
+func (f *fakeRepo) ReopenSuggestion(_ context.Context, id string) error {
+	stored, ok := f.suggestions[id]
+	if !ok {
+		return model.ErrSuggestionNotFound
+	}
+	if stored.Status != model.SuggestionApproved {
+		return nil
+	}
+
+	stored.Reopen()
+
+	return nil
+}
+
 func newFakeRepo() *fakeRepo {
 	return &fakeRepo{
 		articles:    map[string]*model.Article{},
@@ -108,6 +142,10 @@ func newFakeRepo() *fakeRepo {
 }
 
 func (f *fakeRepo) Create(_ context.Context, article *model.Article) (*model.Article, error) {
+	if f.failArticleWrite {
+		return nil, errFakeWrite
+	}
+
 	for _, existing := range f.articles {
 		if existing.Slug == article.Slug {
 			return nil, model.ErrSlugTaken
@@ -162,10 +200,13 @@ func (f *fakeRepo) ExistsSlug(_ context.Context, slug string, exceptId string) (
 func (f *fakeRepo) List(_ context.Context, filter model.Filter, _ string, _ int64) (*model.Page, error) {
 	page := &model.Page{}
 	for _, article := range f.articles {
-		if filter.Status != "" && article.Status != filter.Status {
-			continue
-		}
-		if !filter.IncludeDrafts && article.Status != model.StatusPublished {
+		// Mirror repository.listFilter: a status filter narrows the result, it
+		// never widens it past what IncludeDrafts allows.
+		if !filter.IncludeDrafts {
+			if article.Status != model.StatusPublished {
+				continue
+			}
+		} else if filter.Status != "" && article.Status != filter.Status {
 			continue
 		}
 		page.Articles = append(page.Articles, article)
@@ -176,6 +217,12 @@ func (f *fakeRepo) List(_ context.Context, filter model.Filter, _ string, _ int6
 }
 
 func (f *fakeRepo) Save(_ context.Context, article *model.Article, expectedVersion int64) (*model.Article, error) {
+	f.lastExpected = expectedVersion
+
+	if f.failArticleWrite {
+		return nil, errFakeWrite
+	}
+
 	stored, ok := f.articles[article.Envelope.Id]
 	if !ok {
 		return nil, model.ErrNotFound
@@ -420,6 +467,67 @@ func TestListArticlesHidesDraftsFromReaders(t *testing.T) {
 	}
 }
 
+// TestListArticlesIgnoresADraftStatusFilterFromAReader covers the way in: the
+// list is public, so asking for drafts by name must not return them.
+func TestListArticlesIgnoresADraftStatusFilterFromAReader(t *testing.T) {
+	svc, _ := newService(t)
+
+	if _, err := svc.CreateArticle(authenticated(), createRequest("Черновик")); err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	forReaders, err := svc.ListArticles(anonymous(), &wikiv1.ListArticlesRequest{
+		Status: wikiv1.ArticleStatus_ARTICLE_STATUS_DRAFT,
+	})
+	if err != nil {
+		t.Fatalf("ListArticles: %v", err)
+	}
+	if len(forReaders.GetArticles()) != 0 {
+		t.Errorf("reader asking for drafts sees %d articles, want 0", len(forReaders.GetArticles()))
+	}
+}
+
+// TestGetArticleHidesADraftFromAReader covers the direct fetch: a draft is
+// reported as missing until it is published.
+func TestGetArticleHidesADraftFromAReader(t *testing.T) {
+	svc, _ := newService(t)
+
+	draft, err := svc.CreateArticle(authenticated(), createRequest("Черновик"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	if _, err := svc.GetArticle(anonymous(), &wikiv1.GetArticleRequest{Id: draft.GetId()}); !errors.Is(err, model.ErrNotFound) {
+		t.Errorf("GetArticle err = %v, want not found", err)
+	}
+	if _, err := svc.GetArticleBySlug(anonymous(), &wikiv1.GetArticleBySlugRequest{
+		Slug: draft.GetSlug(),
+	}); !errors.Is(err, model.ErrNotFound) {
+		t.Errorf("GetArticleBySlug err = %v, want not found", err)
+	}
+
+	publish, err := svc.UpdateArticle(authenticated(), &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      draft.GetId(),
+			Title:   "Черновик",
+			Section: model.SectionWar,
+			Status:  wikiv1.ArticleStatus_ARTICLE_STATUS_PUBLISHED,
+		},
+		ExpectedVersion: draft.GetVersion(),
+	})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+
+	got, err := svc.GetArticleBySlug(anonymous(), &wikiv1.GetArticleBySlugRequest{Slug: publish.GetSlug()})
+	if err != nil {
+		t.Fatalf("GetArticleBySlug after publish: %v", err)
+	}
+	if got.GetStatus() != wikiv1.ArticleStatus_ARTICLE_STATUS_PUBLISHED {
+		t.Errorf("status = %v, want published", got.GetStatus())
+	}
+}
+
 func TestDeleteArticleRemovesIt(t *testing.T) {
 	svc, repo := newService(t)
 
@@ -437,7 +545,7 @@ func TestDeleteArticleRemovesIt(t *testing.T) {
 }
 
 func TestRestoreRevisionBringsBackTheOlderState(t *testing.T) {
-	svc, _ := newService(t)
+	svc, repo := newService(t)
 
 	created, err := svc.CreateArticle(authenticated(), createRequest("Поселения"))
 	if err != nil {
@@ -478,6 +586,9 @@ func TestRestoreRevisionBringsBackTheOlderState(t *testing.T) {
 	}
 	if restored.GetVersion() <= updated.GetVersion() {
 		t.Errorf("version = %d, want more than %d", restored.GetVersion(), updated.GetVersion())
+	}
+	if repo.lastExpected == 0 {
+		t.Error("restore saved without a version guard, so a concurrent edit would be replaced silently")
 	}
 }
 
@@ -720,5 +831,83 @@ func TestListSuggestionsShowsAuthorsOnlyTheirOwn(t *testing.T) {
 	}
 	if len(queue.GetSuggestions()) != 1 {
 		t.Fatalf("reviewer sees %d proposals, want the whole queue", len(queue.GetSuggestions()))
+	}
+}
+
+// TestDecidingRefusesTheAuthorOfTheProposal covers the split between proposing
+// and deciding: one person must not write a page through the review queue, not
+// even when they hold the review scope.
+func TestDecidingRefusesTheAuthorOfTheProposal(t *testing.T) {
+	svc, repo := newService(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	author := interceptor.ContextWithClaims(authenticated(), &jwt.Claims{Scope: "wiki:write wiki:review"})
+
+	if _, err := svc.ApproveSuggestion(author, &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); !errors.Is(err, model.ErrSelfReview) {
+		t.Fatalf("ApproveSuggestion err = %v, want the author refused", err)
+	}
+	if len(repo.articles) != 0 {
+		t.Errorf("a refused approval wrote %d articles", len(repo.articles))
+	}
+
+	if _, err := svc.RejectSuggestion(author, &wikiv1.RejectSuggestionRequest{
+		Id: suggestion.GetId(), Reason: "сам себя",
+	}); !errors.Is(err, model.ErrSelfReview) {
+		t.Errorf("RejectSuggestion err = %v, want the author refused", err)
+	}
+
+	queue, err := svc.ListSuggestions(reviewer(), &wikiv1.ListSuggestionsRequest{})
+	if err != nil {
+		t.Fatalf("ListSuggestions: %v", err)
+	}
+	if len(queue.GetSuggestions()) != 1 ||
+		queue.GetSuggestions()[0].GetStatus() != wikiv1.SuggestionStatus_SUGGESTION_STATUS_PENDING {
+		t.Error("a refused decision took the proposal out of the queue")
+	}
+}
+
+// TestApproveSuggestionGivesTheReservationBackOnAFailedApply covers the order of
+// the two writes: the decision is reserved before the article is written, so an
+// apply that fails must leave the proposal decidable instead of approved with
+// nothing behind it.
+func TestApproveSuggestionGivesTheReservationBackOnAFailedApply(t *testing.T) {
+	svc, repo := newService(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	repo.failArticleWrite = true
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); !errors.Is(err, errFakeWrite) {
+		t.Fatalf("err = %v, want the failed article write reported", err)
+	}
+
+	queue, err := svc.ListSuggestions(reviewer(), &wikiv1.ListSuggestionsRequest{})
+	if err != nil {
+		t.Fatalf("ListSuggestions: %v", err)
+	}
+	if len(queue.GetSuggestions()) != 1 ||
+		queue.GetSuggestions()[0].GetStatus() != wikiv1.SuggestionStatus_SUGGESTION_STATUS_PENDING {
+		t.Fatalf("the proposal stayed decided after a failed apply: %d entries", len(queue.GetSuggestions()))
+	}
+
+	repo.failArticleWrite = false
+	approved, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	})
+	if err != nil {
+		t.Fatalf("ApproveSuggestion after the reservation was given back: %v", err)
+	}
+	if approved.GetAppliedArticleId() == "" {
+		t.Error("the approved proposal does not name the article it produced")
 	}
 }

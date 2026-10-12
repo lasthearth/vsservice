@@ -4,6 +4,7 @@
 package repomapper
 
 import (
+	goverter "github.com/lasthearth/vsservice/internal/pkg/goverter"
 	dto "github.com/lasthearth/vsservice/internal/wiki/internal/dto"
 	model "github.com/lasthearth/vsservice/internal/wiki/internal/model"
 	"time"
@@ -45,11 +46,12 @@ func (c *MapperImpl) FromArticle(source dto.Article) model.Article {
 }
 func (c *MapperImpl) FromRevision(source dto.Revision) model.Revision {
 	var modelRevision model.Revision
+	modelRevision.Id = source.Id
 	modelRevision.ArticleId = source.ArticleId
 	modelRevision.Article = c.FromArticle(source.Article)
 	modelRevision.Note = source.Note
 	modelRevision.AuthorName = source.AuthorName
-	modelRevision.SavedAt = c.timeTimeToTimeTime(source.SavedAt)
+	modelRevision.SavedAt = goverter.TimeToTime(source.SavedAt)
 	return modelRevision
 }
 func (c *MapperImpl) FromSuggestion(source dto.Suggestion) model.Suggestion {
@@ -105,7 +107,7 @@ func (c *MapperImpl) ToRevision(source model.Revision) dto.Revision {
 	dtoRevision.Article = c.ToArticle(source.Article)
 	dtoRevision.Note = source.Note
 	dtoRevision.AuthorName = source.AuthorName
-	dtoRevision.SavedAt = c.timeTimeToTimeTime(source.SavedAt)
+	dtoRevision.SavedAt = goverter.TimeToTime(source.SavedAt)
 	return dtoRevision
 }
 func (c *MapperImpl) ToSuggestion(source model.Suggestion) dto.Suggestion {
@@ -165,13 +167,8 @@ func (c *MapperImpl) pModelQuickAnswerToPDtoQuickAnswer(source *model.QuickAnswe
 func (c *MapperImpl) pTimeTimeToPTimeTime(source *time.Time) *time.Time {
 	var pTimeTime *time.Time
 	if source != nil {
-		timeTime := c.timeTimeToTimeTime((*source))
+		timeTime := goverter.TimeToTime((*source))
 		pTimeTime = &timeTime
 	}
 	return pTimeTime
-}
-func (c *MapperImpl) timeTimeToTimeTime(source time.Time) time.Time {
-	var timeTime time.Time
-	_ = source
-	return timeTime
 }

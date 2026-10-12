@@ -17,7 +17,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/mail"
 	"github.com/lasthearth/vsservice/internal/media"
 	"github.com/lasthearth/vsservice/internal/news"
-	"github.com/lasthearth/vsservice/internal/wiki"
 	"github.com/lasthearth/vsservice/internal/notification"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
@@ -35,6 +34,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/settlement"
 	settlementtag "github.com/lasthearth/vsservice/internal/settlement-tag"
 	"github.com/lasthearth/vsservice/internal/webhook"
+	"github.com/lasthearth/vsservice/internal/wiki"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 

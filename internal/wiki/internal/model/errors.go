@@ -13,6 +13,8 @@ var (
 	errSectionUnknown = ierror.InvalidArgument("unknown section")
 	// errStatusUnknown reports a publication state the wiki does not have.
 	errStatusUnknown = ierror.InvalidArgument("unknown status")
+	// errArticleTooLarge reports a page whose history would not fit one document.
+	errArticleTooLarge = ierror.InvalidArgument("article is too large")
 
 	// ErrVersionConflict reports an edit based on an outdated article.
 	ErrVersionConflict = ierror.FailedPrecondition("article was changed by someone else, reload it")
@@ -30,4 +32,6 @@ var (
 	ErrTooManySuggestions = ierror.ResourceExhausted("too many suggestions waiting for review")
 	// ErrReasonRequired reports a rejection without a reason.
 	ErrReasonRequired = ierror.InvalidArgument("rejection reason is required")
+	// ErrSelfReview reports an author deciding their own proposal.
+	ErrSelfReview = ierror.PermissionDenied("an author cannot review their own proposal")
 )

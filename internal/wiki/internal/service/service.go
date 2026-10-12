@@ -105,10 +105,17 @@ func (s *Service) DeleteArticle(ctx context.Context, req *wikiv1.DeleteArticleRe
 }
 
 // GetArticle implements wikiv1.WikiServiceServer.
+//
+// A draft is not visible to a reader: the method is public, so the article is
+// reported as missing rather than returned, which is what the API documents.
 func (s *Service) GetArticle(ctx context.Context, req *wikiv1.GetArticleRequest) (*wikiv1.Article, error) {
 	article, err := s.repo.Get(ctx, req.GetId())
 	if err != nil {
 		return nil, err
+	}
+
+	if !article.VisibleTo(s.canEdit(ctx)) {
+		return nil, model.ErrNotFound
 	}
 
 	return s.toProto(article), nil
@@ -119,6 +126,10 @@ func (s *Service) GetArticleBySlug(ctx context.Context, req *wikiv1.GetArticleBy
 	article, err := s.repo.GetBySlug(ctx, req.GetSlug())
 	if err != nil {
 		return nil, err
+	}
+
+	if !article.VisibleTo(s.canEdit(ctx)) {
+		return nil, model.ErrNotFound
 	}
 
 	return s.toProto(article), nil
@@ -187,6 +198,11 @@ func (s *Service) RestoreRevision(ctx context.Context, req *wikiv1.RestoreRevisi
 		return nil, err
 	}
 
+	// The restore is pinned to the version it was read from, so an editor who
+	// saves the same page while this call runs is reported as a conflict
+	// instead of being silently replaced by the older state.
+	expected := article.Envelope.Version
+
 	target, found := findRevision(article.Revisions, req.GetRevisionId())
 	if !found {
 		return nil, model.ErrRevisionNotFound
@@ -196,7 +212,7 @@ func (s *Service) RestoreRevision(ctx context.Context, req *wikiv1.RestoreRevisi
 		return nil, err
 	}
 
-	restored, err := s.repo.Save(ctx, article, 0)
+	restored, err := s.repo.Save(ctx, article, expected)
 	if err != nil {
 		return nil, err
 	}

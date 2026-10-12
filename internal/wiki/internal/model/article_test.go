@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -201,5 +202,53 @@ func TestRestoreRejectsForeignRevision(t *testing.T) {
 
 	if err := article.Restore(foreign, "author-1", now); !errors.Is(err, ErrRevisionNotFound) {
 		t.Fatalf("err = %v, want revision not found", err)
+	}
+}
+
+// TestVisibleToHidesADraftFromAReader pins the rule the public reads rely on:
+// a draft is missing for a reader and present for an editor.
+func TestVisibleToHidesADraftFromAReader(t *testing.T) {
+	page := created(t)
+	if page.Status != StatusDraft {
+		t.Fatalf("a new article is %q, want %q", page.Status, StatusDraft)
+	}
+
+	if page.VisibleTo(false) {
+		t.Error("a reader sees a draft")
+	}
+	if !page.VisibleTo(true) {
+		t.Error("an editor does not see a draft")
+	}
+
+	page.Publish()
+	if !page.VisibleTo(false) {
+		t.Error("a reader does not see a published page")
+	}
+}
+
+// TestValidateRejectsAnArticleTooLargeToKeepHistory pins the bound that keeps a
+// page and its history inside one document.
+func TestValidateRejectsAnArticleTooLargeToKeepHistory(t *testing.T) {
+	page := created(t)
+	if err := page.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+
+	page.Body = strings.Repeat("a", MaxArticleBytes)
+	if err := page.Validate(); !errors.Is(err, errArticleTooLarge) {
+		t.Fatalf("err = %v, want the article refused as too large", err)
+	}
+}
+
+// TestArticleStatesFitOneDocument is the arithmetic the bound exists for: the
+// current state plus every revision it keeps is replaced in one write, and that
+// write has a hard ceiling.
+func TestArticleStatesFitOneDocument(t *testing.T) {
+	const documentLimit = 16 * 1024 * 1024
+
+	states := MaxRevisions + 1
+	if states*MaxArticleBytes >= documentLimit {
+		t.Errorf("%d states of %d bytes reach %d, want under the %d byte document limit",
+			states, MaxArticleBytes, states*MaxArticleBytes, documentLimit)
 	}
 }

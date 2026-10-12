@@ -9,6 +9,7 @@ import (
 	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/lasthearth/vsservice/internal/wiki/internal/model"
+	"go.uber.org/zap"
 )
 
 // SubmitSuggestion implements wikiv1.WikiServiceServer.
@@ -105,6 +106,10 @@ func (s *Service) ListSuggestions(
 // The proposal is applied through the article domain, so an approved proposal
 // goes through exactly the same rules — slug uniqueness, validation, history —
 // as an edit an editor makes directly.
+//
+// The decision is reserved in storage before the article is written, because the
+// two collections are not one transaction: reserving first is what makes the
+// proposal apply exactly once, and a failed apply gives the reservation back.
 func (s *Service) ApproveSuggestion(
 	ctx context.Context,
 	req *wikiv1.ApproveSuggestionRequest,
@@ -118,20 +123,36 @@ func (s *Service) ApproveSuggestion(
 	if err != nil {
 		return nil, err
 	}
-	if !suggestion.IsPending() {
-		return nil, model.ErrSuggestionReviewed
+
+	if err := suggestion.Approve(reviewer, time.Now()); err != nil {
+		return nil, err
 	}
 
-	applied, err := s.applySuggestion(ctx, suggestion, reviewer)
+	// SaveSuggestion is pinned to the pending state, so of two editors approving
+	// one proposal only one gets past this line: the loser is told it was
+	// already reviewed and never reaches the wiki.
+	reserved, err := s.repo.SaveSuggestion(ctx, suggestion)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := suggestion.Approve(reviewer, applied.Envelope.Id, time.Now()); err != nil {
+	applied, err := s.applySuggestion(ctx, reserved, reviewer)
+	if err != nil {
+		if reopenErr := s.repo.ReopenSuggestion(ctx, reserved.Id); reopenErr != nil {
+			s.logger.Error("wiki suggestion left approved after a failed apply",
+				zap.String("id", reserved.Id),
+				zap.Error(reopenErr),
+			)
+		}
+
 		return nil, err
 	}
 
-	saved, err := s.repo.SaveSuggestion(ctx, suggestion)
+	if err := s.repo.SetAppliedSuggestionArticle(ctx, reserved.Id, applied.Envelope.Id); err != nil {
+		return nil, err
+	}
+
+	saved, err := s.repo.GetSuggestion(ctx, reserved.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -191,15 +212,20 @@ func (s *Service) applySuggestion(
 			return nil, err
 		}
 
+		// The write is pinned to the version it was read from, so an editor who
+		// saves the same page while a proposal is approved is reported as a
+		// conflict instead of being silently replaced.
+		expected := article.Envelope.Version
+
 		proposal.AdoptDocument(article.Envelope)
 		proposal.Publish()
 		article.SaveRevision("Утверждённое предложение игрока", now)
 
-		if err := article.ApplyEdit(proposal, reviewer, 0, now); err != nil {
+		if err := article.ApplyEdit(proposal, reviewer, expected, now); err != nil {
 			return nil, err
 		}
 
-		return s.repo.Save(ctx, article, 0)
+		return s.repo.Save(ctx, article, expected)
 	}
 
 	// A new page is published by the approval itself; the slug has to be free,

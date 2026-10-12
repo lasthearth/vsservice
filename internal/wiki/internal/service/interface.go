@@ -40,6 +40,11 @@ type Repository interface {
 	CountPendingSuggestions(ctx context.Context, authorName string) (int64, error)
 	// SaveSuggestion stores a reviewed proposal.
 	SaveSuggestion(ctx context.Context, suggestion *model.Suggestion) (*model.Suggestion, error)
+	// SetAppliedSuggestionArticle records the article an approved proposal produced.
+	SetAppliedSuggestionArticle(ctx context.Context, id string, articleId string) error
+	// ReopenSuggestion returns a reserved proposal to the queue after the article
+	// write failed.
+	ReopenSuggestion(ctx context.Context, id string) error
 }
 
 var _ Repository = (*repository.Repository)(nil)

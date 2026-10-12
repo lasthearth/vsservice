@@ -126,28 +126,60 @@ func (s *Suggestion) IsPending() bool {
 	return s.Status == SuggestionPending
 }
 
-// Approve records the decision and the article it produced.
+// Reviewable reports whether the reviewer may decide this proposal now.
 //
-// It refuses to review twice: two editors deciding the same proposal would
-// otherwise apply it twice, and the second application would look like an
-// ordinary edit nobody made.
-func (s *Suggestion) Approve(reviewerName string, appliedArticleId string, now time.Time) error {
+// A proposal that was already decided is refused, and so is one written by the
+// reviewer. Proposing and deciding are two roles: without the second check a
+// holder of the review scope could submit a proposal and approve it, which is a
+// write the review scope does not carry.
+func (s *Suggestion) Reviewable(reviewerName string) error {
 	if !s.IsPending() {
 		return ErrSuggestionReviewed
 	}
 
+	if reviewerName == s.AuthorName {
+		return ErrSelfReview
+	}
+
+	return nil
+}
+
+// Approve records the decision.
+//
+// The article the proposal produced is recorded afterwards by SetAppliedArticle,
+// because the decision is reserved before the article is written: that order is
+// what keeps two editors from applying one proposal twice.
+func (s *Suggestion) Approve(reviewerName string, now time.Time) error {
+	if err := s.Reviewable(reviewerName); err != nil {
+		return err
+	}
+
 	s.Status = SuggestionApproved
 	s.ReviewerName = reviewerName
-	s.AppliedArticleId = appliedArticleId
 	s.ReviewedAt = &now
 
 	return nil
 }
 
+// SetAppliedArticle records the article the approved proposal produced.
+func (s *Suggestion) SetAppliedArticle(articleId string) {
+	s.AppliedArticleId = articleId
+}
+
+// Reopen returns a reserved proposal to the queue.
+//
+// The service calls it when writing the article failed, so a proposal is never
+// left approved with nothing behind it and can be decided again.
+func (s *Suggestion) Reopen() {
+	s.Status = SuggestionPending
+	s.ReviewerName = ""
+	s.ReviewedAt = nil
+}
+
 // Reject records the decision and the reason the author will read.
 func (s *Suggestion) Reject(reviewerName string, reason string, now time.Time) error {
-	if !s.IsPending() {
-		return ErrSuggestionReviewed
+	if err := s.Reviewable(reviewerName); err != nil {
+		return err
 	}
 
 	s.Status = SuggestionRejected

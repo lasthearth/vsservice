@@ -16,6 +16,7 @@ import (
 // goverter:converter
 // goverter:output:file repomapper/mapper.go
 // goverter:ignoreUnexported
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTime
 type Mapper interface {
 	// FromArticle converts a stored document into a domain article.
 	// goverter:ignore Envelope
@@ -25,7 +26,6 @@ type Mapper interface {
 	ToArticle(model.Article) dto.Article
 
 	// FromRevision converts a stored revision into a domain revision.
-	// goverter:ignore Id
 	FromRevision(dto.Revision) model.Revision
 	// ToRevision converts a domain revision into its stored shape.
 	ToRevision(model.Revision) dto.Revision
