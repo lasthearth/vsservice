@@ -1471,10 +1471,8 @@ paths:
     get:
       tags:
         - HungerGamesService
-      summary: Returns the current season leaderboard sorted by ELO descending.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: ListLeaderboard
+      description: "Returns the current season leaderboard sorted by ELO descending.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: HungerGamesService_ListLeaderboard
       parameters:
         - name: limit
@@ -1496,15 +1494,8 @@ paths:
     post:
       tags:
         - HungerGamesService
-      summary: Records a match result and recalculates ELO for all participants.
-      description: |-
-        Requires an active season.
-
-         Errors:
-           - INVALID_ARGUMENT (400): fewer than 2 players, duplicate places, or no active season
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): database failure
+      summary: RecordMatch
+      description: "Records a match result and recalculates ELO for all participants.\r\n\r\n Requires an active season.\r\n\r\n Errors:\r\n   - INVALID_ARGUMENT (400): fewer than 2 players, duplicate places, or no active season\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): database failure"
       operationId: HungerGamesService_RecordMatch
       requestBody:
         content:
@@ -1523,13 +1514,8 @@ paths:
     post:
       tags:
         - HungerGamesService
-      summary: Creates a new season. Fails if a season is already active.
-      description: |-
-        Errors:
-           - ALREADY_EXISTS (409): active season already exists
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): database failure
+      summary: CreateSeason
+      description: "Creates a new season. Fails if a season is already active.\r\n\r\n Errors:\r\n   - ALREADY_EXISTS (409): active season already exists\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): database failure"
       operationId: HungerGamesService_CreateSeason
       requestBody:
         content:
@@ -1548,15 +1534,8 @@ paths:
     post:
       tags:
         - HungerGamesService
-      summary: Distributes season rewards to top-N players and closes the current season.
-      description: |-
-        Archives the leaderboard. Does NOT create a new season.
-
-         Errors:
-           - NOT_FOUND (404): no active season
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): database failure
+      summary: ResetSeason
+      description: "Distributes season rewards to top-N players and closes the current season.\r\n\r\n Archives the leaderboard. Does NOT create a new season.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): no active season\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): database failure"
       operationId: HungerGamesService_ResetSeason
       requestBody:
         content:
@@ -1575,10 +1554,8 @@ paths:
     get:
       tags:
         - HungerGamesService
-      summary: Returns a paginated list of all seasons, newest first.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: ListSeasons
+      description: "Returns a paginated list of all seasons, newest first.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: HungerGamesService_ListSeasons
       parameters:
         - name: next
@@ -1607,11 +1584,8 @@ paths:
     get:
       tags:
         - HungerGamesService
-      summary: Returns the top 10 archived results for a specific past season.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): season not found
-           - INTERNAL (500): database failure
+      summary: GetSeasonLeaderboard
+      description: "Returns the top 10 archived results for a specific past season.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): season not found\r\n   - INTERNAL (500): database failure"
       operationId: HungerGamesService_GetSeasonLeaderboard
       parameters:
         - name: season_id
@@ -1631,14 +1605,8 @@ paths:
     get:
       tags:
         - HungerGamesService
-      summary: Returns a player's stats for a specific season.
-      description: |-
-        For an active season returns current live stats (rank = 0).
-         For a completed season returns the archived result including rank and reward.
-
-         Errors:
-           - NOT_FOUND (404): season or player stats not found
-           - INTERNAL (500): database failure
+      summary: GetPlayerStats
+      description: "Returns a player's stats for a specific season.\r\n\r\n For an active season returns current live stats (rank = 0).\r\n For a completed season returns the archived result including rank and reward.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): season or player stats not found\r\n   - INTERNAL (500): database failure"
       operationId: HungerGamesService_GetPlayerStats
       parameters:
         - name: season_id
@@ -1664,10 +1632,8 @@ paths:
     get:
       tags:
         - ImperialPointService
-      summary: List all imperial points.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: ListPoints
+      description: "List all imperial points.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: ImperialPointService_ListPoints
       responses:
         "200":
@@ -1679,13 +1645,8 @@ paths:
     post:
       tags:
         - ImperialPointService
-      summary: Create a new imperial point. Requires imperialpoint:write scope.
-      description: |-
-        Errors:
-           - INVALID_ARGUMENT (400): missing name
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): requires imperialpoint:write scope
-           - INTERNAL (500): database failure
+      summary: CreatePoint
+      description: "Create a new imperial point. Requires imperialpoint:write scope.\r\n\r\n Errors:\r\n   - INVALID_ARGUMENT (400): missing name\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): requires imperialpoint:write scope\r\n   - INTERNAL (500): database failure"
       operationId: ImperialPointService_CreatePoint
       requestBody:
         content:
@@ -1704,11 +1665,8 @@ paths:
     get:
       tags:
         - ImperialPointService
-      summary: Get an imperial point by ID.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): point not found
-           - INTERNAL (500): database failure
+      summary: GetPoint
+      description: "Get an imperial point by ID.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): point not found\r\n   - INTERNAL (500): database failure"
       operationId: ImperialPointService_GetPoint
       parameters:
         - name: id
@@ -1727,15 +1685,8 @@ paths:
     patch:
       tags:
         - ImperialPointService
-      summary: |-
-        Update an imperial point config (name, description, bi_rate, tree_id).
-         Requires imperialpoint:write scope.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): point not found
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): requires imperialpoint:write scope
-           - INTERNAL (500): database failure
+      summary: UpdatePoint
+      description: "Update an imperial point config (name, description, bi_rate, tree_id).\r\n Requires imperialpoint:write scope.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): point not found\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): requires imperialpoint:write scope\r\n   - INTERNAL (500): database failure"
       operationId: ImperialPointService_UpdatePoint
       parameters:
         - name: id
@@ -1779,15 +1730,8 @@ paths:
     post:
       tags:
         - ImperialPointService
-      summary: |-
-        Release control of an imperial point. Rolls back the last purchased node.
-         Requires imperialpoint:write scope.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): point not found
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): requires imperialpoint:write scope
-           - INTERNAL (500): database failure
+      summary: ReleaseControl
+      description: "Release control of an imperial point. Rolls back the last purchased node.\r\n Requires imperialpoint:write scope.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): point not found\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): requires imperialpoint:write scope\r\n   - INTERNAL (500): database failure"
       operationId: ImperialPointService_ReleaseControl
       parameters:
         - name: point_id
@@ -1821,18 +1765,8 @@ paths:
     post:
       tags:
         - ImperialPointService
-      summary: |-
-        Set which settlement controls an imperial point.
-         If the point was previously controlled by the opposite side, the last
-         purchased node in the point's tree is rolled back (no БИ refund).
-         Requires imperialpoint:write scope.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): point or settlement not found
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): requires imperialpoint:write scope
-           - FAILED_PRECONDITION (412): side already controls 2 points
-           - INTERNAL (500): database failure
+      summary: SetControl
+      description: "Set which settlement controls an imperial point.\r\n If the point was previously controlled by the opposite side, the last\r\n purchased node in the point's tree is rolled back (no БИ refund).\r\n Requires imperialpoint:write scope.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): point or settlement not found\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): requires imperialpoint:write scope\r\n   - FAILED_PRECONDITION (412): side already controls 2 points\r\n   - INTERNAL (500): database failure"
       operationId: ImperialPointService_SetControl
       parameters:
         - name: point_id
@@ -2027,10 +1961,8 @@ paths:
     get:
       tags:
         - KitService
-      summary: Get all available kits that can be assigned to users.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: GetAvailableKits
+      description: "Get all available kits that can be assigned to users.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: KitService_GetAvailableKits
       responses:
         "200":
@@ -2043,13 +1975,8 @@ paths:
     post:
       tags:
         - KitService
-      summary: Assign a specific kit to a user. Requires admin privileges.
-      description: |-
-        Errors:
-           - INVALID_ARGUMENT (400): missing required fields or invalid timestamps
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): database failure
+      summary: AssignKitToUser
+      description: "Assign a specific kit to a user. Requires admin privileges.\r\n\r\n Errors:\r\n   - INVALID_ARGUMENT (400): missing required fields or invalid timestamps\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): database failure"
       operationId: KitService_AssignKitToUser
       parameters:
         - name: kit_name
@@ -2088,13 +2015,8 @@ paths:
     get:
       tags:
         - LeaderboardService
-      summary: List leaderboard entries sorted by the specified filter.
-      description: |-
-        Defaults to 25 entries if limit is not specified.
-
-         Errors:
-           - INVALID_ARGUMENT (400): unknown filter value
-           - INTERNAL (500): database failure
+      summary: ListEntries
+      description: "List leaderboard entries sorted by the specified filter.\r\n\r\n Defaults to 25 entries if limit is not specified.\r\n\r\n Errors:\r\n   - INVALID_ARGUMENT (400): unknown filter value\r\n   - INTERNAL (500): database failure"
       operationId: LeaderboardService_ListEntries
       parameters:
         - name: filter
@@ -2107,16 +2029,12 @@ paths:
             $ref: '#/components/schemas/leaderboard.v1.LeaderboardRequest.LeaderboardFilter'
         - name: limit
           in: query
-          description: |-
-            The maximum number of entries to return.
-             If unspecified, 25 entry will be returned.
+          description: "The maximum number of entries to return.\r\n If unspecified, 25 entry will be returned."
           schema:
             type: integer
             title: limit
             format: int32
-            description: |-
-              The maximum number of entries to return.
-               If unspecified, 25 entry will be returned.
+            description: "The maximum number of entries to return.\r\n If unspecified, 25 entry will be returned."
       responses:
         "200":
           description: Success
@@ -2593,15 +2511,8 @@ paths:
     post:
       tags:
         - MediaService
-      summary: Returns N presigned POST targets for uploading images.
-      description: |-
-        The required scope depends on the purpose (see the server-side per-purpose config).
-
-         Errors:
-           - INVALID_ARGUMENT (400): unknown purpose, count out of [1,20], or unsupported content_type
-           - UNAUTHENTICATED (401)
-           - PERMISSION_DENIED (403)
-           - INTERNAL (500)
+      summary: CreateUploadUrls
+      description: "Returns N presigned POST targets for uploading images.\r\n\r\n The required scope depends on the purpose (see the server-side per-purpose config).\r\n\r\n Errors:\r\n   - INVALID_ARGUMENT (400): unknown purpose, count out of [1,20], or unsupported content_type\r\n   - UNAUTHENTICATED (401)\r\n   - PERMISSION_DENIED (403)\r\n   - INTERNAL (500)"
       operationId: MediaService_CreateUploadUrls
       requestBody:
         content:
@@ -2620,47 +2531,25 @@ paths:
     get:
       tags:
         - NewsService
-      summary: List news with pagination.
-      description: |-
-        Default page size is 15, maximum is 50.
-
-         Errors:
-           - INTERNAL (500): database failure
+      summary: ListNews
+      description: "List news with pagination.\r\n\r\n Default page size is 15, maximum is 50.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: NewsService_ListNews
       parameters:
         - name: page_size
           in: query
-          description: |-
-            The maximum number of news to return. The service may return fewer than
-             this value.
-             If unspecified, at most 15 news will be returned.
-             The maximum value is 50; values above 50 will be coerced to 50.
+          description: "The maximum number of news to return. The service may return fewer than\r\n this value.\r\n If unspecified, at most 15 news will be returned.\r\n The maximum value is 50; values above 50 will be coerced to 50."
           schema:
             type: integer
             title: page_size
             format: int32
-            description: |-
-              The maximum number of news to return. The service may return fewer than
-               this value.
-               If unspecified, at most 15 news will be returned.
-               The maximum value is 50; values above 50 will be coerced to 50.
+            description: "The maximum number of news to return. The service may return fewer than\r\n this value.\r\n If unspecified, at most 15 news will be returned.\r\n The maximum value is 50; values above 50 will be coerced to 50."
         - name: page_token
           in: query
-          description: |-
-            A page token, received from a previous `ListBooks` call.
-             Provide this to retrieve the subsequent page.
-
-             When paginating, all other parameters provided to `ListBooks` must match
-             the call that provided the page token.
+          description: "A page token, received from a previous `ListBooks` call.\r\n Provide this to retrieve the subsequent page.\r\n\r\n When paginating, all other parameters provided to `ListBooks` must match\r\n the call that provided the page token."
           schema:
             type: string
             title: page_token
-            description: |-
-              A page token, received from a previous `ListBooks` call.
-               Provide this to retrieve the subsequent page.
-
-               When paginating, all other parameters provided to `ListBooks` must match
-               the call that provided the page token.
+            description: "A page token, received from a previous `ListBooks` call.\r\n Provide this to retrieve the subsequent page.\r\n\r\n When paginating, all other parameters provided to `ListBooks` must match\r\n the call that provided the page token."
       responses:
         "200":
           description: Success
@@ -2671,14 +2560,8 @@ paths:
     post:
       tags:
         - NewsService
-      summary: Create a news entry. Requires admin privileges.
-      description: |-
-        Preview image is stored as WebP. Broadcasts a notification to all users.
-
-         Errors:
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): storage or database failure
+      summary: CreateNews
+      description: "Create a news entry. Requires admin privileges.\r\n\r\n Preview image is stored as WebP. Broadcasts a notification to all users.\r\n\r\n Errors:\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): storage or database failure"
       operationId: NewsService_CreateNews
       requestBody:
         content:
@@ -2697,11 +2580,8 @@ paths:
     get:
       tags:
         - NewsService
-      summary: Get a specific news entry by ID.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): news not found
-           - INTERNAL (500): database failure
+      summary: GetNews
+      description: "Get a specific news entry by ID.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): news not found\r\n   - INTERNAL (500): database failure"
       operationId: NewsService_GetNews
       parameters:
         - name: id
@@ -2722,13 +2602,8 @@ paths:
     delete:
       tags:
         - NewsService
-      summary: Delete a news entry by ID. Requires admin privileges.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): news not found
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): database failure
+      summary: DeleteNews
+      description: "Delete a news entry by ID. Requires admin privileges.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): news not found\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): database failure"
       operationId: NewsService_DeleteNews
       parameters:
         - name: id
@@ -2750,14 +2625,8 @@ paths:
     post:
       tags:
         - NewsService
-      summary: |-
-        Mark a news item as viewed by the authenticated user. Increments view count once per user.
-         Returns the updated view count.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): news not found
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database failure
+      summary: MarkNewsViewed
+      description: "Mark a news item as viewed by the authenticated user. Increments view count once per user.\r\n Returns the updated view count.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): news not found\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - INTERNAL (500): database failure"
       operationId: NewsService_MarkNewsViewed
       parameters:
         - name: id
@@ -2779,31 +2648,18 @@ paths:
     get:
       tags:
         - NotificationService
-      summary: Lists notifications for the authenticated user with pagination.
-      description: |-
-        Default page size is 15, maximum is 15.
-         Supports order_by: "created_at" or "state" with optional " asc"/" desc" suffix.
-
-         Errors:
-           - NOT_FOUND (404): no notifications found for user
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database failure
+      summary: ListNotifications
+      description: "Lists notifications for the authenticated user with pagination.\r\n\r\n Default page size is 15, maximum is 15.\r\n Supports order_by: \"created_at\" or \"state\" with optional \" asc\"/\" desc\" suffix.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): no notifications found for user\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - INTERNAL (500): database failure"
       operationId: NotificationService_ListNotifications
       parameters:
         - name: page_size
           in: query
-          description: |-
-            The maximum number of notifications to return. The service may return fewer
-             than this value. If unspecified, at most 15 notifications will be returned.
-             The maximum value is 15; values above 15 will be coerced to 15.
+          description: "The maximum number of notifications to return. The service may return fewer\r\n than this value. If unspecified, at most 15 notifications will be returned.\r\n The maximum value is 15; values above 15 will be coerced to 15."
           schema:
             type: integer
             title: page_size
             format: int32
-            description: |-
-              The maximum number of notifications to return. The service may return fewer
-               than this value. If unspecified, at most 15 notifications will be returned.
-               The maximum value is 15; values above 15 will be coerced to 15.
+            description: "The maximum number of notifications to return. The service may return fewer\r\n than this value. If unspecified, at most 15 notifications will be returned.\r\n The maximum value is 15; values above 15 will be coerced to 15."
         - name: page_token
           in: query
           description: A token identifying a page of results the server should return.
@@ -2813,15 +2669,11 @@ paths:
             description: A token identifying a page of results the server should return.
         - name: order_by
           in: query
-          description: |-
-            The field to sort by, followed by direction (e.g., "created_at desc" or "state asc").
-             Supported fields: "created_at", "state". If unspecified, defaults to "created_at desc".
+          description: "The field to sort by, followed by direction (e.g., \"created_at desc\" or \"state asc\").\r\n Supported fields: \"created_at\", \"state\". If unspecified, defaults to \"created_at desc\"."
           schema:
             type: string
             title: order_by
-            description: |-
-              The field to sort by, followed by direction (e.g., "created_at desc" or "state asc").
-               Supported fields: "created_at", "state". If unspecified, defaults to "created_at desc".
+            description: "The field to sort by, followed by direction (e.g., \"created_at desc\" or \"state asc\").\r\n Supported fields: \"created_at\", \"state\". If unspecified, defaults to \"created_at desc\"."
       responses:
         "200":
           description: Success
@@ -2833,26 +2685,18 @@ paths:
     post:
       tags:
         - NotificationService
-      summary: Mark a notification as read.
-      description: |-
-        Errors:
-           - INVALID_ARGUMENT (400): invalid notification ID format
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database failure
+      summary: MarkAsRead
+      description: "Mark a notification as read.\r\n\r\n Errors:\r\n   - INVALID_ARGUMENT (400): invalid notification ID format\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - INTERNAL (500): database failure"
       operationId: NotificationService_MarkAsRead
       parameters:
         - name: id
           in: path
-          description: |-
-            The identifier of the notification to mark as read.
-             Required.
+          description: "The identifier of the notification to mark as read.\r\n Required."
           required: true
           schema:
             type: string
             title: id
-            description: |-
-              The identifier of the notification to mark as read.
-               Required.
+            description: "The identifier of the notification to mark as read.\r\n Required."
       responses:
         "200":
           description: Success
@@ -2864,10 +2708,8 @@ paths:
     get:
       tags:
         - ProgressionService
-      summary: Get a point's progression for a specific side (east/west).
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: GetPointProgress
+      description: "Get a point's progression for a specific side (east/west).\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_GetPointProgress
       parameters:
         - name: point_id
@@ -2899,17 +2741,8 @@ paths:
     post:
       tags:
         - ProgressionService
-      summary: |-
-        Purchase a node in a key point's talent tree.
-         Caller must be the leader of the settlement that controls the point.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): point, tree, or node not found
-           - INVALID_ARGUMENT (400): node already purchased or parent not purchased
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): caller's settlement does not control this point
-           - FAILED_PRECONDITION (412): insufficient imperial favor
-           - INTERNAL (500): database failure
+      summary: PurchasePointNode
+      description: "Purchase a node in a key point's talent tree.\r\n Caller must be the leader of the settlement that controls the point.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): point, tree, or node not found\r\n   - INVALID_ARGUMENT (400): node already purchased or parent not purchased\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): caller's settlement does not control this point\r\n   - FAILED_PRECONDITION (412): insufficient imperial favor\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_PurchasePointNode
       parameters:
         - name: point_id
@@ -2973,10 +2806,8 @@ paths:
     get:
       tags:
         - ProgressionService
-      summary: List all presets.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: ListPresets
+      description: "List all presets.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_ListPresets
       responses:
         "200":
@@ -2988,15 +2819,8 @@ paths:
     post:
       tags:
         - ProgressionService
-      summary: |-
-        Create a settlement preset (a named collection of tree IDs available to settlements).
-         Requires progression:write scope.
-      description: |-
-        Errors:
-           - INVALID_ARGUMENT (400): missing required fields
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): requires progression:write scope
-           - INTERNAL (500): database failure
+      summary: CreatePreset
+      description: "Create a settlement preset (a named collection of tree IDs available to settlements).\r\n Requires progression:write scope.\r\n\r\n Errors:\r\n   - INVALID_ARGUMENT (400): missing required fields\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): requires progression:write scope\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_CreatePreset
       requestBody:
         content:
@@ -3015,11 +2839,8 @@ paths:
     get:
       tags:
         - ProgressionService
-      summary: Get a preset by ID.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): preset not found
-           - INTERNAL (500): database failure
+      summary: GetPreset
+      description: "Get a preset by ID.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): preset not found\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_GetPreset
       parameters:
         - name: id
@@ -3038,13 +2859,8 @@ paths:
     patch:
       tags:
         - ProgressionService
-      summary: Update a settlement preset. Requires progression:write scope.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): preset not found
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): requires progression:write scope
-           - INTERNAL (500): database failure
+      summary: UpdatePreset
+      description: "Update a settlement preset. Requires progression:write scope.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): preset not found\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): requires progression:write scope\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_UpdatePreset
       parameters:
         - name: id
@@ -3081,10 +2897,8 @@ paths:
     get:
       tags:
         - ProgressionService
-      summary: Get a settlement's progress on a specific tree.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: GetSettlementProgress
+      description: "Get a settlement's progress on a specific tree.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_GetSettlementProgress
       parameters:
         - name: settlement_id
@@ -3110,17 +2924,8 @@ paths:
     post:
       tags:
         - ProgressionService
-      summary: |-
-        Purchase a node in a settlement's talent tree.
-         Caller must be the leader of settlement_id.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): tree or node not found
-           - INVALID_ARGUMENT (400): node already purchased or parent not purchased
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): caller is not the leader of the settlement
-           - FAILED_PRECONDITION (412): insufficient imperial favor
-           - INTERNAL (500): database failure
+      summary: PurchaseSettlementNode
+      description: "Purchase a node in a settlement's talent tree.\r\n Caller must be the leader of settlement_id.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): tree or node not found\r\n   - INVALID_ARGUMENT (400): node already purchased or parent not purchased\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): caller is not the leader of the settlement\r\n   - FAILED_PRECONDITION (412): insufficient imperial favor\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_PurchaseSettlementNode
       parameters:
         - name: settlement_id
@@ -3174,10 +2979,8 @@ paths:
     get:
       tags:
         - ProgressionService
-      summary: List all talent trees.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: ListTrees
+      description: "List all talent trees.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_ListTrees
       responses:
         "200":
@@ -3189,13 +2992,8 @@ paths:
     post:
       tags:
         - ProgressionService
-      summary: Create a new talent tree template. Requires progression:write scope.
-      description: |-
-        Errors:
-           - INVALID_ARGUMENT (400): missing required fields
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): requires progression:write scope
-           - INTERNAL (500): database failure
+      summary: CreateTree
+      description: "Create a new talent tree template. Requires progression:write scope.\r\n\r\n Errors:\r\n   - INVALID_ARGUMENT (400): missing required fields\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): requires progression:write scope\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_CreateTree
       requestBody:
         content:
@@ -3214,12 +3012,8 @@ paths:
     get:
       tags:
         - ProgressionService
-      summary: Get a talent tree by ID.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): tree not found
-           - INVALID_ARGUMENT (400): invalid id format
-           - INTERNAL (500): database failure
+      summary: GetTree
+      description: "Get a talent tree by ID.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): tree not found\r\n   - INVALID_ARGUMENT (400): invalid id format\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_GetTree
       parameters:
         - name: id
@@ -3238,13 +3032,8 @@ paths:
     patch:
       tags:
         - ProgressionService
-      summary: Update an existing talent tree template. Requires progression:write scope.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): tree not found
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): requires progression:write scope
-           - INTERNAL (500): database failure
+      summary: UpdateTree
+      description: "Update an existing talent tree template. Requires progression:write scope.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): tree not found\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): requires progression:write scope\r\n   - INTERNAL (500): database failure"
       operationId: ProgressionService_UpdateTree
       parameters:
         - name: id
@@ -3371,11 +3160,8 @@ paths:
     get:
       tags:
         - ReferralService
-      summary: Get the current player's referral code, generating one on first call.
-      description: |-
-        Errors:
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database failure
+      summary: GetMyReferralCode
+      description: "Get the current player's referral code, generating one on first call.\r\n\r\n Errors:\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - INTERNAL (500): database failure"
       operationId: ReferralService_GetMyReferralCode
       responses:
         "200":
@@ -3388,11 +3174,8 @@ paths:
     get:
       tags:
         - ReferralService
-      summary: Get referral stats for the current player (how many people they referred, coins earned).
-      description: |-
-        Errors:
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database failure
+      summary: GetMyReferralStats
+      description: "Get referral stats for the current player (how many people they referred, coins earned).\r\n\r\n Errors:\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - INTERNAL (500): database failure"
       operationId: ReferralService_GetMyReferralStats
       responses:
         "200":
@@ -3405,15 +3188,8 @@ paths:
     post:
       tags:
         - ReferralService
-      summary: Apply a referral code to the current player.
-      description: |-
-        Called once after first login; the frontend extracts the code from a ?ref= URL parameter.
-
-         Errors:
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - NOT_FOUND (404): code does not exist
-           - FAILED_PRECONDITION (409): code already used by this player, or attempting to use own code
-           - INTERNAL (500): database failure
+      summary: UseReferralCode
+      description: "Apply a referral code to the current player.\r\n\r\n Called once after first login; the frontend extracts the code from a ?ref= URL parameter.\r\n\r\n Errors:\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - NOT_FOUND (404): code does not exist\r\n   - FAILED_PRECONDITION (409): code already used by this player, or attempting to use own code\r\n   - INTERNAL (500): database failure"
       operationId: ReferralService_UseReferralCode
       requestBody:
         content:
@@ -3432,13 +3208,8 @@ paths:
     post:
       tags:
         - RuleService
-      summary: Creates a new rule question. Requires admin privileges.
-      description: |-
-        Errors:
-           - INVALID_ARGUMENT (400): question is empty
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): database failure
+      summary: CreateQuestion
+      description: "Creates a new rule question. Requires admin privileges.\r\n\r\n Errors:\r\n   - INVALID_ARGUMENT (400): question is empty\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): database failure"
       operationId: RuleService_CreateQuestion
       requestBody:
         content:
@@ -3457,13 +3228,8 @@ paths:
     delete:
       tags:
         - RuleService
-      summary: Deletes a rule question by ID. Requires admin privileges.
-      description: |-
-        Errors:
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - NOT_FOUND (404): question not found
-           - INTERNAL (500): database failure
+      summary: DeleteQuestion
+      description: "Deletes a rule question by ID. Requires admin privileges.\r\n\r\n Errors:\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - NOT_FOUND (404): question not found\r\n   - INTERNAL (500): database failure"
       operationId: RuleService_DeleteQuestion
       parameters:
         - name: id
@@ -3483,12 +3249,8 @@ paths:
     get:
       tags:
         - RuleService
-      summary: Returns random questions about server rules.
-      description: |-
-        Defaults to 5 questions if count is not specified.
-
-         Errors:
-           - INTERNAL (500): database failure
+      summary: GetRandomQuestions
+      description: "Returns random questions about server rules.\r\n\r\n Defaults to 5 questions if count is not specified.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: RuleService_GetRandomQuestions
       parameters:
         - name: count
@@ -3510,12 +3272,8 @@ paths:
     get:
       tags:
         - RuleService
-      summary: Returns all rule questions. Requires admin privileges.
-      description: |-
-        Errors:
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): database failure
+      summary: ListQuestions
+      description: "Returns all rule questions. Requires admin privileges.\r\n\r\n Errors:\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): database failure"
       operationId: RuleService_ListQuestions
       responses:
         "200":
@@ -3528,10 +3286,8 @@ paths:
     get:
       tags:
         - ServerInfoService
-      summary: Get the current and maximum player online counts.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: TotalOnline
+      description: "Get the current and maximum player online counts.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: ServerInfoService_TotalOnline
       responses:
         "200":
@@ -3544,10 +3300,8 @@ paths:
     get:
       tags:
         - ServerInfoService
-      summary: Get the current in-game world time.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: WorldTime
+      description: "Get the current in-game world time.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: ServerInfoService_WorldTime
       responses:
         "200":
@@ -3677,10 +3431,8 @@ paths:
     get:
       tags:
         - SettlementTagService
-      summary: List all tags.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: GetTags
+      description: "List all tags.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: SettlementTagService_GetTags
       responses:
         "200":
@@ -3692,13 +3444,8 @@ paths:
     post:
       tags:
         - SettlementTagService
-      summary: Create a new tag. Requires tags:create privilege.
-      description: |-
-        Errors:
-           - INVALID_ARGUMENT (400): invalid tag fields (name, description, or color)
-           - PERMISSION_DENIED (403): requires tags:create privilege
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database failure
+      summary: CreateTag
+      description: "Create a new tag. Requires tags:create privilege.\r\n\r\n Errors:\r\n   - INVALID_ARGUMENT (400): invalid tag fields (name, description, or color)\r\n   - PERMISSION_DENIED (403): requires tags:create privilege\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - INTERNAL (500): database failure"
       operationId: SettlementTagService_CreateTag
       requestBody:
         content:
@@ -3717,12 +3464,8 @@ paths:
     get:
       tags:
         - SettlementTagService
-      summary: Get a tag by ID.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): tag not found
-           - INVALID_ARGUMENT (400): invalid tag_id format
-           - INTERNAL (500): database failure
+      summary: GetTag
+      description: "Get a tag by ID.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): tag not found\r\n   - INVALID_ARGUMENT (400): invalid tag_id format\r\n   - INTERNAL (500): database failure"
       operationId: SettlementTagService_GetTag
       parameters:
         - name: tag_id
@@ -3741,14 +3484,8 @@ paths:
     delete:
       tags:
         - SettlementTagService
-      summary: Soft-delete a tag by ID. Requires tags:delete privilege.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): tag not found
-           - INVALID_ARGUMENT (400): invalid tag_id format
-           - PERMISSION_DENIED (403): requires tags:delete privilege
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database failure
+      summary: DeleteTag
+      description: "Soft-delete a tag by ID. Requires tags:delete privilege.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): tag not found\r\n   - INVALID_ARGUMENT (400): invalid tag_id format\r\n   - PERMISSION_DENIED (403): requires tags:delete privilege\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - INTERNAL (500): database failure"
       operationId: SettlementTagService_DeleteTag
       parameters:
         - name: tag_id
@@ -3768,10 +3505,8 @@ paths:
     post:
       tags:
         - SettlementTagService
-      summary: Get multiple tags by their IDs in a single batch request.
-      description: |-
-        Errors:
-           - INTERNAL (500): database failure
+      summary: GetTagsByIds
+      description: "Get multiple tags by their IDs in a single batch request.\r\n\r\n Errors:\r\n   - INTERNAL (500): database failure"
       operationId: SettlementTagService_GetTagsByIds
       requestBody:
         content:
@@ -4865,11 +4600,8 @@ paths:
     get:
       tags:
         - VerificationService
-      summary: Get verification status for a user by in-game name.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): user with given game name not found
-           - INTERNAL (500): database failure
+      summary: VerifyStatusByName
+      description: "Get verification status for a user by in-game name.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): user with given game name not found\r\n   - INTERNAL (500): database failure"
       operationId: VerificationService_VerifyStatusByName
       parameters:
         - name: user_game_name
@@ -4984,12 +4716,8 @@ paths:
     get:
       tags:
         - KitService
-      summary: List all kit assignments for a specific user. Caller must match user_id.
-      description: |-
-        Errors:
-           - PERMISSION_DENIED (403): cannot list assignments for another user
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database failure
+      summary: ListUserAssignments
+      description: "List all kit assignments for a specific user. Caller must match user_id.\r\n\r\n Errors:\r\n   - PERMISSION_DENIED (403): cannot list assignments for another user\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - INTERNAL (500): database failure"
       operationId: KitService_ListUserAssignments
       parameters:
         - name: user_id
@@ -5154,11 +4882,8 @@ paths:
     get:
       tags:
         - VerificationService
-      summary: Get verification status for a user by ID.
-      description: |-
-        Errors:
-           - NOT_FOUND (404): verification request not found
-           - INTERNAL (500): database failure
+      summary: VerificationStatus
+      description: "Get verification status for a user by ID.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): verification request not found\r\n   - INTERNAL (500): database failure"
       operationId: VerificationService_VerificationStatus
       parameters:
         - name: user_id
@@ -5210,15 +4935,8 @@ paths:
     post:
       tags:
         - VerificationService
-      summary: Submit a verification request for the authenticated user.
-      description: |-
-        If a previous request exists and is re-submittable, it will be updated.
-
-         Errors:
-           - FAILED_PRECONDITION (400): verification is pending or already approved/verified
-           - ALREADY_EXISTS (409): user is already verified
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database or SSO failure
+      summary: Submit
+      description: "Submit a verification request for the authenticated user.\r\n\r\n If a previous request exists and is re-submittable, it will be updated.\r\n\r\n Errors:\r\n   - FAILED_PRECONDITION (400): verification is pending or already approved/verified\r\n   - ALREADY_EXISTS (409): user is already verified\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - INTERNAL (500): database or SSO failure"
       operationId: VerificationService_Submit
       requestBody:
         content:
@@ -5237,14 +4955,8 @@ paths:
     get:
       tags:
         - VerificationService
-      summary: Get verification details for the authenticated user.
-      description: |-
-        Possible statuses: pending, approved, rejected, verified.
-
-         Errors:
-           - NOT_FOUND (404): no verification request found for user
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database failure
+      summary: Details
+      description: "Get verification details for the authenticated user.\r\n\r\n Possible statuses: pending, approved, rejected, verified.\r\n\r\n Errors:\r\n   - NOT_FOUND (404): no verification request found for user\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - INTERNAL (500): database failure"
       operationId: VerificationService_Details
       responses:
         "200":
@@ -5257,17 +4969,8 @@ paths:
     post:
       tags:
         - VerificationService
-      summary: Approve a user's verification request. Requires admin privileges.
-      description: |-
-        Grants the "player" role to the user in SSO.
-
-         Errors:
-           - FAILED_PRECONDITION (400): verification is not in pending state
-           - NOT_FOUND (404): verification request not found
-           - ALREADY_EXISTS (409): user is already verified
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): database or SSO failure
+      summary: Approve
+      description: "Approve a user's verification request. Requires admin privileges.\r\n\r\n Grants the \"player\" role to the user in SSO.\r\n\r\n Errors:\r\n   - FAILED_PRECONDITION (400): verification is not in pending state\r\n   - NOT_FOUND (404): verification request not found\r\n   - ALREADY_EXISTS (409): user is already verified\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): database or SSO failure"
       operationId: VerificationService_Approve
       parameters:
         - name: user_id
@@ -5287,14 +4990,8 @@ paths:
     post:
       tags:
         - VerificationService
-      summary: Reject a user's verification request. Requires admin privileges.
-      description: |-
-        Errors:
-           - FAILED_PRECONDITION (400): verification is not in pending state
-           - NOT_FOUND (404): verification request not found
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): database failure
+      summary: Reject
+      description: "Reject a user's verification request. Requires admin privileges.\r\n\r\n Errors:\r\n   - FAILED_PRECONDITION (400): verification is not in pending state\r\n   - NOT_FOUND (404): verification request not found\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): database failure"
       operationId: VerificationService_Reject
       parameters:
         - name: user_id
@@ -5320,12 +5017,8 @@ paths:
     get:
       tags:
         - VerificationService
-      summary: List all pending verification requests. Requires admin privileges.
-      description: |-
-        Errors:
-           - UNAUTHENTICATED (401): missing or invalid auth token
-           - PERMISSION_DENIED (403): insufficient privileges
-           - INTERNAL (500): database failure
+      summary: List
+      description: "List all pending verification requests. Requires admin privileges.\r\n\r\n Errors:\r\n   - UNAUTHENTICATED (401): missing or invalid auth token\r\n   - PERMISSION_DENIED (403): insufficient privileges\r\n   - INTERNAL (500): database failure"
       operationId: VerificationService_List
       responses:
         "200":
@@ -5334,6 +5027,469 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/verification.v1.ListResponse'
+  /v1/wiki/articles:
+    get:
+      tags:
+        - WikiService
+      summary: |-
+        List articles with pagination. Published articles are public; drafts appear
+         only for an authorized editor. Optional filters narrow the list.
+      description: |-
+        Default page size is 20, maximum is 50.
+
+         Errors:
+           - INVALID_ARGUMENT (400): unknown status or section filter
+           - INTERNAL (500): database failure
+      operationId: WikiService_ListArticles
+      parameters:
+        - name: page_size
+          in: query
+          description: |-
+            The maximum number of articles to return. The service may return fewer than
+             this value. If unspecified, at most 20 articles will be returned.
+             The maximum value is 50; values above 50 will be coerced to 50.
+          schema:
+            type: integer
+            title: page_size
+            format: int32
+            description: |-
+              The maximum number of articles to return. The service may return fewer than
+               this value. If unspecified, at most 20 articles will be returned.
+               The maximum value is 50; values above 50 will be coerced to 50.
+        - name: page_token
+          in: query
+          description: |-
+            A page token, received from a previous ListArticles call.
+             Provide this to retrieve the subsequent page.
+          schema:
+            type: string
+            title: page_token
+            description: |-
+              A page token, received from a previous ListArticles call.
+               Provide this to retrieve the subsequent page.
+        - name: section
+          in: query
+          description: Filter by section id; empty returns every section.
+          schema:
+            type: string
+            title: section
+            description: Filter by section id; empty returns every section.
+        - name: status
+          in: query
+          description: |-
+            Filter by status; unspecified returns published articles for readers and
+             every article for authorized editors.
+          schema:
+            title: status
+            description: |-
+              Filter by status; unspecified returns published articles for readers and
+               every article for authorized editors.
+            $ref: '#/components/schemas/wiki.v1.ArticleStatus'
+        - name: search
+          in: query
+          description: Substring match against title, slug, lead and tags; empty skips the search.
+          schema:
+            type: string
+            title: search
+            description: Substring match against title, slug, lead and tags; empty skips the search.
+        - name: tag
+          in: query
+          description: Filter by tag; empty returns every tag.
+          schema:
+            type: string
+            title: tag
+            description: Filter by tag; empty returns every tag.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.ListArticlesResponse'
+    post:
+      tags:
+        - WikiService
+      summary: Create a wiki article. Requires admin privileges.
+      description: |-
+        The slug is derived from the title when omitted. Returns ALREADY_EXISTS
+         when the slug is taken by another article.
+
+         Errors:
+           - INVALID_ARGUMENT (400): title or slug is empty after normalization
+           - ALREADY_EXISTS (409): slug is taken
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_CreateArticle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/wiki.v1.CreateArticleRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Article'
+  /v1/wiki/articles/by-slug/{slug}:
+    get:
+      tags:
+        - WikiService
+      summary: |-
+        Get one article by slug. Published articles are public; a draft is returned
+         only to an authorized editor, and NOT_FOUND for everyone else.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): article not found or not visible
+           - INTERNAL (500): database failure
+      operationId: WikiService_GetArticleBySlug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+            title: slug
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Article'
+  /v1/wiki/articles/{article.id}:
+    put:
+      tags:
+        - WikiService
+      summary: Replace an article. Requires admin privileges.
+      description: |-
+        Saves a revision of the previous state before overwriting. When
+         expected_version is set and no longer matches, the call fails with
+         ABORTED so a stale editor does not silently overwrite someone else's work.
+
+         Errors:
+           - INVALID_ARGUMENT (400): empty id or title
+           - NOT_FOUND (404): article not found
+           - ALREADY_EXISTS (409): slug is taken by another article
+           - ABORTED (409): expected_version does not match
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_UpdateArticle
+      parameters:
+        - name: article.id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                article:
+                  title: article
+                  $ref: '#/components/schemas/wiki.v1.Article'
+                expected_version:
+                  type:
+                    - integer
+                    - string
+                  title: expected_version
+                  format: int64
+                  description: Version the editor loaded; 0 skips the check.
+                note:
+                  type: string
+                  title: note
+                  description: Comment describing the change.
+              title: UpdateArticleRequest
+              required:
+                - article
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Article'
+  /v1/wiki/articles/{id}:
+    get:
+      tags:
+        - WikiService
+      summary: Get one article by id. Drafts are visible to authorized editors only.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): article not found or not visible
+           - INTERNAL (500): database failure
+      operationId: WikiService_GetArticle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Article'
+    delete:
+      tags:
+        - WikiService
+      summary: Delete an article and its revision history. Requires admin privileges.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): article not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_DeleteArticle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.Empty'
+  /v1/wiki/articles/{id}/revisions:
+    get:
+      tags:
+        - WikiService
+      summary: List saved revisions of an article, newest first. Requires admin privileges.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): article not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: WikiService_ListRevisions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.ListRevisionsResponse'
+  /v1/wiki/articles/{id}/revisions/{revision_id}/restore:
+    post:
+      tags:
+        - WikiService
+      summary: Restore an article to a saved revision. Requires admin privileges.
+      description: |-
+        The state being replaced is saved as a revision first, so a restore can be
+         undone the same way as any other edit.
+
+         Errors:
+           - NOT_FOUND (404): article or revision not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: WikiService_RestoreRevision
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+        - name: revision_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: revision_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision_id:
+                  type: string
+                  title: revision_id
+              title: RestoreRevisionRequest
+              required:
+                - revision_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Article'
+  /v1/wiki/suggestions:
+    get:
+      tags:
+        - WikiService
+      summary: List the proposals of the authenticated author, newest first.
+      description: |-
+        An author only ever sees their own proposals. Requires wiki:write to see
+         every proposal instead.
+
+         Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: WikiService_ListSuggestions
+      parameters:
+        - name: page_size
+          in: query
+          description: The maximum number of proposals to return. Defaults to 20, maximum 50.
+          schema:
+            type: integer
+            title: page_size
+            format: int32
+            description: The maximum number of proposals to return. Defaults to 20, maximum 50.
+        - name: page_token
+          in: query
+          description: A page token from a previous ListSuggestions call.
+          schema:
+            type: string
+            title: page_token
+            description: A page token from a previous ListSuggestions call.
+        - name: status
+          in: query
+          description: Filter by review state; unspecified returns every state.
+          schema:
+            title: status
+            description: Filter by review state; unspecified returns every state.
+            $ref: '#/components/schemas/wiki.v1.SuggestionStatus'
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.ListSuggestionsResponse'
+    post:
+      tags:
+        - WikiService
+      summary: Submit an article written by a player. Requires a signed-in user.
+      description: |-
+        Nothing is published: the proposal goes to the moderation queue and only an
+         editor decides what happens to it.
+
+         Errors:
+           - INVALID_ARGUMENT (400): empty title, or a slug that is not usable
+           - TOO_MANY_REQUESTS (429): the author already has the maximum number of
+             proposals waiting for review
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_SubmitSuggestion
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/wiki.v1.SubmitSuggestionRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Suggestion'
+  /v1/wiki/suggestions/{id}/approve:
+    post:
+      tags:
+        - WikiService
+      summary: Approve a proposal. Requires wiki:review.
+      description: |-
+        A proposal for a new article is applied as a new article, a proposal for an
+         existing one as an edit to it. Both go through the same domain rules as a
+         direct edit, so the proposal cannot produce a state an editor could not.
+
+         Errors:
+           - NOT_FOUND (404): proposal not found
+           - FAILED_PRECONDITION (412): proposal was already reviewed
+           - ALREADY_EXISTS (409): the proposed slug is taken
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing wiki:review scope
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_ApproveSuggestion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Suggestion'
+  /v1/wiki/suggestions/{id}/reject:
+    post:
+      tags:
+        - WikiService
+      summary: Reject a proposal with a reason. Requires wiki:review.
+      description: |-
+        The reason is shown to the author, and nothing else changes.
+
+         Errors:
+           - INVALID_ARGUMENT (400): empty reason
+           - NOT_FOUND (404): proposal not found
+           - FAILED_PRECONDITION (412): proposal was already reviewed
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing wiki:review scope
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_RejectSuggestion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  title: reason
+                  description: Why the proposal was refused; shown to the author.
+              title: RejectSuggestionRequest
+              required:
+                - reason
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Suggestion'
   /v1/{name}/stats:
     get:
       tags:
@@ -6620,6 +6776,9 @@ components:
         Wrapper message for `float`.
 
          The JSON representation for `FloatValue` is JSON number.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       examples:
@@ -7501,9 +7660,7 @@ components:
           type: integer
           title: limit
           format: int32
-          description: |-
-            The maximum number of entries to return.
-             If unspecified, 25 entry will be returned.
+          description: "The maximum number of entries to return.\r\n If unspecified, 25 entry will be returned."
       title: LeaderboardRequest
       required:
         - filter
@@ -8172,9 +8329,7 @@ components:
         content_type:
           type: string
           title: content_type
-          description: |-
-            Optional. MIME type of the uploaded file; must be in the list allowed for
-             the purpose. Empty → any image/* is allowed and the object gets a .webp extension.
+          description: "Optional. MIME type of the uploaded file; must be in the list allowed for\r\n the purpose. Empty → any image/* is allowed and the object gets a .webp extension."
       title: CreateUploadUrlsRequest
       required:
         - purpose
@@ -8197,9 +8352,7 @@ components:
         - UPLOAD_PURPOSE_DONATE_SHOP
         - UPLOAD_PURPOSE_SETTLEMENT
         - UPLOAD_PURPOSE_NEWS
-      description: |-
-        UploadPurpose maps to a concrete bucket on the server side.
-         The client never passes a bucket name directly (guards against writing to arbitrary buckets).
+      description: "UploadPurpose maps to a concrete bucket on the server side.\r\n The client never passes a bucket name directly (guards against writing to arbitrary buckets)."
     media.v1.UploadTarget:
       type: object
       properties:
@@ -8274,20 +8427,11 @@ components:
           type: integer
           title: page_size
           format: int32
-          description: |-
-            The maximum number of news to return. The service may return fewer than
-             this value.
-             If unspecified, at most 15 news will be returned.
-             The maximum value is 50; values above 50 will be coerced to 50.
+          description: "The maximum number of news to return. The service may return fewer than\r\n this value.\r\n If unspecified, at most 15 news will be returned.\r\n The maximum value is 50; values above 50 will be coerced to 50."
         page_token:
           type: string
           title: page_token
-          description: |-
-            A page token, received from a previous `ListBooks` call.
-             Provide this to retrieve the subsequent page.
-
-             When paginating, all other parameters provided to `ListBooks` must match
-             the call that provided the page token.
+          description: "A page token, received from a previous `ListBooks` call.\r\n Provide this to retrieve the subsequent page.\r\n\r\n When paginating, all other parameters provided to `ListBooks` must match\r\n the call that provided the page token."
       title: ListNewsRequest
       additionalProperties: false
     news.v1.ListNewsResponse:
@@ -8301,9 +8445,7 @@ components:
         next_page_token:
           type: string
           title: next_page_token
-          description: |-
-            A token, which can be sent as `page_token` to retrieve the next page.
-             If this field is omitted, there are no subsequent pages.
+          description: "A token, which can be sent as `page_token` to retrieve the next page.\r\n If this field is omitted, there are no subsequent pages."
       title: ListNewsResponse
       additionalProperties: false
     news.v1.MarkNewsViewedRequest:
@@ -8364,10 +8506,7 @@ components:
           type: integer
           title: page_size
           format: int32
-          description: |-
-            The maximum number of notifications to return. The service may return fewer
-             than this value. If unspecified, at most 15 notifications will be returned.
-             The maximum value is 15; values above 15 will be coerced to 15.
+          description: "The maximum number of notifications to return. The service may return fewer\r\n than this value. If unspecified, at most 15 notifications will be returned.\r\n The maximum value is 15; values above 15 will be coerced to 15."
         page_token:
           type: string
           title: page_token
@@ -8375,9 +8514,7 @@ components:
         order_by:
           type: string
           title: order_by
-          description: |-
-            The field to sort by, followed by direction (e.g., "created_at desc" or "state asc").
-             Supported fields: "created_at", "state". If unspecified, defaults to "created_at desc".
+          description: "The field to sort by, followed by direction (e.g., \"created_at desc\" or \"state asc\").\r\n Supported fields: \"created_at\", \"state\". If unspecified, defaults to \"created_at desc\"."
       title: ListNotificationsRequest
       additionalProperties: false
     notification.v1.ListNotificationsResponse:
@@ -8391,9 +8528,7 @@ components:
         next_page_token:
           type: string
           title: next_page_token
-          description: |-
-            A token to retrieve the next page of results. Empty if there are no more
-             results.
+          description: "A token to retrieve the next page of results. Empty if there are no more\r\n results."
       title: ListNotificationsResponse
       additionalProperties: false
     notification.v1.MarkAsReadRequest:
@@ -8402,9 +8537,7 @@ components:
         id:
           type: string
           title: id
-          description: |-
-            The identifier of the notification to mark as read.
-             Required.
+          description: "The identifier of the notification to mark as read.\r\n Required."
       title: MarkAsReadRequest
       required:
         - id
@@ -10818,6 +10951,424 @@ components:
           title: status
       title: VerifyStatusResponse
       additionalProperties: false
+    wiki.v1.ApproveSuggestionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: ApproveSuggestionRequest
+      required:
+        - id
+      additionalProperties: false
+    wiki.v1.Article:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        slug:
+          type: string
+          title: slug
+          description: 'URL segment: /wiki/<slug>.'
+        title:
+          type: string
+          title: title
+        section:
+          type: string
+          title: section
+          description: 'Section id: start, settlements, war, economy, world or help.'
+        lead:
+          type: string
+          title: lead
+          description: 'Lead paragraph: shown under the heading and in cards.'
+        cover:
+          title: cover
+          $ref: '#/components/schemas/wiki.v1.Cover'
+        tags:
+          type: array
+          items:
+            type: string
+          title: tags
+        game_version:
+          type: string
+          title: game_version
+          description: Game version the article was written for; empty means any version.
+        quick_answer:
+          title: quick_answer
+          $ref: '#/components/schemas/wiki.v1.QuickAnswer'
+        related:
+          type: array
+          items:
+            type: string
+          title: related
+          description: Slugs of related articles.
+        body:
+          type: string
+          title: body
+          description: Article body in wiki markup.
+        status:
+          title: status
+          $ref: '#/components/schemas/wiki.v1.ArticleStatus'
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updated_at:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        author_name:
+          type: string
+          title: author_name
+          description: Display name of the last editor.
+        version:
+          type:
+            - integer
+            - string
+          title: version
+          format: int64
+          description: Increments on every write; used as the optimistic lock token.
+      title: Article
+      additionalProperties: false
+      description: A wiki article.
+    wiki.v1.ArticleStatus:
+      type: string
+      title: ArticleStatus
+      enum:
+        - ARTICLE_STATUS_UNSPECIFIED
+        - ARTICLE_STATUS_PUBLISHED
+        - ARTICLE_STATUS_DRAFT
+      description: Publication state of an article.
+    wiki.v1.Cover:
+      type: object
+      properties:
+        url:
+          type: string
+          title: url
+          description: Image URL returned by the media service.
+        focus:
+          type: integer
+          title: focus
+          format: int32
+          description: 'Vertical focus as a percentage: 0 is the top edge, 100 the bottom.'
+      title: Cover
+      additionalProperties: false
+      description: Cover image of an article.
+    wiki.v1.CreateArticleRequest:
+      type: object
+      properties:
+        article:
+          title: article
+          $ref: '#/components/schemas/wiki.v1.Article'
+      title: CreateArticleRequest
+      required:
+        - article
+      additionalProperties: false
+    wiki.v1.DeleteArticleRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: DeleteArticleRequest
+      required:
+        - id
+      additionalProperties: false
+    wiki.v1.GetArticleBySlugRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+          title: slug
+      title: GetArticleBySlugRequest
+      required:
+        - slug
+      additionalProperties: false
+    wiki.v1.GetArticleRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetArticleRequest
+      required:
+        - id
+      additionalProperties: false
+    wiki.v1.ListArticlesRequest:
+      type: object
+      properties:
+        page_size:
+          type: integer
+          title: page_size
+          format: int32
+          description: |-
+            The maximum number of articles to return. The service may return fewer than
+             this value. If unspecified, at most 20 articles will be returned.
+             The maximum value is 50; values above 50 will be coerced to 50.
+        page_token:
+          type: string
+          title: page_token
+          description: |-
+            A page token, received from a previous ListArticles call.
+             Provide this to retrieve the subsequent page.
+        section:
+          type: string
+          title: section
+          description: Filter by section id; empty returns every section.
+        status:
+          title: status
+          description: |-
+            Filter by status; unspecified returns published articles for readers and
+             every article for authorized editors.
+          $ref: '#/components/schemas/wiki.v1.ArticleStatus'
+        search:
+          type: string
+          title: search
+          description: Substring match against title, slug, lead and tags; empty skips the search.
+        tag:
+          type: string
+          title: tag
+          description: Filter by tag; empty returns every tag.
+      title: ListArticlesRequest
+      additionalProperties: false
+    wiki.v1.ListArticlesResponse:
+      type: object
+      properties:
+        articles:
+          type: array
+          items:
+            $ref: '#/components/schemas/wiki.v1.Article'
+          title: articles
+        next_page_token:
+          type: string
+          title: next_page_token
+          description: |-
+            A token, which can be sent as page_token to retrieve the next page.
+             If this field is omitted, there are no subsequent pages.
+        total_size:
+          type: integer
+          title: total_size
+          format: int32
+          description: Total number of articles matching the filters, ignoring pagination.
+      title: ListArticlesResponse
+      additionalProperties: false
+    wiki.v1.ListRevisionsRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: ListRevisionsRequest
+      required:
+        - id
+      additionalProperties: false
+    wiki.v1.ListRevisionsResponse:
+      type: object
+      properties:
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/wiki.v1.Revision'
+          title: revisions
+      title: ListRevisionsResponse
+      additionalProperties: false
+    wiki.v1.ListSuggestionsRequest:
+      type: object
+      properties:
+        page_size:
+          type: integer
+          title: page_size
+          format: int32
+          description: The maximum number of proposals to return. Defaults to 20, maximum 50.
+        page_token:
+          type: string
+          title: page_token
+          description: A page token from a previous ListSuggestions call.
+        status:
+          title: status
+          description: Filter by review state; unspecified returns every state.
+          $ref: '#/components/schemas/wiki.v1.SuggestionStatus'
+      title: ListSuggestionsRequest
+      additionalProperties: false
+    wiki.v1.ListSuggestionsResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/wiki.v1.Suggestion'
+          title: suggestions
+        next_page_token:
+          type: string
+          title: next_page_token
+      title: ListSuggestionsResponse
+      additionalProperties: false
+    wiki.v1.QuickAnswer:
+      type: object
+      properties:
+        question:
+          type: string
+          title: question
+        answer:
+          type: string
+          title: answer
+      title: QuickAnswer
+      additionalProperties: false
+      description: Short answer shown in the quick answers block.
+    wiki.v1.RejectSuggestionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        reason:
+          type: string
+          title: reason
+          description: Why the proposal was refused; shown to the author.
+      title: RejectSuggestionRequest
+      required:
+        - id
+        - reason
+      additionalProperties: false
+    wiki.v1.RestoreRevisionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        revision_id:
+          type: string
+          title: revision_id
+      title: RestoreRevisionRequest
+      required:
+        - id
+        - revision_id
+      additionalProperties: false
+    wiki.v1.Revision:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        article_id:
+          type: string
+          title: article_id
+        article:
+          title: article
+          description: The article as it was before the edit that saved this revision.
+          $ref: '#/components/schemas/wiki.v1.Article'
+        note:
+          type: string
+          title: note
+          description: What the editor said about the change.
+        author_name:
+          type: string
+          title: author_name
+        saved_at:
+          title: saved_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: Revision
+      additionalProperties: false
+      description: A saved state of an article.
+    wiki.v1.SubmitSuggestionRequest:
+      type: object
+      properties:
+        suggestion:
+          title: suggestion
+          $ref: '#/components/schemas/wiki.v1.Suggestion'
+      title: SubmitSuggestionRequest
+      required:
+        - suggestion
+      additionalProperties: false
+    wiki.v1.Suggestion:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        kind:
+          title: kind
+          description: Proposal for a new article, or a new version of an existing one.
+          $ref: '#/components/schemas/wiki.v1.SuggestionKind'
+        article_id:
+          type: string
+          title: article_id
+          description: The article being changed, set only for an edit proposal.
+        slug:
+          type: string
+          title: slug
+          description: Address of the article; for a new article the proposed one.
+        proposal:
+          title: proposal
+          description: Proposed state of the article.
+          $ref: '#/components/schemas/wiki.v1.Article'
+        status:
+          title: status
+          $ref: '#/components/schemas/wiki.v1.SuggestionStatus'
+        note:
+          type: string
+          title: note
+          description: What the author says about their proposal.
+        author_name:
+          type: string
+          title: author_name
+        reviewer_name:
+          type: string
+          title: reviewer_name
+          description: Who reviewed it, and what they said when refusing.
+        reject_reason:
+          type: string
+          title: reject_reason
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        reviewed_at:
+          title: reviewed_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        applied_article_id:
+          type: string
+          title: applied_article_id
+          description: The article the proposal produced, once approved.
+      title: Suggestion
+      additionalProperties: false
+      description: What a proposal asks for.
+    wiki.v1.SuggestionKind:
+      type: string
+      title: SuggestionKind
+      enum:
+        - SUGGESTION_KIND_UNSPECIFIED
+        - SUGGESTION_KIND_NEW_ARTICLE
+        - SUGGESTION_KIND_ARTICLE_EDIT
+      description: What a proposal asks for.
+    wiki.v1.SuggestionStatus:
+      type: string
+      title: SuggestionStatus
+      enum:
+        - SUGGESTION_STATUS_UNSPECIFIED
+        - SUGGESTION_STATUS_PENDING
+        - SUGGESTION_STATUS_APPROVED
+        - SUGGESTION_STATUS_REJECTED
+      description: Review state of a player proposal.
+    wiki.v1.UpdateArticleRequest:
+      type: object
+      properties:
+        article:
+          title: article
+          $ref: '#/components/schemas/wiki.v1.Article'
+        expected_version:
+          type:
+            - integer
+            - string
+          title: expected_version
+          format: int64
+          description: Version the editor loaded; 0 skips the check.
+        note:
+          type: string
+          title: note
+          description: Comment describing the change.
+      title: UpdateArticleRequest
+      required:
+        - article
+      additionalProperties: false
   securitySchemes:
     bearerAuth:
       type: http
@@ -10850,9 +11401,7 @@ tags:
        Reading is public; writing reuses the news scopes, because the people who
        publish news are the ones who announce events.
   - name: HungerGamesService
-    description: |-
-      HungerGamesService manages the Hunger Games game mode: ELO ratings,
-       season lifecycle, leaderboard, and reward distribution.
+    description: "HungerGamesService manages the Hunger Games game mode: ELO ratings,\r\n season lifecycle, leaderboard, and reward distribution."
   - name: ImperialPointService
     description: ImperialPointService manages neutral-zone key locations and their control state.
   - name: KitService
@@ -10923,3 +11472,5 @@ tags:
     description: Represents user specific actions
   - name: VerificationService
     description: Represents verification service
+  - name: WikiService
+    description: 'Represents wiki service: reference articles about the game world.'

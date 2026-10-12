@@ -1,0 +1,407 @@
+syntax = "proto3";
+
+package wiki.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// Represents wiki service: reference articles about the game world.
+service WikiService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Create a wiki article. Requires admin privileges.
+  //
+  // The slug is derived from the title when omitted. Returns ALREADY_EXISTS
+  // when the slug is taken by another article.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): title or slug is empty after normalization
+  //   - ALREADY_EXISTS (409): slug is taken
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): storage or database failure
+  rpc CreateArticle(CreateArticleRequest) returns (Article) {
+    option (google.api.http) = {
+      post: "/v1/wiki/articles"
+      body: "*"
+    };
+    option (google.api.method_signature) = "article";
+  }
+
+  // Replace an article. Requires admin privileges.
+  //
+  // Saves a revision of the previous state before overwriting. When
+  // expected_version is set and no longer matches, the call fails with
+  // ABORTED so a stale editor does not silently overwrite someone else's work.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): empty id or title
+  //   - NOT_FOUND (404): article not found
+  //   - ALREADY_EXISTS (409): slug is taken by another article
+  //   - ABORTED (409): expected_version does not match
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): storage or database failure
+  rpc UpdateArticle(UpdateArticleRequest) returns (Article) {
+    option (google.api.http) = {
+      put: "/v1/wiki/articles/{article.id}"
+      body: "*"
+    };
+    option (google.api.method_signature) = "article";
+  }
+
+  // Delete an article and its revision history. Requires admin privileges.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): article not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): storage or database failure
+  rpc DeleteArticle(DeleteArticleRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/v1/wiki/articles/{id}"};
+    option (google.api.method_signature) = "id";
+  }
+
+  // Get one article by slug. Published articles are public; a draft is returned
+  // only to an authorized editor, and NOT_FOUND for everyone else.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): article not found or not visible
+  //   - INTERNAL (500): database failure
+  rpc GetArticleBySlug(GetArticleBySlugRequest) returns (Article) {
+    option (google.api.http) = {get: "/v1/wiki/articles/by-slug/{slug}"};
+    option (google.api.method_signature) = "slug";
+  }
+
+  // Get one article by id. Drafts are visible to authorized editors only.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): article not found or not visible
+  //   - INTERNAL (500): database failure
+  rpc GetArticle(GetArticleRequest) returns (Article) {
+    option (google.api.http) = {get: "/v1/wiki/articles/{id}"};
+    option (google.api.method_signature) = "id";
+  }
+
+  // List articles with pagination. Published articles are public; drafts appear
+  // only for an authorized editor. Optional filters narrow the list.
+  //
+  // Default page size is 20, maximum is 50.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): unknown status or section filter
+  //   - INTERNAL (500): database failure
+  rpc ListArticles(ListArticlesRequest) returns (ListArticlesResponse) {
+    option (google.api.http) = {get: "/v1/wiki/articles"};
+  }
+
+  // List saved revisions of an article, newest first. Requires admin privileges.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): article not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc ListRevisions(ListRevisionsRequest) returns (ListRevisionsResponse) {
+    option (google.api.http) = {get: "/v1/wiki/articles/{id}/revisions"};
+  }
+
+  // Restore an article to a saved revision. Requires admin privileges.
+  //
+  // The state being replaced is saved as a revision first, so a restore can be
+  // undone the same way as any other edit.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): article or revision not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc RestoreRevision(RestoreRevisionRequest) returns (Article) {
+    option (google.api.http) = {
+      post: "/v1/wiki/articles/{id}/revisions/{revision_id}/restore"
+      body: "*"
+    };
+    option (google.api.method_signature) = "id,revision_id";
+  }
+
+  // Submit an article written by a player. Requires a signed-in user.
+  //
+  // Nothing is published: the proposal goes to the moderation queue and only an
+  // editor decides what happens to it.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): empty title, or a slug that is not usable
+  //   - TOO_MANY_REQUESTS (429): the author already has the maximum number of
+  //     proposals waiting for review
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): storage or database failure
+  rpc SubmitSuggestion(SubmitSuggestionRequest) returns (Suggestion) {
+    option (google.api.http) = {
+      post: "/v1/wiki/suggestions"
+      body: "*"
+    };
+    option (google.api.method_signature) = "suggestion";
+  }
+
+  // List the proposals of the authenticated author, newest first.
+  //
+  // An author only ever sees their own proposals. Requires wiki:write to see
+  // every proposal instead.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ListSuggestions(ListSuggestionsRequest) returns (ListSuggestionsResponse) {
+    option (google.api.http) = {get: "/v1/wiki/suggestions"};
+  }
+
+  // Approve a proposal. Requires wiki:review.
+  //
+  // A proposal for a new article is applied as a new article, a proposal for an
+  // existing one as an edit to it. Both go through the same domain rules as a
+  // direct edit, so the proposal cannot produce a state an editor could not.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): proposal not found
+  //   - FAILED_PRECONDITION (412): proposal was already reviewed
+  //   - ALREADY_EXISTS (409): the proposed slug is taken
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): missing wiki:review scope
+  //   - INTERNAL (500): storage or database failure
+  rpc ApproveSuggestion(ApproveSuggestionRequest) returns (Suggestion) {
+    option (google.api.http) = {
+      post: "/v1/wiki/suggestions/{id}/approve"
+      body: "*"
+    };
+    option (google.api.method_signature) = "id";
+  }
+
+  // Reject a proposal with a reason. Requires wiki:review.
+  //
+  // The reason is shown to the author, and nothing else changes.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): empty reason
+  //   - NOT_FOUND (404): proposal not found
+  //   - FAILED_PRECONDITION (412): proposal was already reviewed
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): missing wiki:review scope
+  //   - INTERNAL (500): storage or database failure
+  rpc RejectSuggestion(RejectSuggestionRequest) returns (Suggestion) {
+    option (google.api.http) = {
+      post: "/v1/wiki/suggestions/{id}/reject"
+      body: "*"
+    };
+    option (google.api.method_signature) = "id,reason";
+  }
+}
+
+// Publication state of an article.
+enum ArticleStatus {
+  ARTICLE_STATUS_UNSPECIFIED = 0;
+  // Visible to readers.
+  ARTICLE_STATUS_PUBLISHED = 1;
+  // Visible to editors only.
+  ARTICLE_STATUS_DRAFT = 2;
+}
+
+// Cover image of an article.
+message Cover {
+  // Image URL returned by the media service.
+  string url = 1;
+  // Vertical focus as a percentage: 0 is the top edge, 100 the bottom.
+  int32 focus = 2;
+}
+
+// Short answer shown in the quick answers block.
+message QuickAnswer {
+  string question = 1;
+  string answer = 2;
+}
+
+// A wiki article.
+message Article {
+  string id = 1;
+  // URL segment: /wiki/<slug>.
+  string slug = 2;
+  string title = 3;
+  // Section id: start, settlements, war, economy, world or help.
+  string section = 4;
+  // Lead paragraph: shown under the heading and in cards.
+  string lead = 5;
+  Cover cover = 6;
+  repeated string tags = 7;
+  // Game version the article was written for; empty means any version.
+  string game_version = 8;
+  QuickAnswer quick_answer = 9;
+  // Slugs of related articles.
+  repeated string related = 10;
+  // Article body in wiki markup.
+  string body = 11;
+  ArticleStatus status = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+  // Display name of the last editor.
+  string author_name = 15;
+  // Increments on every write; used as the optimistic lock token.
+  int64 version = 16;
+}
+
+// A saved state of an article.
+message Revision {
+  string id = 1;
+  string article_id = 2;
+  // The article as it was before the edit that saved this revision.
+  Article article = 3;
+  // What the editor said about the change.
+  string note = 4;
+  string author_name = 5;
+  google.protobuf.Timestamp saved_at = 6;
+}
+
+message CreateArticleRequest {
+  Article article = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateArticleRequest {
+  Article article = 1 [(google.api.field_behavior) = REQUIRED];
+  // Version the editor loaded; 0 skips the check.
+  int64 expected_version = 2;
+  // Comment describing the change.
+  string note = 3;
+}
+
+message DeleteArticleRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetArticleRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetArticleBySlugRequest {
+  string slug = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListArticlesRequest {
+  // The maximum number of articles to return. The service may return fewer than
+  // this value. If unspecified, at most 20 articles will be returned.
+  // The maximum value is 50; values above 50 will be coerced to 50.
+  int32 page_size = 1;
+
+  // A page token, received from a previous ListArticles call.
+  // Provide this to retrieve the subsequent page.
+  string page_token = 2;
+
+  // Filter by section id; empty returns every section.
+  string section = 3;
+
+  // Filter by status; unspecified returns published articles for readers and
+  // every article for authorized editors.
+  ArticleStatus status = 4;
+
+  // Substring match against title, slug, lead and tags; empty skips the search.
+  string search = 5;
+
+  // Filter by tag; empty returns every tag.
+  string tag = 6;
+}
+
+message ListArticlesResponse {
+  repeated Article articles = 1;
+
+  // A token, which can be sent as page_token to retrieve the next page.
+  // If this field is omitted, there are no subsequent pages.
+  string next_page_token = 2;
+
+  // Total number of articles matching the filters, ignoring pagination.
+  int32 total_size = 3;
+}
+
+message ListRevisionsRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListRevisionsResponse {
+  repeated Revision revisions = 1;
+}
+
+message RestoreRevisionRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string revision_id = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// Review state of a player proposal.
+enum SuggestionStatus {
+  SUGGESTION_STATUS_UNSPECIFIED = 0;
+  // Waiting for an editor to look at it.
+  SUGGESTION_STATUS_PENDING = 1;
+  // Applied: the proposal became an article or an edit.
+  SUGGESTION_STATUS_APPROVED = 2;
+  // Refused, with a reason the author can read.
+  SUGGESTION_STATUS_REJECTED = 3;
+}
+
+// What a proposal asks for.
+message Suggestion {
+  string id = 1;
+  // Proposal for a new article, or a new version of an existing one.
+  SuggestionKind kind = 2;
+  // The article being changed, set only for an edit proposal.
+  string article_id = 3;
+  // Address of the article; for a new article the proposed one.
+  string slug = 4;
+  // Proposed state of the article.
+  Article proposal = 5;
+  SuggestionStatus status = 6;
+  // What the author says about their proposal.
+  string note = 7;
+  string author_name = 8;
+  // Who reviewed it, and what they said when refusing.
+  string reviewer_name = 9;
+  string reject_reason = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp reviewed_at = 12;
+  // The article the proposal produced, once approved.
+  string applied_article_id = 13;
+}
+
+// What a proposal asks for.
+enum SuggestionKind {
+  SUGGESTION_KIND_UNSPECIFIED = 0;
+  // A page that does not exist yet.
+  SUGGESTION_KIND_NEW_ARTICLE = 1;
+  // A change to an existing page.
+  SUGGESTION_KIND_ARTICLE_EDIT = 2;
+}
+
+message SubmitSuggestionRequest {
+  Suggestion suggestion = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListSuggestionsRequest {
+  // The maximum number of proposals to return. Defaults to 20, maximum 50.
+  int32 page_size = 1;
+  // A page token from a previous ListSuggestions call.
+  string page_token = 2;
+  // Filter by review state; unspecified returns every state.
+  SuggestionStatus status = 3;
+}
+
+message ListSuggestionsResponse {
+  repeated Suggestion suggestions = 1;
+  string next_page_token = 2;
+}
+
+message ApproveSuggestionRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message RejectSuggestionRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Why the proposal was refused; shown to the author.
+  string reason = 2 [(google.api.field_behavior) = REQUIRED];
+}

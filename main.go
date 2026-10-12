@@ -17,6 +17,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/mail"
 	"github.com/lasthearth/vsservice/internal/media"
 	"github.com/lasthearth/vsservice/internal/news"
+	"github.com/lasthearth/vsservice/internal/wiki"
 	"github.com/lasthearth/vsservice/internal/notification"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
@@ -91,6 +92,7 @@ func main() {
 		settlementtag.App,
 		notification.App,
 		news.App,
+		wiki.App,
 		webhook.App,
 		donate.App,
 		referral.App,
