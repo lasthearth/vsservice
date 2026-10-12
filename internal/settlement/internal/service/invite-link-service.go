@@ -109,6 +109,11 @@ func (s *Service) GetInviteLink(ctx context.Context, req *settlementv1.GetInvite
 		return nil, err
 	}
 
+	setProto, err := s.settlementProto(ctx, *set)
+	if err != nil {
+		return nil, err
+	}
+
 	proto := s.inviteLinkProto(*link, time.Now())
 	return &settlementv1.InviteLinkPreview{
 		Status:     proto.GetStatus(),
@@ -116,7 +121,7 @@ func (s *Service) GetInviteLink(ctx context.Context, req *settlementv1.GetInvite
 		MaxUses:    proto.GetMaxUses(),
 		Uses:       proto.GetUses(),
 		CreatedBy:  proto.GetCreatedBy(),
-		Settlement: s.mapper.ToSettlementProto(*set),
+		Settlement: setProto,
 	}, nil
 }
 
@@ -155,13 +160,15 @@ func (s *Service) notifyCreator(ctx context.Context, link *model.InviteLink) {
 	}
 
 	name := link.SettlementId
+	kind := model.KindSettlement
 	if set, gerr := s.dbRepo.GetSettlement(ctx, link.SettlementId); gerr == nil {
 		name = set.Name
+		kind = set.Kind()
 	}
 
 	if nerr := s.notifier.CreateNotification(ctx,
-		"Новый житель",
-		"По вашей ссылке-приглашению в поселение «"+name+"» вступил новый житель",
+		newcomerTitle(kind),
+		"По вашей ссылке-приглашению в "+joinNoun(kind)+" «"+name+"» вступил новый "+newcomerNoun(kind),
 		notificationuc.WithUserId(link.CreatedBy),
 	); nerr != nil {
 		s.log.WithMethod("JoinByInviteLink").Warn("failed to send invite-link notification",

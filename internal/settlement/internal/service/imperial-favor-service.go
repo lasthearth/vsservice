@@ -44,8 +44,12 @@ func (s *Service) AddImperialFavor(ctx context.Context, req *settlementv1.AddImp
 		l.Error("failed to create favor log", zap.Error(err))
 	}
 
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
 	return &settlementv1.AddImperialFavorResponse{
-		Settlement: s.mapper.ToSettlementProto(*updated),
+		Settlement: proto,
 	}, nil
 }
 
@@ -84,8 +88,12 @@ func (s *Service) DeductImperialFavor(ctx context.Context, req *settlementv1.Ded
 		l.Error("failed to create favor log", zap.Error(err))
 	}
 
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
 	return &settlementv1.DeductImperialFavorResponse{
-		Settlement: s.mapper.ToSettlementProto(*updated),
+		Settlement: proto,
 	}, nil
 }
 

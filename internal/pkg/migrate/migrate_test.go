@@ -55,3 +55,20 @@ func TestFoldMembers(t *testing.T) {
 		t.Fatalf("role_ids must be non-nil")
 	}
 }
+
+// The runner applies the list in order and records the version it reached, so the versions must
+// increase: a repeated or reordered entry silently skips a migration and leaves the schema half
+// changed.
+func TestMigrationVersionsIncrease(t *testing.T) {
+	if len(migrations) == 0 {
+		t.Fatal("no migrations registered")
+	}
+	for i, m := range migrations {
+		if m.Up == nil || m.Down == nil {
+			t.Fatalf("migration %d has no Up or no Down", m.Version)
+		}
+		if i > 0 && m.Version <= migrations[i-1].Version {
+			t.Fatalf("version %d follows %d; the list must increase", m.Version, migrations[i-1].Version)
+		}
+	}
+}

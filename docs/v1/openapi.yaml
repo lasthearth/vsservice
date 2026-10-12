@@ -92,31 +92,27 @@ paths:
             title: settlement_id
         - name: next_token
           in: query
+          description: '(OPTIONAL) '
           required: false
           schema:
             type: string
             title: next_token
-            description: '(OPTIONAL) '
         - name: admin_id
           in: query
-          description: Filter logs by the admin who performed the operation.
+          description: (OPTIONAL) Filter logs by the admin who performed the operation.
           required: false
           schema:
             type: string
             title: admin_id
-            description: (OPTIONAL) Filter logs by the admin who performed the operation.
         - name: order_by
           in: query
           description: |-
-            Sort order. Format: "field [asc|desc]". Default: "created_at desc".
+            (OPTIONAL) Sort order. Format: "field [asc|desc]". Default: "created_at desc".
              Allowed fields: created_at, settlement_id, admin_id.
           required: false
           schema:
             type: string
             title: order_by
-            description: |-
-              (OPTIONAL) Sort order. Format: "field [asc|desc]". Default: "created_at desc".
-               Allowed fields: created_at, settlement_id, admin_id.
       responses:
         "200":
           description: Success
@@ -228,14 +224,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/settlement.v1.DeductImperialFavorResponse'
+  /v1/admin/settlements/{settlement_id}/notifier:reissue:
+    post:
+      tags:
+        - SettlementService
+      summary: |-
+        Admin: send the settlement's notifier block again by in-game mail, e.g. after it was lost.
+         Requires settlements:manage scope. Every call sends one more block.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): settlement not found
+           - FAILED_PRECONDITION (412): the settlement type has no notifier block, or user_id is not an owner
+           - PERMISSION_DENIED (403): missing settlements:manage scope
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_ReissueNotifier
+      parameters:
+        - name: settlement_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: settlement_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                settlement_id:
+                  type: string
+                  title: settlement_id
+                user_id:
+                  type: string
+                  title: user_id
+                  description: (OPTIONAL) Owner who receives the block. Defaults to the first owner.
+              title: ReissueNotifierRequest
+              required:
+                - settlement_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.ReissueNotifierResponse'
   /v1/admin/settlements/{settlement_id}/owners:
     post:
       tags:
         - SettlementService
       summary: 'Admin: grant the owner role to a member. Requires settlements:manage scope.'
       description: |-
-        Errors:
+        A guild owner holds no settlement, so the owner role of a guild cannot go to a member who
+         lives in one.
+
+         Errors:
            - NOT_FOUND (404): settlement or member not found
+           - FAILED_PRECONDITION (400): the member is already an owner, or lives in a settlement and
+             the target is a guild
            - PERMISSION_DENIED (403): missing settlements:manage scope
            - UNAUTHENTICATED (401): missing or invalid auth token
            - INTERNAL (500): database failure
@@ -500,7 +548,6 @@ paths:
           schema:
             type: string
             title: channel_id
-            description: Discord channel ID.
         - name: limit
           in: query
           description: 'Maximum number of images. Allowed range: [1, 100].'
@@ -508,14 +555,12 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: 'Maximum number of images. Allowed range: [1, 100].'
         - name: before
           in: query
           description: Message ID to fetch before (for pagination).
           schema:
             type: string
             title: before
-            description: Message ID to fetch before (for pagination).
       responses:
         "200":
           description: Success
@@ -543,7 +588,6 @@ paths:
           schema:
             type: string
             title: channel_id
-            description: Discord channel ID.
         - name: limit
           in: query
           description: 'Maximum number of messages. Allowed range: [1, 100].'
@@ -551,14 +595,12 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: 'Maximum number of messages. Allowed range: [1, 100].'
         - name: before
           in: query
           description: Message ID to fetch before (for pagination).
           schema:
             type: string
             title: before
-            description: Message ID to fetch before (for pagination).
       responses:
         "200":
           description: Success
@@ -1194,14 +1236,12 @@ paths:
             maximum: 100
             minimum: 0
             format: int32
-            description: At most this many events, 1..100. Zero means 50.
         - name: past
           in: query
           description: List finished events instead of upcoming ones.
           schema:
             type: boolean
             title: past
-            description: List finished events instead of upcoming ones.
       responses:
         "200":
           description: Success
@@ -1421,7 +1461,6 @@ paths:
             maximum: 200
             minimum: 0
             format: int32
-            description: At most this many players, 1..200. Zero means 100.
       responses:
         "200":
           description: Success
@@ -1452,14 +1491,12 @@ paths:
             maximum: 100
             minimum: 0
             format: int32
-            description: At most this many events, 1..100. Zero means 50.
         - name: past
           in: query
           description: List finished events instead of upcoming ones.
           schema:
             type: boolean
             title: past
-            description: List finished events instead of upcoming ones.
       responses:
         "200":
           description: Success
@@ -1484,7 +1521,6 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: Maximum number of entries. Defaults to 25.
       responses:
         "200":
           description: Success
@@ -1587,7 +1623,6 @@ paths:
           schema:
             type: string
             title: next
-            description: Cursor from a previous response for pagination.
         - name: limit
           in: query
           description: Maximum number of seasons. Defaults to 20.
@@ -1595,7 +1630,6 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: Maximum number of seasons. Defaults to 20.
       responses:
         "200":
           description: Success
@@ -1903,9 +1937,9 @@ paths:
       tags:
         - SettlementService
       summary: |-
-        Join the settlement behind an invite link. Spends one use of the link, adds the
-         caller as a plain member and drops the caller's pending join requests. The
-         link's creator is notified.
+        Join the settlement or guild behind an invite link. Spends one use of the link, adds the
+         caller as a plain member and drops the caller's pending applications to other groups of that
+         kind. The link's creator is notified.
       description: |-
         Not atomic. The deployment has no replica set, so the use is reserved first and
          given back if adding the member fails, and that give-back can itself fail and is
@@ -1914,8 +1948,9 @@ paths:
 
          Errors:
            - NOT_FOUND (404): no link with this code, or its settlement is gone
-           - ALREADY_EXISTS (409): caller already belongs to a settlement
-           - FAILED_PRECONDITION (412): the link expired, ran out of uses or was revoked
+           - ALREADY_EXISTS (409): caller already belongs to a group of this kind
+           - FAILED_PRECONDITION (412): the link expired, ran out of uses or was revoked; or the caller
+             owns a guild and the link leads to a settlement
            - UNAUTHENTICATED (401): missing or invalid auth token
            - INTERNAL (500): database failure
       operationId: SettlementService_JoinByInviteLink
@@ -1999,7 +2034,6 @@ paths:
             type: string
             title: code
             minLength: 1
-            description: Upsert key of the kit to rename.
       requestBody:
         content:
           application/json:
@@ -2103,7 +2137,6 @@ paths:
           required: true
           schema:
             title: filter
-            description: Leaderboard filter. Service will return entries sorted by provided filter.
             $ref: '#/components/schemas/leaderboard.v1.LeaderboardRequest.LeaderboardFilter'
         - name: limit
           in: query
@@ -2114,9 +2147,6 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: |-
-              The maximum number of entries to return.
-               If unspecified, 25 entry will be returned.
       responses:
         "200":
           description: Success
@@ -2154,13 +2184,11 @@ paths:
             maximum: 100
             minimum: 0
             format: int32
-            description: Defaults to 50.
         - name: activity
           in: query
           description: Only posts listing this activity; unset means all.
           schema:
             title: activity
-            description: Only posts listing this activity; unset means all.
             $ref: '#/components/schemas/lfg.v1.Activity'
       responses:
         "200":
@@ -2639,11 +2667,6 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: |-
-              The maximum number of news to return. The service may return fewer than
-               this value.
-               If unspecified, at most 15 news will be returned.
-               The maximum value is 50; values above 50 will be coerced to 50.
         - name: page_token
           in: query
           description: |-
@@ -2655,12 +2678,6 @@ paths:
           schema:
             type: string
             title: page_token
-            description: |-
-              A page token, received from a previous `ListBooks` call.
-               Provide this to retrieve the subsequent page.
-
-               When paginating, all other parameters provided to `ListBooks` must match
-               the call that provided the page token.
       responses:
         "200":
           description: Success
@@ -2711,7 +2728,6 @@ paths:
           schema:
             type: string
             title: id
-            description: The unique identifier of the news item to retrieve.
       responses:
         "200":
           description: Success
@@ -2738,7 +2754,6 @@ paths:
           schema:
             type: string
             title: id
-            description: The unique identifier of the news item to delete.
       responses:
         "200":
           description: Success
@@ -2767,7 +2782,6 @@ paths:
           schema:
             type: string
             title: id
-            description: The unique identifier of the news item.
       responses:
         "200":
           description: Success
@@ -2800,17 +2814,12 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: |-
-              The maximum number of notifications to return. The service may return fewer
-               than this value. If unspecified, at most 15 notifications will be returned.
-               The maximum value is 15; values above 15 will be coerced to 15.
         - name: page_token
           in: query
           description: A token identifying a page of results the server should return.
           schema:
             type: string
             title: page_token
-            description: A token identifying a page of results the server should return.
         - name: order_by
           in: query
           description: |-
@@ -2819,9 +2828,6 @@ paths:
           schema:
             type: string
             title: order_by
-            description: |-
-              The field to sort by, followed by direction (e.g., "created_at desc" or "state asc").
-               Supported fields: "created_at", "state". If unspecified, defaults to "created_at desc".
       responses:
         "200":
           description: Success
@@ -2850,9 +2856,6 @@ paths:
           schema:
             type: string
             title: id
-            description: |-
-              The identifier of the notification to mark as read.
-               Required.
       responses:
         "200":
           description: Success
@@ -3498,7 +3501,6 @@ paths:
             type: integer
             title: count
             format: int32
-            description: Count of questions to return, if not specified, returns 5 questions
       responses:
         "200":
           description: Success
@@ -3560,11 +3562,22 @@ paths:
     get:
       tags:
         - SettlementService
-      summary: List all approved settlements.
+      summary: List approved groups of one kind.
       description: |-
-        Errors:
+        kind unset means settlements only, so the public map keeps showing settlements and no guild
+         appears on it. Pass GROUP_KIND_GUILD for the guild catalogue.
+
+         Errors:
            - INTERNAL (500): database failure
       operationId: SettlementService_List
+      parameters:
+        - name: kind
+          in: query
+          description: (OPTIONAL) Which kind to list. Unset lists settlements only, so guilds stay off the public map.
+          required: false
+          schema:
+            title: kind
+            $ref: '#/components/schemas/settlement.v1.GroupKind'
       responses:
         "200":
           description: Success
@@ -3575,14 +3588,29 @@ paths:
     post:
       tags:
         - SettlementService
-      summary: Submit or level-up a settlement request.
+      summary: Submit or level-up a settlement request, or submit a guild request.
       description: |-
         On first call creates a new request; on subsequent calls upgrades an approved settlement.
+         A guild has one tier, so a further guild submission only re-verifies its profile.
+
+         A guild takes the same fields as a first settlement and goes through the same moderation.
+         The two kinds are independent: one player may hold a settlement and a guild at the same
+         time, and each kind keeps its own request. The owner of a guild holds no settlement, so a
+         guild request is refused while its author belongs to one, and a settlement request is
+         refused while its author owns a guild.
+
+         While the settlement's notifier block stands, coordinates is ignored on an upgrade: the
+         server takes the block's position instead (see Settlement.notifier_position), so clients
+         should pre-fill the field from it and show it read-only. SubmitResponse.coordinates_locked
+         reports that the server did so.
 
          Errors:
            - INVALID_ARGUMENT (400): attachments is empty; invalid settlement type
-           - ALREADY_EXISTS (409): settlement request is already pending
+           - ALREADY_EXISTS (409): a request of this kind is already pending
+           - FAILED_PRECONDITION (400): the author of a guild request belongs to a settlement, or the
+             author of a settlement request owns a guild
            - UNAUTHENTICATED (401): missing or invalid auth token
+           - UNAVAILABLE (503): the notifier position could not be read; retry
            - INTERNAL (500): storage upload or database failure
       operationId: SettlementService_Submit
       requestBody:
@@ -3602,10 +3630,14 @@ paths:
     post:
       tags:
         - SettlementService
-      summary: Accept an invitation to join a settlement.
+      summary: |-
+        Accept an invitation to join a settlement or a guild. The membership rules are checked again
+         here, because the caller may have joined another group since the invitation was written.
       description: |-
         Errors:
            - NOT_FOUND (404): invitation not found
+           - ALREADY_EXISTS (409): caller already belongs to a group of this kind
+           - FAILED_PRECONDITION (400): caller owns a guild and the invitation leads to a settlement
            - UNAUTHENTICATED (401): missing or invalid auth token
            - INTERNAL (500): database failure
       operationId: SettlementService_AcceptInvitation
@@ -3790,13 +3822,23 @@ paths:
     get:
       tags:
         - SettlementService
-      summary: List pending settlement requests. Requires admin privileges.
+      summary: List pending verification requests. Requires admin privileges.
       description: |-
-        Errors:
+        kind unset means both kinds, so the moderation queue never hides a guild request.
+
+         Errors:
            - UNAUTHENTICATED (401): missing or invalid auth token
            - PERMISSION_DENIED (403): insufficient privileges
            - INTERNAL (500): database failure
       operationId: SettlementService_ListPending
+      parameters:
+        - name: kind
+          in: query
+          description: (OPTIONAL) Which kind to list. Unset lists both kinds, so the moderation queue never hides a guild.
+          required: false
+          schema:
+            title: kind
+            $ref: '#/components/schemas/settlement.v1.GroupKind'
       responses:
         "200":
           description: Success
@@ -3862,7 +3904,7 @@ paths:
     get:
       tags:
         - SettlementService
-      summary: Get settlement by ID.
+      summary: Get settlement by ID. notifier_position is set while the settlement's notifier block stands.
       description: |-
         Errors:
            - NOT_FOUND (404): settlement not found
@@ -3936,11 +3978,22 @@ paths:
     post:
       tags:
         - SettlementService
-      summary: Approve a settlement request. Requires admin privileges.
+      summary: Approve a settlement or guild request. Requires admin privileges.
       description: |-
-        Errors:
+        One transaction: the request becomes approved and the group is created (its id is the
+         request id) or upgraded. A new group gets a mail with its notifier block for the leader —
+         the block of the settlement tier, or the guild herald for a guild; an upgrade notifies every
+         member on the site and mails the owners in game. Nothing is written if any of these fails.
+
+         The membership rules are checked again inside that transaction, because the author may have
+         joined a group between the submission and the approval: a guild is refused while its author
+         belongs to a settlement, and a first settlement is refused while its author owns a guild.
+
+         Errors:
            - NOT_FOUND (404): settlement request not found
-           - FAILED_PRECONDITION (400): settlement request already approved
+           - FAILED_PRECONDITION (400): settlement request already approved; the author of a guild
+             belongs to a settlement, or the author of a new settlement owns a guild
+           - ALREADY_EXISTS (409): the author already belongs to a group of this kind
            - UNAUTHENTICATED (401): missing or invalid auth token
            - PERMISSION_DENIED (403): insufficient privileges
            - INTERNAL (500): database failure
@@ -4071,11 +4124,18 @@ paths:
     post:
       tags:
         - SettlementService
-      summary: Invite a user to join a settlement. Caller must be the settlement leader.
+      summary: |-
+        Invite a user to join a settlement or a guild. Requires the invite_member permission (owners
+         pass).
       description: |-
-        Errors:
-           - PERMISSION_DENIED (403): caller is not the settlement leader
-           - ALREADY_EXISTS (409): user is already a member of the settlement
+        The membership rules of the target are checked against the invited player now, so no
+         invitation is stored that the player could never accept.
+
+         Errors:
+           - NOT_FOUND (404): settlement not found
+           - PERMISSION_DENIED (403): caller lacks the invite_member permission
+           - ALREADY_EXISTS (409): the player already belongs to a group of this kind
+           - FAILED_PRECONDITION (400): the player owns a guild and the target is a settlement
            - UNAUTHENTICATED (401): missing or invalid auth token
            - INTERNAL (500): database failure
       operationId: SettlementService_InviteMember
@@ -4194,9 +4254,9 @@ paths:
         - SettlementService
       summary: Create a shareable invite link. Requires the invite_member permission (owners pass).
       description: |-
-        Whoever opens the link and is not in a settlement joins straight away, with no
-         join request: the link is an invitation accepted in advance. A settlement keeps
-         at most 10 usable links at once.
+        Whoever opens the link and holds no membership of the link's kind joins straight away, with
+         no join request: the link is an invitation accepted in advance. A group keeps at most 10
+         usable links at once.
 
          Errors:
            - INVALID_ARGUMENT (400): ttl_hours outside 0..720 or max_uses outside 0..100
@@ -4309,12 +4369,15 @@ paths:
     post:
       tags:
         - SettlementService
-      summary: Create a join request to a settlement. Caller must not already belong to a settlement.
+      summary: |-
+        Create a join request to a settlement or a guild. The caller must hold no membership of that
+         kind yet, and a guild owner cannot apply to a settlement.
       description: |-
         Errors:
            - NOT_FOUND (404): settlement not found
-           - ALREADY_EXISTS (409): caller already belongs to a settlement or already applied here
-           - RESOURCE_EXHAUSTED (429): caller has reached the active join-request limit
+           - ALREADY_EXISTS (409): caller already belongs to a group of this kind, or already applied here
+           - FAILED_PRECONDITION (400): caller owns a guild and the target is a settlement
+           - RESOURCE_EXHAUSTED (429): caller has reached the active join-request limit for this kind
            - UNAUTHENTICATED (401): missing or invalid auth token
            - INTERNAL (500): database failure
       operationId: SettlementService_CreateJoinRequest
@@ -4350,11 +4413,15 @@ paths:
     post:
       tags:
         - SettlementService
-      summary: Approve a join request. Caller needs the review_join_request permission or owner.
+      summary: |-
+        Approve a join request. Caller needs the review_join_request permission or owner. The
+         membership rules are checked again against the applicant, who may have joined another group
+         since the application.
       description: |-
         Errors:
            - NOT_FOUND (404): join request not found
-           - ALREADY_EXISTS (409): applicant already joined another settlement
+           - ALREADY_EXISTS (409): applicant already belongs to a group of this kind
+           - FAILED_PRECONDITION (400): applicant owns a guild and the target is a settlement
            - PERMISSION_DENIED (403): caller lacks the review_join_request permission
            - UNAUTHENTICATED (401): missing or invalid auth token
            - INTERNAL (500): database failure
@@ -4545,8 +4612,12 @@ paths:
         Transfer ownership: grant owner to a member and drop it from the caller. Owner only.
          The owner count is preserved, so this cannot be used to add owners.
       description: |-
-        Errors:
+        Ownership of a guild cannot go to a member who lives in a settlement: a guild owner holds no
+         settlement.
+
+         Errors:
            - NOT_FOUND (404): settlement or target member not found
+           - FAILED_PRECONDITION (400): the target owns a guild and lives in a settlement
            - PERMISSION_DENIED (403): caller is not an owner
            - UNAUTHENTICATED (401): missing or invalid auth token
            - INTERNAL (500): database failure
@@ -4806,11 +4877,21 @@ paths:
     post:
       tags:
         - SettlementService
-      summary: Leave the settlement the caller belongs to. The last owner cannot leave.
+      summary: Leave the settlement or guild the caller belongs to.
       description: |-
-        Errors:
-           - NOT_FOUND (404): caller does not belong to a settlement
-           - FAILED_PRECONDITION (400): caller is the last owner
+        The last owner of a settlement cannot leave: an admin grants the role to another member or
+         deletes the settlement.
+
+         A guild whose last owner is also its only member is disbanded instead. The owner of a guild
+         belongs to no settlement, so without this the founder could never join one. Disbanding deletes
+         the guild, its invitations and its applications, so it takes an explicit `disband: true`;
+         without it the call answers FAILED_PRECONDITION and changes nothing. A guild with other members
+         is never disbanded: transfer the ownership to one of them instead.
+
+         Errors:
+           - NOT_FOUND (404): caller does not belong to this group, or the group is gone
+           - FAILED_PRECONDITION (400): caller is the last owner of a settlement; caller is the last
+             owner of a guild and sent no `disband`; the guild gained a member since the caller read it
            - UNAUTHENTICATED (401): missing or invalid auth token
            - INTERNAL (500): database failure
       operationId: SettlementService_LeaveSettlement
@@ -4821,6 +4902,16 @@ paths:
           schema:
             type: string
             title: settlement_id
+        - name: disband
+          in: query
+          description: |-
+            (OPTIONAL) Confirms that the caller disbands the guild they are the last owner and the only member of.
+             Ignored for a settlement and for a guild with other members. This rpc takes no request body, so
+             REST sends it as the query parameter `disband=true`.
+          required: false
+          schema:
+            type: boolean
+            title: disband
       responses:
         "200":
           description: Success
@@ -4842,7 +4933,6 @@ paths:
           required: true
           schema:
             title: filter
-            description: Stats filter. Service will return count sorted by provided filter.
             $ref: '#/components/schemas/stats.v1.OnlineStatsRequest.StatsFilter'
         - name: started_at
           in: query
@@ -4853,7 +4943,6 @@ paths:
               - string
             title: started_at
             format: int64
-            description: Start time for filtering
       responses:
         "200":
           description: Success
@@ -5005,6 +5094,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/kit.v1.ListUserAssignmentsResponse'
+  /v1/users/{user_id}/memberships:
+    get:
+      tags:
+        - SettlementService
+      summary: 'Get both groups a user belongs to: their settlement and their guild.'
+      description: |-
+        A player may hold one membership of each kind at the same time. The owner of a guild holds
+         no settlement, so a response with a guild and no settlement is the normal case for a guild
+         founder. Both fields stay unset for a player who belongs to nothing; that is not an error.
+
+         Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: SettlementService_GetUserMemberships
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: user_id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.GetUserMembershipsResponse'
   /v1/users/{user_id}/nickname:
     put:
       tags:
@@ -5057,10 +5174,12 @@ paths:
     get:
       tags:
         - SettlementService
-      summary: Get settlement by user ID.
+      summary: |-
+        Get the settlement a user belongs to. Guilds are not served here: read both groups with
+         GetUserMemberships.
       description: |-
         Errors:
-           - NOT_FOUND (404): settlement not found for user
+           - NOT_FOUND (404): the user belongs to no settlement
            - INTERNAL (500): database failure
       operationId: SettlementService_GetByUserId
       parameters:
@@ -5130,10 +5249,12 @@ paths:
     get:
       tags:
         - SettlementService
-      summary: Get the verification status of a settlement request for a user.
+      summary: |-
+        Get the verification status of one kind of request for a user. Each kind keeps its own
+         request, so kind selects which one is answered; unset means the settlement request.
       description: |-
         Errors:
-           - NOT_FOUND (404): no settlement request found for user
+           - NOT_FOUND (404): no request of this kind found for the user
            - INTERNAL (500): database failure
       operationId: SettlementService_VerificationStatus
       parameters:
@@ -5143,6 +5264,13 @@ paths:
           schema:
             type: string
             title: user_id
+        - name: kind
+          in: query
+          description: (OPTIONAL) Which request to answer. Unset means the settlement request.
+          required: false
+          schema:
+            title: kind
+            $ref: '#/components/schemas/settlement.v1.GroupKind'
       responses:
         "200":
           description: Success
@@ -5198,7 +5326,6 @@ paths:
             title: user_ids
             maxItems: 100
             minItems: 1
-            description: At least 1 and at most 100 user IDs.
       responses:
         "200":
           description: Success
@@ -9396,6 +9523,7 @@ components:
       properties:
         settlement:
           title: settlement
+          description: 'The settlement the user belongs to. Never a guild: use GetUserMemberships to read both.'
           $ref: '#/components/schemas/settlement.v1.Settlement'
       title: GetByUserIdResponse
       additionalProperties: false
@@ -9537,6 +9665,42 @@ components:
           title: invitations
       title: GetUserInvitationsResponse
       additionalProperties: false
+    settlement.v1.GetUserMembershipsRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          title: user_id
+      title: GetUserMembershipsRequest
+      required:
+        - user_id
+      additionalProperties: false
+    settlement.v1.GetUserMembershipsResponse:
+      type: object
+      properties:
+        settlement:
+          title: settlement
+          description: (OPTIONAL) Unset while the user belongs to no settlement.
+          $ref: '#/components/schemas/settlement.v1.Settlement'
+        guild:
+          title: guild
+          description: |-
+            (OPTIONAL) Unset while the user belongs to no guild. A guild owner has no settlement, so a response
+             carrying only this field is the normal case for a guild founder.
+          $ref: '#/components/schemas/settlement.v1.Settlement'
+      title: GetUserMembershipsResponse
+      additionalProperties: false
+    settlement.v1.GroupKind:
+      type: string
+      title: GroupKind
+      enum:
+        - GROUP_KIND_UNSPECIFIED
+        - GROUP_KIND_SETTLEMENT
+        - GROUP_KIND_GUILD
+      description: |-
+        Which kind of group a document is. The kind decides the membership rules, not the tier: a
+         player holds at most one settlement and at most one guild, and the owner of a guild holds no
+         settlement.
     settlement.v1.ImperialFavorLog:
       type: object
       properties:
@@ -9714,12 +9878,26 @@ components:
         settlement_id:
           type: string
           title: settlement_id
+        disband:
+          type: boolean
+          title: disband
+          description: |-
+            (OPTIONAL) Confirms that the caller disbands the guild they are the last owner and the only member of.
+             Ignored for a settlement and for a guild with other members. This rpc takes no request body, so
+             REST sends it as the query parameter `disband=true`.
       title: LeaveSettlementRequest
       required:
         - settlement_id
       additionalProperties: false
     settlement.v1.LeaveSettlementResponse:
       type: object
+      properties:
+        disbanded:
+          type: boolean
+          title: disbanded
+          description: |-
+            (OPTIONAL) True when the call disbanded the guild instead of removing one member. The guild, its
+             invitations and its applications are gone, so the caller holds no group of this kind.
       title: LeaveSettlementResponse
       additionalProperties: false
     settlement.v1.ListImperialFavorLogsRequest:
@@ -9801,6 +9979,11 @@ components:
       additionalProperties: false
     settlement.v1.ListPendingRequest:
       type: object
+      properties:
+        kind:
+          title: kind
+          description: (OPTIONAL) Which kind to list. Unset lists both kinds, so the moderation queue never hides a guild.
+          $ref: '#/components/schemas/settlement.v1.GroupKind'
       title: ListPendingRequest
       additionalProperties: false
     settlement.v1.ListPendingResponse:
@@ -9815,6 +9998,11 @@ components:
       additionalProperties: false
     settlement.v1.ListRequest:
       type: object
+      properties:
+        kind:
+          title: kind
+          description: (OPTIONAL) Which kind to list. Unset lists settlements only, so guilds stay off the public map.
+          $ref: '#/components/schemas/settlement.v1.GroupKind'
       title: ListRequest
       additionalProperties: false
     settlement.v1.ListResponse:
@@ -9851,6 +10039,30 @@ components:
         - PERMISSION_INVITE_MEMBER
         - PERMISSION_REVIEW_JOIN_REQUEST
       description: Permission a custom role can grant. The owner role holds all permissions implicitly.
+    settlement.v1.ReissueNotifierRequest:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+        user_id:
+          type: string
+          title: user_id
+          description: (OPTIONAL) Owner who receives the block. Defaults to the first owner.
+      title: ReissueNotifierRequest
+      required:
+        - settlement_id
+      additionalProperties: false
+    settlement.v1.ReissueNotifierResponse:
+      type: object
+      properties:
+        number:
+          type: integer
+          title: number
+          format: int32
+          description: Ordinal of this reissue (1 for the first), the suffix of the mail's idempotency key.
+      title: ReissueNotifierResponse
+      additionalProperties: false
     settlement.v1.RejectInvitationRequest:
       type: object
       properties:
@@ -10111,6 +10323,15 @@ components:
           type: string
           title: contact_info
           description: (OPTIONAL) Public contact information for the settlement (free text).
+        notifier_position:
+          title: notifier_position
+          description: |-
+            (OPTIONAL) Where the settlement's notifier block stands in the world. Unset while no block is placed.
+             The server owns it: a block placed in game writes it, the site only reads it.
+             Filled by every rpc that returns a single settlement. Deliberately unset in List and
+             ListPending, which would need one extra read per row. Always unset for a guild: its herald
+             carries no settlement binding and writes no placement.
+          $ref: '#/components/schemas/settlement.v1.Vector3'
       title: Settlement
       additionalProperties: false
     settlement.v1.SettlementTag:
@@ -10148,6 +10369,7 @@ components:
         - TOWNSHIP
         - CITY
         - PROVINCE
+        - GUILD
     settlement.v1.SubmitRequest:
       type: object
       properties:
@@ -10200,8 +10422,18 @@ components:
       enum:
         - TYPE_UNSPECIFIED
         - CAMP
+        - GUILD
     settlement.v1.SubmitResponse:
       type: object
+      properties:
+        coordinates_locked:
+          type: boolean
+          title: coordinates_locked
+          description: |-
+            (OPTIONAL) True when the server dropped the submitted coordinates because the settlement's notifier
+             block stands. The request then stores the block's position instead (Settlement.notifier_position),
+             and the client must show coordinates as read-only rather than as the value it sent.
+             Always false on a first submission: it has no settlement, so it has no block.
       title: SubmitResponse
       additionalProperties: false
     settlement.v1.TagReference:
@@ -10418,12 +10650,34 @@ components:
           format: int32
       title: Vector2
       additionalProperties: false
+    settlement.v1.Vector3:
+      type: object
+      properties:
+        x:
+          type: integer
+          title: x
+          format: int32
+        y:
+          type: integer
+          title: y
+          format: int32
+        z:
+          type: integer
+          title: z
+          format: int32
+      title: Vector3
+      additionalProperties: false
+      description: A block position in the game world.
     settlement.v1.VerificationStatusRequest:
       type: object
       properties:
         user_id:
           type: string
           title: user_id
+        kind:
+          title: kind
+          description: (OPTIONAL) Which request to answer. Unset means the settlement request.
+          $ref: '#/components/schemas/settlement.v1.GroupKind'
       title: VerificationStatusRequest
       required:
         - user_id
@@ -10912,7 +11166,17 @@ tags:
   - name: ServerInfoService
     description: Provides server runtime information
   - name: SettlementService
-    description: Represents settlement management service
+    description: |-
+      Settlement and guild management.
+
+       Both kinds live in this one service and share every mechanic: profile, roles, invitations, join
+       requests, invite links, moderation and the notifier block. What sets them apart is the kind
+       (GroupKind) and two membership rules:
+
+         - A player holds at most one settlement and at most one guild, and may hold both at the same
+           time.
+         - The owner of a guild holds no settlement. A guild member may live in a settlement, so this
+           binds only founding a guild, owning one, and taking its ownership.
   - name: SettlementTagService
     description: Administrative service for tag management
   - name: StatsService

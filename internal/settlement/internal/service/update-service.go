@@ -28,9 +28,11 @@ func (s *Service) AdminUpdateSettlement(ctx context.Context, req *settlementv1.A
 		return nil, err
 	}
 
-	return &settlementv1.AdminUpdateSettlementResponse{
-		Settlement: s.mapper.ToSettlementProto(*updated),
-	}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.AdminUpdateSettlementResponse{Settlement: proto}, nil
 }
 
 // UpdateSettlement implements settlementv1.SettlementServiceServer.
@@ -70,7 +72,9 @@ func (s *Service) UpdateSettlement(ctx context.Context, req *settlementv1.Update
 		return nil, err
 	}
 
-	return &settlementv1.UpdateSettlementResponse{
-		Settlement: s.mapper.ToSettlementProto(*updated),
-	}, nil
+	proto, err := s.settlementProto(ctx, *updated)
+	if err != nil {
+		return nil, err
+	}
+	return &settlementv1.UpdateSettlementResponse{Settlement: proto}, nil
 }
