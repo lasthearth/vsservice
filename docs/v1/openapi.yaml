@@ -92,27 +92,31 @@ paths:
             title: settlement_id
         - name: next_token
           in: query
-          description: '(OPTIONAL) '
           required: false
           schema:
             type: string
             title: next_token
+            description: '(OPTIONAL) '
         - name: admin_id
           in: query
-          description: (OPTIONAL) Filter logs by the admin who performed the operation.
+          description: Filter logs by the admin who performed the operation.
           required: false
           schema:
             type: string
             title: admin_id
+            description: (OPTIONAL) Filter logs by the admin who performed the operation.
         - name: order_by
           in: query
           description: |-
-            (OPTIONAL) Sort order. Format: "field [asc|desc]". Default: "created_at desc".
+            Sort order. Format: "field [asc|desc]". Default: "created_at desc".
              Allowed fields: created_at, settlement_id, admin_id.
           required: false
           schema:
             type: string
             title: order_by
+            description: |-
+              (OPTIONAL) Sort order. Format: "field [asc|desc]". Default: "created_at desc".
+               Allowed fields: created_at, settlement_id, admin_id.
       responses:
         "200":
           description: Success
@@ -548,6 +552,7 @@ paths:
           schema:
             type: string
             title: channel_id
+            description: Discord channel ID.
         - name: limit
           in: query
           description: 'Maximum number of images. Allowed range: [1, 100].'
@@ -555,12 +560,14 @@ paths:
             type: integer
             title: limit
             format: int32
+            description: 'Maximum number of images. Allowed range: [1, 100].'
         - name: before
           in: query
           description: Message ID to fetch before (for pagination).
           schema:
             type: string
             title: before
+            description: Message ID to fetch before (for pagination).
       responses:
         "200":
           description: Success
@@ -588,6 +595,7 @@ paths:
           schema:
             type: string
             title: channel_id
+            description: Discord channel ID.
         - name: limit
           in: query
           description: 'Maximum number of messages. Allowed range: [1, 100].'
@@ -595,12 +603,14 @@ paths:
             type: integer
             title: limit
             format: int32
+            description: 'Maximum number of messages. Allowed range: [1, 100].'
         - name: before
           in: query
           description: Message ID to fetch before (for pagination).
           schema:
             type: string
             title: before
+            description: Message ID to fetch before (for pagination).
       responses:
         "200":
           description: Success
@@ -1236,12 +1246,14 @@ paths:
             maximum: 100
             minimum: 0
             format: int32
+            description: At most this many events, 1..100. Zero means 50.
         - name: past
           in: query
           description: List finished events instead of upcoming ones.
           schema:
             type: boolean
             title: past
+            description: List finished events instead of upcoming ones.
       responses:
         "200":
           description: Success
@@ -1461,6 +1473,7 @@ paths:
             maximum: 200
             minimum: 0
             format: int32
+            description: At most this many players, 1..200. Zero means 100.
       responses:
         "200":
           description: Success
@@ -1491,12 +1504,14 @@ paths:
             maximum: 100
             minimum: 0
             format: int32
+            description: At most this many events, 1..100. Zero means 50.
         - name: past
           in: query
           description: List finished events instead of upcoming ones.
           schema:
             type: boolean
             title: past
+            description: List finished events instead of upcoming ones.
       responses:
         "200":
           description: Success
@@ -1521,6 +1536,7 @@ paths:
             type: integer
             title: limit
             format: int32
+            description: Maximum number of entries. Defaults to 25.
       responses:
         "200":
           description: Success
@@ -1623,6 +1639,7 @@ paths:
           schema:
             type: string
             title: next
+            description: Cursor from a previous response for pagination.
         - name: limit
           in: query
           description: Maximum number of seasons. Defaults to 20.
@@ -1630,6 +1647,7 @@ paths:
             type: integer
             title: limit
             format: int32
+            description: Maximum number of seasons. Defaults to 20.
       responses:
         "200":
           description: Success
@@ -2034,6 +2052,7 @@ paths:
             type: string
             title: code
             minLength: 1
+            description: Upsert key of the kit to rename.
       requestBody:
         content:
           application/json:
@@ -2137,6 +2156,7 @@ paths:
           required: true
           schema:
             title: filter
+            description: Leaderboard filter. Service will return entries sorted by provided filter.
             $ref: '#/components/schemas/leaderboard.v1.LeaderboardRequest.LeaderboardFilter'
         - name: limit
           in: query
@@ -2147,6 +2167,9 @@ paths:
             type: integer
             title: limit
             format: int32
+            description: |-
+              The maximum number of entries to return.
+               If unspecified, 25 entry will be returned.
       responses:
         "200":
           description: Success
@@ -2184,11 +2207,13 @@ paths:
             maximum: 100
             minimum: 0
             format: int32
+            description: Defaults to 50.
         - name: activity
           in: query
           description: Only posts listing this activity; unset means all.
           schema:
             title: activity
+            description: Only posts listing this activity; unset means all.
             $ref: '#/components/schemas/lfg.v1.Activity'
       responses:
         "200":
@@ -2667,6 +2692,11 @@ paths:
             type: integer
             title: page_size
             format: int32
+            description: |-
+              The maximum number of news to return. The service may return fewer than
+               this value.
+               If unspecified, at most 15 news will be returned.
+               The maximum value is 50; values above 50 will be coerced to 50.
         - name: page_token
           in: query
           description: |-
@@ -2678,6 +2708,12 @@ paths:
           schema:
             type: string
             title: page_token
+            description: |-
+              A page token, received from a previous `ListBooks` call.
+               Provide this to retrieve the subsequent page.
+
+               When paginating, all other parameters provided to `ListBooks` must match
+               the call that provided the page token.
       responses:
         "200":
           description: Success
@@ -2728,6 +2764,7 @@ paths:
           schema:
             type: string
             title: id
+            description: The unique identifier of the news item to retrieve.
       responses:
         "200":
           description: Success
@@ -2754,6 +2791,7 @@ paths:
           schema:
             type: string
             title: id
+            description: The unique identifier of the news item to delete.
       responses:
         "200":
           description: Success
@@ -2782,6 +2820,7 @@ paths:
           schema:
             type: string
             title: id
+            description: The unique identifier of the news item.
       responses:
         "200":
           description: Success
@@ -2814,12 +2853,17 @@ paths:
             type: integer
             title: page_size
             format: int32
+            description: |-
+              The maximum number of notifications to return. The service may return fewer
+               than this value. If unspecified, at most 15 notifications will be returned.
+               The maximum value is 15; values above 15 will be coerced to 15.
         - name: page_token
           in: query
           description: A token identifying a page of results the server should return.
           schema:
             type: string
             title: page_token
+            description: A token identifying a page of results the server should return.
         - name: order_by
           in: query
           description: |-
@@ -2828,6 +2872,9 @@ paths:
           schema:
             type: string
             title: order_by
+            description: |-
+              The field to sort by, followed by direction (e.g., "created_at desc" or "state asc").
+               Supported fields: "created_at", "state". If unspecified, defaults to "created_at desc".
       responses:
         "200":
           description: Success
@@ -2856,6 +2903,9 @@ paths:
           schema:
             type: string
             title: id
+            description: |-
+              The identifier of the notification to mark as read.
+               Required.
       responses:
         "200":
           description: Success
@@ -3501,6 +3551,7 @@ paths:
             type: integer
             title: count
             format: int32
+            description: Count of questions to return, if not specified, returns 5 questions
       responses:
         "200":
           description: Success
@@ -3573,10 +3624,11 @@ paths:
       parameters:
         - name: kind
           in: query
-          description: (OPTIONAL) Which kind to list. Unset lists settlements only, so guilds stay off the public map.
+          description: Which kind to list. Unset lists settlements only, so guilds stay off the public map.
           required: false
           schema:
             title: kind
+            description: (OPTIONAL) Which kind to list. Unset lists settlements only, so guilds stay off the public map.
             $ref: '#/components/schemas/settlement.v1.GroupKind'
       responses:
         "200":
@@ -3834,10 +3886,11 @@ paths:
       parameters:
         - name: kind
           in: query
-          description: (OPTIONAL) Which kind to list. Unset lists both kinds, so the moderation queue never hides a guild.
+          description: Which kind to list. Unset lists both kinds, so the moderation queue never hides a guild.
           required: false
           schema:
             title: kind
+            description: (OPTIONAL) Which kind to list. Unset lists both kinds, so the moderation queue never hides a guild.
             $ref: '#/components/schemas/settlement.v1.GroupKind'
       responses:
         "200":
@@ -4905,13 +4958,17 @@ paths:
         - name: disband
           in: query
           description: |-
-            (OPTIONAL) Confirms that the caller disbands the guild they are the last owner and the only member of.
+            Confirms that the caller disbands the guild they are the last owner and the only member of.
              Ignored for a settlement and for a guild with other members. This rpc takes no request body, so
              REST sends it as the query parameter `disband=true`.
           required: false
           schema:
             type: boolean
             title: disband
+            description: |-
+              (OPTIONAL) Confirms that the caller disbands the guild they are the last owner and the only member of.
+               Ignored for a settlement and for a guild with other members. This rpc takes no request body, so
+               REST sends it as the query parameter `disband=true`.
       responses:
         "200":
           description: Success
@@ -4933,6 +4990,7 @@ paths:
           required: true
           schema:
             title: filter
+            description: Stats filter. Service will return count sorted by provided filter.
             $ref: '#/components/schemas/stats.v1.OnlineStatsRequest.StatsFilter'
         - name: started_at
           in: query
@@ -4943,6 +5001,7 @@ paths:
               - string
             title: started_at
             format: int64
+            description: Start time for filtering
       responses:
         "200":
           description: Success
@@ -5266,10 +5325,11 @@ paths:
             title: user_id
         - name: kind
           in: query
-          description: (OPTIONAL) Which request to answer. Unset means the settlement request.
+          description: Which request to answer. Unset means the settlement request.
           required: false
           schema:
             title: kind
+            description: (OPTIONAL) Which request to answer. Unset means the settlement request.
             $ref: '#/components/schemas/settlement.v1.GroupKind'
       responses:
         "200":
@@ -5326,6 +5386,7 @@ paths:
             title: user_ids
             maxItems: 100
             minItems: 1
+            description: At least 1 and at most 100 user IDs.
       responses:
         "200":
           description: Success
@@ -5461,6 +5522,469 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/verification.v1.ListResponse'
+  /v1/wiki/articles:
+    get:
+      tags:
+        - WikiService
+      summary: |-
+        List articles with pagination. Published articles are public; drafts appear
+         only for an authorized editor. Optional filters narrow the list.
+      description: |-
+        Default page size is 20, maximum is 50.
+
+         Errors:
+           - INVALID_ARGUMENT (400): unknown status or section filter
+           - INTERNAL (500): database failure
+      operationId: WikiService_ListArticles
+      parameters:
+        - name: page_size
+          in: query
+          description: |-
+            The maximum number of articles to return. The service may return fewer than
+             this value. If unspecified, at most 20 articles will be returned.
+             The maximum value is 50; values above 50 will be coerced to 50.
+          schema:
+            type: integer
+            title: page_size
+            format: int32
+            description: |-
+              The maximum number of articles to return. The service may return fewer than
+               this value. If unspecified, at most 20 articles will be returned.
+               The maximum value is 50; values above 50 will be coerced to 50.
+        - name: page_token
+          in: query
+          description: |-
+            A page token, received from a previous ListArticles call.
+             Provide this to retrieve the subsequent page.
+          schema:
+            type: string
+            title: page_token
+            description: |-
+              A page token, received from a previous ListArticles call.
+               Provide this to retrieve the subsequent page.
+        - name: section
+          in: query
+          description: Filter by section id; empty returns every section.
+          schema:
+            type: string
+            title: section
+            description: Filter by section id; empty returns every section.
+        - name: status
+          in: query
+          description: |-
+            Filter by status; unspecified returns published articles for readers and
+             every article for authorized editors.
+          schema:
+            title: status
+            description: |-
+              Filter by status; unspecified returns published articles for readers and
+               every article for authorized editors.
+            $ref: '#/components/schemas/wiki.v1.ArticleStatus'
+        - name: search
+          in: query
+          description: Substring match against title, slug, lead and tags; empty skips the search.
+          schema:
+            type: string
+            title: search
+            description: Substring match against title, slug, lead and tags; empty skips the search.
+        - name: tag
+          in: query
+          description: Filter by tag; empty returns every tag.
+          schema:
+            type: string
+            title: tag
+            description: Filter by tag; empty returns every tag.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.ListArticlesResponse'
+    post:
+      tags:
+        - WikiService
+      summary: Create a wiki article. Requires admin privileges.
+      description: |-
+        The slug is derived from the title when omitted. Returns ALREADY_EXISTS
+         when the slug is taken by another article.
+
+         Errors:
+           - INVALID_ARGUMENT (400): title or slug is empty after normalization
+           - ALREADY_EXISTS (409): slug is taken
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_CreateArticle
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/wiki.v1.CreateArticleRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Article'
+  /v1/wiki/articles/by-slug/{slug}:
+    get:
+      tags:
+        - WikiService
+      summary: |-
+        Get one article by slug. Published articles are public; a draft is returned
+         only to an authorized editor, and NOT_FOUND for everyone else.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): article not found or not visible
+           - INTERNAL (500): database failure
+      operationId: WikiService_GetArticleBySlug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+            title: slug
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Article'
+  /v1/wiki/articles/{article.id}:
+    put:
+      tags:
+        - WikiService
+      summary: Replace an article. Requires admin privileges.
+      description: |-
+        Saves a revision of the previous state before overwriting. When
+         expected_version is set and no longer matches, the call fails with
+         ABORTED so a stale editor does not silently overwrite someone else's work.
+
+         Errors:
+           - INVALID_ARGUMENT (400): empty id or title
+           - NOT_FOUND (404): article not found
+           - ALREADY_EXISTS (409): slug is taken by another article
+           - ABORTED (409): expected_version does not match
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_UpdateArticle
+      parameters:
+        - name: article.id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                article:
+                  title: article
+                  $ref: '#/components/schemas/wiki.v1.Article'
+                expected_version:
+                  type:
+                    - integer
+                    - string
+                  title: expected_version
+                  format: int64
+                  description: Version the editor loaded; 0 skips the check.
+                note:
+                  type: string
+                  title: note
+                  description: Comment describing the change.
+              title: UpdateArticleRequest
+              required:
+                - article
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Article'
+  /v1/wiki/articles/{id}:
+    get:
+      tags:
+        - WikiService
+      summary: Get one article by id. Drafts are visible to authorized editors only.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): article not found or not visible
+           - INTERNAL (500): database failure
+      operationId: WikiService_GetArticle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Article'
+    delete:
+      tags:
+        - WikiService
+      summary: Delete an article and its revision history. Requires admin privileges.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): article not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_DeleteArticle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.Empty'
+  /v1/wiki/articles/{id}/revisions:
+    get:
+      tags:
+        - WikiService
+      summary: List saved revisions of an article, newest first. Requires admin privileges.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): article not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: WikiService_ListRevisions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.ListRevisionsResponse'
+  /v1/wiki/articles/{id}/revisions/{revision_id}/restore:
+    post:
+      tags:
+        - WikiService
+      summary: Restore an article to a saved revision. Requires admin privileges.
+      description: |-
+        The state being replaced is saved as a revision first, so a restore can be
+         undone the same way as any other edit.
+
+         Errors:
+           - NOT_FOUND (404): article or revision not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: WikiService_RestoreRevision
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+        - name: revision_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: revision_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision_id:
+                  type: string
+                  title: revision_id
+              title: RestoreRevisionRequest
+              required:
+                - revision_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Article'
+  /v1/wiki/suggestions:
+    get:
+      tags:
+        - WikiService
+      summary: List the proposals of the authenticated author, newest first.
+      description: |-
+        An author only ever sees their own proposals. Requires wiki:write to see
+         every proposal instead.
+
+         Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: WikiService_ListSuggestions
+      parameters:
+        - name: page_size
+          in: query
+          description: The maximum number of proposals to return. Defaults to 20, maximum 50.
+          schema:
+            type: integer
+            title: page_size
+            format: int32
+            description: The maximum number of proposals to return. Defaults to 20, maximum 50.
+        - name: page_token
+          in: query
+          description: A page token from a previous ListSuggestions call.
+          schema:
+            type: string
+            title: page_token
+            description: A page token from a previous ListSuggestions call.
+        - name: status
+          in: query
+          description: Filter by review state; unspecified returns every state.
+          schema:
+            title: status
+            description: Filter by review state; unspecified returns every state.
+            $ref: '#/components/schemas/wiki.v1.SuggestionStatus'
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.ListSuggestionsResponse'
+    post:
+      tags:
+        - WikiService
+      summary: Submit an article written by a player. Requires a signed-in user.
+      description: |-
+        Nothing is published: the proposal goes to the moderation queue and only an
+         editor decides what happens to it.
+
+         Errors:
+           - INVALID_ARGUMENT (400): empty title, or a slug that is not usable
+           - TOO_MANY_REQUESTS (429): the author already has the maximum number of
+             proposals waiting for review
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_SubmitSuggestion
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/wiki.v1.SubmitSuggestionRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Suggestion'
+  /v1/wiki/suggestions/{id}/approve:
+    post:
+      tags:
+        - WikiService
+      summary: Approve a proposal. Requires wiki:review.
+      description: |-
+        A proposal for a new article is applied as a new article, a proposal for an
+         existing one as an edit to it. Both go through the same domain rules as a
+         direct edit, so the proposal cannot produce a state an editor could not.
+
+         Errors:
+           - NOT_FOUND (404): proposal not found
+           - FAILED_PRECONDITION (412): proposal was already reviewed
+           - ALREADY_EXISTS (409): the proposed slug is taken
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing wiki:review scope
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_ApproveSuggestion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Suggestion'
+  /v1/wiki/suggestions/{id}/reject:
+    post:
+      tags:
+        - WikiService
+      summary: Reject a proposal with a reason. Requires wiki:review.
+      description: |-
+        The reason is shown to the author, and nothing else changes.
+
+         Errors:
+           - INVALID_ARGUMENT (400): empty reason
+           - NOT_FOUND (404): proposal not found
+           - FAILED_PRECONDITION (412): proposal was already reviewed
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing wiki:review scope
+           - INTERNAL (500): storage or database failure
+      operationId: WikiService_RejectSuggestion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  title: reason
+                  description: Why the proposal was refused; shown to the author.
+              title: RejectSuggestionRequest
+              required:
+                - reason
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/wiki.v1.Suggestion'
   /v1/{name}/stats:
     get:
       tags:
@@ -11072,6 +11596,424 @@ components:
           title: status
       title: VerifyStatusResponse
       additionalProperties: false
+    wiki.v1.ApproveSuggestionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: ApproveSuggestionRequest
+      required:
+        - id
+      additionalProperties: false
+    wiki.v1.Article:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        slug:
+          type: string
+          title: slug
+          description: 'URL segment: /wiki/<slug>.'
+        title:
+          type: string
+          title: title
+        section:
+          type: string
+          title: section
+          description: 'Section id: start, settlements, war, economy, world or help.'
+        lead:
+          type: string
+          title: lead
+          description: 'Lead paragraph: shown under the heading and in cards.'
+        cover:
+          title: cover
+          $ref: '#/components/schemas/wiki.v1.Cover'
+        tags:
+          type: array
+          items:
+            type: string
+          title: tags
+        game_version:
+          type: string
+          title: game_version
+          description: Game version the article was written for; empty means any version.
+        quick_answer:
+          title: quick_answer
+          $ref: '#/components/schemas/wiki.v1.QuickAnswer'
+        related:
+          type: array
+          items:
+            type: string
+          title: related
+          description: Slugs of related articles.
+        body:
+          type: string
+          title: body
+          description: Article body in wiki markup.
+        status:
+          title: status
+          $ref: '#/components/schemas/wiki.v1.ArticleStatus'
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updated_at:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        author_name:
+          type: string
+          title: author_name
+          description: Display name of the last editor.
+        version:
+          type:
+            - integer
+            - string
+          title: version
+          format: int64
+          description: Increments on every write; used as the optimistic lock token.
+      title: Article
+      additionalProperties: false
+      description: A wiki article.
+    wiki.v1.ArticleStatus:
+      type: string
+      title: ArticleStatus
+      enum:
+        - ARTICLE_STATUS_UNSPECIFIED
+        - ARTICLE_STATUS_PUBLISHED
+        - ARTICLE_STATUS_DRAFT
+      description: Publication state of an article.
+    wiki.v1.Cover:
+      type: object
+      properties:
+        url:
+          type: string
+          title: url
+          description: Image URL returned by the media service.
+        focus:
+          type: integer
+          title: focus
+          format: int32
+          description: 'Vertical focus as a percentage: 0 is the top edge, 100 the bottom.'
+      title: Cover
+      additionalProperties: false
+      description: Cover image of an article.
+    wiki.v1.CreateArticleRequest:
+      type: object
+      properties:
+        article:
+          title: article
+          $ref: '#/components/schemas/wiki.v1.Article'
+      title: CreateArticleRequest
+      required:
+        - article
+      additionalProperties: false
+    wiki.v1.DeleteArticleRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: DeleteArticleRequest
+      required:
+        - id
+      additionalProperties: false
+    wiki.v1.GetArticleBySlugRequest:
+      type: object
+      properties:
+        slug:
+          type: string
+          title: slug
+      title: GetArticleBySlugRequest
+      required:
+        - slug
+      additionalProperties: false
+    wiki.v1.GetArticleRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetArticleRequest
+      required:
+        - id
+      additionalProperties: false
+    wiki.v1.ListArticlesRequest:
+      type: object
+      properties:
+        page_size:
+          type: integer
+          title: page_size
+          format: int32
+          description: |-
+            The maximum number of articles to return. The service may return fewer than
+             this value. If unspecified, at most 20 articles will be returned.
+             The maximum value is 50; values above 50 will be coerced to 50.
+        page_token:
+          type: string
+          title: page_token
+          description: |-
+            A page token, received from a previous ListArticles call.
+             Provide this to retrieve the subsequent page.
+        section:
+          type: string
+          title: section
+          description: Filter by section id; empty returns every section.
+        status:
+          title: status
+          description: |-
+            Filter by status; unspecified returns published articles for readers and
+             every article for authorized editors.
+          $ref: '#/components/schemas/wiki.v1.ArticleStatus'
+        search:
+          type: string
+          title: search
+          description: Substring match against title, slug, lead and tags; empty skips the search.
+        tag:
+          type: string
+          title: tag
+          description: Filter by tag; empty returns every tag.
+      title: ListArticlesRequest
+      additionalProperties: false
+    wiki.v1.ListArticlesResponse:
+      type: object
+      properties:
+        articles:
+          type: array
+          items:
+            $ref: '#/components/schemas/wiki.v1.Article'
+          title: articles
+        next_page_token:
+          type: string
+          title: next_page_token
+          description: |-
+            A token, which can be sent as page_token to retrieve the next page.
+             If this field is omitted, there are no subsequent pages.
+        total_size:
+          type: integer
+          title: total_size
+          format: int32
+          description: Total number of articles matching the filters, ignoring pagination.
+      title: ListArticlesResponse
+      additionalProperties: false
+    wiki.v1.ListRevisionsRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: ListRevisionsRequest
+      required:
+        - id
+      additionalProperties: false
+    wiki.v1.ListRevisionsResponse:
+      type: object
+      properties:
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/wiki.v1.Revision'
+          title: revisions
+      title: ListRevisionsResponse
+      additionalProperties: false
+    wiki.v1.ListSuggestionsRequest:
+      type: object
+      properties:
+        page_size:
+          type: integer
+          title: page_size
+          format: int32
+          description: The maximum number of proposals to return. Defaults to 20, maximum 50.
+        page_token:
+          type: string
+          title: page_token
+          description: A page token from a previous ListSuggestions call.
+        status:
+          title: status
+          description: Filter by review state; unspecified returns every state.
+          $ref: '#/components/schemas/wiki.v1.SuggestionStatus'
+      title: ListSuggestionsRequest
+      additionalProperties: false
+    wiki.v1.ListSuggestionsResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/wiki.v1.Suggestion'
+          title: suggestions
+        next_page_token:
+          type: string
+          title: next_page_token
+      title: ListSuggestionsResponse
+      additionalProperties: false
+    wiki.v1.QuickAnswer:
+      type: object
+      properties:
+        question:
+          type: string
+          title: question
+        answer:
+          type: string
+          title: answer
+      title: QuickAnswer
+      additionalProperties: false
+      description: Short answer shown in the quick answers block.
+    wiki.v1.RejectSuggestionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        reason:
+          type: string
+          title: reason
+          description: Why the proposal was refused; shown to the author.
+      title: RejectSuggestionRequest
+      required:
+        - id
+        - reason
+      additionalProperties: false
+    wiki.v1.RestoreRevisionRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        revision_id:
+          type: string
+          title: revision_id
+      title: RestoreRevisionRequest
+      required:
+        - id
+        - revision_id
+      additionalProperties: false
+    wiki.v1.Revision:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        article_id:
+          type: string
+          title: article_id
+        article:
+          title: article
+          description: The article as it was before the edit that saved this revision.
+          $ref: '#/components/schemas/wiki.v1.Article'
+        note:
+          type: string
+          title: note
+          description: What the editor said about the change.
+        author_name:
+          type: string
+          title: author_name
+        saved_at:
+          title: saved_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: Revision
+      additionalProperties: false
+      description: A saved state of an article.
+    wiki.v1.SubmitSuggestionRequest:
+      type: object
+      properties:
+        suggestion:
+          title: suggestion
+          $ref: '#/components/schemas/wiki.v1.Suggestion'
+      title: SubmitSuggestionRequest
+      required:
+        - suggestion
+      additionalProperties: false
+    wiki.v1.Suggestion:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        kind:
+          title: kind
+          description: Proposal for a new article, or a new version of an existing one.
+          $ref: '#/components/schemas/wiki.v1.SuggestionKind'
+        article_id:
+          type: string
+          title: article_id
+          description: The article being changed, set only for an edit proposal.
+        slug:
+          type: string
+          title: slug
+          description: Address of the article; for a new article the proposed one.
+        proposal:
+          title: proposal
+          description: Proposed state of the article.
+          $ref: '#/components/schemas/wiki.v1.Article'
+        status:
+          title: status
+          $ref: '#/components/schemas/wiki.v1.SuggestionStatus'
+        note:
+          type: string
+          title: note
+          description: What the author says about their proposal.
+        author_name:
+          type: string
+          title: author_name
+        reviewer_name:
+          type: string
+          title: reviewer_name
+          description: Who reviewed it, and what they said when refusing.
+        reject_reason:
+          type: string
+          title: reject_reason
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        reviewed_at:
+          title: reviewed_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        applied_article_id:
+          type: string
+          title: applied_article_id
+          description: The article the proposal produced, once approved.
+      title: Suggestion
+      additionalProperties: false
+      description: What a proposal asks for.
+    wiki.v1.SuggestionKind:
+      type: string
+      title: SuggestionKind
+      enum:
+        - SUGGESTION_KIND_UNSPECIFIED
+        - SUGGESTION_KIND_NEW_ARTICLE
+        - SUGGESTION_KIND_ARTICLE_EDIT
+      description: What a proposal asks for.
+    wiki.v1.SuggestionStatus:
+      type: string
+      title: SuggestionStatus
+      enum:
+        - SUGGESTION_STATUS_UNSPECIFIED
+        - SUGGESTION_STATUS_PENDING
+        - SUGGESTION_STATUS_APPROVED
+        - SUGGESTION_STATUS_REJECTED
+      description: Review state of a player proposal.
+    wiki.v1.UpdateArticleRequest:
+      type: object
+      properties:
+        article:
+          title: article
+          $ref: '#/components/schemas/wiki.v1.Article'
+        expected_version:
+          type:
+            - integer
+            - string
+          title: expected_version
+          format: int64
+          description: Version the editor loaded; 0 skips the check.
+        note:
+          type: string
+          title: note
+          description: Comment describing the change.
+      title: UpdateArticleRequest
+      required:
+        - article
+      additionalProperties: false
   securitySchemes:
     bearerAuth:
       type: http
@@ -11187,3 +12129,5 @@ tags:
     description: Represents user specific actions
   - name: VerificationService
     description: Represents verification service
+  - name: WikiService
+    description: 'Represents wiki service: reference articles about the game world.'
