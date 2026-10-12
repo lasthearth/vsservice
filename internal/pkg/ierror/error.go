@@ -45,3 +45,10 @@ func FailedPrecondition(msg string) *DomainError {
 func ResourceExhausted(msg string) *DomainError {
 	return &DomainError{Code: codes.ResourceExhausted, Message: msg}
 }
+
+// Unavailable reports a transient failure the client can retry. Use it instead of
+// Internal when the cause is a dependency that was momentarily unreachable: the
+// gateway answers 503, and a client knows a retry may succeed.
+func Unavailable(msg string) *DomainError {
+	return &DomainError{Code: codes.Unavailable, Message: msg}
+}

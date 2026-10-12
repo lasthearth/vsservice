@@ -25,6 +25,9 @@ type Mapper interface {
 	ToVector2Protos([]model.Vector2) []*settlementv1.Vector2
 
 	// goverter:ignore state sizeCache unknownFields
+	ToVector3Proto(model.Vector3) *settlementv1.Vector3
+
+	// goverter:ignore state sizeCache unknownFields
 	ToAttachmentProto(model.Attachment) *settlementv1.Attachment
 	ToAttachmentsProto([]model.Attachment) []*settlementv1.Attachment
 
@@ -40,12 +43,13 @@ type Mapper interface {
 	ToJoinRequestProto(model.JoinRequest) *settlementv1.JoinRequest
 	ToJoinRequestsProto([]model.JoinRequest) []*settlementv1.JoinRequest
 
-	// goverter:ignore state sizeCache unknownFields
+	// NotifierPosition lives in another collection; the service fills it in.
+	// goverter:ignore state sizeCache unknownFields NotifierPosition
 	// goverter:map TagIds Tags
 	ToSettlementProto(model.Settlement) *settlementv1.Settlement
 	ToSettlementProtos([]model.Settlement) []*settlementv1.Settlement
 	// goverter:ignore state sizeCache unknownFields
-	// goverter:ignore Members Tags ImperialFavor Roles RolesEnabled ContactInfo
+	// goverter:ignore Members Tags ImperialFavor Roles RolesEnabled ContactInfo NotifierPosition
 	VerifToSettlementProto(model.SettlementVerification) *settlementv1.Settlement
 	VerifsToSettlementProtos([]model.SettlementVerification) []*settlementv1.Settlement
 
@@ -72,10 +76,24 @@ type SettlementDbRepository interface {
 	Create(ctx context.Context, dto settlementdto.Settlement) error
 	CountByLeaderID(ctx context.Context, id string) (int64, error)
 	GetSettlement(ctx context.Context, id string) (*model.Settlement, error)
+	// GetSettlementByUserId returns the settlement the user belongs to. A guild is served by
+	// GetGuildByUserId, because a player may hold one of each at the same time.
 	GetSettlementByUserId(ctx context.Context, userId string) (*model.Settlement, error)
-	GetAllSettlements(ctx context.Context) ([]model.Settlement, error)
+	// GetGuildByUserId returns the guild the user belongs to.
+	GetGuildByUserId(ctx context.Context, userId string) (*model.Settlement, error)
+	// GetAllByKind lists every approved group of one kind. model.KindAny lists both kinds.
+	GetAllByKind(ctx context.Context, kind model.SettlementKind) ([]model.Settlement, error)
 
-	IsMemberOfAnySettlement(ctx context.Context, userID string) error
+	// Memberships reads what the user holds across both kinds, for the rules in model.Memberships.
+	Memberships(ctx context.Context, userID string) (model.Memberships, error)
+	// EnsureMayJoin applies model.Memberships.MayJoin to what the user holds right now. Every path
+	// that adds a member goes through it, so an invitation or a join request written days earlier
+	// is checked again when it is accepted.
+	EnsureMayJoin(ctx context.Context, userID string, kind model.SettlementKind) error
+	// EnsureMayOwnGuild applies model.Memberships.MayOwnGuild: the owner of a guild belongs to no
+	// settlement.
+	EnsureMayOwnGuild(ctx context.Context, userID string) error
+
 	IsLeaderOfSettlement(ctx context.Context, settlementID, userID string) error
 
 	UpdateSettlement(
@@ -85,6 +103,22 @@ type SettlementDbRepository interface {
 	) (*model.Settlement, error)
 
 	DeleteSettlement(ctx context.Context, settlementID string) error
+
+	// DeleteSoloGuild removes a guild while userID is its only member, together with its
+	// invitations and applications. It answers ErrDisbandConflict when the guild gained a member
+	// since the caller read it, so a player who joins in between is never deleted with the guild.
+	DeleteSoloGuild(ctx context.Context, guildID, userID string) error
+
+	// GetNotifier returns where the settlement's notifier block stands; found is
+	// false while none is placed. The collection is written by the game server;
+	// vsservice only reads it.
+	GetNotifier(ctx context.Context, settlementID string) (placement model.NotifierPlacement, found bool, err error)
+
+	// InTransaction runs fn in one MongoDB transaction: every repository call and
+	// every mail written with the ctx fn receives commits or rolls back together.
+	// fn may run more than once on transient errors, so it must be idempotent and
+	// must return, never swallow, the errors of the calls it makes.
+	InTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 
 	AddTag(ctx context.Context, settlementID, tagID string) error
 	RemoveTag(ctx context.Context, settlementID, tagID string) error
@@ -100,7 +134,9 @@ type SettlementDbRepository interface {
 	GetInvitations(ctx context.Context, settlementID string) ([]model.Invitation, error)
 	GetUserInvitations(ctx context.Context, userID string) ([]model.Invitation, error)
 
-	CountUserJoinRequests(ctx context.Context, userID string) (int64, error)
+	// CountUserJoinRequests counts the open applications of one kind. The limit is per kind, so
+	// pending settlement applications never block an application to a guild.
+	CountUserJoinRequests(ctx context.Context, userID string, kind model.SettlementKind) (int64, error)
 	CreateJoinRequest(ctx context.Context, settlementID, userID string) error
 	GetJoinRequest(ctx context.Context, joinRequestID string) (*model.JoinRequest, error)
 	GetJoinRequests(ctx context.Context, settlementID string) ([]model.JoinRequest, error)
@@ -135,8 +171,35 @@ type SettlementRequestDbRepository interface {
 	CreateRequest(ctx context.Context, opts SettlementOpts) error
 	UpdateRequest(ctx context.Context, opts SettlementOpts) error
 	GetSettlementRequest(ctx context.Context, id string) (*model.SettlementVerification, error)
-	GetSettlementRequestByLeader(ctx context.Context, leaderID string) (*model.SettlementVerification, error)
-	GetPendingSettlements(ctx context.Context) ([]model.SettlementVerification, error)
-	Approve(ctx context.Context, id string) error
+	// GetSettlementRequestByLeader returns the request of one kind this leader holds. Each kind
+	// keeps its own request, so a pending guild never hides behind a settlement one.
+	GetSettlementRequestByLeader(ctx context.Context, leaderID string, kind model.SettlementKind) (*model.SettlementVerification, error)
+	// GetPendingSettlements lists pending requests of one kind. model.KindAny lists both.
+	GetPendingSettlements(ctx context.Context, kind model.SettlementKind) ([]model.SettlementVerification, error)
+	// SetRequestNotifierReissues stores a copy of the settlement's notifier
+	// reissue counter on its request. The request outlives the settlement —
+	// DeleteSettlement does not touch it — and a settlement re-created under the
+	// same id is built from that request, so the copy is what keeps the counter
+	// continuous. A request that no longer exists is not an error.
+	SetRequestNotifierReissues(ctx context.Context, id string, reissues int) error
+	// Approve marks the request approved and creates the settlement from it
+	// (the settlement id is the request id), or upgrades the settlement when it
+	// already exists. Call it inside InTransaction so the caller can write the
+	// mails and notices that belong to the approval atomically.
+	Approve(ctx context.Context, id string) (*ApprovalResult, error)
 	Reject(ctx context.Context, id string, rejectionReason string) error
+}
+
+// ApprovalResult is what an approval changed.
+type ApprovalResult struct {
+	// Created is true when the approval created the settlement and false when
+	// it updated an existing one.
+	Created bool
+	// PreviousType is the settlement type before an update; empty when Created.
+	PreviousType model.SettlementType
+	// Settlement is the settlement as stored after the approval.
+	Settlement model.Settlement
+	// RequestedAt is when the approved request was last submitted. It tells two
+	// upgrades to the same tier apart.
+	RequestedAt time.Time
 }

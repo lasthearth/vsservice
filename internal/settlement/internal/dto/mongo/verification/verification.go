@@ -11,16 +11,25 @@ import (
 
 type SettlementVerification struct {
 	mongox.Model `bson:",inline"`
-	Name         string                     `bson:"name"`
-	Type         string                     `bson:"type"`
-	Leader       memberdto.Member           `bson:"leader"`
-	Coordinates  vector2dto.Vector2         `bson:"coordinates"`
-	Attachments  []attachmentdto.Attachment `bson:"attachments"`
-	Diplomacy    string                     `bson:"diplomacy"`
-	Description  string                     `bson:"description"`
+	Name         string `bson:"name"`
+	Type         string `bson:"type"`
+	// Kind is derived from Type on every write: "settlement" or "guild". It is stored because the
+	// unique index that keeps one open request per player per kind is a partial index. Never set it
+	// by hand.
+	Kind        string                     `bson:"kind"`
+	Leader      memberdto.Member           `bson:"leader"`
+	Coordinates vector2dto.Vector2         `bson:"coordinates"`
+	Attachments []attachmentdto.Attachment `bson:"attachments"`
+	Diplomacy   string                     `bson:"diplomacy"`
+	Description string                     `bson:"description"`
 
 	Status          string `bson:"status"`
 	RejectionReason string `bson:"rejection_reason"`
+
+	// NotifierReissues mirrors the settlement's notifier reissue counter. The
+	// request outlives the settlement, and a settlement re-created under the same
+	// id is built from this document, so the copy keeps the counter continuous.
+	NotifierReissues int `bson:"notifier_reissues"`
 }
 
 func (s *SettlementVerification) ToModel() *model.SettlementVerification {

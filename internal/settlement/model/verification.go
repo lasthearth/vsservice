@@ -27,6 +27,8 @@ type SettlementVerification struct {
 	CreatedAt       time.Time
 }
 
+// LvlUp moves the request to the next tier of its kind. A guild has one tier and stays where it
+// is, so a further guild submission only re-verifies the profile.
 func (s *SettlementVerification) LvlUp() {
 	switch s.Type {
 	case SettlementTypeCamp:
@@ -37,7 +39,7 @@ func (s *SettlementVerification) LvlUp() {
 		s.Type = SettlementTypeCity
 	case SettlementTypeCity:
 		s.Type = SettlementTypeProvince
-	case SettlementTypeProvince:
+	case SettlementTypeProvince, SettlementTypeGuild:
 		break
 	}
 }

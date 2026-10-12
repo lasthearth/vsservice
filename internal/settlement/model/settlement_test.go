@@ -99,3 +99,43 @@ func TestSettlementRoleInvariants(t *testing.T) {
 		t.Fatal("deleted role must be unassigned from members")
 	}
 }
+
+// A leave that would end the group is the one case where the last owner may go: the group is
+// disbanded instead of being left without an owner. A group with other members has somewhere to put
+// the role, so it is not solo and the leave stays refused.
+func TestSoloOwner(t *testing.T) {
+	solo := &Settlement{Members: []Member{{UserId: "a", RoleIds: []string{OwnerRoleId}}}}
+	if !solo.IsLastOwner("a") || !solo.IsSoloOwner("a") {
+		t.Fatal("the only member and owner must be both the last and the solo owner")
+	}
+	if solo.IsSoloOwner("b") {
+		t.Fatal("a player who is not a member is no solo owner")
+	}
+
+	withMember := &Settlement{Members: []Member{
+		{UserId: "a", RoleIds: []string{OwnerRoleId}},
+		{UserId: "b", RoleIds: []string{}},
+	}}
+	if !withMember.IsLastOwner("a") {
+		t.Fatal("a holds the only owner role, so a is the last owner")
+	}
+	if withMember.IsSoloOwner("a") {
+		t.Fatal("a group with another member is not solo: the role can be transferred")
+	}
+	if withMember.IsLastOwner("b") {
+		t.Fatal("b holds no owner role")
+	}
+
+	twoOwners := &Settlement{Members: []Member{
+		{UserId: "a", RoleIds: []string{OwnerRoleId}},
+		{UserId: "b", RoleIds: []string{OwnerRoleId}},
+	}}
+	if twoOwners.IsLastOwner("a") || twoOwners.IsSoloOwner("a") {
+		t.Fatal("with two owners neither is the last one")
+	}
+
+	// RemoveMember keeps refusing the last owner of a group that has other members.
+	if err := withMember.RemoveMember("a"); !errors.Is(err, ErrLastOwner) {
+		t.Fatalf("RemoveMember(last owner) = %v, want ErrLastOwner", err)
+	}
+}

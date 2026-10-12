@@ -10,18 +10,42 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "settlement/v1/tag.proto";
 
-// Represents settlement management service
+// Settlement and guild management.
+//
+// Both kinds live in this one service and share every mechanic: profile, roles, invitations, join
+// requests, invite links, moderation and the notifier block. What sets them apart is the kind
+// (GroupKind) and two membership rules:
+//
+//   - A player holds at most one settlement and at most one guild, and may hold both at the same
+//     time.
+//   - The owner of a guild holds no settlement. A guild member may live in a settlement, so this
+//     binds only founding a guild, owning one, and taking its ownership.
 service SettlementService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
-  // Submit or level-up a settlement request.
+  // Submit or level-up a settlement request, or submit a guild request.
   //
   // On first call creates a new request; on subsequent calls upgrades an approved settlement.
+  // A guild has one tier, so a further guild submission only re-verifies its profile.
+  //
+  // A guild takes the same fields as a first settlement and goes through the same moderation.
+  // The two kinds are independent: one player may hold a settlement and a guild at the same
+  // time, and each kind keeps its own request. The owner of a guild holds no settlement, so a
+  // guild request is refused while its author belongs to one, and a settlement request is
+  // refused while its author owns a guild.
+  //
+  // While the settlement's notifier block stands, coordinates is ignored on an upgrade: the
+  // server takes the block's position instead (see Settlement.notifier_position), so clients
+  // should pre-fill the field from it and show it read-only. SubmitResponse.coordinates_locked
+  // reports that the server did so.
   //
   // Errors:
   //   - INVALID_ARGUMENT (400): attachments is empty; invalid settlement type
-  //   - ALREADY_EXISTS (409): settlement request is already pending
+  //   - ALREADY_EXISTS (409): a request of this kind is already pending
+  //   - FAILED_PRECONDITION (400): the author of a guild request belongs to a settlement, or the
+  //     author of a settlement request owns a guild
   //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - UNAVAILABLE (503): the notifier position could not be read; retry
   //   - INTERNAL (500): storage upload or database failure
   rpc Submit(SubmitRequest) returns (SubmitResponse) {
     option (google.api.http) = {
@@ -30,7 +54,7 @@ service SettlementService {
     };
   }
 
-  // Get settlement by ID.
+  // Get settlement by ID. notifier_position is set while the settlement's notifier block stands.
   //
   // Errors:
   //   - NOT_FOUND (404): settlement not found
@@ -39,16 +63,33 @@ service SettlementService {
     option (google.api.http) = {get: "/v1/settlements/{id}"};
   }
 
-  // Get settlement by user ID.
+  // Get the settlement a user belongs to. Guilds are not served here: read both groups with
+  // GetUserMemberships.
   //
   // Errors:
-  //   - NOT_FOUND (404): settlement not found for user
+  //   - NOT_FOUND (404): the user belongs to no settlement
   //   - INTERNAL (500): database failure
   rpc GetByUserId(GetByUserIdRequest) returns (GetByUserIdResponse) {
     option (google.api.http) = {get: "/v1/users/{user_id}/settlements"};
   }
 
-  // List all approved settlements.
+  // Get both groups a user belongs to: their settlement and their guild.
+  //
+  // A player may hold one membership of each kind at the same time. The owner of a guild holds
+  // no settlement, so a response with a guild and no settlement is the normal case for a guild
+  // founder. Both fields stay unset for a player who belongs to nothing; that is not an error.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc GetUserMemberships(GetUserMembershipsRequest) returns (GetUserMembershipsResponse) {
+    option (google.api.http) = {get: "/v1/users/{user_id}/memberships"};
+  }
+
+  // List approved groups of one kind.
+  //
+  // kind unset means settlements only, so the public map keeps showing settlements and no guild
+  // appears on it. Pass GROUP_KIND_GUILD for the guild catalogue.
   //
   // Errors:
   //   - INTERNAL (500): database failure
@@ -56,7 +97,9 @@ service SettlementService {
     option (google.api.http) = {get: "/v1/settlements"};
   }
 
-  // List pending settlement requests. Requires admin privileges.
+  // List pending verification requests. Requires admin privileges.
+  //
+  // kind unset means both kinds, so the moderation queue never hides a guild request.
   //
   // Errors:
   //   - UNAUTHENTICATED (401): missing or invalid auth token
@@ -66,11 +109,22 @@ service SettlementService {
     option (google.api.http) = {get: "/v1/settlements/verifications"};
   }
 
-  // Approve a settlement request. Requires admin privileges.
+  // Approve a settlement or guild request. Requires admin privileges.
+  //
+  // One transaction: the request becomes approved and the group is created (its id is the
+  // request id) or upgraded. A new group gets a mail with its notifier block for the leader —
+  // the block of the settlement tier, or the guild herald for a guild; an upgrade notifies every
+  // member on the site and mails the owners in game. Nothing is written if any of these fails.
+  //
+  // The membership rules are checked again inside that transaction, because the author may have
+  // joined a group between the submission and the approval: a guild is refused while its author
+  // belongs to a settlement, and a first settlement is refused while its author owns a guild.
   //
   // Errors:
   //   - NOT_FOUND (404): settlement request not found
-  //   - FAILED_PRECONDITION (400): settlement request already approved
+  //   - FAILED_PRECONDITION (400): settlement request already approved; the author of a guild
+  //     belongs to a settlement, or the author of a new settlement owns a guild
+  //   - ALREADY_EXISTS (409): the author already belongs to a group of this kind
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - PERMISSION_DENIED (403): insufficient privileges
   //   - INTERNAL (500): database failure
@@ -94,10 +148,11 @@ service SettlementService {
     };
   }
 
-  // Get the verification status of a settlement request for a user.
+  // Get the verification status of one kind of request for a user. Each kind keeps its own
+  // request, so kind selects which one is answered; unset means the settlement request.
   //
   // Errors:
-  //   - NOT_FOUND (404): no settlement request found for user
+  //   - NOT_FOUND (404): no request of this kind found for the user
   //   - INTERNAL (500): database failure
   rpc VerificationStatus(VerificationStatusRequest) returns (VerificationStatusResponse) {
     option (google.api.http) = {get: "/v1/users/{user_id}/settlements/verification:status"};
@@ -134,10 +189,13 @@ service SettlementService {
     option (google.api.http) = {get: "/v1/users/{user_id}/settlements/invitations"};
   }
 
-  // Accept an invitation to join a settlement.
+  // Accept an invitation to join a settlement or a guild. The membership rules are checked again
+  // here, because the caller may have joined another group since the invitation was written.
   //
   // Errors:
   //   - NOT_FOUND (404): invitation not found
+  //   - ALREADY_EXISTS (409): caller already belongs to a group of this kind
+  //   - FAILED_PRECONDITION (400): caller owns a guild and the invitation leads to a settlement
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database failure
   rpc AcceptInvitation(AcceptInvitationRequest) returns (AcceptInvitationResponse) {
@@ -154,11 +212,17 @@ service SettlementService {
     option (google.api.http) = {post: "/v1/settlements/invitations/{invitation_id}:reject"};
   }
 
-  // Invite a user to join a settlement. Caller must be the settlement leader.
+  // Invite a user to join a settlement or a guild. Requires the invite_member permission (owners
+  // pass).
+  //
+  // The membership rules of the target are checked against the invited player now, so no
+  // invitation is stored that the player could never accept.
   //
   // Errors:
-  //   - PERMISSION_DENIED (403): caller is not the settlement leader
-  //   - ALREADY_EXISTS (409): user is already a member of the settlement
+  //   - NOT_FOUND (404): settlement not found
+  //   - PERMISSION_DENIED (403): caller lacks the invite_member permission
+  //   - ALREADY_EXISTS (409): the player already belongs to a group of this kind
+  //   - FAILED_PRECONDITION (400): the player owns a guild and the target is a settlement
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database failure
   rpc InviteMember(InviteMemberRequest) returns (InviteMemberResponse) {
@@ -294,12 +358,14 @@ service SettlementService {
     option (google.api.http) = {delete: "/v1/settlements/{settlement_id}/tags/{tag_id}"};
   }
 
-  // Create a join request to a settlement. Caller must not already belong to a settlement.
+  // Create a join request to a settlement or a guild. The caller must hold no membership of that
+  // kind yet, and a guild owner cannot apply to a settlement.
   //
   // Errors:
   //   - NOT_FOUND (404): settlement not found
-  //   - ALREADY_EXISTS (409): caller already belongs to a settlement or already applied here
-  //   - RESOURCE_EXHAUSTED (429): caller has reached the active join-request limit
+  //   - ALREADY_EXISTS (409): caller already belongs to a group of this kind, or already applied here
+  //   - FAILED_PRECONDITION (400): caller owns a guild and the target is a settlement
+  //   - RESOURCE_EXHAUSTED (429): caller has reached the active join-request limit for this kind
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database failure
   rpc CreateJoinRequest(CreateJoinRequestRequest) returns (CreateJoinRequestResponse) {
@@ -338,11 +404,14 @@ service SettlementService {
     option (google.api.http) = {get: "/v1/settlements/{settlement_id}/join-requests"};
   }
 
-  // Approve a join request. Caller needs the review_join_request permission or owner.
+  // Approve a join request. Caller needs the review_join_request permission or owner. The
+  // membership rules are checked again against the applicant, who may have joined another group
+  // since the application.
   //
   // Errors:
   //   - NOT_FOUND (404): join request not found
-  //   - ALREADY_EXISTS (409): applicant already joined another settlement
+  //   - ALREADY_EXISTS (409): applicant already belongs to a group of this kind
+  //   - FAILED_PRECONDITION (400): applicant owns a guild and the target is a settlement
   //   - PERMISSION_DENIED (403): caller lacks the review_join_request permission
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database failure
@@ -431,8 +500,12 @@ service SettlementService {
   // Transfer ownership: grant owner to a member and drop it from the caller. Owner only.
   // The owner count is preserved, so this cannot be used to add owners.
   //
+  // Ownership of a guild cannot go to a member who lives in a settlement: a guild owner holds no
+  // settlement.
+  //
   // Errors:
   //   - NOT_FOUND (404): settlement or target member not found
+  //   - FAILED_PRECONDITION (400): the target owns a guild and lives in a settlement
   //   - PERMISSION_DENIED (403): caller is not an owner
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database failure
@@ -443,11 +516,21 @@ service SettlementService {
     };
   }
 
-  // Leave the settlement the caller belongs to. The last owner cannot leave.
+  // Leave the settlement or guild the caller belongs to.
+  //
+  // The last owner of a settlement cannot leave: an admin grants the role to another member or
+  // deletes the settlement.
+  //
+  // A guild whose last owner is also its only member is disbanded instead. The owner of a guild
+  // belongs to no settlement, so without this the founder could never join one. Disbanding deletes
+  // the guild, its invitations and its applications, so it takes an explicit `disband: true`;
+  // without it the call answers FAILED_PRECONDITION and changes nothing. A guild with other members
+  // is never disbanded: transfer the ownership to one of them instead.
   //
   // Errors:
-  //   - NOT_FOUND (404): caller does not belong to a settlement
-  //   - FAILED_PRECONDITION (400): caller is the last owner
+  //   - NOT_FOUND (404): caller does not belong to this group, or the group is gone
+  //   - FAILED_PRECONDITION (400): caller is the last owner of a settlement; caller is the last
+  //     owner of a guild and sent no `disband`; the guild gained a member since the caller read it
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database failure
   rpc LeaveSettlement(LeaveSettlementRequest) returns (LeaveSettlementResponse) {
@@ -471,8 +554,13 @@ service SettlementService {
 
   // Admin: grant the owner role to a member. Requires settlements:manage scope.
   //
+  // A guild owner holds no settlement, so the owner role of a guild cannot go to a member who
+  // lives in one.
+  //
   // Errors:
   //   - NOT_FOUND (404): settlement or member not found
+  //   - FAILED_PRECONDITION (400): the member is already an owner, or lives in a settlement and
+  //     the target is a guild
   //   - PERMISSION_DENIED (403): missing settlements:manage scope
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database failure
@@ -521,11 +609,27 @@ service SettlementService {
     option (google.api.http) = {delete: "/v1/admin/settlements/{settlement_id}"};
   }
 
+  // Admin: send the settlement's notifier block again by in-game mail, e.g. after it was lost.
+  // Requires settlements:manage scope. Every call sends one more block.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): settlement not found
+  //   - FAILED_PRECONDITION (412): the settlement type has no notifier block, or user_id is not an owner
+  //   - PERMISSION_DENIED (403): missing settlements:manage scope
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ReissueNotifier(ReissueNotifierRequest) returns (ReissueNotifierResponse) {
+    option (google.api.http) = {
+      post: "/v1/admin/settlements/{settlement_id}/notifier:reissue"
+      body: "*"
+    };
+  }
+
   // Create a shareable invite link. Requires the invite_member permission (owners pass).
   //
-  // Whoever opens the link and is not in a settlement joins straight away, with no
-  // join request: the link is an invitation accepted in advance. A settlement keeps
-  // at most 10 usable links at once.
+  // Whoever opens the link and holds no membership of the link's kind joins straight away, with
+  // no join request: the link is an invitation accepted in advance. A group keeps at most 10
+  // usable links at once.
   //
   // Errors:
   //   - INVALID_ARGUMENT (400): ttl_hours outside 0..720 or max_uses outside 0..100
@@ -575,9 +679,9 @@ service SettlementService {
     option (google.api.http) = {get: "/v1/invite-links/{code}"};
   }
 
-  // Join the settlement behind an invite link. Spends one use of the link, adds the
-  // caller as a plain member and drops the caller's pending join requests. The
-  // link's creator is notified.
+  // Join the settlement or guild behind an invite link. Spends one use of the link, adds the
+  // caller as a plain member and drops the caller's pending applications to other groups of that
+  // kind. The link's creator is notified.
   //
   // Not atomic. The deployment has no replica set, so the use is reserved first and
   // given back if adding the member fails, and that give-back can itself fail and is
@@ -586,8 +690,9 @@ service SettlementService {
   //
   // Errors:
   //   - NOT_FOUND (404): no link with this code, or its settlement is gone
-  //   - ALREADY_EXISTS (409): caller already belongs to a settlement
-  //   - FAILED_PRECONDITION (412): the link expired, ran out of uses or was revoked
+  //   - ALREADY_EXISTS (409): caller already belongs to a group of this kind
+  //   - FAILED_PRECONDITION (412): the link expired, ran out of uses or was revoked; or the caller
+  //     owns a guild and the link leads to a settlement
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database failure
   rpc JoinByInviteLink(JoinByInviteLinkRequest) returns (JoinByInviteLinkResponse) {
@@ -636,6 +741,12 @@ message Settlement {
   bool roles_enabled = 22;
   // Public contact information for the settlement (free text).
   string contact_info = 23 [(google.api.field_behavior) = OPTIONAL];
+  // Where the settlement's notifier block stands in the world. Unset while no block is placed.
+  // The server owns it: a block placed in game writes it, the site only reads it.
+  // Filled by every rpc that returns a single settlement. Deliberately unset in List and
+  // ListPending, which would need one extra read per row. Always unset for a guild: its herald
+  // carries no settlement binding and writes no placement.
+  Vector3 notifier_position = 24 [(google.api.field_behavior) = OPTIONAL];
 }
 
 enum SettlementType {
@@ -645,6 +756,17 @@ enum SettlementType {
   TOWNSHIP = 3;
   CITY = 4;
   PROVINCE = 5;
+  // A guild. It is the only tier of its kind and never levels up.
+  GUILD = 6;
+}
+
+// Which kind of group a document is. The kind decides the membership rules, not the tier: a
+// player holds at most one settlement and at most one guild, and the owner of a guild holds no
+// settlement.
+enum GroupKind {
+  GROUP_KIND_UNSPECIFIED = 0;
+  GROUP_KIND_SETTLEMENT = 1;
+  GROUP_KIND_GUILD = 2;
 }
 
 // Permission a custom role can grant. The owner role holds all permissions implicitly.
@@ -770,6 +892,8 @@ message SubmitRequest {
   enum Type {
     TYPE_UNSPECIFIED = 0;
     CAMP = 1;
+    // Found a guild. It takes the same fields as a camp and goes through the same moderation.
+    GUILD = 2;
   }
 }
 
@@ -778,12 +902,25 @@ message Vector2 {
   int32 y = 2;
 }
 
+// A block position in the game world.
+message Vector3 {
+  int32 x = 1;
+  int32 y = 2;
+  int32 z = 3;
+}
+
 message Attachment {
   string desc = 1 [(google.api.field_behavior) = REQUIRED];
   string url = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
-message SubmitResponse {}
+message SubmitResponse {
+  // True when the server dropped the submitted coordinates because the settlement's notifier
+  // block stands. The request then stores the block's position instead (Settlement.notifier_position),
+  // and the client must show coordinates as read-only rather than as the value it sent.
+  // Always false on a first submission: it has no settlement, so it has no block.
+  bool coordinates_locked = 1 [(google.api.field_behavior) = OPTIONAL];
+}
 
 message GetRequest {
   string id = 1 [(google.api.field_behavior) = REQUIRED];
@@ -793,13 +930,19 @@ message GetResponse {
   Settlement settlement = 1;
 }
 
-message ListRequest {}
+message ListRequest {
+  // Which kind to list. Unset lists settlements only, so guilds stay off the public map.
+  GroupKind kind = 1 [(google.api.field_behavior) = OPTIONAL];
+}
 
 message ListResponse {
   repeated Settlement settlements = 1;
 }
 
-message ListPendingRequest {}
+message ListPendingRequest {
+  // Which kind to list. Unset lists both kinds, so the moderation queue never hides a guild.
+  GroupKind kind = 1 [(google.api.field_behavior) = OPTIONAL];
+}
 
 message ListPendingResponse {
   repeated Settlement settlements = 1;
@@ -860,11 +1003,26 @@ message GetByUserIdRequest {
 }
 
 message GetByUserIdResponse {
+  // The settlement the user belongs to. Never a guild: use GetUserMemberships to read both.
   Settlement settlement = 1;
+}
+
+message GetUserMembershipsRequest {
+  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserMembershipsResponse {
+  // Unset while the user belongs to no settlement.
+  Settlement settlement = 1 [(google.api.field_behavior) = OPTIONAL];
+  // Unset while the user belongs to no guild. A guild owner has no settlement, so a response
+  // carrying only this field is the normal case for a guild founder.
+  Settlement guild = 2 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message VerificationStatusRequest {
   string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Which request to answer. Unset means the settlement request.
+  GroupKind kind = 2 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message VerificationStatusResponse {
@@ -1087,9 +1245,17 @@ message TransferOwnershipResponse {
 
 message LeaveSettlementRequest {
   string settlement_id = 1 [(buf.validate.field).required = true];
+  // Confirms that the caller disbands the guild they are the last owner and the only member of.
+  // Ignored for a settlement and for a guild with other members. This rpc takes no request body, so
+  // REST sends it as the query parameter `disband=true`.
+  bool disband = 2 [(google.api.field_behavior) = OPTIONAL];
 }
 
-message LeaveSettlementResponse {}
+message LeaveSettlementResponse {
+  // True when the call disbanded the guild instead of removing one member. The guild, its
+  // invitations and its applications are gone, so the caller holds no group of this kind.
+  bool disbanded = 1 [(google.api.field_behavior) = OPTIONAL];
+}
 
 message UpdateContactInfoRequest {
   string settlement_id = 1 [(buf.validate.field).required = true];
@@ -1132,3 +1298,14 @@ message DeleteSettlementRequest {
 }
 
 message DeleteSettlementResponse {}
+
+message ReissueNotifierRequest {
+  string settlement_id = 1 [(buf.validate.field).required = true];
+  // Owner who receives the block. Defaults to the first owner.
+  string user_id = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message ReissueNotifierResponse {
+  // Ordinal of this reissue (1 for the first), the suffix of the mail's idempotency key.
+  int32 number = 1;
+}

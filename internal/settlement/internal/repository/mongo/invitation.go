@@ -75,6 +75,17 @@ func (r *Repository) AcceptInvitation(ctx context.Context, invitationID, userID 
 			return repoerr.ErrPermissionDenied
 		}
 
+		// The invitation was written earlier, so the membership rules are read again now: the player
+		// may have joined another group, or founded a guild, in between.
+		kind, err := r.kindOf(ctx, inv.SettlementId)
+		if err != nil {
+			l.Error("failed to read the group kind", zap.Error(err))
+			return err
+		}
+		if err := r.EnsureMayJoin(ctx, userID, kind); err != nil {
+			return err
+		}
+
 		member := memberdto.Member{
 			UserId: inv.UserId,
 		}
@@ -100,9 +111,20 @@ func (r *Repository) AcceptInvitation(ctx context.Context, invitationID, userID 
 						{Key: "updated_at", Value: time.Now()},
 					},
 				},
+				// Bump the version, the way pushMember does: UpdateSettlement replaces the whole
+				// document under a {version: N} guard, so a $push that leaves the version alone is
+				// invisible to it and a concurrent profile edit would write back a snapshot without
+				// this member.
+				{Key: "$inc", Value: bson.D{{Key: "version", Value: 1}}},
 			},
 		)
 		if err != nil {
+			if mongo.IsDuplicateKeyError(err) {
+				// The server's answer names the index, which is what tells a same-kind conflict from
+				// a legacy index that outlived its migration.
+				l.Warn("unique index refused the member", zap.String("kind", string(kind)), zap.Error(err))
+				return duplicateMemberErr(kind)
+			}
 			l.Error("failed to update settlement", zap.Error(err))
 			return err
 		}
