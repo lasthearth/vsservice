@@ -38,6 +38,7 @@ import (
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
+	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/rs/cors"
@@ -112,6 +113,7 @@ func (s *Server) Build() error {
 	settlementv1.RegisterSettlementTagServiceServer(srv, s.settlementTagV1)
 	notificationv1.RegisterNotificationServiceServer(srv, s.notificationV1)
 	newsv1.RegisterNewsServiceServer(srv, s.newsV1)
+	wikiv1.RegisterWikiServiceServer(srv, s.wikiV1)
 	referralv1.RegisterReferralServiceServer(srv, s.referralV1)
 	donatev1.RegisterDonateServiceServer(srv, s.donateV1)
 	hgv1.RegisterHungerGamesServiceServer(srv, s.hungerGamesV1)
@@ -196,6 +198,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := newsv1.RegisterNewsServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register news service handler")
+	}
+
+	if err := wikiv1.RegisterWikiServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register wiki service handler")
 	}
 
 	if err := referralv1.RegisterReferralServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {

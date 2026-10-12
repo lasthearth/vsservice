@@ -34,6 +34,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/settlement"
 	settlementtag "github.com/lasthearth/vsservice/internal/settlement-tag"
 	"github.com/lasthearth/vsservice/internal/webhook"
+	"github.com/lasthearth/vsservice/internal/wiki"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
@@ -91,6 +92,7 @@ func main() {
 		settlementtag.App,
 		notification.App,
 		news.App,
+		wiki.App,
 		webhook.App,
 		donate.App,
 		referral.App,

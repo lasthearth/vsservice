@@ -24,6 +24,7 @@ import (
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
+	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
@@ -62,6 +63,7 @@ type Opts struct {
 	ReactionV1      reactionv1.ReactionServiceServer
 	LfgV1           lfgv1.LfgServiceServer
 	AppearanceV1    appearancev1.AppearanceServiceServer
+	WikiV1          wikiv1.WikiServiceServer
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -92,6 +94,7 @@ type Server struct {
 	reactionV1          reactionv1.ReactionServiceServer
 	lfgV1               lfgv1.LfgServiceServer
 	appearanceV1        appearancev1.AppearanceServiceServer
+	wikiV1              wikiv1.WikiServiceServer
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -127,6 +130,7 @@ func New(opts Opts) *Server {
 		reactionV1:          opts.ReactionV1,
 		lfgV1:               opts.LfgV1,
 		appearanceV1:        opts.AppearanceV1,
+		wikiV1:              opts.WikiV1,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}
