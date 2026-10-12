@@ -3,6 +3,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
@@ -49,6 +50,8 @@ type Mapper interface {
 	// NotifierReissues is mapped: the request keeps a copy of the counter so a
 	// settlement re-created under the same id continues where the deleted one
 	// left off.
+	// Kind comes across on its own: both documents carry it, and it is the same
+	// value because approval copies the request's type onto the settlement.
 	// goverter:ignore Members TagIds ImperialFavor Roles RolesEnabled ContactInfo
 	FromVerification(dto verificationdto.SettlementVerification) settlementdto.Settlement
 
@@ -59,7 +62,9 @@ type Mapper interface {
 	// goverter:autoMap Model
 	FromSettlementDTO(dto settlementdto.Settlement) model.Settlement
 
-	// goverter:ignore Model
+	// Kind is stamped by the repository after the mapping, from the model's type: see
+	// Repository.toSettlementDTO. The model carries no copy of it, so there is nothing to map.
+	// goverter:ignore Model Kind
 	ToSettlementDTO(model.Settlement) settlementdto.Settlement
 
 	// goverter:autoMap Model
@@ -99,7 +104,7 @@ type Repository struct {
 	mapper Mapper
 }
 
-func New(opts Opts) *Repository {
+func New(opts Opts) (*Repository, error) {
 	sColl := opts.Database.Collection(settlementCollName)
 	srColl := opts.Database.Collection(settlementReqCollName)
 	siColl := opts.Database.Collection(settlementInvitationCollName)
@@ -108,7 +113,9 @@ func New(opts Opts) *Repository {
 	ilColl := opts.Database.Collection(settlementInviteLinkCollName)
 	snColl := opts.Database.Collection(settlementNotifierCollName)
 	logger := opts.Log.WithComponent("settlement-mongo-repository")
-	setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl, ilColl, snColl)
+	if err := setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl, ilColl, snColl); err != nil {
+		return nil, err
+	}
 	return &Repository{
 		log:            logger,
 		setColl:        sColl,
@@ -120,7 +127,7 @@ func New(opts Opts) *Repository {
 		notifierColl:   snColl,
 		client:         opts.Client,
 		mapper:         opts.Mapper,
-	}
+	}, nil
 }
 
 func setupIndexes(
@@ -132,34 +139,65 @@ func setupIndexes(
 	favorLogColl *mongo.Collection,
 	inviteLinkColl *mongo.Collection,
 	notifierColl *mongo.Collection,
-) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	createIndex := func(coll *mongo.Collection, model mongo.IndexModel) {
-		if _, err := coll.Indexes().CreateOne(ctx, model); err != nil {
+) error {
+	// An optional index only speeds a read up, so a failure to create one is logged and carried on.
+	createIndex := func(coll *mongo.Collection, spec mongo.IndexModel) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		if _, err := coll.Indexes().CreateOne(ctx, spec); err != nil {
 			log.Error("failed to create index", zap.String("collection", coll.Name()), zap.Error(err))
 		}
 	}
+	// A required index carries an invariant. Without it the rule survives only as a read-then-write
+	// check in the service, which a concurrent writer can beat, so a failure stops the service
+	// instead of being logged: serving anyway would accept writes the domain promises to refuse.
+	requireIndex := func(coll *mongo.Collection, spec mongo.IndexModel) error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		name, err := coll.Indexes().CreateOne(ctx, spec)
+		if err != nil {
+			log.Error("failed to create a required index",
+				zap.String("collection", coll.Name()), zap.Error(err))
+			return fmt.Errorf("create required index on %s: %w", coll.Name(), err)
+		}
+		log.Debug("required index created", zap.String("index", name))
+		return nil
+	}
 
-	// One settlement per player: a user_id may appear in members at most once
-	// across all settlement documents. Owners are members too, so this single
-	// array index enforces the whole invariant at the DB level.
-	createIndex(setColl, mongo.IndexModel{
-		Keys:    bson.D{{Key: "members.user_id", Value: 1}},
-		Options: options.Index().SetUnique(true),
-	})
+	// One membership per kind: a user_id may appear in the members of at most one settlement and
+	// at most one guild, so a player can hold both and never two of the same. Owners are members
+	// too, so these two indexes enforce the whole invariant at the DB level.
+	//
+	// They are partial on the stored `kind` rather than on `type`: a partial index filters on the
+	// equality of a stored field, and one equality per kind covers every tier without listing them.
+	// Migration 2 backfills the field, and it runs before these indexes are created.
+	//
+	// The rule that crosses the two kinds — the owner of a guild belongs to no settlement — cannot
+	// be expressed by an index over one document, so the service checks it. See
+	// model.Memberships.
+	required := []struct {
+		coll *mongo.Collection
+		spec mongo.IndexModel
+	}{
+		{setColl, uniqueByKind("uniq_members_user_id_settlement", "members.user_id", model.KindSettlement)},
+		{setColl, uniqueByKind("uniq_members_user_id_guild", "members.user_id", model.KindGuild)},
+		// One request document per leader per kind, so a pending guild request never blocks the
+		// settlement one and the other way round. Submit reuses that one document for the life of
+		// the group, which is what makes the count per kind and not per open request.
+		{setReqColl, uniqueByKind("uniq_leader_user_id_settlement", "leader.user_id", model.KindSettlement)},
+		{setReqColl, uniqueByKind("uniq_leader_user_id_guild", "leader.user_id", model.KindGuild)},
+	}
+	for _, idx := range required {
+		if err := requireIndex(idx.coll, idx.spec); err != nil {
+			return err
+		}
+	}
 
 	// A settlement has at most one verification request. Kept partial so
 	// documents predating the settlement (settlement_id unset) don't collide.
 	createIndex(setReqColl, mongo.IndexModel{
 		Keys:    bson.D{{Key: "settlement_id", Value: 1}},
 		Options: options.Index().SetUnique(true).SetPartialFilterExpression(bson.M{"settlement_id": bson.M{"$type": "string"}}),
-	})
-	// A user without a settlement yet has at most one open first-time request.
-	createIndex(setReqColl, mongo.IndexModel{
-		Keys:    bson.D{{Key: "leader.user_id", Value: 1}},
-		Options: options.Index().SetUnique(true),
 	})
 
 	createIndex(setInvColl, mongo.IndexModel{
@@ -200,4 +238,19 @@ func setupIndexes(
 		Keys:    bson.D{{Key: "settlement_id", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
+
+	return nil
+}
+
+// uniqueByKind builds a unique index over one field, restricted to the documents of one kind. The
+// name is explicit: two indexes over the same field would otherwise both take the derived name and
+// the second would be refused as a conflicting index.
+func uniqueByKind(name, field string, kind model.SettlementKind) mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{{Key: field, Value: 1}},
+		Options: options.Index().
+			SetUnique(true).
+			SetName(name).
+			SetPartialFilterExpression(bson.M{"kind": string(kind)}),
+	}
 }

@@ -81,6 +81,8 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		//
 		// GetByUserId returns a Settlement, which Get and List already serve
 		// publicly (see matcher.go), so it discloses nothing those do not.
+		// GetUserMemberships returns the same two documents for one player, so it
+		// discloses no more than GetByUserId plus a Get on the guild.
 		//
 		// VerificationStatus returns the status and rejection_reason of that
 		// user's settlement request, which has no public equivalent —
@@ -89,6 +91,7 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		// authenticated-only to keep this change behaviour-preserving; the
 		// missing ownership check is tracked separately.
 		interceptor.Method(srvName + "GetByUserId"):        interceptor.ScopeAuthenticated,
+		interceptor.Method(srvName + "GetUserMemberships"): interceptor.ScopeAuthenticated,
 		interceptor.Method(srvName + "VerificationStatus"): interceptor.ScopeAuthenticated,
 	}
 }
@@ -110,14 +113,21 @@ func (s *Service) requireScope(ctx context.Context, scope string) error {
 // requirePermission loads the settlement and checks that userID may perform an
 // action requiring perm (owner passes unconditionally).
 func (s *Service) requirePermission(ctx context.Context, settlementID, userID string, perm model.Permission) error {
+	_, err := s.requirePermissionOn(ctx, settlementID, userID, perm)
+	return err
+}
+
+// requirePermissionOn is requirePermission for a caller that also needs the group the permission was
+// checked against, for example to read its kind. One read answers both.
+func (s *Service) requirePermissionOn(ctx context.Context, settlementID, userID string, perm model.Permission) (*model.Settlement, error) {
 	set, err := s.dbRepo.GetSettlement(ctx, settlementID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !set.HasPermission(userID, perm) {
-		return ierror.ErrNotLeader
+		return nil, ierror.ErrNotLeader
 	}
-	return nil
+	return set, nil
 }
 
 // requireOwner loads the settlement and checks that userID holds the owner role.

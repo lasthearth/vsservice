@@ -162,6 +162,18 @@ func (s *Service) UnassignRole(ctx context.Context, req *settlementv1.UnassignRo
 
 // AddOwner implements settlementv1.SettlementServiceServer (admin).
 func (s *Service) AddOwner(ctx context.Context, req *settlementv1.AddOwnerRequest) (*settlementv1.AddOwnerResponse, error) {
+	// The owner of a guild belongs to no settlement, so the role cannot be granted to a member who
+	// lives in one. A settlement needs no such check: its owners are already its members.
+	group, err := s.dbRepo.GetSettlement(ctx, req.GetSettlementId())
+	if err != nil {
+		return nil, err
+	}
+	if group.IsGuild() {
+		if err := s.dbRepo.EnsureMayOwnGuild(ctx, req.GetUserId()); err != nil {
+			return nil, err
+		}
+	}
+
 	updated, err := s.dbRepo.UpdateSettlement(ctx, req.GetSettlementId(),
 		func(_ context.Context, set *model.Settlement) (*model.Settlement, error) {
 			if err := set.GrantOwner(req.GetUserId()); err != nil {

@@ -136,6 +136,9 @@ func (r *Repository) JoinByInviteLink(
 ) (*model.InviteLink, error) {
 	l := r.log.WithMethod("JoinByInviteLink").With(zap.String("user_id", userID))
 
+	// The kind of the group behind the link decides which membership rule applies. It is read while
+	// the use is reserved and carried to the push and to the cleanup that follow.
+	var kind model.SettlementKind
 	link, err := mongox.UpdateDoc(
 		ctx,
 		r.inviteLinkColl,
@@ -144,7 +147,12 @@ func (r *Repository) JoinByInviteLink(
 		r.inviteLinkToModel,
 		r.inviteLinkFromModel,
 		func(ctx context.Context, link *model.InviteLink) (*model.InviteLink, error) {
-			if err := r.IsMemberOfAnySettlement(ctx, userID); err != nil {
+			k, err := r.kindOf(ctx, link.SettlementId)
+			if err != nil {
+				return nil, err
+			}
+			kind = k
+			if err := r.EnsureMayJoin(ctx, userID, k); err != nil {
 				return nil, err
 			}
 			return useFn(ctx, link)
@@ -157,7 +165,7 @@ func (r *Repository) JoinByInviteLink(
 		return nil, err
 	}
 
-	if err := r.pushMember(ctx, link.SettlementId, userID); err != nil {
+	if err := r.pushMember(ctx, link.SettlementId, userID, kind); err != nil {
 		// The player did not get in: give the use back.
 		//
 		// The refund must not run on the caller's context. When pushMember failed
@@ -179,17 +187,18 @@ func (r *Repository) JoinByInviteLink(
 		return nil, err
 	}
 
-	// Pending applications elsewhere are moot now. Not fatal: the player is in.
-	if _, err := r.setJoinReqColl.DeleteMany(ctx, bson.M{"user_id": userID}); err != nil {
+	// Pending applications to another group of this kind are moot now. The other kind stays open: a
+	// player may hold a settlement and a guild at the same time. Not fatal — the player is in.
+	if err := r.clearJoinRequests(ctx, userID, kind); err != nil {
 		l.Warn("failed to clear join requests", zap.Error(err))
 	}
 
 	return link, nil
 }
 
-// pushMember adds a plain member. The unique members.user_id index turns a
-// concurrent second membership into ErrAlreadyMember.
-func (r *Repository) pushMember(ctx context.Context, settlementID, userID string) error {
+// pushMember adds a plain member. The unique index of the group's kind turns a concurrent second
+// membership of that kind into ErrAlreadyMember, or ErrAlreadyInGuild for a guild.
+func (r *Repository) pushMember(ctx context.Context, settlementID, userID string, kind model.SettlementKind) error {
 	sid, err := mongox.ParseObjectID(settlementID)
 	if err != nil {
 		return repoerr.ErrNotFound
@@ -211,7 +220,11 @@ func (r *Repository) pushMember(ctx context.Context, settlementID, userID string
 	)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
-			return repoerr.ErrAlreadyMember
+			// The server's answer names the index, which is what tells a same-kind conflict from a
+			// legacy index that outlived its migration.
+			r.log.WithMethod("pushMember").Warn("unique index refused the member",
+				zap.String("kind", string(kind)), zap.Error(err))
+			return duplicateMemberErr(kind)
 		}
 		return err
 	}
@@ -245,6 +258,8 @@ func (r *Repository) inviteLinkFromModel(m *model.InviteLink) invitelinkdto.Invi
 func isExpectedJoinErr(err error) bool {
 	return errors.Is(err, repoerr.ErrInviteLinkNotFound) ||
 		errors.Is(err, repoerr.ErrAlreadyMember) ||
+		errors.Is(err, repoerr.ErrAlreadyInGuild) ||
+		errors.Is(err, repoerr.ErrGuildOwnerInSettlement) ||
 		errors.Is(err, repoerr.ErrNotFound) ||
 		errors.Is(err, repoerr.ErrInviteLinkExpired) ||
 		errors.Is(err, repoerr.ErrInviteLinkExhausted) ||

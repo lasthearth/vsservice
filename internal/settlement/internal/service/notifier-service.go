@@ -52,6 +52,13 @@ func (s *Service) readNotifier(ctx context.Context, settlementID string) (model.
 func (s *Service) settlementProto(ctx context.Context, set model.Settlement) (*settlementv1.Settlement, error) {
 	out := s.mapper.ToSettlementProto(set)
 
+	// A guild answers no position and pays no read for one: its herald carries no settlement binding
+	// and never writes a placement, so there is nothing this field could be filled from. Every rpc
+	// that serves a single group comes through here, so all of them agree on it.
+	if set.IsGuild() {
+		return out, nil
+	}
+
 	placement, found, err := s.readNotifier(ctx, set.Id)
 	if err != nil {
 		return nil, err
@@ -62,18 +69,66 @@ func (s *Service) settlementProto(ctx context.Context, set model.Settlement) (*s
 	return out, nil
 }
 
-// deliverNotifier mails the new settlement's leader the notifier block of the
-// settlement's type. It runs inside the approval transaction: ctx carries its
-// session, so the mail commits or rolls back with the settlement. The key names
-// the submission, so a retried transaction hands out one block only while a
-// settlement re-created under the same id gets its own.
+// deliverNotifier mails the new group's leader the notifier block of its type: the block of the
+// settlement tier, or the guild herald for a guild. It runs inside the approval transaction: ctx
+// carries its session, so the mail commits or rolls back with the settlement. The key names the
+// submission, so a retried transaction hands out one block only while a settlement re-created under
+// the same id gets its own.
 func (s *Service) deliverNotifier(ctx context.Context, res ApprovalResult) error {
 	set := res.Settlement
+	title, body := notifierMailText(set)
 	return s.sendNotifierMail(ctx, set, set.Leader.UserId,
-		model.NotifierDeliveryKey(set.Id, res.RequestedAt),
-		"Глашатай вашего поселения",
-		"Поселение «"+set.Name+"» одобрено. В этом письме блок глашатая ("+set.Type.Title()+
-			"): поставьте его на земле поселения, и оно появится на карте.")
+		model.NotifierDeliveryKey(set.Id, res.RequestedAt), title, body)
+}
+
+// notifierMailText is the player-facing text of the mail that carries a group's notifier block. The
+// two kinds word it apart: a settlement block puts the settlement on the map, while a guild herald
+// carries no settlement binding and only marks the ground the guild meets on.
+func notifierMailText(set model.Settlement) (title, body string) {
+	if set.IsGuild() {
+		return "Глашатай вашей гильдии",
+			"Гильдия «" + set.Name + "» одобрена. В этом письме блок глашатая гильдий: поставьте его" +
+				" там, где собирается гильдия, и игроки рядом увидят её название."
+	}
+	return "Глашатай вашего поселения",
+		"Поселение «" + set.Name + "» одобрено. В этом письме блок глашатая (" + set.Type.Title() +
+			"): поставьте его на земле поселения, и оно появится на карте."
+}
+
+// reissueMailText is the player-facing text of the mail that carries a notifier block an admin sent
+// again.
+func reissueMailText(set model.Settlement) (title, body string) {
+	if set.IsGuild() {
+		return "Глашатай вашей гильдии",
+			"Администрация повторно выдала блок глашатая гильдий «" + set.Name + "»."
+	}
+	return "Глашатай вашего поселения",
+		"Администрация повторно выдала блок глашатая поселения «" + set.Name + "» (" +
+			set.Type.Title() + ")."
+}
+
+// joinNoun is the Russian accusative a player-facing text uses for the group a player joined:
+// "в поселение" for a settlement, "в гильдию" for a guild. These texts are assembled on the server,
+// so the word has to agree with the group it names.
+func joinNoun(kind model.SettlementKind) string {
+	if kind == model.KindGuild {
+		return "гильдию"
+	}
+	return "поселение"
+}
+
+// newcomerNoun is the Russian word for the player who joined: a settlement takes a "житель", a guild
+// an "участник".
+func newcomerNoun(kind model.SettlementKind) string {
+	if kind == model.KindGuild {
+		return "участник"
+	}
+	return "житель"
+}
+
+// newcomerTitle is the notification title that announces one newcomer.
+func newcomerTitle(kind model.SettlementKind) string {
+	return "Новый " + newcomerNoun(kind)
 }
 
 // sendNotifierMail composes the mail that carries the notifier block of the
@@ -214,10 +269,9 @@ func (s *Service) ReissueNotifier(ctx context.Context, req *settlementv1.Reissue
 			return err
 		}
 
+		title, body := reissueMailText(*updated)
 		return s.sendNotifierMail(ctx, *updated, recipient,
-			model.NotifierReissueKey(updated.Id, requestedAt, number),
-			"Глашатай вашего поселения",
-			"Администрация повторно выдала блок глашатая поселения «"+updated.Name+"» ("+updated.Type.Title()+").")
+			model.NotifierReissueKey(updated.Id, requestedAt, number), title, body)
 	})
 	if err != nil {
 		if !errors.Is(err, ierror.ErrNotifierUnavailable) && !errors.Is(err, ierror.ErrNoOwnerToDeliver) {

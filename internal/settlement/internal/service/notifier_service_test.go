@@ -125,6 +125,7 @@ type notifierRepo struct {
 	// stored state
 	set       *model.Settlement
 	request   *model.SettlementVerification
+	pending   []model.SettlementVerification
 	placement *model.NotifierPlacement
 	// others holds further settlements by id, for the handlers that answer with
 	// more than one settlement (TransferImperialFavor).
@@ -145,6 +146,24 @@ type notifierRepo struct {
 	mirroredReissues int
 	mirrorCalls      int
 	mirrorInTx       bool
+
+	// membership rules: what the player holds, what a test wants refused, and which player each
+	// check was asked about — a guard that checks the caller instead of the target is the bug these
+	// ids expose
+	memberships        model.Memberships
+	membershipsOf      map[string]model.Memberships
+	joinErr            error
+	ownGuildErr        error
+	joinChecks         []model.SettlementKind
+	joinChecksFor      []string
+	ownGuildChecks     int
+	ownGuildChecksFor  []string
+	membershipReads    int
+	membershipReadsFor []string
+
+	// disbanding a solo guild
+	disbanded  []string
+	disbandErr error
 }
 
 func (r *notifierRepo) InTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
@@ -206,11 +225,21 @@ func (r *notifierRepo) GetSettlement(_ context.Context, id string) (*model.Settl
 }
 
 func (r *notifierRepo) GetSettlementByUserId(_ context.Context, userId string) (*model.Settlement, error) {
-	if r.set != nil && slices.Contains(r.set.MemberIds(), userId) {
+	return r.groupByUserID(userId, model.KindSettlement)
+}
+
+func (r *notifierRepo) GetGuildByUserId(_ context.Context, userId string) (*model.Settlement, error) {
+	return r.groupByUserID(userId, model.KindGuild)
+}
+
+// groupByUserID answers the one group of this kind the user belongs to, the way the two per-kind
+// unique indexes bound the answer in the real store.
+func (r *notifierRepo) groupByUserID(userId string, kind model.SettlementKind) (*model.Settlement, error) {
+	if r.set != nil && r.set.Kind() == kind && slices.Contains(r.set.MemberIds(), userId) {
 		return r.set, nil
 	}
 	for _, s := range r.others {
-		if slices.Contains(s.MemberIds(), userId) {
+		if s.Kind() == kind && slices.Contains(s.MemberIds(), userId) {
 			return s, nil
 		}
 	}
@@ -251,10 +280,66 @@ func (r *notifierRepo) RemoveTag(context.Context, string, string) error { return
 
 func (r *notifierRepo) CreateFavorLog(context.Context, model.ImperialFavorLog) error { return nil }
 
-func (r *notifierRepo) IsMemberOfAnySettlement(context.Context, string) error { return nil }
+// DeleteSoloGuild records the disband and answers what a test pinned, as a stand-in for the
+// conditional delete the real repository runs.
+func (r *notifierRepo) DeleteSoloGuild(_ context.Context, guildID, userID string) error {
+	r.disbanded = append(r.disbanded, guildID+"/"+userID)
+	return r.disbandErr
+}
 
-func (r *notifierRepo) GetSettlementRequestByLeader(context.Context, string) (*model.SettlementVerification, error) {
-	if r.request == nil {
+// Memberships and the two rule checks answer from what a test set for that player, so a refusal can
+// be pinned to one id: a guard that checks the caller instead of its target then answers differently
+// and the test sees it.
+func (r *notifierRepo) Memberships(_ context.Context, userID string) (model.Memberships, error) {
+	r.membershipReads++
+	r.membershipReadsFor = append(r.membershipReadsFor, userID)
+	return r.membershipsFor(userID), nil
+}
+
+func (r *notifierRepo) EnsureMayJoin(_ context.Context, userID string, kind model.SettlementKind) error {
+	r.joinChecks = append(r.joinChecks, kind)
+	r.joinChecksFor = append(r.joinChecksFor, userID)
+	if r.joinErr != nil {
+		return r.joinErr
+	}
+	return membershipErr(r.membershipsFor(userID).MayJoin(kind))
+}
+
+func (r *notifierRepo) EnsureMayOwnGuild(_ context.Context, userID string) error {
+	r.ownGuildChecks++
+	r.ownGuildChecksFor = append(r.ownGuildChecksFor, userID)
+	if r.ownGuildErr != nil {
+		return r.ownGuildErr
+	}
+	return membershipErr(r.membershipsFor(userID).MayOwnGuild())
+}
+
+// membershipsFor answers what one player holds: the per-player table first, then the default every
+// test that guards a single caller sets.
+func (r *notifierRepo) membershipsFor(userID string) model.Memberships {
+	if m, ok := r.membershipsOf[userID]; ok {
+		return m
+	}
+	return r.memberships
+}
+
+// membershipErr mirrors what the real repository maps a model rule to.
+func membershipErr(err error) error {
+	switch {
+	case errors.Is(err, model.ErrAlreadyInSettlement):
+		return ierror.ErrAlreadyMember
+	case errors.Is(err, model.ErrAlreadyInGuild):
+		return ierror.ErrAlreadyInGuild
+	case errors.Is(err, model.ErrGuildOwnerInSettlement):
+		return ierror.ErrGuildOwnerInSettlement
+	default:
+		return err
+	}
+}
+
+func (r *notifierRepo) GetSettlementRequestByLeader(_ context.Context, _ string, kind model.SettlementKind) (*model.SettlementVerification, error) {
+	// Each kind keeps its own request, so a request of the other kind is no answer at all.
+	if r.request == nil || r.request.Type.Kind() != kind {
 		return nil, ierror.ErrNotFound
 	}
 	return r.request, nil
@@ -265,14 +350,16 @@ func (r *notifierRepo) CreateRequest(_ context.Context, opts service.SettlementO
 	return nil
 }
 
-// GetAllSettlements serves List, which deliberately leaves notifier_position unset.
-func (r *notifierRepo) GetAllSettlements(context.Context) ([]model.Settlement, error) {
+// GetAllByKind serves List, which deliberately leaves notifier_position unset.
+func (r *notifierRepo) GetAllByKind(_ context.Context, kind model.SettlementKind) ([]model.Settlement, error) {
 	out := make([]model.Settlement, 0, len(r.others)+1)
-	if r.set != nil {
+	if r.set != nil && (kind == model.KindAny || r.set.Kind() == kind) {
 		out = append(out, *r.set)
 	}
 	for _, s := range r.others {
-		out = append(out, *s)
+		if kind == model.KindAny || s.Kind() == kind {
+			out = append(out, *s)
+		}
 	}
 	return out, nil
 }
@@ -280,6 +367,18 @@ func (r *notifierRepo) GetAllSettlements(context.Context) ([]model.Settlement, e
 func (r *notifierRepo) UpdateRequest(_ context.Context, opts service.SettlementOpts) error {
 	r.updatedReq = &opts
 	return nil
+}
+
+// GetPendingSettlements serves ListPending. KindAny answers both kinds, the way the moderation
+// queue must.
+func (r *notifierRepo) GetPendingSettlements(_ context.Context, kind model.SettlementKind) ([]model.SettlementVerification, error) {
+	out := make([]model.SettlementVerification, 0, len(r.pending))
+	for _, p := range r.pending {
+		if kind == model.KindAny || p.Kind() == kind {
+			out = append(out, p)
+		}
+	}
+	return out, nil
 }
 
 // memberSet is a settlement with two owners and two plain members.

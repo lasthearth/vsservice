@@ -39,3 +39,18 @@ func TestFromVerificationDefaultsTheNotifierCounter(t *testing.T) {
 		t.Errorf("NotifierReissues = %d, want 0", got.NotifierReissues)
 	}
 }
+
+// The settlement a guild request is approved into must carry the guild kind: the two unique indexes
+// that keep one membership per kind are partial on that field, so a document without it answers to
+// neither and its members could take a second guild.
+func TestFromVerificationCarriesTheKind(t *testing.T) {
+	var m MapperImpl
+
+	got := m.FromVerification(verificationdto.SettlementVerification{Name: "Северный Ветер", Type: "guild", Kind: "guild"})
+	if got.Kind != "guild" {
+		t.Errorf("Kind = %q, want guild", got.Kind)
+	}
+	if got.Type != "guild" {
+		t.Errorf("Type = %q, want guild", got.Type)
+	}
+}

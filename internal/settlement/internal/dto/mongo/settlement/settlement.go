@@ -9,9 +9,13 @@ import (
 )
 
 type Settlement struct {
-	mongox.Model  `bson:",inline"`
-	Name          string                     `bson:"name"`
-	Type          string                     `bson:"type"`
+	mongox.Model `bson:",inline"`
+	Name         string `bson:"name"`
+	Type         string `bson:"type"`
+	// Kind is derived from Type on every write: "settlement" or "guild". It is stored because the
+	// two unique indexes that keep one membership of each kind per player are partial indexes, and
+	// a partial index can only filter on the equality of a stored field. Never set it by hand.
+	Kind          string                     `bson:"kind"`
 	Leader        memberdto.Member           `bson:"leader"`
 	Members       []memberdto.Member         `bson:"members"`
 	Coordinates   vector2dto.Vector2         `bson:"coordinates"`

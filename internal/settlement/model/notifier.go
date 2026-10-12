@@ -17,11 +17,21 @@ const NotifierBlockKind = "block"
 // "notifier" blocktype with a "tier" variant group (assets/lhgui/blocktypes/
 // notifier.json), so the code is "<domain>:notifier-<tier>".
 //
+// The guild is the exception. It has its own blocktype with no variants
+// (assets/lhgui/blocktypes/guild-notifier.json), so its code is
+// "<domain>:guild-notifier". That herald carries no settlement binding and
+// writes no placement, which is why a guild answers no notifier_position and
+// locks no coordinates.
+//
 // ok is false for types outside the notifier automation. Today every
 // SettlementType has a tier; hamlet (khutor) and the imperial tiers
 // (abandoned / normal / mine) have no SettlementType, so they never get a block
 // from the site and stay manual.
 func (t SettlementType) NotifierBlockCode() (code string, ok bool) {
+	if t == SettlementTypeGuild {
+		return NotifierBlockDomain + ":guild-notifier", true
+	}
+
 	var tier string
 	switch t {
 	case SettlementTypeCamp:
@@ -55,6 +65,8 @@ func (t SettlementType) Title() string {
 		return "Город"
 	case SettlementTypeProvince:
 		return "Региональная провинция"
+	case SettlementTypeGuild:
+		return "Гильдия"
 	default:
 		return string(t)
 	}

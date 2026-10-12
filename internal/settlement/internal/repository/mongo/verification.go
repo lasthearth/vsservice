@@ -35,6 +35,7 @@ func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementO
 		Model:           mongomodel.NewModel(),
 		Name:            opts.Name,
 		Type:            string(opts.Type),
+		Kind:            string(opts.Type.Kind()),
 		Description:     opts.Description,
 		Coordinates:     *vector2dto.FromModel(&opts.Coordinates),
 		Leader:          *memberdto.FromModel(&opts.Leader),
@@ -50,6 +51,13 @@ func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementO
 
 	_, err := r.setReqColl.InsertOne(ctx, dto)
 	if err != nil {
+		// The per-kind unique index on leader.user_id fires when one player submits the same kind
+		// twice at once. That is an answer for the site, not a storage failure.
+		if mongo.IsDuplicateKeyError(err) {
+			r.log.Info("a request of this kind already stands",
+				zap.String("leader_id", opts.Leader.UserId), zap.String("kind", dto.Kind))
+			return repoerr.ErrAlreadySubmitted
+		}
 		r.log.Error("failed to insert settlement request",
 			zap.Error(err),
 			zap.String("leader_id", opts.Leader.UserId),
@@ -81,6 +89,7 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 	updateFields := bson.D{
 		{Key: "name", Value: opts.Name},
 		{Key: "type", Value: string(opts.Type)},
+		{Key: "kind", Value: string(opts.Type.Kind())},
 		{Key: "leader", Value: memberdto.FromModel(&opts.Leader)},
 		{Key: "coordinates", Value: vector2dto.FromModel(&opts.Coordinates)},
 		{Key: "attachments", Value: attachments},
@@ -96,7 +105,9 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 
 	result, err := r.setReqColl.UpdateOne(
 		ctx,
-		bson.M{"leader.user_id": opts.Leader.UserId},
+		// One open request per leader per kind: naming the kind keeps a resubmission on the request
+		// it was read from, and never on the other kind's.
+		bson.M{"leader.user_id": opts.Leader.UserId, "kind": string(opts.Type.Kind())},
 		bson.D{
 			{Key: "$set", Value: updateFields},
 		},
@@ -323,29 +334,23 @@ func (r *Repository) Reject(ctx context.Context, id string, rejectionReason stri
 		return err
 	}
 
-	l.Debug("executing found query")
-	found := r.setReqColl.FindOne(ctx, bson.M{"_id": objectID})
-	err = found.Err()
-	if err != nil {
-		l.Error("find error", zap.Error(err))
-		return err
+	// The request must exist. Reading it through GetSettlementRequest answers ErrNotFound for a
+	// missing one, where a bare FindOne would hand the driver's ErrNoDocuments to the caller.
+	if _, rerr := r.GetSettlementRequest(ctx, id); rerr != nil {
+		l.Error("failed to read the settlement request", zap.Error(rerr))
+		return rerr
 	}
 
-	var dto verificationdto.SettlementVerification
-
-	l.Debug("decoding founded")
-	err = found.Decode(&dto)
-	if err != nil {
-		l.Error("decode error", zap.Error(err))
-		return err
-	}
-
-	var status model.SettlementStatus
-	switch model.SettlementType(dto.Type) {
-	case model.SettlementTypeCamp:
+	// A first-time request has no settlement behind it, and an upgrade does. The tier cannot tell
+	// the two apart for a guild, which keeps its tier when it is submitted again, so the answer
+	// comes from the settlement document instead.
+	status := model.SettlementStatusUpdateRejected
+	if _, serr := r.GetSettlement(ctx, id); serr != nil {
+		if !errors.Is(serr, repoerr.ErrNotFound) {
+			l.Error("failed to look for the settlement behind the request", zap.Error(serr))
+			return serr
+		}
 		status = model.SettlementStatusRejected
-	default:
-		status = model.SettlementStatusUpdateRejected
 	}
 
 	l.Debug("executing update query")
@@ -402,11 +407,14 @@ func (r *Repository) GetSettlementRequest(ctx context.Context, id string) (*mode
 	return settlement.ToModel(), nil
 }
 
-// GetSettlementRequestByLeader implements service.SettlementRepository.
-func (r *Repository) GetSettlementRequestByLeader(ctx context.Context, leaderID string) (*model.SettlementVerification, error) {
-	r.log.Info("retrieving settlement request by leaderID", zap.String("leader_id", leaderID))
+// GetSettlementRequestByLeader implements service.SettlementRepository: the request of one kind a
+// leader holds. Each kind keeps its own request, so the kind is part of the lookup and matches the
+// per-kind unique index on leader.user_id.
+func (r *Repository) GetSettlementRequestByLeader(ctx context.Context, leaderID string, kind model.SettlementKind) (*model.SettlementVerification, error) {
+	r.log.Info("retrieving settlement request by leaderID",
+		zap.String("leader_id", leaderID), zap.String("kind", string(kind)))
 
-	res := r.setReqColl.FindOne(ctx, bson.M{"leader.user_id": leaderID})
+	res := r.setReqColl.FindOne(ctx, bson.M{"leader.user_id": leaderID, "kind": string(kind)})
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			return nil, repoerr.ErrNotFound
@@ -426,15 +434,20 @@ func (r *Repository) GetSettlementRequestByLeader(ctx context.Context, leaderID 
 	return settlement.ToModel(), nil
 }
 
-// GetPendingSettlements implements service.SettlementDbRepository.
-func (r *Repository) GetPendingSettlements(ctx context.Context) ([]model.SettlementVerification, error) {
-	r.log.Info("retrieving pending settlement requests")
+// GetPendingSettlements implements service.SettlementDbRepository. KindAny lists both kinds, so the
+// moderation queue never hides a guild request.
+func (r *Repository) GetPendingSettlements(ctx context.Context, kind model.SettlementKind) ([]model.SettlementVerification, error) {
+	r.log.Info("retrieving pending settlement requests", zap.String("kind", string(kind)))
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r.log.Debug("executing find query on settlement collection for pending status")
-	found, err := r.setReqColl.Find(ctx, bson.M{"status": model.SettlementStatusPending})
+	filter := bson.M{"status": model.SettlementStatusPending}
+	if kind != model.KindAny {
+		filter["kind"] = string(kind)
+	}
+
+	found, err := r.setReqColl.Find(ctx, filter)
 	if err != nil {
 		r.log.Error("find error", zap.Error(err))
 		return nil, err

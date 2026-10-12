@@ -17,6 +17,11 @@ import (
 // (settlement/model.OwnerRoleId).
 const ownerRoleID = "owner"
 
+// kindSettlement is the stored kind of a settlement document
+// (settlement/model.KindSettlement). The same collection also holds guilds, which
+// are the other kind, and a player may belong to one of each.
+const kindSettlement = "settlement"
+
 // totals is one player's summed stats, grouped like the leaderboard does.
 type totals struct {
 	Name   string  `bson:"_id"`
@@ -205,9 +210,14 @@ func (s *Standings) allTotals(ctx context.Context) ([]totals, error) {
 // settlement domain itself decides it (IsLeaderOfSettlement). The stored
 // `leader` field is deliberately ignored: the settlement model keeps it only
 // to populate a deprecated proto field, and it goes stale the moment
-// ownership is transferred or the founder leaves. The unique index on
-// members.user_id also guarantees one settlement per player, so this match
-// never needs the $or the stale leader field would force.
+// ownership is transferred or the founder leaves.
+//
+// The kind in the filter does two jobs. It keeps a guild out of the answer, so
+// a player who belongs to both is scored on the settlement — the cosmetics this
+// standing unlocks are settlement cosmetics. And it names the condition of the
+// settlement kind's unique partial index, which is what both bounds the match to
+// one document and lets the query use that index instead of scanning the
+// collection.
 func (s *Standings) settlementRole(ctx context.Context, userID string) (model.SettlementRole, error) {
 	var doc struct {
 		Members []struct {
@@ -217,7 +227,7 @@ func (s *Standings) settlementRole(ctx context.Context, userID string) (model.Se
 	}
 	err := s.settlements.FindOne(
 		ctx,
-		bson.M{"members.user_id": userID},
+		bson.M{"members.user_id": userID, "kind": kindSettlement},
 		options.FindOne().SetProjection(bson.M{"members.user_id": 1, "members.role_ids": 1}),
 	).Decode(&doc)
 	if errors.Is(err, mongo.ErrNoDocuments) {

@@ -104,6 +104,7 @@ func (c *MapperImpl) FromVerification(source verification.SettlementVerification
 	settlementdtoSettlement.Model = c.mongoxModelToMongoxModel(source.Model)
 	settlementdtoSettlement.Name = source.Name
 	settlementdtoSettlement.Type = source.Type
+	settlementdtoSettlement.Kind = source.Kind
 	settlementdtoSettlement.Leader = c.memberdtoMemberToMemberdtoMember(source.Leader)
 	settlementdtoSettlement.Coordinates = c.vector2dtoVector2ToVector2dtoVector2(source.Coordinates)
 	if source.Attachments != nil {

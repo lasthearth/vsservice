@@ -160,13 +160,15 @@ func (s *Service) notifyCreator(ctx context.Context, link *model.InviteLink) {
 	}
 
 	name := link.SettlementId
+	kind := model.KindSettlement
 	if set, gerr := s.dbRepo.GetSettlement(ctx, link.SettlementId); gerr == nil {
 		name = set.Name
+		kind = set.Kind()
 	}
 
 	if nerr := s.notifier.CreateNotification(ctx,
-		"Новый житель",
-		"По вашей ссылке-приглашению в поселение «"+name+"» вступил новый житель",
+		newcomerTitle(kind),
+		"По вашей ссылке-приглашению в "+joinNoun(kind)+" «"+name+"» вступил новый "+newcomerNoun(kind),
 		notificationuc.WithUserId(link.CreatedBy),
 	); nerr != nil {
 		s.log.WithMethod("JoinByInviteLink").Warn("failed to send invite-link notification",

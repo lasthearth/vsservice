@@ -25,23 +25,14 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		return nil, status.Error(codes.InvalidArgument, "attachments cannot be empty")
 	}
 
-	s.log.Info("submitting settlement request",
-		zap.String("leader_id", userID),
-		zap.String("settlement_name", req.GetName()),
-		zap.Int("attachments", len(req.GetAttachments())))
-
 	stype, err := TypeFromReqProto(req.GetType())
 	if err != nil {
-		return nil, err
+		s.log.Warn("unknown settlement type in submission", zap.Error(err), zap.String("user_id", userID))
+		return nil, ierror.ErrInvalidSettlementType
 	}
+	kind := stype.Kind()
 
-	if err := s.dbRepo.IsMemberOfAnySettlement(ctx, userID); err != nil {
-		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", userID))
-		if !errors.Is(err, ierror.ErrAlreadyMember) {
-			return nil, err
-		}
-	}
-
+	// Every check of the input runs before the first read, so a malformed submission costs no query.
 	attachs := make([]model.Attachment, len(req.GetAttachments()))
 	for i, attachment := range req.GetAttachments() {
 		if err := s.mediaUrl.Validate(attachment.GetUrl()); err != nil {
@@ -50,6 +41,50 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		attachs[i] = model.Attachment{
 			Url:  attachment.GetUrl(),
 			Desc: attachment.GetDescription(),
+		}
+	}
+
+	s.log.Info("submitting settlement request",
+		zap.String("leader_id", userID),
+		zap.String("settlement_name", req.GetName()),
+		zap.String("kind", string(kind)),
+		zap.Int("attachments", len(req.GetAttachments())))
+
+	// Each kind keeps its own request, so this lookup never mistakes a pending guild for a
+	// settlement one and never levels a settlement up on a guild submission.
+	found, err := s.dbRepo.GetSettlementRequestByLeader(ctx, userID, kind)
+	switch {
+	case err == nil:
+	case errors.Is(err, ierror.ErrNotFound):
+		found = nil
+	default:
+		s.log.Error("error checking for existing settlement request", zap.Error(err))
+		return nil, err
+	}
+
+	// One read answers both questions the rules ask: whether the slot of this kind is free, and
+	// whether the player may own a guild at all. The owner of a guild belongs to no settlement, and
+	// that binds whoever asks to found one — a resubmission too, since its author owns the guild it
+	// re-verifies.
+	memberships, err := s.dbRepo.Memberships(ctx, userID)
+	if err != nil {
+		s.log.Error("failed to read the player's memberships", zap.Error(err))
+		return nil, err
+	}
+	if kind == model.KindGuild {
+		if err := memberships.MayOwnGuild(); err != nil {
+			s.log.Info("guild submission refused", zap.Error(err), zap.String("user_id", userID))
+			return nil, mapModelErr(err)
+		}
+	}
+	// A first submission also needs the slot of its kind free. A resubmission does not: its author
+	// already holds that membership, and the group it belongs to may have been deleted while the
+	// request stayed.
+	if found == nil {
+		if err := memberships.MayJoin(kind); err != nil {
+			s.log.Info("submission refused by the membership rules",
+				zap.Error(err), zap.String("user_id", userID), zap.String("kind", string(kind)))
+			return nil, mapModelErr(err)
 		}
 	}
 
@@ -68,23 +103,16 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		Attachments: attachs,
 	}
 
-	found, err := s.dbRepo.GetSettlementRequestByLeader(ctx, userID)
-	if err != nil {
-		// If no existing request found, create a new one
-		if errors.Is(err, ierror.ErrNotFound) {
-			if err := s.dbRepo.CreateRequest(ctx, opts); err != nil {
-				s.log.Error("failed to create new settlement request", zap.Error(err))
-				return nil, err
-			}
-
-			return &settlementv1.SubmitResponse{}, nil
+	if found == nil {
+		if err := s.dbRepo.CreateRequest(ctx, opts); err != nil {
+			s.log.Error("failed to create new settlement request", zap.Error(err))
+			return nil, err
 		}
 
-		s.log.Error("error checking for existing settlement request", zap.Error(err))
-		return nil, err
+		return &settlementv1.SubmitResponse{}, nil
 	}
 
-	// User already has a request, handle level up or update.
+	// User already has a request of this kind, handle level up or update.
 	//
 	// Checked before the notifier read: a pending request is refused outright, and
 	// a first-time rejected one has no settlement behind it, so neither can have a
@@ -94,6 +122,8 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		return nil, status.Error(codes.AlreadyExists, "settlement request already pending")
 	}
 
+	// A guild keeps its tier, so LvlUp leaves it where it is and a further submission only
+	// re-verifies the profile.
 	if found.Status == model.SettlementStatusApproved {
 		found.LvlUp()
 		s.log.Debug("settlement level up",
@@ -106,9 +136,12 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 	// block's position is authoritative, and whatever the client sent is dropped.
 	// Only a request that reached approval can have a settlement document, and only
 	// a settlement can have a block, so a first-time rejected request skips the
-	// read: it is guaranteed to come back empty.
+	// read: it is guaranteed to come back empty. A guild skips it as well: its
+	// herald carries no settlement binding and writes no placement, so there is
+	// nothing to lock the coordinates to.
 	coordinatesLocked := false
-	if found.Status == model.SettlementStatusApproved || found.Status == model.SettlementStatusUpdateRejected {
+	if kind != model.KindGuild &&
+		(found.Status == model.SettlementStatusApproved || found.Status == model.SettlementStatusUpdateRejected) {
 		placement, hasNotifier, err := s.readNotifier(ctx, found.Id)
 		if err != nil {
 			return nil, err
@@ -160,9 +193,12 @@ func (s *Service) Get(ctx context.Context, req *settlementv1.GetRequest) (*settl
 
 // List implements settlementv1.SettlementServiceServer
 func (s *Service) List(ctx context.Context, req *settlementv1.ListRequest) (*settlementv1.ListResponse, error) {
-	s.log.Info("listing all settlements")
+	// An unspecified kind lists settlements, which is what the public map has always shown. A guild
+	// is not a place on that map, so it takes an explicit GROUP_KIND_GUILD to list one.
+	kind := KindFromProto(req.GetKind(), model.KindSettlement)
+	s.log.Info("listing settlements", zap.String("kind", string(kind)))
 
-	settlements, err := s.dbRepo.GetAllSettlements(ctx)
+	settlements, err := s.dbRepo.GetAllByKind(ctx, kind)
 	if err != nil {
 		s.log.Error("failed to list settlements", zap.Error(err))
 		return nil, err
@@ -179,9 +215,11 @@ func (s *Service) List(ctx context.Context, req *settlementv1.ListRequest) (*set
 
 // ListPending implements settlementv1.SettlementServiceServer
 func (s *Service) ListPending(ctx context.Context, req *settlementv1.ListPendingRequest) (*settlementv1.ListPendingResponse, error) {
-	s.log.Info("listing pending settlement requests")
+	// An unspecified kind lists both: the moderation queue must never hide a guild request.
+	kind := KindFromProto(req.GetKind(), model.KindAny)
+	s.log.Info("listing pending settlement requests", zap.String("kind", string(kind)))
 
-	settlements, err := s.dbRepo.GetPendingSettlements(ctx)
+	settlements, err := s.dbRepo.GetPendingSettlements(ctx, kind)
 	if err != nil {
 		s.log.Error("failed to list pending settlements", zap.Error(err))
 		return nil, err
@@ -198,22 +236,38 @@ func (s *Service) ListPending(ctx context.Context, req *settlementv1.ListPending
 func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest) (*settlementv1.ApproveResponse, error) {
 	s.log.Info("approving settlement request", zap.String("settlement_id", req.GetId()))
 
-	settlement, err := s.dbRepo.GetSettlementRequest(ctx, req.GetId())
+	request, err := s.dbRepo.GetSettlementRequest(ctx, req.GetId())
 	if err != nil {
 		s.log.Error("failed to get settlement", zap.Error(err))
 		return nil, err
 	}
 
-	if settlement == nil {
+	if request == nil {
 		return nil, ierror.ErrNotFound
 	}
 
-	if settlement.Status == model.SettlementStatusApproved {
+	if request.Status == model.SettlementStatusApproved {
 		return nil, ierror.ErrAlreadyApproved
 	}
 
 	var result *ApprovalResult
 	err = s.dbRepo.InTransaction(ctx, func(ctx context.Context) error {
+		// Read inside the transaction, so an approval that raced ahead and already created the group
+		// is visible here: this one then answers "already approved" from the repository's status
+		// guard, instead of reporting a membership conflict the author did not cause.
+		creating, err := s.isFirstApproval(ctx, req.GetId())
+		if err != nil {
+			return err
+		}
+		// Read here too, in the same unit of work as the creation and the mail, so a refusal rolls
+		// the whole approval back. The author may have joined a group in the hours between the
+		// submission and now.
+		if err := s.ensureAuthorMayBeApproved(ctx, *request, creating); err != nil {
+			s.log.Info("approval refused by the membership rules",
+				zap.Error(err), zap.String("leader_id", request.Leader.UserId))
+			return err
+		}
+
 		res, err := s.dbRepo.Approve(ctx, req.GetId())
 		if err != nil {
 			return err
@@ -238,6 +292,43 @@ func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest)
 	s.notifyMembersAboutUpgrade(ctx, *result)
 
 	return &settlementv1.ApproveResponse{}, nil
+}
+
+// isFirstApproval reports whether approving this request creates the group, which is the only case
+// where the approval changes a membership and so has rules to answer. An upgrade changes none. The
+// group id is the request id, so the absence of the group document is the answer.
+func (s *Service) isFirstApproval(ctx context.Context, id string) (bool, error) {
+	if _, err := s.dbRepo.GetSettlement(ctx, id); err != nil {
+		if errors.Is(err, ierror.ErrNotFound) {
+			return true, nil
+		}
+		s.log.Error("failed to look for the settlement behind the request", zap.Error(err))
+		return false, err
+	}
+	return false, nil
+}
+
+// ensureAuthorMayBeApproved applies the membership rules to the author of a request that is about
+// to create a group. Both rules of the kind are read at once: the slot must still be free, and a
+// guild owner belongs to no settlement. The read happens here, in the caller's transaction, because
+// the author may have joined a group in the hours between the submission and the approval.
+func (s *Service) ensureAuthorMayBeApproved(ctx context.Context, request model.SettlementVerification, creating bool) error {
+	if !creating {
+		return nil
+	}
+
+	kind := request.Kind()
+	m, err := s.dbRepo.Memberships(ctx, request.Leader.UserId)
+	if err != nil {
+		return err
+	}
+	if err := m.MayJoin(kind); err != nil {
+		return mapModelErr(err)
+	}
+	if kind == model.KindGuild {
+		return mapModelErr(m.MayOwnGuild())
+	}
+	return nil
 }
 
 // Reject implements settlementv1.SettlementServiceServer
@@ -297,15 +388,22 @@ func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemb
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if err := s.requirePermission(ctx, req.GetSettlementId(), uid, model.PermInviteMember); err != nil {
+	set, err := s.requirePermissionOn(ctx, req.GetSettlementId(), uid, model.PermInviteMember)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := s.dbRepo.IsMemberOfAnySettlement(ctx, req.GetUserId()); err != nil {
-		s.log.Error("user validation failed", zap.Error(err), zap.String("user_id", req.GetUserId()))
-		if !errors.Is(err, ierror.ErrAlreadyMember) {
-			return nil, err
-		}
+	// Answered before the invitation is written. An invitation the invited player could never
+	// accept is worse than a refusal now, which is what storing it anyway used to produce. Holding
+	// a membership of the other kind is fine, so a settlement member may be invited to a guild and
+	// a guild member to a settlement; only a second membership of the same kind, and a guild owner
+	// invited into a settlement, are refused.
+	if err := s.dbRepo.EnsureMayJoin(ctx, req.GetUserId(), set.Kind()); err != nil {
+		s.log.Info("invitation refused by the membership rules",
+			zap.Error(err),
+			zap.String("user_id", req.GetUserId()),
+			zap.String("kind", string(set.Kind())))
+		return nil, err
 	}
 
 	if err := s.dbRepo.CreateInvitation(ctx, req.GetSettlementId(), req.GetUserId()); err != nil {
@@ -435,11 +533,14 @@ func (s *Service) GetUserInvitations(ctx context.Context, req *settlementv1.GetU
 	}, nil
 }
 
-// GetByUserId implements settlementv1.SettlementServiceServer.
+// GetByUserId implements settlementv1.SettlementServiceServer. It answers the settlement only; a
+// guild is served by GetUserMemberships.
 func (s *Service) GetByUserId(ctx context.Context, req *settlementv1.GetByUserIdRequest) (*settlementv1.GetByUserIdResponse, error) {
 	settlement, err := s.dbRepo.GetSettlementByUserId(ctx, req.GetUserId())
 	if err != nil {
-		s.log.Error("failed to get settlements", zap.Error(err))
+		if !errors.Is(err, ierror.ErrNotFound) {
+			s.log.Error("failed to get settlements", zap.Error(err))
+		}
 		return nil, err
 	}
 
@@ -450,11 +551,58 @@ func (s *Service) GetByUserId(ctx context.Context, req *settlementv1.GetByUserId
 	return &settlementv1.GetByUserIdResponse{Settlement: proto}, nil
 }
 
+// GetUserMemberships implements settlementv1.SettlementServiceServer: both groups a player belongs
+// to, of which there is at most one of each kind.
+func (s *Service) GetUserMemberships(ctx context.Context, req *settlementv1.GetUserMembershipsRequest) (*settlementv1.GetUserMembershipsResponse, error) {
+	l := s.log.WithMethod("GetUserMemberships").With(zap.String("user_id", req.GetUserId()))
+
+	out := &settlementv1.GetUserMembershipsResponse{}
+
+	// Belonging to nothing is a normal answer, so a missing group leaves its field unset instead of
+	// failing the call: the site renders one screen from both.
+	settlement, err := s.dbRepo.GetSettlementByUserId(ctx, req.GetUserId())
+	switch {
+	case err == nil:
+		proto, perr := s.settlementProto(ctx, *settlement)
+		if perr != nil {
+			return nil, perr
+		}
+		out.Settlement = proto
+	case errors.Is(err, ierror.ErrNotFound):
+	default:
+		l.Error("failed to get the settlement", zap.Error(err))
+		return nil, err
+	}
+
+	guild, err := s.dbRepo.GetGuildByUserId(ctx, req.GetUserId())
+	switch {
+	case err == nil:
+		// settlementProto is what Get answers with too, and it is the one place that decides a guild
+		// carries no notifier_position, so the two rpcs cannot disagree about it.
+		proto, perr := s.settlementProto(ctx, *guild)
+		if perr != nil {
+			return nil, perr
+		}
+		out.Guild = proto
+	case errors.Is(err, ierror.ErrNotFound):
+	default:
+		l.Error("failed to get the guild", zap.Error(err))
+		return nil, err
+	}
+
+	return out, nil
+}
+
 // VerificationStatus implements settlementv1.SettlementServiceServer.
 func (s *Service) VerificationStatus(ctx context.Context, req *settlementv1.VerificationStatusRequest) (*settlementv1.VerificationStatusResponse, error) {
-	sreq, err := s.dbRepo.GetSettlementRequestByLeader(ctx, req.GetUserId())
+	// Each kind keeps its own request; an unspecified kind answers the settlement one, which is
+	// what this rpc answered before a guild could be submitted.
+	kind := KindFromProto(req.GetKind(), model.KindSettlement)
+	sreq, err := s.dbRepo.GetSettlementRequestByLeader(ctx, req.GetUserId(), kind)
 	if err != nil {
-		s.log.Error("failed to get request status", zap.Error(err))
+		if !errors.Is(err, ierror.ErrNotFound) {
+			s.log.Error("failed to get request status", zap.Error(err))
+		}
 		return nil, err
 	}
 

@@ -15,8 +15,10 @@ import (
 	"go.uber.org/zap"
 )
 
-func (r *Repository) CountUserJoinRequests(ctx context.Context, userID string) (int64, error) {
-	count, err := r.setJoinReqColl.CountDocuments(ctx, bson.M{"user_id": userID})
+// CountUserJoinRequests counts the open applications of one kind. The kind is stored on the
+// request, so the count needs no join with the groups.
+func (r *Repository) CountUserJoinRequests(ctx context.Context, userID string, kind model.SettlementKind) (int64, error) {
+	count, err := r.setJoinReqColl.CountDocuments(ctx, bson.M{"user_id": userID, "kind": string(kind)})
 	if err != nil {
 		r.log.Error("failed to count user join requests", zap.Error(err), zap.String("user_id", userID))
 		return 0, err
@@ -29,14 +31,25 @@ func (r *Repository) CreateJoinRequest(ctx context.Context, settlementID, userID
 		With(zap.String("settlement_id", settlementID), zap.String("user_id", userID)).
 		WithMethod("create_join_request")
 
+	// The kind is copied onto the request so a later join can clear the applications of this kind
+	// only. A group never changes kind, so the copy cannot go stale.
+	kind, err := r.kindOf(ctx, settlementID)
+	if err != nil {
+		return err
+	}
+
 	dto := joinrequestdto.JoinRequest{
 		Id:           bson.NewObjectIDFromTimestamp(time.Now()),
 		UserId:       userID,
 		SettlementId: settlementID,
+		Kind:         string(kind),
 	}
 	if _, err := r.setJoinReqColl.InsertOne(ctx, dto); err != nil {
+		// The unique (user_id, settlement_id) index fires when the same player applies to the same
+		// group twice. It says nothing about membership, so it must not answer as a membership error.
 		if mongo.IsDuplicateKeyError(err) {
-			return repoerr.ErrAlreadyMember
+			l.Info("an application to this group already stands")
+			return repoerr.ErrJoinRequestExists
 		}
 		l.Error("failed to create join request", zap.Error(err))
 		return err
@@ -142,9 +155,9 @@ func (r *Repository) DeleteJoinRequest(ctx context.Context, joinRequestID, settl
 	return nil
 }
 
-// ApproveJoinRequest adds the applicant as a member, deletes every pending join
-// request of that user, in one transaction. Re-checks the single-settlement
-// invariant and returns ErrAlreadyMember if the applicant joined elsewhere.
+// ApproveJoinRequest adds the applicant as a member and deletes the applicant's pending requests of
+// that kind, in one transaction. It re-checks the membership rules and answers ErrAlreadyMember or
+// ErrGuildOwnerInSettlement when the applicant joined elsewhere, or founded a guild, in between.
 func (r *Repository) ApproveJoinRequest(ctx context.Context, joinRequestID string) (string, error) {
 	l := r.log.With(zap.String("join_request_id", joinRequestID)).WithMethod("approve_join_request")
 
@@ -163,9 +176,13 @@ func (r *Repository) ApproveJoinRequest(ctx context.Context, joinRequestID strin
 		}
 		userID = jr.UserId
 
-		// Re-check the invariant: the applicant must not have joined any
-		// settlement between application and approval.
-		if err := r.IsMemberOfAnySettlement(ctx, jr.UserId); err != nil {
+		// Re-check the invariant: the applicant must not have joined another group of this kind, and
+		// a guild owner must not land in a settlement, between application and approval.
+		kind, err := r.kindOf(ctx, jr.SettlementId)
+		if err != nil {
+			return err
+		}
+		if err := r.EnsureMayJoin(ctx, jr.UserId, kind); err != nil {
 			return err
 		}
 
@@ -178,9 +195,18 @@ func (r *Repository) ApproveJoinRequest(ctx context.Context, joinRequestID strin
 			bson.D{
 				{Key: "$push", Value: bson.D{{Key: "members", Value: member}}},
 				{Key: "$set", Value: bson.D{{Key: "updated_at", Value: time.Now()}}},
+				// Bump the version, the way pushMember does, so a concurrent whole-document
+				// UpdateSettlement cannot write back a snapshot without this member.
+				{Key: "$inc", Value: bson.D{{Key: "version", Value: 1}}},
 			},
 		)
 		if err != nil {
+			if mongo.IsDuplicateKeyError(err) {
+				// The server's answer names the index, which is what tells a same-kind conflict from
+				// a legacy index that outlived its migration.
+				l.Warn("unique index refused the member", zap.String("kind", string(kind)), zap.Error(err))
+				return duplicateMemberErr(kind)
+			}
 			l.Error("failed to add member", zap.Error(err))
 			return err
 		}
@@ -188,8 +214,8 @@ func (r *Repository) ApproveJoinRequest(ctx context.Context, joinRequestID strin
 			return repoerr.ErrNotFound
 		}
 
-		// Drop all pending requests of this user (this one included).
-		if _, err := r.setJoinReqColl.DeleteMany(ctx, bson.M{"user_id": jr.UserId}); err != nil {
+		// Drop this kind of pending request of this user (this one included).
+		if err := r.clearJoinRequests(ctx, jr.UserId, kind); err != nil {
 			l.Error("failed to clear user join requests", zap.Error(err))
 			return err
 		}
@@ -199,4 +225,12 @@ func (r *Repository) ApproveJoinRequest(ctx context.Context, joinRequestID strin
 		return "", err
 	}
 	return userID, nil
+}
+
+// clearJoinRequests withdraws every application of one kind. The applications to the other kind
+// stay: a player may hold a settlement and a guild at the same time, so joining one says nothing
+// about the other.
+func (r *Repository) clearJoinRequests(ctx context.Context, userID string, kind model.SettlementKind) error {
+	_, err := r.setJoinReqColl.DeleteMany(ctx, bson.M{"user_id": userID, "kind": string(kind)})
+	return err
 }

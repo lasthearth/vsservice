@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -15,6 +16,17 @@ import (
 // decode the data shape as it existed when the migration was written. Frozen
 // local constants/types are the correct, intentional choice here.
 const ownerRoleID = "owner"
+
+// kindSettlement mirrors model.KindSettlement, frozen for the same reason. Every document written
+// before the guild existed is a settlement.
+const kindSettlement = "settlement"
+
+// The names MongoDB gave the two unique indexes that counted a membership and an open request of
+// any kind as one. The per-kind indexes that replace them carry explicit names.
+const (
+	legacyMemberIndex = "members.user_id_1"
+	legacyLeaderIndex = "leader.user_id_1"
+)
 
 // migrations is the ordered, append-only list of schema changes. Never reorder,
 // renumber, or edit an already-shipped entry — add a new one with the next
@@ -30,7 +42,73 @@ var migrations = []migrate.Migration{
 		// leader field cannot represent). Roll back by restoring a DB snapshot.
 		Down: func(context.Context, *mongo.Database) error { return nil },
 	},
+	{
+		Version:     2,
+		Description: "settlement: split membership uniqueness by kind",
+		Up:          settlementKindUp,
+		// Down is intentionally a no-op: the dropped index allowed one membership of any kind per
+		// player, so rebuilding it fails as soon as one player holds a settlement and a guild.
+		//
+		// Rolling the BINARY back is not safe either, and no migration can undo it: the previous
+		// build maps a settlement without the kind field, so its whole-document replace drops `kind`
+		// from every settlement it touches, and those documents then answer to neither unique index.
+		// Deploy this build forward only. Roll back by restoring a DB snapshot.
+		Down: func(context.Context, *mongo.Database) error { return nil },
+	},
 }
+
+// settlementKindUp writes the kind every settlement and every request was created without, then
+// drops the two unique indexes that treated a guild membership and a settlement membership as the
+// same slot. The application recreates them as one partial unique index per kind on startup, right
+// after this migration returns.
+//
+// The backfill runs first on purpose. A document without `kind` answers to neither partial index,
+// so dropping the old index before the backfill would leave a window where a player could take two
+// settlements.
+func settlementKindUp(ctx context.Context, db *mongo.Database) error {
+	// Join requests carry a copy of the kind of the group they apply to, so that clearing them
+	// after a join can leave the other kind alone. Every request written before the guild existed
+	// applies to a settlement.
+	for _, name := range []string{"settlements", "settlement_requests", "settlement_join_requests"} {
+		if _, err := db.Collection(name).UpdateMany(ctx,
+			bson.M{"kind": nil},
+			bson.M{"$set": bson.M{"kind": kindSettlement}},
+		); err != nil {
+			return fmt.Errorf("backfill kind in %s: %w", name, err)
+		}
+	}
+
+	if err := dropLegacyIndex(ctx, db.Collection("settlements"), legacyMemberIndex); err != nil {
+		return err
+	}
+	return dropLegacyIndex(ctx, db.Collection("settlement_requests"), legacyLeaderIndex)
+}
+
+// dropLegacyIndex removes an index by name and reports every failure except a missing one, which is
+// the normal case on a database that never had it. Unlike the best-effort dropIndex below, this one
+// fails the migration: an old unique index left standing would refuse exactly the write the new
+// schema exists to allow, and the service must not come up in that state.
+func dropLegacyIndex(ctx context.Context, coll *mongo.Collection, name string) error {
+	err := coll.Indexes().DropOne(ctx, name)
+	if err == nil {
+		return nil
+	}
+	// The server answers a missing index with IndexNotFound and a collection that does not exist
+	// yet with NamespaceNotFound. Both mean there is nothing to drop, which is what a fresh database
+	// answers, and a fresh database must still start.
+	var srvErr mongo.ServerError
+	if errors.As(err, &srvErr) &&
+		(srvErr.HasErrorCode(indexNotFoundCode) || srvErr.HasErrorCode(namespaceNotFoundCode)) {
+		return nil
+	}
+	return fmt.Errorf("drop index %s on %s: %w", name, coll.Name(), err)
+}
+
+// The server's answers for "there is nothing to drop".
+const (
+	namespaceNotFoundCode = 26
+	indexNotFoundCode     = 27
+)
 
 // oldMember / oldSettlement are frozen schema snapshots decoded with typed BSON
 // tags. This is the load-bearing safety fix: the previous version decoded into

@@ -18,6 +18,9 @@ func TestNotifierBlockCode(t *testing.T) {
 		{SettlementTypeTownship, "lhgui:notifier-town", true},
 		{SettlementTypeCity, "lhgui:notifier-city", true},
 		{SettlementTypeProvince, "lhgui:notifier-province", true},
+		// The guild has its own blocktype with no tier variants, so its code is
+		// shaped differently from the settlement ones.
+		{SettlementTypeGuild, "lhgui:guild-notifier", true},
 		// Outside the automation: hamlet and imperial tiers have no settlement type.
 		{SettlementType("khutor"), "", false},
 		{SettlementType("hamlet"), "", false},
@@ -43,6 +46,24 @@ func TestEveryLevelUpTypeHasBlock(t *testing.T) {
 			t.Fatalf("type %q has no notifier block", v.Type)
 		}
 		v.LvlUp()
+	}
+}
+
+// Title names the group in player-facing texts, so every type the site can hold has one.
+func TestTitle(t *testing.T) {
+	cases := map[SettlementType]string{
+		SettlementTypeCamp:       "Лагерь",
+		SettlementTypeVillage:    "Деревня",
+		SettlementTypeTownship:   "Посёлок",
+		SettlementTypeCity:       "Город",
+		SettlementTypeProvince:   "Региональная провинция",
+		SettlementTypeGuild:      "Гильдия",
+		SettlementType("khutor"): "khutor",
+	}
+	for typ, want := range cases {
+		if got := typ.Title(); got != want {
+			t.Errorf("%q.Title() = %q, want %q", typ, got, want)
+		}
 	}
 }
 

@@ -23,8 +23,9 @@ const (
 	SettlementTypeCity SettlementType = "city"
 	// Региональная провинция
 	SettlementTypeProvince SettlementType = "province"
-	// SettlementTypeGuild     SettlementType = "guild"
-	// SettlementTypeGuildLvl2 SettlementType = "guild_lvl2"
+	// Гильдия. The only tier of its kind: a guild never levels up, so a further submission only
+	// re-verifies its profile. See SettlementKind for what sets a guild apart from a settlement.
+	SettlementTypeGuild SettlementType = "guild"
 )
 
 const (
@@ -187,7 +188,23 @@ func (s *Settlement) IsOwner(userId string) bool {
 	return m != nil && m.IsOwner()
 }
 
-// AddMember appends a plain member. Caller must ensure global uniqueness.
+// IsLastOwner reports whether userId holds the only owner role of the group. RemoveMember and
+// RevokeOwner refuse that member, because a group without an owner can be neither run nor
+// transferred.
+func (s *Settlement) IsLastOwner(userId string) bool {
+	return s.IsOwner(userId) && s.ownerCount() <= 1
+}
+
+// IsSoloOwner reports whether userId is the last owner and the only member. Leaving such a group
+// ends it, so this is the one case where a leave answers by disbanding the group instead of
+// refusing. A group with other members can hand the owner role to one of them, so it is not solo
+// and leaving stays refused.
+func (s *Settlement) IsSoloOwner(userId string) bool {
+	return s.IsLastOwner(userId) && len(s.Members) == 1
+}
+
+// AddMember appends a plain member. Caller must ensure the player holds no membership of this
+// group's kind yet; the model sees one group and cannot check the others.
 func (s *Settlement) AddMember(userId string) {
 	s.Members = append(s.Members, Member{UserId: userId, RoleIds: []string{}})
 }
@@ -198,7 +215,7 @@ func (s *Settlement) RemoveMember(userId string) error {
 	if m == nil {
 		return ErrMemberNotFound
 	}
-	if m.IsOwner() && s.ownerCount() <= 1 {
+	if s.IsLastOwner(userId) {
 		return ErrLastOwner
 	}
 	s.Members = lo.Reject(s.Members, func(x Member, _ int) bool { return x.UserId == userId })

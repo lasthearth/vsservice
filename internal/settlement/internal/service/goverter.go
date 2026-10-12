@@ -56,6 +56,8 @@ func TypeToProto(s model.SettlementType) settlementv1.SettlementType {
 		stype = settlementv1.SettlementType_CITY
 	case model.SettlementTypeProvince:
 		stype = settlementv1.SettlementType_PROVINCE
+	case model.SettlementTypeGuild:
+		stype = settlementv1.SettlementType_GUILD
 	default:
 		stype = settlementv1.SettlementType_SETTLEMENT_TYPE_UNSPECIFIED
 	}
@@ -76,6 +78,8 @@ func TypeFromProto(stype settlementv1.SettlementType) (*model.SettlementType, er
 		s = model.SettlementTypeCity
 	case settlementv1.SettlementType_PROVINCE:
 		s = model.SettlementTypeProvince
+	case settlementv1.SettlementType_GUILD:
+		s = model.SettlementTypeGuild
 	default:
 		return nil, fmt.Errorf("unknown settlement type: %v", stype)
 	}
@@ -89,8 +93,23 @@ func TypeFromReqProto(req settlementv1.SubmitRequest_Type) (*model.SettlementTyp
 	switch req {
 	case settlementv1.SubmitRequest_CAMP:
 		s = model.SettlementTypeCamp
+	case settlementv1.SubmitRequest_GUILD:
+		s = model.SettlementTypeGuild
 	default:
 		return nil, fmt.Errorf("unknown settlement type: %v", req)
 	}
 	return &s, nil
+}
+
+// KindFromProto converts a GroupKind to a model.SettlementKind. An unspecified kind answers
+// fallback, which each rpc documents: List lists settlements, ListPending lists both kinds.
+func KindFromProto(kind settlementv1.GroupKind, fallback model.SettlementKind) model.SettlementKind {
+	switch kind {
+	case settlementv1.GroupKind_GROUP_KIND_SETTLEMENT:
+		return model.KindSettlement
+	case settlementv1.GroupKind_GROUP_KIND_GUILD:
+		return model.KindGuild
+	default:
+		return fallback
+	}
 }

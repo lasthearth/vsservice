@@ -14,7 +14,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// maxActiveJoinRequests caps how many settlements a player may apply to at once.
+// maxActiveJoinRequests caps how many groups of one kind a player may apply to at once. The cap is
+// per kind: pending settlement applications must not block an application to a guild, which the same
+// player may hold at the same time.
 const maxActiveJoinRequests = 3
 
 // CreateJoinRequest implements settlementv1.SettlementServiceServer.
@@ -24,16 +26,19 @@ func (s *Service) CreateJoinRequest(ctx context.Context, req *settlementv1.Creat
 		return nil, err
 	}
 
-	// Applicant must not already belong to a settlement.
-	if err := s.dbRepo.IsMemberOfAnySettlement(ctx, uid); err != nil {
+	set, err := s.dbRepo.GetSettlement(ctx, req.GetSettlementId())
+	if err != nil {
 		return nil, err
 	}
 
-	if _, err := s.dbRepo.GetSettlement(ctx, req.GetSettlementId()); err != nil {
+	// The applicant must have the slot of this kind free, and a guild owner cannot apply to a
+	// settlement. Holding a membership of the other kind is fine, so a settlement member may apply
+	// to a guild and a guild member to a settlement.
+	if err := s.dbRepo.EnsureMayJoin(ctx, uid, set.Kind()); err != nil {
 		return nil, err
 	}
 
-	count, err := s.dbRepo.CountUserJoinRequests(ctx, uid)
+	count, err := s.dbRepo.CountUserJoinRequests(ctx, uid, set.Kind())
 	if err != nil {
 		return nil, err
 	}
@@ -125,12 +130,14 @@ func (s *Service) ApproveJoinRequest(ctx context.Context, req *settlementv1.Appr
 	// swallowed — mirrors the news domain.
 	set, gerr := s.dbRepo.GetSettlement(ctx, req.GetSettlementId())
 	name := req.GetSettlementId()
+	kind := model.KindSettlement
 	if gerr == nil {
 		name = set.Name
+		kind = set.Kind()
 	}
 	if nerr := s.notifier.CreateNotification(ctx,
 		"Заявка одобрена",
-		"Вы приняты в поселение "+name,
+		"Вы приняты в "+joinNoun(kind)+" "+name,
 		notificationuc.WithUserId(applicantID),
 	); nerr != nil {
 		l.Warn("failed to send join-approved notification", zap.Error(nerr), zap.String("user_id", applicantID))
@@ -159,6 +166,36 @@ func (s *Service) LeaveSettlement(ctx context.Context, req *settlementv1.LeaveSe
 	uid, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	// Read first: the answer depends on whether this leave ends the group, and that is a question
+	// about the members the caller cannot see from the request alone.
+	group, err := s.dbRepo.GetSettlement(ctx, req.GetSettlementId())
+	if err != nil {
+		return nil, err
+	}
+
+	// The last owner of a guild who is also its only member leaves by disbanding it. The owner of a
+	// guild belongs to no settlement, so without this the founder could never join one: leaving was
+	// refused, there was nobody to transfer to, and only an admin could delete the guild. A guild
+	// with other members is never disbanded — its owner role has somewhere to go.
+	if group.IsGuild() && group.IsSoloOwner(uid) {
+		if !req.GetDisband() {
+			s.log.Info("leaving a solo guild needs the disband confirmation",
+				zap.String("settlement_id", req.GetSettlementId()), zap.String("user_id", uid))
+			return nil, ierror.ErrDisbandRequired
+		}
+		// The delete carries the same condition, so a player who joined since the read above makes
+		// it match nothing instead of going with the guild.
+		if err := s.dbRepo.DeleteSoloGuild(ctx, req.GetSettlementId(), uid); err != nil {
+			return nil, err
+		}
+		// The verification request stays, the way an admin's DeleteSettlement leaves it: a founder
+		// who submits again gets the same request document back, and a guild re-created under the
+		// same id continues the notifier numbering instead of restarting it.
+		s.log.Info("guild disbanded by its last owner",
+			zap.String("settlement_id", req.GetSettlementId()), zap.String("user_id", uid))
+		return &settlementv1.LeaveSettlementResponse{Disbanded: true}, nil
 	}
 
 	_, err = s.dbRepo.UpdateSettlement(ctx, req.GetSettlementId(),
@@ -209,8 +246,18 @@ func (s *Service) TransferOwnership(ctx context.Context, req *settlementv1.Trans
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.requireOwner(ctx, req.GetSettlementId(), uid); err != nil {
+	group, err := s.requireOwner(ctx, req.GetSettlementId(), uid)
+	if err != nil {
 		return nil, err
+	}
+
+	// Ownership of a guild cannot move to a member who lives in a settlement: a guild owner belongs
+	// to no settlement, so the target would break that rule the moment the role moved. The target
+	// must leave the settlement first.
+	if group.IsGuild() {
+		if err := s.dbRepo.EnsureMayOwnGuild(ctx, req.GetToUserId()); err != nil {
+			return nil, err
+		}
 	}
 
 	updated, err := s.dbRepo.UpdateSettlement(ctx, req.GetSettlementId(),
@@ -237,6 +284,14 @@ func mapModelErr(err error) error {
 	switch {
 	case errors.Is(err, model.ErrLastOwner):
 		return ierror.ErrLastOwner
+	case errors.Is(err, model.ErrAlreadyInSettlement):
+		return ierror.ErrAlreadyMember
+	case errors.Is(err, model.ErrAlreadyInGuild):
+		return ierror.ErrAlreadyInGuild
+	case errors.Is(err, model.ErrGuildOwnerInSettlement):
+		return ierror.ErrGuildOwnerInSettlement
+	case errors.Is(err, model.ErrUnknownKind):
+		return status.Error(codes.InvalidArgument, err.Error())
 	case errors.Is(err, model.ErrRolesDisabled):
 		return ierror.ErrRolesDisabled
 	case errors.Is(err, model.ErrRoleLimit):
