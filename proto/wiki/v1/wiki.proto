@@ -134,6 +134,7 @@ service WikiService {
   //
   // Errors:
   //   - INVALID_ARGUMENT (400): empty title, or a slug that is not usable
+  //   - FAILED_PRECONDITION (412): base_version is older than the article
   //   - TOO_MANY_REQUESTS (429): the author already has the maximum number of
   //     proposals waiting for review
   //   - UNAUTHENTICATED (401): missing or invalid auth token
@@ -148,7 +149,7 @@ service WikiService {
 
   // List the proposals of the authenticated author, newest first.
   //
-  // An author only ever sees their own proposals. Requires wiki:write to see
+  // An author only ever sees their own proposals. Requires wiki:review to see
   // every proposal instead.
   //
   // Errors:
@@ -167,6 +168,8 @@ service WikiService {
   // Errors:
   //   - NOT_FOUND (404): proposal not found
   //   - FAILED_PRECONDITION (412): proposal was already reviewed
+  //   - ABORTED (409): the article changed after the proposal was written and
+  //     allow_stale is not set
   //   - ALREADY_EXISTS (409): the proposed slug is taken
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - PERMISSION_DENIED (403): missing wiki:review scope
@@ -369,6 +372,12 @@ message Suggestion {
   google.protobuf.Timestamp reviewed_at = 12;
   // The article the proposal produced, once approved.
   string applied_article_id = 13;
+  // Version of the article the proposal was written against; 0 for a new
+  // article and for proposals made before this field existed.
+  int64 base_version = 14;
+  // The article as the author saw it. Set only for an edit proposal; ignored
+  // on input.
+  Article base = 15;
 }
 
 // What a proposal asks for.
@@ -400,6 +409,9 @@ message ListSuggestionsResponse {
 
 message ApproveSuggestionRequest {
   string id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Apply an edit proposal even if the article changed after it was written.
+  // The reviewer confirms they have seen what would be replaced.
+  bool allow_stale = 2;
 }
 
 message RejectSuggestionRequest {

@@ -29,12 +29,19 @@ func (s *Service) SubmitSuggestion(
 	input := req.GetSuggestion()
 	articleId := input.GetArticleId()
 
+	var base *model.Article
+
 	if articleId != "" {
 		// An edit proposal has to name an article that exists, otherwise the
-		// queue would hold a change nobody can apply.
-		if _, err := s.repo.Get(ctx, articleId); err != nil {
+		// queue would hold a change nobody can apply. The article is kept: the
+		// proposal remembers the version and the text it was written against, so
+		// a later approval can tell that the page moved on.
+		stored, err := s.repo.Get(ctx, articleId)
+		if err != nil {
 			return nil, err
 		}
+
+		base = stored
 	}
 
 	pending, err := s.repo.CountPendingSuggestions(ctx, author)
@@ -46,9 +53,11 @@ func (s *Service) SubmitSuggestion(
 	}
 
 	suggestion, err := model.NewSuggestion(model.SuggestionInput{
-		ArticleId: articleId,
-		Proposal:  s.fromProto(input.GetProposal()),
-		Note:      input.GetNote(),
+		ArticleId:   articleId,
+		Proposal:    s.fromProto(input.GetProposal()),
+		Note:        input.GetNote(),
+		BaseVersion: input.GetBaseVersion(),
+		Base:        base,
 	}, author, time.Now())
 	if err != nil {
 		return nil, err
@@ -59,7 +68,7 @@ func (s *Service) SubmitSuggestion(
 		return nil, err
 	}
 
-	return s.mapper.ToSuggestionProto(*created), nil
+	return s.toSuggestionProto(created), nil
 }
 
 // ListSuggestions implements wikiv1.WikiServiceServer.
@@ -92,7 +101,7 @@ func (s *Service) ListSuggestions(
 
 	suggestions := make([]*wikiv1.Suggestion, 0, len(page.Suggestions))
 	for _, suggestion := range page.Suggestions {
-		suggestions = append(suggestions, s.mapper.ToSuggestionProto(*suggestion))
+		suggestions = append(suggestions, s.toSuggestionProto(suggestion))
 	}
 
 	return &wikiv1.ListSuggestionsResponse{
@@ -136,7 +145,7 @@ func (s *Service) ApproveSuggestion(
 		return nil, err
 	}
 
-	applied, err := s.applySuggestion(ctx, reserved)
+	applied, err := s.applySuggestion(ctx, reserved, req.GetAllowStale())
 	if err != nil {
 		if reopenErr := s.repo.ReopenSuggestion(ctx, reserved.Id); reopenErr != nil {
 			s.logger.Error("wiki suggestion left approved after a failed apply",
@@ -157,7 +166,7 @@ func (s *Service) ApproveSuggestion(
 		return nil, err
 	}
 
-	return s.mapper.ToSuggestionProto(*saved), nil
+	return s.toSuggestionProto(saved), nil
 }
 
 // RejectSuggestion implements wikiv1.WikiServiceServer.
@@ -189,7 +198,7 @@ func (s *Service) RejectSuggestion(
 		return nil, err
 	}
 
-	return s.mapper.ToSuggestionProto(*saved), nil
+	return s.toSuggestionProto(saved), nil
 }
 
 // applySuggestion turns an approved proposal into an article.
@@ -198,9 +207,14 @@ func (s *Service) RejectSuggestion(
 // is the editor's decision to publish. A proposal for an existing page is
 // applied as an edit: the state being replaced is saved as a revision first, so
 // an approved edit can be undone like any other.
+//
+// An edit written against a version the article has since left is refused
+// unless allowStale is set, which is the reviewer saying they saw what would be
+// replaced.
 func (s *Service) applySuggestion(
 	ctx context.Context,
 	suggestion *model.Suggestion,
+	allowStale bool,
 ) (*model.Article, error) {
 	now := time.Now()
 	proposal := suggestion.Proposal
@@ -209,6 +223,15 @@ func (s *Service) applySuggestion(
 		article, err := s.repo.Get(ctx, suggestion.ArticleId)
 		if err != nil {
 			return nil, err
+		}
+
+		// The proposal was written against an older state of the page, so applying
+		// it now would drop whatever the editor saved in between. The check sits
+		// here rather than before the reservation, so nothing can change the page
+		// between it and the write — which is itself pinned to the version read
+		// above and reports a conflict rather than overwriting.
+		if suggestion.IsStaleAgainst(article) && !allowStale {
+			return nil, model.ErrSuggestionStale
 		}
 
 		// The write is pinned to the version it was read from, so an editor who
@@ -248,6 +271,16 @@ func (s *Service) applySuggestion(
 	}
 
 	return created, nil
+}
+
+// toSuggestionProto converts a proposal for the wire and attaches the article
+// its author wrote against. The converter leaves that field alone — see the
+// Mapper interface — so it is filled in here.
+func (s *Service) toSuggestionProto(suggestion *model.Suggestion) *wikiv1.Suggestion {
+	proto := s.mapper.ToSuggestionProto(*suggestion)
+	proto.Base = s.toProto(suggestion.Base)
+
+	return proto
 }
 
 // canReview reports whether the caller is an editor.
