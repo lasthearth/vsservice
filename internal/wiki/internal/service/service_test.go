@@ -1130,8 +1130,9 @@ func TestApproveSuggestionRefusesAnEditTheArticleMovedPast(t *testing.T) {
 	}
 
 	// ABORTED, not FAILED_PRECONDITION: the reviewer can retry with allow_stale,
-	// while a proposal that was already decided cannot be retried at all. Both
-	// answer 409, so the code is what tells them apart.
+	// while a proposal that was already decided cannot be retried at all. Over
+	// REST the codes answer differently (409 vs 400), so a client can act on
+	// the difference.
 	var domainErr *ierror.DomainError
 	if !errors.As(err, &domainErr) || domainErr.Code != codes.Aborted {
 		t.Errorf("err = %v, want ABORTED", err)

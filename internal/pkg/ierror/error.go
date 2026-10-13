@@ -44,9 +44,10 @@ func FailedPrecondition(msg string) *DomainError {
 
 // Aborted reports a conflict the caller can still resolve by looking at the
 // current state: reload and retry. It is a different code from
-// FailedPrecondition on purpose, because both answer 409 and a client tells
-// "the state moved under you" from "the action is not allowed in this state"
-// only by the code in the body.
+// FailedPrecondition on purpose: over the REST gateway Aborted answers 409
+// while FailedPrecondition answers 400, so a client tells "the state moved
+// under you" from "the action is not allowed in this state" by the status
+// and the code in the body.
 func Aborted(msg string) *DomainError {
 	return &DomainError{Code: codes.Aborted, Message: msg}
 }
