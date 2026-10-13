@@ -23,6 +23,8 @@ type Suggestion struct {
 	Kind             string     `bson:"kind"`
 	ArticleId        string     `bson:"article_id,omitempty"`
 	Proposal         Article    `bson:"proposal"`
+	BaseVersion      int64      `bson:"base_version,omitempty"`
+	Base             *Article   `bson:"base,omitempty"`
 	Status           string     `bson:"status"`
 	Note             string     `bson:"note,omitempty"`
 	AuthorName       string     `bson:"author_name,omitempty"`

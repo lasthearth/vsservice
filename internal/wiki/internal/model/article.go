@@ -90,6 +90,7 @@ type Article struct {
 	Body        string
 	Status      string
 	AuthorName  string
+	CreatedBy   string
 	// Revisions is the history of the article, newest first.
 	Revisions []Revision
 	// Envelope carries what the stored document owns: the identifier, the
@@ -130,9 +131,9 @@ type Revision struct {
 func NewArticle(input Article, authorName string, now time.Time) (*Article, error) {
 	article := input
 	article.AuthorName = authorName
+	article.CreatedBy = authorName
 	article.Envelope = Envelope{Version: 1, CreatedAt: now, UpdatedAt: now}
 	article.Revisions = nil
-	_ = now
 
 	if article.Slug == "" {
 		article.Slug = Slugify(article.Title)
@@ -151,6 +152,13 @@ func NewArticle(input Article, authorName string, now time.Time) (*Article, erro
 	}
 
 	return &article, nil
+}
+
+// AssignAuthor records who wrote a page that did not exist before. The
+// author also counts as the last editor until someone else edits it.
+func (a *Article) AssignAuthor(author string) {
+	a.CreatedBy = author
+	a.AuthorName = author
 }
 
 // Validate checks the invariants an article must satisfy to be stored.
@@ -220,6 +228,7 @@ func (a *Article) ApplyEdit(input Article, authorName string, expectedVersion in
 	edit.Envelope = a.Envelope
 	edit.Envelope.UpdatedAt = now
 	edit.AuthorName = authorName
+	edit.CreatedBy = a.CreatedBy
 	edit.Envelope.Version = a.Envelope.Version + 1
 	edit.Revisions = a.Revisions
 
@@ -276,6 +285,7 @@ func (a *Article) Restore(revision Revision, authorName string, now time.Time) e
 	restored.Envelope = a.Envelope
 	restored.Envelope.UpdatedAt = now
 	restored.AuthorName = authorName
+	restored.CreatedBy = a.CreatedBy
 	restored.Envelope.Version = a.Envelope.Version + 1
 	restored.Revisions = a.Revisions
 

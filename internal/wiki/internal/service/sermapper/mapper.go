@@ -40,6 +40,7 @@ func (c *MapperImpl) ToProto(source model.Article) *v1.Article {
 	wikiv1Article.UpdatedAt = goverter.TimeToTimestamp(source.Envelope.UpdatedAt)
 	wikiv1Article.AuthorName = source.AuthorName
 	wikiv1Article.Version = source.Envelope.Version
+	wikiv1Article.CreatedBy = source.CreatedBy
 	return &wikiv1Article
 }
 func (c *MapperImpl) ToProtos(source []model.Article) []*v1.Article {
@@ -87,6 +88,7 @@ func (c *MapperImpl) ToSuggestionProto(source model.Suggestion) *v1.Suggestion {
 	wikiv1Suggestion.CreatedAt = goverter.TimeToTimestamp(source.CreatedAt)
 	wikiv1Suggestion.ReviewedAt = goverter.TimePtrToTimestamp(source.ReviewedAt)
 	wikiv1Suggestion.AppliedArticleId = source.AppliedArticleId
+	wikiv1Suggestion.BaseVersion = source.BaseVersion
 	return &wikiv1Suggestion
 }
 func (c *MapperImpl) pModelCoverToPWikiv1Cover(source *model.Cover) *v1.Cover {

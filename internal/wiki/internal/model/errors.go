@@ -28,6 +28,12 @@ var (
 	ErrSuggestionNotFound = ierror.NotFound("suggestion not found")
 	// ErrSuggestionReviewed reports a proposal that was already decided.
 	ErrSuggestionReviewed = ierror.FailedPrecondition("suggestion was already reviewed")
+	// ErrSuggestionOutdated reports a proposal written against an article that
+	// has changed since the author opened it.
+	ErrSuggestionOutdated = ierror.FailedPrecondition("article was changed while the proposal was written, reload it")
+	// ErrSuggestionStale reports an edit proposal whose article changed after it
+	// was submitted; the reviewer has to confirm they saw the difference.
+	ErrSuggestionStale = ierror.Aborted("article changed after the proposal was written")
 	// ErrTooManySuggestions reports an author with too many proposals waiting.
 	ErrTooManySuggestions = ierror.ResourceExhausted("too many suggestions waiting for review")
 	// ErrReasonRequired reports a rejection without a reason.

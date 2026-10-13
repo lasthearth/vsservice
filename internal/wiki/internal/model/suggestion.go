@@ -54,6 +54,12 @@ type Suggestion struct {
 	ArticleId string
 	// Proposal is the article as the author wants it to be.
 	Proposal Article
+	// BaseVersion is the article version the proposal was written against; 0 for
+	// a new article and for proposals made before the field existed.
+	BaseVersion int64
+	// Base is the article as the author saw it, without its history. Nil for a
+	// new article.
+	Base *Article
 	// Status, Note and AuthorName describe the proposal itself.
 	Status     string
 	Note       string
@@ -87,7 +93,7 @@ func NewSuggestion(input SuggestionInput, authorName string, now time.Time) (*Su
 		return nil, err
 	}
 
-	return &Suggestion{
+	suggestion := &Suggestion{
 		Kind:       kind,
 		ArticleId:  input.ArticleId,
 		Proposal:   *proposal,
@@ -95,7 +101,31 @@ func NewSuggestion(input SuggestionInput, authorName string, now time.Time) (*Su
 		Note:       input.Note,
 		AuthorName: authorName,
 		CreatedAt:  now,
-	}, nil
+	}
+
+	if kind != SuggestionArticleEdit {
+		return suggestion, nil
+	}
+
+	// The service reads the target article before this call, so a proposal
+	// without it would name a page nobody can apply the change to.
+	if input.Base == nil {
+		return nil, ErrNotFound
+	}
+
+	if input.BaseVersion != 0 && input.BaseVersion != input.Base.Envelope.Version {
+		return nil, ErrSuggestionOutdated
+	}
+
+	suggestion.BaseVersion = input.Base.Envelope.Version
+
+	// The base is kept for the reviewer to compare against, not to be edited.
+	// Its history is dropped: carrying it here would multiply the stored
+	// proposal by every revision the article holds.
+	base := input.Base.withoutHistory()
+	suggestion.Base = &base
+
+	return suggestion, nil
 }
 
 // SuggestionInput is what a player submits.
@@ -104,6 +134,12 @@ type SuggestionInput struct {
 	ArticleId string
 	Proposal  Article
 	Note      string
+	// BaseVersion is the article version the client last read; 0 accepts the
+	// stored article as it is.
+	BaseVersion int64
+	// Base is the stored article the proposal changes. The service fills it in
+	// from storage; a client never does.
+	Base *Article
 }
 
 // AdoptDocument takes the identifier and timestamps of the stored document.
@@ -142,6 +178,17 @@ func (s *Suggestion) Reviewable(reviewerName string) error {
 	}
 
 	return nil
+}
+
+// IsStaleAgainst reports whether the article changed after the proposal was
+// written. A proposal from before base versions were kept cannot be checked
+// and counts as stale: the reviewer confirms it explicitly.
+func (s *Suggestion) IsStaleAgainst(current *Article) bool {
+	if s.Kind != SuggestionArticleEdit {
+		return false
+	}
+
+	return s.BaseVersion == 0 || current.Envelope.Version != s.BaseVersion
 }
 
 // Approve records the decision.

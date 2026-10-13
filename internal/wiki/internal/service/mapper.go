@@ -35,7 +35,13 @@ type Mapper interface {
 
 	// ToSuggestionProto converts one player proposal. The address lives on the
 	// proposed article while the message keeps it flat, so it is mapped out.
+	//
+	// Base is filled in by the service: it is a pointer on both sides, so
+	// goverter would have to build a nested article conversion that ignores the
+	// envelope settings above — or copy a protobuf message by value to avoid
+	// that, which it must not do.
 	// goverter:map Proposal.Slug Slug
+	// goverter:ignore Base
 	ToSuggestionProto(model.Suggestion) *wikiv1.Suggestion
 
 	// ToRevisionProto converts one revision.

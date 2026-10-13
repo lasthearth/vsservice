@@ -5843,7 +5843,7 @@ paths:
         - WikiService
       summary: List the proposals of the authenticated author, newest first.
       description: |-
-        An author only ever sees their own proposals. Requires wiki:write to see
+        An author only ever sees their own proposals. Requires wiki:review to see
          every proposal instead.
 
          Errors:
@@ -5890,6 +5890,7 @@ paths:
 
          Errors:
            - INVALID_ARGUMENT (400): empty title, or a slug that is not usable
+           - FAILED_PRECONDITION (412): base_version is older than the article
            - TOO_MANY_REQUESTS (429): the author already has the maximum number of
              proposals waiting for review
            - UNAUTHENTICATED (401): missing or invalid auth token
@@ -5921,6 +5922,8 @@ paths:
          Errors:
            - NOT_FOUND (404): proposal not found
            - FAILED_PRECONDITION (412): proposal was already reviewed
+           - ABORTED (409): the article changed after the proposal was written and
+             allow_stale is not set
            - ALREADY_EXISTS (409): the proposed slug is taken
            - UNAUTHENTICATED (401): missing or invalid auth token
            - PERMISSION_DENIED (403): missing wiki:review scope
@@ -5933,6 +5936,21 @@ paths:
           schema:
             type: string
             title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                allow_stale:
+                  type: boolean
+                  title: allow_stale
+                  description: |-
+                    Apply an edit proposal even if the article changed after it was written.
+                     The reviewer confirms they have seen what would be replaced.
+              title: ApproveSuggestionRequest
+              additionalProperties: false
+        required: true
       responses:
         "200":
           description: Success
@@ -11603,6 +11621,12 @@ components:
         id:
           type: string
           title: id
+        allow_stale:
+          type: boolean
+          title: allow_stale
+          description: |-
+            Apply an edit proposal even if the article changed after it was written.
+             The reviewer confirms they have seen what would be replaced.
       title: ApproveSuggestionRequest
       required:
         - id
@@ -11665,7 +11689,7 @@ components:
         author_name:
           type: string
           title: author_name
-          description: Display name of the last editor.
+          description: Subject of the last editor.
         version:
           type:
             - integer
@@ -11673,6 +11697,10 @@ components:
           title: version
           format: int64
           description: Increments on every write; used as the optimistic lock token.
+        created_by:
+          type: string
+          title: created_by
+          description: Subject of the user who created the article. Set once, never changes.
       title: Article
       additionalProperties: false
       description: A wiki article.
@@ -11974,6 +12002,21 @@ components:
           type: string
           title: applied_article_id
           description: The article the proposal produced, once approved.
+        base_version:
+          type:
+            - integer
+            - string
+          title: base_version
+          format: int64
+          description: |-
+            Version of the article the proposal was written against; 0 for a new
+             article and for proposals made before this field existed.
+        base:
+          title: base
+          description: |-
+            The article as the author saw it. Set only for an edit proposal; ignored
+             on input.
+          $ref: '#/components/schemas/wiki.v1.Article'
       title: Suggestion
       additionalProperties: false
       description: What a proposal asks for.

@@ -36,6 +36,7 @@ func (c *MapperImpl) FromArticle(source dto.Article) model.Article {
 	modelArticle.Body = source.Body
 	modelArticle.Status = source.Status
 	modelArticle.AuthorName = source.AuthorName
+	modelArticle.CreatedBy = source.CreatedBy
 	if source.Revisions != nil {
 		modelArticle.Revisions = make([]model.Revision, len(source.Revisions))
 		for k := 0; k < len(source.Revisions); k++ {
@@ -59,6 +60,8 @@ func (c *MapperImpl) FromSuggestion(source dto.Suggestion) model.Suggestion {
 	modelSuggestion.Kind = source.Kind
 	modelSuggestion.ArticleId = source.ArticleId
 	modelSuggestion.Proposal = c.FromArticle(source.Proposal)
+	modelSuggestion.BaseVersion = source.BaseVersion
+	modelSuggestion.Base = c.pDtoArticleToPModelArticle(source.Base)
 	modelSuggestion.Status = source.Status
 	modelSuggestion.Note = source.Note
 	modelSuggestion.AuthorName = source.AuthorName
@@ -92,6 +95,7 @@ func (c *MapperImpl) ToArticle(source model.Article) dto.Article {
 	dtoArticle.Body = source.Body
 	dtoArticle.Status = source.Status
 	dtoArticle.AuthorName = source.AuthorName
+	dtoArticle.CreatedBy = source.CreatedBy
 	if source.Revisions != nil {
 		dtoArticle.Revisions = make([]dto.Revision, len(source.Revisions))
 		for k := 0; k < len(source.Revisions); k++ {
@@ -115,6 +119,8 @@ func (c *MapperImpl) ToSuggestion(source model.Suggestion) dto.Suggestion {
 	dtoSuggestion.Kind = source.Kind
 	dtoSuggestion.ArticleId = source.ArticleId
 	dtoSuggestion.Proposal = c.ToArticle(source.Proposal)
+	dtoSuggestion.BaseVersion = source.BaseVersion
+	dtoSuggestion.Base = c.pModelArticleToPDtoArticle(source.Base)
 	dtoSuggestion.Status = source.Status
 	dtoSuggestion.Note = source.Note
 	dtoSuggestion.AuthorName = source.AuthorName
@@ -123,6 +129,14 @@ func (c *MapperImpl) ToSuggestion(source model.Suggestion) dto.Suggestion {
 	dtoSuggestion.AppliedArticleId = source.AppliedArticleId
 	dtoSuggestion.ReviewedAt = c.pTimeTimeToPTimeTime(source.ReviewedAt)
 	return dtoSuggestion
+}
+func (c *MapperImpl) pDtoArticleToPModelArticle(source *dto.Article) *model.Article {
+	var pModelArticle *model.Article
+	if source != nil {
+		modelArticle := c.FromArticle((*source))
+		pModelArticle = &modelArticle
+	}
+	return pModelArticle
 }
 func (c *MapperImpl) pDtoCoverToPModelCover(source *dto.Cover) *model.Cover {
 	var pModelCover *model.Cover
@@ -143,6 +157,14 @@ func (c *MapperImpl) pDtoQuickAnswerToPModelQuickAnswer(source *dto.QuickAnswer)
 		pModelQuickAnswer = &modelQuickAnswer
 	}
 	return pModelQuickAnswer
+}
+func (c *MapperImpl) pModelArticleToPDtoArticle(source *model.Article) *dto.Article {
+	var pDtoArticle *dto.Article
+	if source != nil {
+		dtoArticle := c.ToArticle((*source))
+		pDtoArticle = &dtoArticle
+	}
+	return pDtoArticle
 }
 func (c *MapperImpl) pModelCoverToPDtoCover(source *model.Cover) *dto.Cover {
 	var pDtoCover *dto.Cover

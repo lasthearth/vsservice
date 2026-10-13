@@ -3,9 +3,11 @@ package service_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
+	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/pkg/jwt"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
@@ -13,6 +15,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/wiki/internal/service"
 	"github.com/lasthearth/vsservice/internal/wiki/internal/service/sermapper"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
 )
 
 // errFakeWrite stands in for a storage failure on the article collection.
@@ -249,7 +252,34 @@ func (f *fakeRepo) Delete(_ context.Context, id string) error {
 	return nil
 }
 
+// notifyCall is one notification the service sent.
+type notifyCall struct {
+	userId  string
+	title   string
+	message string
+}
+
+// fakeNotifier records what a player was told.
+type fakeNotifier struct {
+	calls []notifyCall
+	// err makes every notification fail, so a test can see what a decision does
+	// when the message does not get through.
+	err error
+}
+
+func (n *fakeNotifier) Notify(_ context.Context, userId, title, message string) error {
+	n.calls = append(n.calls, notifyCall{userId: userId, title: title, message: message})
+
+	return n.err
+}
+
 func newService(t *testing.T) (*service.Service, *fakeRepo) {
+	svc, repo, _ := newServiceWithNotifier(t)
+
+	return svc, repo
+}
+
+func newServiceWithNotifier(t *testing.T) (*service.Service, *fakeRepo, *fakeNotifier) {
 	t.Helper()
 
 	cfg := zap.NewProductionConfig()
@@ -259,12 +289,14 @@ func newService(t *testing.T) (*service.Service, *fakeRepo) {
 	}
 
 	repo := newFakeRepo()
+	notifier := &fakeNotifier{}
 
 	return service.New(service.Opts{
-		Logger: l,
-		Repo:   repo,
-		Mapper: &sermapper.MapperImpl{},
-	}), repo
+		Logger:   l,
+		Repo:     repo,
+		Mapper:   &sermapper.MapperImpl{},
+		Notifier: notifier,
+	}), repo, notifier
 }
 
 func anonymous() context.Context {
@@ -305,6 +337,21 @@ func TestCreateArticleDerivesSlugAndDefaultsToDraft(t *testing.T) {
 	}
 	if created.GetId() == "" {
 		t.Error("created article has no id")
+	}
+}
+
+// TestCreateArticleRecordsTheAuthor covers the author that is fixed at creation:
+// the page belongs to whoever created it, however it is edited later.
+func TestCreateArticleRecordsTheAuthor(t *testing.T) {
+	svc, _ := newService(t)
+
+	created, err := svc.CreateArticle(authenticated(), createRequest("Засады"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	if created.GetCreatedBy() != "author-1" {
+		t.Errorf("created_by = %q, want the caller", created.GetCreatedBy())
 	}
 }
 
@@ -430,6 +477,38 @@ func TestUpdateArticleKeepsItsOwnSlug(t *testing.T) {
 
 	if updated.GetSlug() != created.GetSlug() {
 		t.Errorf("slug = %q, want the unchanged %q", updated.GetSlug(), created.GetSlug())
+	}
+}
+
+// TestUpdateArticleByAnotherUserKeepsTheAuthor covers the split between the
+// author and the last editor: an edit moves author_name, never created_by.
+func TestUpdateArticleByAnotherUserKeepsTheAuthor(t *testing.T) {
+	svc, _ := newService(t)
+
+	created, err := svc.CreateArticle(authenticated(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	editor := interceptor.ContextWithUserID(context.Background(), "editor-9")
+
+	updated, err := svc.UpdateArticle(editor, &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      created.GetId(),
+			Title:   "Поселения и роли",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: created.GetVersion(),
+	})
+	if err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	if updated.GetCreatedBy() != "author-1" {
+		t.Errorf("created_by = %q, want the unchanged author", updated.GetCreatedBy())
+	}
+	if updated.GetAuthorName() != "editor-9" {
+		t.Errorf("author_name = %q, want the new editor", updated.GetAuthorName())
 	}
 }
 
@@ -592,6 +671,50 @@ func TestRestoreRevisionBringsBackTheOlderState(t *testing.T) {
 	}
 }
 
+// TestRestoreRevisionKeepsTheAuthor covers the restore path: bringing an older
+// state back is an edit like any other, so the author stays the one on record.
+func TestRestoreRevisionKeepsTheAuthor(t *testing.T) {
+	svc, _ := newService(t)
+
+	created, err := svc.CreateArticle(authenticated(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	editor := interceptor.ContextWithUserID(context.Background(), "editor-9")
+
+	if _, err := svc.UpdateArticle(editor, &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      created.GetId(),
+			Title:   "Поселения и роли",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: created.GetVersion(),
+	}); err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	revisions, err := svc.ListRevisions(editor, &wikiv1.ListRevisionsRequest{Id: created.GetId()})
+	if err != nil {
+		t.Fatalf("ListRevisions: %v", err)
+	}
+	if len(revisions.GetRevisions()) != 1 {
+		t.Fatalf("revisions = %d, want 1", len(revisions.GetRevisions()))
+	}
+
+	restored, err := svc.RestoreRevision(editor, &wikiv1.RestoreRevisionRequest{
+		Id:         created.GetId(),
+		RevisionId: revisions.GetRevisions()[0].GetId(),
+	})
+	if err != nil {
+		t.Fatalf("RestoreRevision: %v", err)
+	}
+
+	if restored.GetCreatedBy() != "author-1" {
+		t.Errorf("created_by = %q, want the unchanged author", restored.GetCreatedBy())
+	}
+}
+
 func TestRestoreRevisionRejectsUnknownRevision(t *testing.T) {
 	svc, _ := newService(t)
 
@@ -624,6 +747,34 @@ func reviewer() context.Context {
 	ctx := interceptor.ContextWithUserID(context.Background(), "editor-1")
 
 	return interceptor.ContextWithClaims(ctx, &jwt.Claims{Scope: "wiki:write wiki:review"})
+}
+
+// editRequest proposes a change to an existing article, saying which version of
+// it the author was looking at.
+func editRequest(title string, articleId string, baseVersion int64) *wikiv1.SubmitSuggestionRequest {
+	return &wikiv1.SubmitSuggestionRequest{
+		Suggestion: &wikiv1.Suggestion{
+			ArticleId:   articleId,
+			BaseVersion: baseVersion,
+			Proposal:    &wikiv1.Article{Title: title, Section: model.SectionWar, Body: "## Правка игрока"},
+			Note:        "нашёл неточность",
+		},
+	}
+}
+
+// rawSuggestion is model.Suggestion with its fields writable. It is how a test
+// builds a proposal from before base versions were kept, which no code path
+// produces any more.
+type rawSuggestion model.Suggestion
+
+func legacyEditProposal(suggestion *model.Suggestion) *model.Suggestion {
+	raw := rawSuggestion(*suggestion)
+	raw.BaseVersion = 0
+	raw.Base = nil
+
+	legacy := model.Suggestion(raw)
+
+	return &legacy
 }
 
 func suggestionRequest(title string, articleId ...string) *wikiv1.SubmitSuggestionRequest {
@@ -764,6 +915,535 @@ func TestApproveSuggestionAppliesAnEditAsARevision(t *testing.T) {
 	}
 	if len(stored.Revisions) == 0 {
 		t.Error("an approved edit must leave a revision behind")
+	}
+}
+
+// TestApproveSuggestionOfANewArticleCreditsItsAuthor covers who an approved
+// proposal belongs to: the player who wrote it, not the editor who let it in.
+func TestApproveSuggestionOfANewArticleCreditsItsAuthor(t *testing.T) {
+	svc, _ := newService(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	approved, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{Id: suggestion.GetId()})
+	if err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	article, err := svc.GetArticle(anonymous(), &wikiv1.GetArticleRequest{Id: approved.GetAppliedArticleId()})
+	if err != nil {
+		t.Fatalf("GetArticle: %v", err)
+	}
+
+	if article.GetCreatedBy() != "author-1" {
+		t.Errorf("created_by = %q, want the proposal's author", article.GetCreatedBy())
+	}
+	if article.GetAuthorName() != "author-1" {
+		t.Errorf("author_name = %q, want the proposal's author, not the reviewer", article.GetAuthorName())
+	}
+}
+
+// TestApproveSuggestionOfAnEditCreditsTheProposalWithTheLastEditor covers the
+// same rule on a page that already exists: approval moves author_name to the
+// proposer and leaves created_by where it was.
+func TestApproveSuggestionOfAnEditCreditsTheProposalWithTheLastEditor(t *testing.T) {
+	svc, _ := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Поселения и роли", article.GetId()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	updated, err := svc.GetArticle(reviewer(), &wikiv1.GetArticleRequest{Id: article.GetId()})
+	if err != nil {
+		t.Fatalf("GetArticle: %v", err)
+	}
+
+	if updated.GetCreatedBy() != "editor-1" {
+		t.Errorf("created_by = %q, want the unchanged author", updated.GetCreatedBy())
+	}
+	if updated.GetAuthorName() != "author-1" {
+		t.Errorf("author_name = %q, want the proposal's author", updated.GetAuthorName())
+	}
+}
+
+// TestSubmitSuggestionKeepsTheArticleItWasWrittenAgainst covers what an edit
+// proposal remembers: the version the author read and the text they saw, so a
+// reviewer can tell what approving it would replace.
+func TestSubmitSuggestionKeepsTheArticleItWasWrittenAgainst(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if suggestion.GetBaseVersion() != article.GetVersion() {
+		t.Errorf("base_version = %d, want %d", suggestion.GetBaseVersion(), article.GetVersion())
+	}
+	if suggestion.GetBase().GetTitle() != "Поселения" {
+		t.Errorf("base title = %q, want the article as the author saw it", suggestion.GetBase().GetTitle())
+	}
+
+	// The base is stored whole, so the history it carries is checked on the
+	// stored proposal: repeating it here would grow the document by every
+	// revision of the article.
+	stored := repo.suggestions[suggestion.GetId()]
+	if stored.Base == nil {
+		t.Fatal("the stored proposal kept no base")
+	}
+	if len(stored.Base.Revisions) != 0 {
+		t.Errorf("the stored base carries %d revisions, want none", len(stored.Base.Revisions))
+	}
+}
+
+// TestSubmitSuggestionRefusesABaseVersionTheArticleHasLeft covers the scenario
+// the base version exists for: the author read v3, an editor saved v4, and the
+// proposal is refused at the door instead of queueing a silent overwrite.
+func TestSubmitSuggestionRefusesABaseVersionTheArticleHasLeft(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	if _, err := svc.UpdateArticle(reviewer(), &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      article.GetId(),
+			Title:   "Поселения и роли",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: article.GetVersion(),
+	}); err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	_, err = svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения, роли и налоги", article.GetId(), article.GetVersion()))
+	if !errors.Is(err, model.ErrSuggestionOutdated) {
+		t.Fatalf("err = %v, want the outdated base version reported", err)
+	}
+	if len(repo.suggestions) != 0 {
+		t.Errorf("a refused proposal was stored: %d", len(repo.suggestions))
+	}
+}
+
+// TestSubmitSuggestionTakesTheCurrentVersionWhenNoneIsGiven covers a client
+// that does not name a version: the proposal is pinned to what storage holds.
+func TestSubmitSuggestionTakesTheCurrentVersionWhenNoneIsGiven(t *testing.T) {
+	svc, _ := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), 0))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if suggestion.GetBaseVersion() != article.GetVersion() {
+		t.Errorf("base_version = %d, want the stored %d", suggestion.GetBaseVersion(), article.GetVersion())
+	}
+}
+
+func TestApproveSuggestionAppliesAnEditWrittenAgainstTheCurrentVersion(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	if stored := repo.articles[article.GetId()]; stored.Title != "Поселения и роли" {
+		t.Errorf("title = %q, want the proposal applied", stored.Title)
+	}
+}
+
+// TestApproveSuggestionRefusesAnEditTheArticleMovedPast covers the other half:
+// the proposal is accepted, the page moves on before review, and the approval
+// is refused with ABORTED — the author's text never replaces the later save.
+func TestApproveSuggestionRefusesAnEditTheArticleMovedPast(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	// An editor saves the page while the proposal waits for review.
+	if _, err := svc.UpdateArticle(reviewer(), &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      article.GetId(),
+			Title:   "Поселения, роли и налоги",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: article.GetVersion(),
+	}); err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	_, err = svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{Id: suggestion.GetId()})
+	if !errors.Is(err, model.ErrSuggestionStale) {
+		t.Fatalf("err = %v, want the proposal reported as stale", err)
+	}
+
+	// ABORTED, not FAILED_PRECONDITION: the reviewer can retry with allow_stale,
+	// while a proposal that was already decided cannot be retried at all. Over
+	// REST the codes answer differently (409 vs 400), so a client can act on
+	// the difference.
+	var domainErr *ierror.DomainError
+	if !errors.As(err, &domainErr) || domainErr.Code != codes.Aborted {
+		t.Errorf("err = %v, want ABORTED", err)
+	}
+
+	if stored := repo.articles[article.GetId()]; stored.Title != "Поселения, роли и налоги" {
+		t.Errorf("title = %q, want the later save kept", stored.Title)
+	}
+
+	queue, err := svc.ListSuggestions(reviewer(), &wikiv1.ListSuggestionsRequest{})
+	if err != nil {
+		t.Fatalf("ListSuggestions: %v", err)
+	}
+	if len(queue.GetSuggestions()) != 1 ||
+		queue.GetSuggestions()[0].GetStatus() != wikiv1.SuggestionStatus_SUGGESTION_STATUS_PENDING {
+		t.Error("a refused approval took the proposal out of the queue")
+	}
+}
+
+// TestApproveSuggestionAppliesAStaleEditWhenTheReviewerConfirms covers
+// allow_stale: the reviewer has seen what would be replaced, so the proposal is
+// applied and the state it replaced is kept as a revision.
+func TestApproveSuggestionAppliesAStaleEditWhenTheReviewerConfirms(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.UpdateArticle(reviewer(), &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      article.GetId(),
+			Title:   "Поселения, роли и налоги",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: article.GetVersion(),
+	}); err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id:         suggestion.GetId(),
+		AllowStale: true,
+	}); err != nil {
+		t.Fatalf("ApproveSuggestion with allow_stale: %v", err)
+	}
+
+	stored := repo.articles[article.GetId()]
+	if stored.Title != "Поселения и роли" {
+		t.Errorf("title = %q, want the proposal applied", stored.Title)
+	}
+	if len(stored.Revisions) == 0 {
+		t.Fatal("an approved edit must leave a revision behind")
+	}
+	if stored.Revisions[0].Article.Title != "Поселения, роли и налоги" {
+		t.Errorf("revision kept %q, want the state the approval replaced",
+			stored.Revisions[0].Article.Title)
+	}
+}
+
+// TestApproveSuggestionOfAProposalWithoutABaseVersion covers the queue that
+// predates the field: nothing recorded which version it was written against, so
+// it cannot be checked and only the reviewer's confirmation lets it through.
+func TestApproveSuggestionOfAProposalWithoutABaseVersion(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	submitted, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	repo.suggestions[submitted.GetId()] = legacyEditProposal(repo.suggestions[submitted.GetId()])
+
+	_, err = svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{Id: submitted.GetId()})
+	if !errors.Is(err, model.ErrSuggestionStale) {
+		t.Fatalf("err = %v, want a proposal without a base version to count as stale", err)
+	}
+	if stored := repo.articles[article.GetId()]; stored.Title != "Поселения" {
+		t.Errorf("title = %q, want the article untouched", stored.Title)
+	}
+
+	approved, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id:         submitted.GetId(),
+		AllowStale: true,
+	})
+	if err != nil {
+		t.Fatalf("ApproveSuggestion with allow_stale: %v", err)
+	}
+	if approved.GetAppliedArticleId() == "" {
+		t.Error("the confirmed proposal produced no article")
+	}
+	if stored := repo.articles[article.GetId()]; stored.Title != "Поселения и роли" {
+		t.Errorf("title = %q, want the proposal applied after the confirmation", stored.Title)
+	}
+}
+
+// TestApproveSuggestionOfANewArticleIgnoresAllowStale covers the flag on the
+// path where there is nothing to be stale against.
+func TestApproveSuggestionOfANewArticleIgnoresAllowStale(t *testing.T) {
+	svc, _ := newService(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	approved, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id:         suggestion.GetId(),
+		AllowStale: true,
+	})
+	if err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	article, err := svc.GetArticle(anonymous(), &wikiv1.GetArticleRequest{
+		Id: approved.GetAppliedArticleId(),
+	})
+	if err != nil {
+		t.Fatalf("GetArticle: %v", err)
+	}
+	if article.GetTitle() != "Засады" {
+		t.Errorf("title = %q, want the proposal published", article.GetTitle())
+	}
+}
+
+// TestApproveSuggestionNotifiesTheAuthorOfANewArticle covers the message a
+// player gets when the page they proposed is published.
+func TestApproveSuggestionNotifiesTheAuthorOfANewArticle(t *testing.T) {
+	svc, _, notifier := newServiceWithNotifier(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	if len(notifier.calls) != 1 {
+		t.Fatalf("notifications = %d, want 1", len(notifier.calls))
+	}
+	call := notifier.calls[0]
+	if call.userId != "author-1" {
+		t.Errorf("notified %q, want the author", call.userId)
+	}
+	if call.title != "Статья опубликована" {
+		t.Errorf("title = %q", call.title)
+	}
+	if !strings.Contains(call.message, "https://lasthearth.ru/wiki/zasady") {
+		t.Errorf("message = %q, want the address of the published page", call.message)
+	}
+}
+
+// TestApproveSuggestionNotifiesTheAuthorOfAnEdit covers the other approval. The
+// address is taken from the article the approval produced, because an edit is a
+// save like any other and may have moved the page.
+func TestApproveSuggestionNotifiesTheAuthorOfAnEdit(t *testing.T) {
+	svc, repo, notifier := newServiceWithNotifier(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	if len(notifier.calls) != 1 {
+		t.Fatalf("notifications = %d, want 1", len(notifier.calls))
+	}
+	call := notifier.calls[0]
+	if call.userId != "author-1" {
+		t.Errorf("notified %q, want the author", call.userId)
+	}
+	if call.title != "Правка принята" {
+		t.Errorf("title = %q", call.title)
+	}
+	applied := repo.articles[article.GetId()]
+	if !strings.Contains(call.message, "https://lasthearth.ru/wiki/"+applied.Slug) {
+		t.Errorf("message = %q, want the address of the applied article", call.message)
+	}
+}
+
+func TestRejectSuggestionNotifiesTheAuthorOfTheReason(t *testing.T) {
+	svc, _, notifier := newServiceWithNotifier(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.RejectSuggestion(reviewer(), &wikiv1.RejectSuggestionRequest{
+		Id:     suggestion.GetId(),
+		Reason: "не по теме",
+	}); err != nil {
+		t.Fatalf("RejectSuggestion: %v", err)
+	}
+
+	if len(notifier.calls) != 1 {
+		t.Fatalf("notifications = %d, want 1", len(notifier.calls))
+	}
+	call := notifier.calls[0]
+	if call.userId != "author-1" {
+		t.Errorf("notified %q, want the author", call.userId)
+	}
+	if call.title != "Предложение отклонено" {
+		t.Errorf("title = %q", call.title)
+	}
+	if !strings.Contains(call.message, "Засады") {
+		t.Errorf("message = %q, want the page named in it", call.message)
+	}
+	if !strings.Contains(call.message, "не по теме") {
+		t.Errorf("message = %q, want the reviewer's reason in it", call.message)
+	}
+}
+
+// TestNoNotificationWhenTheDecisionIsNotStored covers the order of the two
+// writes: an approval the article refuses leaves the proposal undecided, so the
+// author must not be told it was applied.
+func TestNoNotificationWhenTheDecisionIsNotStored(t *testing.T) {
+	svc, _, notifier := newServiceWithNotifier(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	// An editor saves the page, so the approval is refused as stale.
+	if _, err := svc.UpdateArticle(reviewer(), &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      article.GetId(),
+			Title:   "Поселения, роли и налоги",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: article.GetVersion(),
+	}); err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); !errors.Is(err, model.ErrSuggestionStale) {
+		t.Fatalf("err = %v, want the proposal refused as stale", err)
+	}
+
+	if len(notifier.calls) != 0 {
+		t.Errorf("notifications = %d, want none for a decision that did not land", len(notifier.calls))
+	}
+}
+
+// TestNotifierFailureLeavesTheDecisionStored covers the other direction: a
+// message that cannot be sent is a warning, never a failed decision.
+func TestNotifierFailureLeavesTheDecisionStored(t *testing.T) {
+	svc, repo, notifier := newServiceWithNotifier(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	notifier.err = errors.New("notification store is down")
+
+	approved, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	})
+	if err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	if len(notifier.calls) != 1 {
+		t.Fatalf("notifications = %d, want the attempt recorded", len(notifier.calls))
+	}
+	if approved.GetStatus() != wikiv1.SuggestionStatus_SUGGESTION_STATUS_APPROVED {
+		t.Errorf("status = %v, want the decision kept", approved.GetStatus())
+	}
+	if approved.GetAppliedArticleId() == "" {
+		t.Error("the decision was kept but produced no article")
+	}
+	if len(repo.articles) == 0 {
+		t.Error("a failed notification rolled the article back")
 	}
 }
 

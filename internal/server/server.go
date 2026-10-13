@@ -166,7 +166,14 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string, opts ...runtime.ServeMuxOption) error {
 	mux := runtime.NewServeMux(opts...)
 
-	dopts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	// The client must accept what the server may answer: list responses embed
+	// whole documents (the wiki review queue carries every proposal's base
+	// article and proposal), which outgrows the 4 MiB default receive limit.
+	mb := 1024 * 1024
+	dopts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(60 * mb)),
+	}
 
 	if err := leaderboardv1.RegisterLeaderboardServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register leaderboard service handler")

@@ -23,7 +23,7 @@ func (r *Repository) CreateSuggestion(
 	l := r.logger.WithMethod("create_suggestion").With(zap.String("author", suggestion.AuthorName))
 	l.Info("creating wiki suggestion")
 
-	stored := r.mapper.ToSuggestion(*suggestion)
+	stored := r.toStoredSuggestion(suggestion)
 	stored.Model = mongox.NewModel()
 
 	res, err := r.collSuggestions.InsertOne(ctx, stored)
@@ -106,7 +106,7 @@ func (r *Repository) SaveSuggestion(
 		ctx, r.collSuggestions, map[string]any{"_id": objID}, model.ErrSuggestionNotFound,
 		r.suggestionToModel,
 		func(suggestion *model.Suggestion) dto.Suggestion {
-			return r.mapper.ToSuggestion(*suggestion)
+			return r.toStoredSuggestion(suggestion)
 		},
 		func(_ context.Context, current *model.Suggestion) (*model.Suggestion, error) {
 			if !current.IsPending() {
@@ -227,5 +227,47 @@ func (r *Repository) suggestionToModel(stored dto.Suggestion) *model.Suggestion 
 		Version:   stored.Model.Version,
 	})
 
+	// The base is a nested document, so the mapper leaves its envelope alone;
+	// it is applied here from the model fields the write stamped onto it, the
+	// same way toModel does it for a nested revision article.
+	if suggestion.Base != nil && stored.Base != nil {
+		suggestion.Base.AdoptDocument(model.Envelope{
+			Id:        stored.Base.Model.Id.Hex(),
+			CreatedAt: stored.Base.Model.CreatedAt,
+			UpdatedAt: stored.Base.Model.UpdatedAt,
+			Version:   stored.Base.Model.Version,
+		})
+	}
+
 	return &suggestion
+}
+
+// toStoredSuggestion converts a proposal into its stored shape and stamps the
+// envelope of the article it was written against onto the base subdocument.
+// The mapper ignores the envelope of nested articles, so without this the base
+// would come back with an empty identifier and version 0, contradicting the
+// base_version field next to it.
+func (r *Repository) toStoredSuggestion(suggestion *model.Suggestion) dto.Suggestion {
+	stored := r.mapper.ToSuggestion(*suggestion)
+
+	if stored.Base == nil || suggestion.Base == nil {
+		return stored
+	}
+
+	// The base always comes from a stored article, so its identifier parses;
+	// a value that somehow does not is left unstamped rather than failing the
+	// write — the base text still survives, only its envelope would be empty.
+	objID, err := mongox.ParseObjectID(suggestion.Base.Envelope.Id)
+	if err != nil {
+		return stored
+	}
+
+	stored.Base.Model = mongox.Model{
+		Id:        objID,
+		CreatedAt: suggestion.Base.Envelope.CreatedAt,
+		UpdatedAt: suggestion.Base.Envelope.UpdatedAt,
+		Version:   suggestion.Base.Envelope.Version,
+	}
+
+	return stored
 }
