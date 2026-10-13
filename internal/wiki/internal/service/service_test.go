@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
+	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/pkg/jwt"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
@@ -13,6 +14,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/wiki/internal/service"
 	"github.com/lasthearth/vsservice/internal/wiki/internal/service/sermapper"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
 )
 
 // errFakeWrite stands in for a storage failure on the article collection.
@@ -717,6 +719,34 @@ func reviewer() context.Context {
 	return interceptor.ContextWithClaims(ctx, &jwt.Claims{Scope: "wiki:write wiki:review"})
 }
 
+// editRequest proposes a change to an existing article, saying which version of
+// it the author was looking at.
+func editRequest(title string, articleId string, baseVersion int64) *wikiv1.SubmitSuggestionRequest {
+	return &wikiv1.SubmitSuggestionRequest{
+		Suggestion: &wikiv1.Suggestion{
+			ArticleId:   articleId,
+			BaseVersion: baseVersion,
+			Proposal:    &wikiv1.Article{Title: title, Section: model.SectionWar, Body: "## Правка игрока"},
+			Note:        "нашёл неточность",
+		},
+	}
+}
+
+// rawSuggestion is model.Suggestion with its fields writable. It is how a test
+// builds a proposal from before base versions were kept, which no code path
+// produces any more.
+type rawSuggestion model.Suggestion
+
+func legacyEditProposal(suggestion *model.Suggestion) *model.Suggestion {
+	raw := rawSuggestion(*suggestion)
+	raw.BaseVersion = 0
+	raw.Base = nil
+
+	legacy := model.Suggestion(raw)
+
+	return &legacy
+}
+
 func suggestionRequest(title string, articleId ...string) *wikiv1.SubmitSuggestionRequest {
 	target := ""
 	if len(articleId) > 0 {
@@ -918,6 +948,295 @@ func TestApproveSuggestionOfAnEditCreditsTheProposalWithTheLastEditor(t *testing
 	}
 	if updated.GetAuthorName() != "author-1" {
 		t.Errorf("author_name = %q, want the proposal's author", updated.GetAuthorName())
+	}
+}
+
+// TestSubmitSuggestionKeepsTheArticleItWasWrittenAgainst covers what an edit
+// proposal remembers: the version the author read and the text they saw, so a
+// reviewer can tell what approving it would replace.
+func TestSubmitSuggestionKeepsTheArticleItWasWrittenAgainst(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if suggestion.GetBaseVersion() != article.GetVersion() {
+		t.Errorf("base_version = %d, want %d", suggestion.GetBaseVersion(), article.GetVersion())
+	}
+	if suggestion.GetBase().GetTitle() != "Поселения" {
+		t.Errorf("base title = %q, want the article as the author saw it", suggestion.GetBase().GetTitle())
+	}
+
+	// The base is stored whole, so the history it carries is checked on the
+	// stored proposal: repeating it here would grow the document by every
+	// revision of the article.
+	stored := repo.suggestions[suggestion.GetId()]
+	if stored.Base == nil {
+		t.Fatal("the stored proposal kept no base")
+	}
+	if len(stored.Base.Revisions) != 0 {
+		t.Errorf("the stored base carries %d revisions, want none", len(stored.Base.Revisions))
+	}
+}
+
+// TestSubmitSuggestionRefusesABaseVersionTheArticleHasLeft covers the scenario
+// the base version exists for: the author read v3, an editor saved v4, and the
+// proposal is refused at the door instead of queueing a silent overwrite.
+func TestSubmitSuggestionRefusesABaseVersionTheArticleHasLeft(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	if _, err := svc.UpdateArticle(reviewer(), &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      article.GetId(),
+			Title:   "Поселения и роли",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: article.GetVersion(),
+	}); err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	_, err = svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения, роли и налоги", article.GetId(), article.GetVersion()))
+	if !errors.Is(err, model.ErrSuggestionOutdated) {
+		t.Fatalf("err = %v, want the outdated base version reported", err)
+	}
+	if len(repo.suggestions) != 0 {
+		t.Errorf("a refused proposal was stored: %d", len(repo.suggestions))
+	}
+}
+
+// TestSubmitSuggestionTakesTheCurrentVersionWhenNoneIsGiven covers a client
+// that does not name a version: the proposal is pinned to what storage holds.
+func TestSubmitSuggestionTakesTheCurrentVersionWhenNoneIsGiven(t *testing.T) {
+	svc, _ := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), 0))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if suggestion.GetBaseVersion() != article.GetVersion() {
+		t.Errorf("base_version = %d, want the stored %d", suggestion.GetBaseVersion(), article.GetVersion())
+	}
+}
+
+func TestApproveSuggestionAppliesAnEditWrittenAgainstTheCurrentVersion(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	if stored := repo.articles[article.GetId()]; stored.Title != "Поселения и роли" {
+		t.Errorf("title = %q, want the proposal applied", stored.Title)
+	}
+}
+
+// TestApproveSuggestionRefusesAnEditTheArticleMovedPast covers the other half:
+// the proposal is accepted, the page moves on before review, and the approval
+// is refused with ABORTED — the author's text never replaces the later save.
+func TestApproveSuggestionRefusesAnEditTheArticleMovedPast(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	// An editor saves the page while the proposal waits for review.
+	if _, err := svc.UpdateArticle(reviewer(), &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      article.GetId(),
+			Title:   "Поселения, роли и налоги",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: article.GetVersion(),
+	}); err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	_, err = svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{Id: suggestion.GetId()})
+	if !errors.Is(err, model.ErrSuggestionStale) {
+		t.Fatalf("err = %v, want the proposal reported as stale", err)
+	}
+
+	// ABORTED, not FAILED_PRECONDITION: the reviewer can retry with allow_stale,
+	// while a proposal that was already decided cannot be retried at all. Both
+	// answer 409, so the code is what tells them apart.
+	var domainErr *ierror.DomainError
+	if !errors.As(err, &domainErr) || domainErr.Code != codes.Aborted {
+		t.Errorf("err = %v, want ABORTED", err)
+	}
+
+	if stored := repo.articles[article.GetId()]; stored.Title != "Поселения, роли и налоги" {
+		t.Errorf("title = %q, want the later save kept", stored.Title)
+	}
+
+	queue, err := svc.ListSuggestions(reviewer(), &wikiv1.ListSuggestionsRequest{})
+	if err != nil {
+		t.Fatalf("ListSuggestions: %v", err)
+	}
+	if len(queue.GetSuggestions()) != 1 ||
+		queue.GetSuggestions()[0].GetStatus() != wikiv1.SuggestionStatus_SUGGESTION_STATUS_PENDING {
+		t.Error("a refused approval took the proposal out of the queue")
+	}
+}
+
+// TestApproveSuggestionAppliesAStaleEditWhenTheReviewerConfirms covers
+// allow_stale: the reviewer has seen what would be replaced, so the proposal is
+// applied and the state it replaced is kept as a revision.
+func TestApproveSuggestionAppliesAStaleEditWhenTheReviewerConfirms(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.UpdateArticle(reviewer(), &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      article.GetId(),
+			Title:   "Поселения, роли и налоги",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: article.GetVersion(),
+	}); err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id:         suggestion.GetId(),
+		AllowStale: true,
+	}); err != nil {
+		t.Fatalf("ApproveSuggestion with allow_stale: %v", err)
+	}
+
+	stored := repo.articles[article.GetId()]
+	if stored.Title != "Поселения и роли" {
+		t.Errorf("title = %q, want the proposal applied", stored.Title)
+	}
+	if len(stored.Revisions) == 0 {
+		t.Fatal("an approved edit must leave a revision behind")
+	}
+	if stored.Revisions[0].Article.Title != "Поселения, роли и налоги" {
+		t.Errorf("revision kept %q, want the state the approval replaced",
+			stored.Revisions[0].Article.Title)
+	}
+}
+
+// TestApproveSuggestionOfAProposalWithoutABaseVersion covers the queue that
+// predates the field: nothing recorded which version it was written against, so
+// it cannot be checked and only the reviewer's confirmation lets it through.
+func TestApproveSuggestionOfAProposalWithoutABaseVersion(t *testing.T) {
+	svc, repo := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	submitted, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	repo.suggestions[submitted.GetId()] = legacyEditProposal(repo.suggestions[submitted.GetId()])
+
+	_, err = svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{Id: submitted.GetId()})
+	if !errors.Is(err, model.ErrSuggestionStale) {
+		t.Fatalf("err = %v, want a proposal without a base version to count as stale", err)
+	}
+	if stored := repo.articles[article.GetId()]; stored.Title != "Поселения" {
+		t.Errorf("title = %q, want the article untouched", stored.Title)
+	}
+
+	approved, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id:         submitted.GetId(),
+		AllowStale: true,
+	})
+	if err != nil {
+		t.Fatalf("ApproveSuggestion with allow_stale: %v", err)
+	}
+	if approved.GetAppliedArticleId() == "" {
+		t.Error("the confirmed proposal produced no article")
+	}
+	if stored := repo.articles[article.GetId()]; stored.Title != "Поселения и роли" {
+		t.Errorf("title = %q, want the proposal applied after the confirmation", stored.Title)
+	}
+}
+
+// TestApproveSuggestionOfANewArticleIgnoresAllowStale covers the flag on the
+// path where there is nothing to be stale against.
+func TestApproveSuggestionOfANewArticleIgnoresAllowStale(t *testing.T) {
+	svc, _ := newService(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	approved, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id:         suggestion.GetId(),
+		AllowStale: true,
+	})
+	if err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	article, err := svc.GetArticle(anonymous(), &wikiv1.GetArticleRequest{
+		Id: approved.GetAppliedArticleId(),
+	})
+	if err != nil {
+		t.Fatalf("GetArticle: %v", err)
+	}
+	if article.GetTitle() != "Засады" {
+		t.Errorf("title = %q, want the proposal published", article.GetTitle())
 	}
 }
 

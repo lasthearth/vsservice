@@ -88,6 +88,7 @@ func (c *MapperImpl) ToSuggestionProto(source model.Suggestion) *v1.Suggestion {
 	wikiv1Suggestion.CreatedAt = goverter.TimeToTimestamp(source.CreatedAt)
 	wikiv1Suggestion.ReviewedAt = goverter.TimePtrToTimestamp(source.ReviewedAt)
 	wikiv1Suggestion.AppliedArticleId = source.AppliedArticleId
+	wikiv1Suggestion.BaseVersion = source.BaseVersion
 	return &wikiv1Suggestion
 }
 func (c *MapperImpl) pModelCoverToPWikiv1Cover(source *model.Cover) *v1.Cover {

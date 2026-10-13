@@ -116,6 +116,20 @@ article side, which is now the editor's direct path.
 5. **Given** an already reviewed proposal, **When** it is reviewed again, **Then**
    `FAILED_PRECONDITION` is returned: two editors cannot apply the same proposal twice.
 
+### User Story 7 - An edit proposal does not erase a later save (Priority: P1)
+
+**Acceptance**
+1. **Given** a player who read version 3 of an article, **When** they propose a change, **Then**
+   the proposal records that version and the text they saw.
+2. **Given** a proposal whose recorded version is older than the stored article, **When** it is
+   submitted, **Then** `FAILED_PRECONDITION` is returned and nothing is queued.
+3. **Given** an accepted proposal, **When** an editor saves the article before the review, **Then**
+   approving it returns `ABORTED`, the article is unchanged and the proposal stays in the queue.
+4. **Given** the same proposal, **When** the reviewer approves it with `allow_stale`, **Then** it
+   is applied and the state it replaced is saved as a revision.
+5. **Given** a proposal written before base versions were kept, **Then** it counts as stale and
+   needs the same confirmation to be applied.
+
 ### Requirements (moderation)
 
 - **FR-101** A suggestion is a separate entity (`wiki_suggestions`), not a draft article: it has
@@ -127,6 +141,14 @@ article side, which is now the editor's direct path.
 - **FR-104** A rejection requires a reason and changes nothing else.
 - **FR-105** Reviewing is guarded by the stored document version, so two editors deciding the same
   proposal cannot both win.
+- **FR-106** An edit proposal records the version of the article its author read (`base_version`)
+  and the text they saw (`base`); the base is stored without the article's revision history.
+- **FR-107** A proposal whose `base_version` is already older than the stored article is refused
+  when it is submitted. One the article moves past afterwards is refused at approval with
+  `ABORTED` — a code of its own, because the reviewer can still act on it — unless the reviewer
+  passes `allow_stale`, which is them confirming they saw what would be replaced.
+- **FR-108** A proposal with no recorded base version cannot be checked and counts as stale, so it
+  needs the same explicit confirmation.
 
 ### Out of scope (next slices)
 
