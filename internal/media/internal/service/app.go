@@ -46,6 +46,11 @@ var purposes = map[mediav1.UploadPurpose]purposeConfig{
 		contentTypes: []string{"image/webp", "image/png", "image/jpeg"},
 		scope:        "news:create",
 	},
+	mediav1.UploadPurpose_UPLOAD_PURPOSE_WIKI: {
+		bucket: "wiki", maxSize: 5 << 20,
+		contentTypes: []string{"image/webp", "image/png", "image/jpeg"},
+		scope:        "",
+	},
 }
 
 // extFromContentType returns the object extension for a MIME type (default .webp).

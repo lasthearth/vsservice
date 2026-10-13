@@ -60,6 +60,9 @@ enum UploadPurpose {
   UPLOAD_PURPOSE_DONATE_SHOP = 1;
   UPLOAD_PURPOSE_SETTLEMENT = 2;
   UPLOAD_PURPOSE_NEWS = 3;
+  // Wiki article images and covers. Any signed-in player may upload: players
+  // propose articles, and editors review them before anything is published.
+  UPLOAD_PURPOSE_WIKI = 4;
 }
 
 message CreateUploadUrlsRequest {
