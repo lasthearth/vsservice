@@ -55,6 +55,15 @@ var migrations = []migrate.Migration{
 		// Deploy this build forward only. Roll back by restoring a DB snapshot.
 		Down: func(context.Context, *mongo.Database) error { return nil },
 	},
+	{
+		Version:     3,
+		Description: "wiki: backfill created_by from the oldest revision",
+		Up:          wikiCreatedByUp,
+		// Down is intentionally a no-op: the backfill only fills a field that did
+		// not exist before, so a rollback that leaves it in place reads the same
+		// article — while unsetting it would lose which player wrote the page.
+		Down: func(context.Context, *mongo.Database) error { return nil },
+	},
 }
 
 // settlementKindUp writes the kind every settlement and every request was created without, then
@@ -247,4 +256,63 @@ func hasOwner(members []oldMember, userID string) bool {
 func dropIndex(ctx context.Context, coll *mongo.Collection, name string) {
 	// Best-effort: ignore "index not found".
 	_ = coll.Indexes().DropOne(ctx, name)
+}
+
+// oldWikiRevision / oldWikiArticle are frozen schema snapshots of a wiki article
+// as it looked before created_by existed, decoded with typed BSON tags for the
+// same reason as the settlement snapshots above: a mismatch must be a hard
+// decode error, never silently dropped data.
+type oldWikiRevision struct {
+	AuthorName string `bson:"author_name"`
+}
+
+type oldWikiArticle struct {
+	ID         any               `bson:"_id"`
+	AuthorName string            `bson:"author_name"`
+	Revisions  []oldWikiRevision `bson:"revisions"`
+}
+
+// wikiCreatedByUp fills created_by on every article written before the field
+// existed. The history is stored newest first, so the author the page was
+// created with is the last revision's; a page without history falls back to the
+// last editor the document names.
+//
+// Idempotent: the filter matches only documents still missing the field, so a
+// second run finds nothing to write.
+func wikiCreatedByUp(ctx context.Context, db *mongo.Database) error {
+	coll := db.Collection("wiki_articles")
+
+	cur, err := coll.Find(ctx, bson.M{"created_by": bson.M{"$exists": false}})
+	if err != nil {
+		return fmt.Errorf("find wiki articles without created_by: %w", err)
+	}
+	defer func() { _ = cur.Close(ctx) }()
+
+	for cur.Next(ctx) {
+		var article oldWikiArticle
+		if err := cur.Decode(&article); err != nil {
+			return fmt.Errorf("decode wiki article: %w", err)
+		}
+
+		author := article.AuthorName
+		if len(article.Revisions) > 0 {
+			if oldest := article.Revisions[len(article.Revisions)-1].AuthorName; oldest != "" {
+				author = oldest
+			}
+		}
+
+		// A document that names nobody is left as it is: writing an empty value
+		// would make it look backfilled and hide that nothing was known.
+		if author == "" {
+			continue
+		}
+
+		if _, err := coll.UpdateOne(ctx, bson.M{"_id": article.ID},
+			bson.M{"$set": bson.M{"created_by": author}},
+		); err != nil {
+			return fmt.Errorf("backfill created_by of %v: %w", article.ID, err)
+		}
+	}
+
+	return cur.Err()
 }

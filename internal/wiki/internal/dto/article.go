@@ -34,6 +34,7 @@ type Article struct {
 	Body        string       `bson:"body,omitempty"`
 	Status      string       `bson:"status"`
 	AuthorName  string       `bson:"author_name,omitempty"`
+	CreatedBy   string       `bson:"created_by,omitempty"`
 	Revisions   []Revision   `bson:"revisions,omitempty"`
 }
 
