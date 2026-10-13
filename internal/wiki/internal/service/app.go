@@ -11,23 +11,26 @@ var _ wikiv1.WikiServiceServer = (*Service)(nil)
 // Opts is what the wiki service needs from the container.
 type Opts struct {
 	fx.In
-	Logger logger.Logger
-	Repo   Repository
-	Mapper Mapper
+	Logger   logger.Logger
+	Repo     Repository
+	Mapper   Mapper
+	Notifier Notifier
 }
 
 // Service implements the wiki API.
 type Service struct {
-	logger logger.Logger
-	repo   Repository
-	mapper Mapper
+	logger   logger.Logger
+	repo     Repository
+	mapper   Mapper
+	notifier Notifier
 }
 
 // New builds the wiki service.
 func New(opts Opts) *Service {
 	return &Service{
-		logger: opts.Logger.WithComponent("service"),
-		repo:   opts.Repo,
-		mapper: opts.Mapper,
+		logger:   opts.Logger.WithComponent("service"),
+		repo:     opts.Repo,
+		mapper:   opts.Mapper,
+		notifier: opts.Notifier,
 	}
 }

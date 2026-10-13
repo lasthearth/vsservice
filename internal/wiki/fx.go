@@ -45,6 +45,8 @@ var App = fx.Options(
 		),
 
 		fx.Provide(
+			// NewNotifier already returns the interface the service depends on.
+			service.NewNotifier,
 			fx.Annotate(
 				service.New,
 				fx.As(new(wikiv1.WikiServiceServer)),
