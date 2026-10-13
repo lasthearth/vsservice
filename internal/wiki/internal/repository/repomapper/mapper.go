@@ -36,6 +36,7 @@ func (c *MapperImpl) FromArticle(source dto.Article) model.Article {
 	modelArticle.Body = source.Body
 	modelArticle.Status = source.Status
 	modelArticle.AuthorName = source.AuthorName
+	modelArticle.CreatedBy = source.CreatedBy
 	if source.Revisions != nil {
 		modelArticle.Revisions = make([]model.Revision, len(source.Revisions))
 		for k := 0; k < len(source.Revisions); k++ {
@@ -92,6 +93,7 @@ func (c *MapperImpl) ToArticle(source model.Article) dto.Article {
 	dtoArticle.Body = source.Body
 	dtoArticle.Status = source.Status
 	dtoArticle.AuthorName = source.AuthorName
+	dtoArticle.CreatedBy = source.CreatedBy
 	if source.Revisions != nil {
 		dtoArticle.Revisions = make([]dto.Revision, len(source.Revisions))
 		for k := 0; k < len(source.Revisions); k++ {

@@ -244,10 +244,12 @@ message Article {
   ArticleStatus status = 12;
   google.protobuf.Timestamp created_at = 13;
   google.protobuf.Timestamp updated_at = 14;
-  // Display name of the last editor.
+  // Subject of the last editor.
   string author_name = 15;
   // Increments on every write; used as the optimistic lock token.
   int64 version = 16;
+  // Subject of the user who created the article. Set once, never changes.
+  string created_by = 17;
 }
 
 // A saved state of an article.

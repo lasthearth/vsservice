@@ -308,6 +308,21 @@ func TestCreateArticleDerivesSlugAndDefaultsToDraft(t *testing.T) {
 	}
 }
 
+// TestCreateArticleRecordsTheAuthor covers the author that is fixed at creation:
+// the page belongs to whoever created it, however it is edited later.
+func TestCreateArticleRecordsTheAuthor(t *testing.T) {
+	svc, _ := newService(t)
+
+	created, err := svc.CreateArticle(authenticated(), createRequest("Засады"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	if created.GetCreatedBy() != "author-1" {
+		t.Errorf("created_by = %q, want the caller", created.GetCreatedBy())
+	}
+}
+
 func TestCreateArticleRejectsTakenSlug(t *testing.T) {
 	svc, _ := newService(t)
 
@@ -430,6 +445,38 @@ func TestUpdateArticleKeepsItsOwnSlug(t *testing.T) {
 
 	if updated.GetSlug() != created.GetSlug() {
 		t.Errorf("slug = %q, want the unchanged %q", updated.GetSlug(), created.GetSlug())
+	}
+}
+
+// TestUpdateArticleByAnotherUserKeepsTheAuthor covers the split between the
+// author and the last editor: an edit moves author_name, never created_by.
+func TestUpdateArticleByAnotherUserKeepsTheAuthor(t *testing.T) {
+	svc, _ := newService(t)
+
+	created, err := svc.CreateArticle(authenticated(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	editor := interceptor.ContextWithUserID(context.Background(), "editor-9")
+
+	updated, err := svc.UpdateArticle(editor, &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      created.GetId(),
+			Title:   "Поселения и роли",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: created.GetVersion(),
+	})
+	if err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	if updated.GetCreatedBy() != "author-1" {
+		t.Errorf("created_by = %q, want the unchanged author", updated.GetCreatedBy())
+	}
+	if updated.GetAuthorName() != "editor-9" {
+		t.Errorf("author_name = %q, want the new editor", updated.GetAuthorName())
 	}
 }
 
@@ -589,6 +636,50 @@ func TestRestoreRevisionBringsBackTheOlderState(t *testing.T) {
 	}
 	if repo.lastExpected == 0 {
 		t.Error("restore saved without a version guard, so a concurrent edit would be replaced silently")
+	}
+}
+
+// TestRestoreRevisionKeepsTheAuthor covers the restore path: bringing an older
+// state back is an edit like any other, so the author stays the one on record.
+func TestRestoreRevisionKeepsTheAuthor(t *testing.T) {
+	svc, _ := newService(t)
+
+	created, err := svc.CreateArticle(authenticated(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	editor := interceptor.ContextWithUserID(context.Background(), "editor-9")
+
+	if _, err := svc.UpdateArticle(editor, &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      created.GetId(),
+			Title:   "Поселения и роли",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: created.GetVersion(),
+	}); err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	revisions, err := svc.ListRevisions(editor, &wikiv1.ListRevisionsRequest{Id: created.GetId()})
+	if err != nil {
+		t.Fatalf("ListRevisions: %v", err)
+	}
+	if len(revisions.GetRevisions()) != 1 {
+		t.Fatalf("revisions = %d, want 1", len(revisions.GetRevisions()))
+	}
+
+	restored, err := svc.RestoreRevision(editor, &wikiv1.RestoreRevisionRequest{
+		Id:         created.GetId(),
+		RevisionId: revisions.GetRevisions()[0].GetId(),
+	})
+	if err != nil {
+		t.Fatalf("RestoreRevision: %v", err)
+	}
+
+	if restored.GetCreatedBy() != "author-1" {
+		t.Errorf("created_by = %q, want the unchanged author", restored.GetCreatedBy())
 	}
 }
 
@@ -764,6 +855,69 @@ func TestApproveSuggestionAppliesAnEditAsARevision(t *testing.T) {
 	}
 	if len(stored.Revisions) == 0 {
 		t.Error("an approved edit must leave a revision behind")
+	}
+}
+
+// TestApproveSuggestionOfANewArticleCreditsItsAuthor covers who an approved
+// proposal belongs to: the player who wrote it, not the editor who let it in.
+func TestApproveSuggestionOfANewArticleCreditsItsAuthor(t *testing.T) {
+	svc, _ := newService(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	approved, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{Id: suggestion.GetId()})
+	if err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	article, err := svc.GetArticle(anonymous(), &wikiv1.GetArticleRequest{Id: approved.GetAppliedArticleId()})
+	if err != nil {
+		t.Fatalf("GetArticle: %v", err)
+	}
+
+	if article.GetCreatedBy() != "author-1" {
+		t.Errorf("created_by = %q, want the proposal's author", article.GetCreatedBy())
+	}
+	if article.GetAuthorName() != "author-1" {
+		t.Errorf("author_name = %q, want the proposal's author, not the reviewer", article.GetAuthorName())
+	}
+}
+
+// TestApproveSuggestionOfAnEditCreditsTheProposalWithTheLastEditor covers the
+// same rule on a page that already exists: approval moves author_name to the
+// proposer and leaves created_by where it was.
+func TestApproveSuggestionOfAnEditCreditsTheProposalWithTheLastEditor(t *testing.T) {
+	svc, _ := newService(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Поселения и роли", article.GetId()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	updated, err := svc.GetArticle(reviewer(), &wikiv1.GetArticleRequest{Id: article.GetId()})
+	if err != nil {
+		t.Fatalf("GetArticle: %v", err)
+	}
+
+	if updated.GetCreatedBy() != "editor-1" {
+		t.Errorf("created_by = %q, want the unchanged author", updated.GetCreatedBy())
+	}
+	if updated.GetAuthorName() != "author-1" {
+		t.Errorf("author_name = %q, want the proposal's author", updated.GetAuthorName())
 	}
 }
 

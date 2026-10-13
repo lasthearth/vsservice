@@ -40,6 +40,7 @@ func (c *MapperImpl) ToProto(source model.Article) *v1.Article {
 	wikiv1Article.UpdatedAt = goverter.TimeToTimestamp(source.Envelope.UpdatedAt)
 	wikiv1Article.AuthorName = source.AuthorName
 	wikiv1Article.Version = source.Envelope.Version
+	wikiv1Article.CreatedBy = source.CreatedBy
 	return &wikiv1Article
 }
 func (c *MapperImpl) ToProtos(source []model.Article) []*v1.Article {

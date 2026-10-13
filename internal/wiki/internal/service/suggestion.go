@@ -136,7 +136,7 @@ func (s *Service) ApproveSuggestion(
 		return nil, err
 	}
 
-	applied, err := s.applySuggestion(ctx, reserved, reviewer)
+	applied, err := s.applySuggestion(ctx, reserved)
 	if err != nil {
 		if reopenErr := s.repo.ReopenSuggestion(ctx, reserved.Id); reopenErr != nil {
 			s.logger.Error("wiki suggestion left approved after a failed apply",
@@ -201,7 +201,6 @@ func (s *Service) RejectSuggestion(
 func (s *Service) applySuggestion(
 	ctx context.Context,
 	suggestion *model.Suggestion,
-	reviewer string,
 ) (*model.Article, error) {
 	now := time.Now()
 	proposal := suggestion.Proposal
@@ -221,7 +220,7 @@ func (s *Service) applySuggestion(
 		proposal.Publish()
 		article.SaveRevision("Утверждённое предложение игрока", now)
 
-		if err := article.ApplyEdit(proposal, reviewer, expected, now); err != nil {
+		if err := article.ApplyEdit(proposal, suggestion.AuthorName, expected, now); err != nil {
 			return nil, err
 		}
 
@@ -238,6 +237,9 @@ func (s *Service) applySuggestion(
 		return nil, model.ErrSlugTaken
 	}
 
+	// The proposal's writer is the page's author; the reviewer only decided to
+	// publish it.
+	proposal.AssignAuthor(suggestion.AuthorName)
 	proposal.Publish()
 
 	created, err := s.repo.Create(ctx, &proposal)
