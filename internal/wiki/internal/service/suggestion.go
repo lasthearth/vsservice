@@ -161,6 +161,10 @@ func (s *Service) ApproveSuggestion(
 		return nil, err
 	}
 
+	// The author hears about the decision once it is stored, never before.
+	title, message := approvedText(reserved, applied)
+	s.notifyDecision(ctx, reserved, title, message)
+
 	saved, err := s.repo.GetSuggestion(ctx, reserved.Id)
 	if err != nil {
 		return nil, err
@@ -197,6 +201,10 @@ func (s *Service) RejectSuggestion(
 	if err != nil {
 		return nil, err
 	}
+
+	// The author hears about the decision once it is stored, never before.
+	title, message := rejectedText(saved)
+	s.notifyDecision(ctx, saved, title, message)
 
 	return s.toSuggestionProto(saved), nil
 }

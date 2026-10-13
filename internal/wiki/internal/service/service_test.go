@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
@@ -251,7 +252,34 @@ func (f *fakeRepo) Delete(_ context.Context, id string) error {
 	return nil
 }
 
+// notifyCall is one notification the service sent.
+type notifyCall struct {
+	userId  string
+	title   string
+	message string
+}
+
+// fakeNotifier records what a player was told.
+type fakeNotifier struct {
+	calls []notifyCall
+	// err makes every notification fail, so a test can see what a decision does
+	// when the message does not get through.
+	err error
+}
+
+func (n *fakeNotifier) Notify(_ context.Context, userId, title, message string) error {
+	n.calls = append(n.calls, notifyCall{userId: userId, title: title, message: message})
+
+	return n.err
+}
+
 func newService(t *testing.T) (*service.Service, *fakeRepo) {
+	svc, repo, _ := newServiceWithNotifier(t)
+
+	return svc, repo
+}
+
+func newServiceWithNotifier(t *testing.T) (*service.Service, *fakeRepo, *fakeNotifier) {
 	t.Helper()
 
 	cfg := zap.NewProductionConfig()
@@ -261,12 +289,14 @@ func newService(t *testing.T) (*service.Service, *fakeRepo) {
 	}
 
 	repo := newFakeRepo()
+	notifier := &fakeNotifier{}
 
 	return service.New(service.Opts{
-		Logger: l,
-		Repo:   repo,
-		Mapper: &sermapper.MapperImpl{},
-	}), repo
+		Logger:   l,
+		Repo:     repo,
+		Mapper:   &sermapper.MapperImpl{},
+		Notifier: notifier,
+	}), repo, notifier
 }
 
 func anonymous() context.Context {
@@ -1237,6 +1267,182 @@ func TestApproveSuggestionOfANewArticleIgnoresAllowStale(t *testing.T) {
 	}
 	if article.GetTitle() != "Засады" {
 		t.Errorf("title = %q, want the proposal published", article.GetTitle())
+	}
+}
+
+// TestApproveSuggestionNotifiesTheAuthorOfANewArticle covers the message a
+// player gets when the page they proposed is published.
+func TestApproveSuggestionNotifiesTheAuthorOfANewArticle(t *testing.T) {
+	svc, _, notifier := newServiceWithNotifier(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	if len(notifier.calls) != 1 {
+		t.Fatalf("notifications = %d, want 1", len(notifier.calls))
+	}
+	call := notifier.calls[0]
+	if call.userId != "author-1" {
+		t.Errorf("notified %q, want the author", call.userId)
+	}
+	if call.title != "Статья опубликована" {
+		t.Errorf("title = %q", call.title)
+	}
+	if !strings.Contains(call.message, "https://lasthearth.ru/wiki/zasady") {
+		t.Errorf("message = %q, want the address of the published page", call.message)
+	}
+}
+
+// TestApproveSuggestionNotifiesTheAuthorOfAnEdit covers the other approval. The
+// address is taken from the article the approval produced, because an edit is a
+// save like any other and may have moved the page.
+func TestApproveSuggestionNotifiesTheAuthorOfAnEdit(t *testing.T) {
+	svc, repo, notifier := newServiceWithNotifier(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	if len(notifier.calls) != 1 {
+		t.Fatalf("notifications = %d, want 1", len(notifier.calls))
+	}
+	call := notifier.calls[0]
+	if call.userId != "author-1" {
+		t.Errorf("notified %q, want the author", call.userId)
+	}
+	if call.title != "Правка принята" {
+		t.Errorf("title = %q", call.title)
+	}
+	applied := repo.articles[article.GetId()]
+	if !strings.Contains(call.message, "https://lasthearth.ru/wiki/"+applied.Slug) {
+		t.Errorf("message = %q, want the address of the applied article", call.message)
+	}
+}
+
+func TestRejectSuggestionNotifiesTheAuthorOfTheReason(t *testing.T) {
+	svc, _, notifier := newServiceWithNotifier(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	if _, err := svc.RejectSuggestion(reviewer(), &wikiv1.RejectSuggestionRequest{
+		Id:     suggestion.GetId(),
+		Reason: "не по теме",
+	}); err != nil {
+		t.Fatalf("RejectSuggestion: %v", err)
+	}
+
+	if len(notifier.calls) != 1 {
+		t.Fatalf("notifications = %d, want 1", len(notifier.calls))
+	}
+	call := notifier.calls[0]
+	if call.userId != "author-1" {
+		t.Errorf("notified %q, want the author", call.userId)
+	}
+	if call.title != "Предложение отклонено" {
+		t.Errorf("title = %q", call.title)
+	}
+	if !strings.Contains(call.message, "Засады") {
+		t.Errorf("message = %q, want the page named in it", call.message)
+	}
+	if !strings.Contains(call.message, "не по теме") {
+		t.Errorf("message = %q, want the reviewer's reason in it", call.message)
+	}
+}
+
+// TestNoNotificationWhenTheDecisionIsNotStored covers the order of the two
+// writes: an approval the article refuses leaves the proposal undecided, so the
+// author must not be told it was applied.
+func TestNoNotificationWhenTheDecisionIsNotStored(t *testing.T) {
+	svc, _, notifier := newServiceWithNotifier(t)
+
+	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Поселения и роли", article.GetId(), article.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	// An editor saves the page, so the approval is refused as stale.
+	if _, err := svc.UpdateArticle(reviewer(), &wikiv1.UpdateArticleRequest{
+		Article: &wikiv1.Article{
+			Id:      article.GetId(),
+			Title:   "Поселения, роли и налоги",
+			Section: model.SectionSettlements,
+		},
+		ExpectedVersion: article.GetVersion(),
+	}); err != nil {
+		t.Fatalf("UpdateArticle: %v", err)
+	}
+
+	if _, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	}); !errors.Is(err, model.ErrSuggestionStale) {
+		t.Fatalf("err = %v, want the proposal refused as stale", err)
+	}
+
+	if len(notifier.calls) != 0 {
+		t.Errorf("notifications = %d, want none for a decision that did not land", len(notifier.calls))
+	}
+}
+
+// TestNotifierFailureLeavesTheDecisionStored covers the other direction: a
+// message that cannot be sent is a warning, never a failed decision.
+func TestNotifierFailureLeavesTheDecisionStored(t *testing.T) {
+	svc, repo, notifier := newServiceWithNotifier(t)
+
+	suggestion, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Засады"))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	notifier.err = errors.New("notification store is down")
+
+	approved, err := svc.ApproveSuggestion(reviewer(), &wikiv1.ApproveSuggestionRequest{
+		Id: suggestion.GetId(),
+	})
+	if err != nil {
+		t.Fatalf("ApproveSuggestion: %v", err)
+	}
+
+	if len(notifier.calls) != 1 {
+		t.Fatalf("notifications = %d, want the attempt recorded", len(notifier.calls))
+	}
+	if approved.GetStatus() != wikiv1.SuggestionStatus_SUGGESTION_STATUS_APPROVED {
+		t.Errorf("status = %v, want the decision kept", approved.GetStatus())
+	}
+	if approved.GetAppliedArticleId() == "" {
+		t.Error("the decision was kept but produced no article")
+	}
+	if len(repo.articles) == 0 {
+		t.Error("a failed notification rolled the article back")
 	}
 }
 

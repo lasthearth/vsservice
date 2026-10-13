@@ -149,8 +149,10 @@ article side, which is now the editor's direct path.
   passes `allow_stale`, which is them confirming they saw what would be replaced.
 - **FR-108** A proposal with no recorded base version cannot be checked and counts as stale, so it
   needs the same explicit confirmation.
+- **FR-109** The author is notified once their proposal is decided — approved or refused — and a
+  notification that cannot be sent is logged, never rolled back: the decision is already stored, and
+  losing it because a message failed would cost more than the missing message.
 
 ### Out of scope (next slices)
 
-- Notifying an author when their proposal is reviewed.
 - Reporting/abuse handling and per-author proposals history in the profile.
