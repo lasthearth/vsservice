@@ -4,6 +4,7 @@ import (
 	"time"
 
 	modv1 "github.com/lasthearth/vsservice/gen/mod/v1"
+	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 )
@@ -16,6 +17,8 @@ type Opts struct {
 	Repo   Repository
 	Mapper Mapper
 	ModDB  ModDB
+	// Config is optional: without it the archive has no size cap.
+	Config config.Config `optional:"true"`
 }
 
 type Service struct {
@@ -23,6 +26,8 @@ type Service struct {
 	repo   Repository
 	mapper Mapper
 	moddb  ModDB
+	// archiveMax is the archive's size cap; 0 — none.
+	archiveMax int64
 	// now is a field so a test can pin the clock the archive timestamp and the
 	// stored write time are taken from.
 	now func() time.Time
@@ -30,10 +35,11 @@ type Service struct {
 
 func New(opts Opts) *Service {
 	return &Service{
-		log:    opts.Logger.WithComponent("service"),
-		repo:   opts.Repo,
-		mapper: opts.Mapper,
-		moddb:  opts.ModDB,
-		now:    time.Now,
+		log:        opts.Logger.WithComponent("service"),
+		repo:       opts.Repo,
+		mapper:     opts.Mapper,
+		moddb:      opts.ModDB,
+		archiveMax: opts.Config.ModsArchiveMaxBytes,
+		now:        time.Now,
 	}
 }

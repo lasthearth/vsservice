@@ -23,7 +23,6 @@ type Mapper interface {
 	// goverter:map ModDBURL ModdbUrl
 	ToModProto(model.Mod) *modv1.Mod
 	ToModProtos([]model.Mod) []*modv1.Mod
-
 }
 
 // Repository stores the server's mods.

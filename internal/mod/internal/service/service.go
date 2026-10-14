@@ -40,7 +40,7 @@ func (s *Service) ListMods(ctx context.Context, _ *modv1.ListModsRequest) (*modv
 
 	return &modv1.ListModsResponse{
 		Mods:    s.protoMods(visible),
-		Archive: archiveProto(visible),
+		Archive: archiveProto(visible, s.archiveMax),
 	}, nil
 }
 
@@ -372,9 +372,11 @@ func modID(releases []moddb.Release) string {
 }
 
 // archiveProto describes the archive of the required mods in mods, or nil when
-// there is nothing to pack. A size that is unknown anywhere makes the whole
-// total unknown: half a total would be a lie the site renders.
-func archiveProto(mods []model.Mod) *modv1.ModArchive {
+// there is nothing to pack or the known total is over maxBytes (0 — no cap):
+// the archive endpoint would refuse it, so the site must not offer it. A size
+// that is unknown anywhere makes the whole total unknown: half a total would be
+// a lie the site renders.
+func archiveProto(mods []model.Mod, maxBytes int64) *modv1.ModArchive {
 	var (
 		count  int32
 		size   int64
@@ -401,6 +403,10 @@ func archiveProto(mods []model.Mod) *modv1.ModArchive {
 	}
 
 	if count == 0 {
+		return nil
+	}
+
+	if known && maxBytes > 0 && size > maxBytes {
 		return nil
 	}
 

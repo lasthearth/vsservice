@@ -580,7 +580,6 @@ func TestListModsWithoutRequiredModsHasNoArchive(t *testing.T) {
 	}
 }
 
-
 func TestScopeGatesEveryManagingMethod(t *testing.T) {
 	svc := newService(t, &fakeRepo{}, &fakeModDB{mod: modDBFixture()})
 	scope := svc.Scope()

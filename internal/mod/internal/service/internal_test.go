@@ -29,7 +29,7 @@ func TestArchiveSizeIsUnknownWhenOneModIs(t *testing.T) {
 	known := requiredMod("known", "1.0.0", 1024)
 	unknown := model.Build("unknown", model.Snapshot{}, model.AudienceRequired, "", nil, fixedNow)
 
-	got := archiveProto([]model.Mod{known, unknown})
+	got := archiveProto([]model.Mod{known, unknown}, 0)
 	if got == nil {
 		t.Fatal("archive is unset")
 	}
@@ -42,7 +42,7 @@ func TestArchiveSizeIsUnknownWhenOneModIs(t *testing.T) {
 }
 
 func TestArchiveSizeIsUnknownWhenAFileSizeIsZero(t *testing.T) {
-	got := archiveProto([]model.Mod{requiredMod("a", "1.0.0", 1024), requiredMod("b", "1.0.0", 0)})
+	got := archiveProto([]model.Mod{requiredMod("a", "1.0.0", 1024), requiredMod("b", "1.0.0", 0)}, 0)
 
 	if got.GetSize() != 0 {
 		t.Errorf("size = %d, want 0 when one file size was never measured", got.GetSize())
@@ -53,7 +53,7 @@ func TestArchiveDescribesTheRequiredModsOnly(t *testing.T) {
 	optional := requiredMod("optional", "1.0.0", 4096)
 	optional.SetAudience(model.AudienceOptional)
 
-	got := archiveProto([]model.Mod{requiredMod("required", "1.0.0", 1024), optional})
+	got := archiveProto([]model.Mod{requiredMod("required", "1.0.0", 1024), optional}, 0)
 
 	if got.GetCount() != 1 || got.GetSize() != 1024 {
 		t.Errorf("archive = %d mods / %d bytes, want the required one only", got.GetCount(), got.GetSize())

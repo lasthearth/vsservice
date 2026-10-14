@@ -95,16 +95,16 @@ func Build(
 	now time.Time,
 ) Mod {
 	mod := Mod{
-		ModId:    modId,
-		Name:     snapshot.Name,
-		Author:   snapshot.Author,
-		LogoURL:  snapshot.LogoURL,
-		ModDBURL: snapshot.ModDBURL,
-		Side:     snapshot.Side,
-		Audience: audience,
-		Note:     note,
-		Summary:  snapshot.Summary,
-		Releases: snapshot.Releases,
+		ModId:     modId,
+		Name:      snapshot.Name,
+		Author:    snapshot.Author,
+		LogoURL:   snapshot.LogoURL,
+		ModDBURL:  snapshot.ModDBURL,
+		Side:      snapshot.Side,
+		Audience:  audience,
+		Note:      note,
+		Summary:   snapshot.Summary,
+		Releases:  snapshot.Releases,
 		UpdatedAt: now,
 	}
 

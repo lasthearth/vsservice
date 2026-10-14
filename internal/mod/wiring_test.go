@@ -5,6 +5,7 @@ import (
 
 	modv1 "github.com/lasthearth/vsservice/gen/mod/v1"
 	"github.com/lasthearth/vsservice/internal/mod"
+	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/fx"
@@ -24,6 +25,7 @@ func TestWiring(t *testing.T) {
 	err = fx.ValidateApp(
 		fx.Supply(fx.Annotate(l, fx.As(new(logger.Logger)))),
 		fx.Supply(&mongo.Database{}),
+		fx.Supply(config.Config{ModsArchiveDir: t.TempDir()}),
 		mod.App,
 		fx.Invoke(func(modv1.ModServiceServer) {}),
 		fx.Invoke(func(mod.ArchiveHandler) {}),

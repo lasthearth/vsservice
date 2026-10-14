@@ -14,18 +14,18 @@ type Mod struct {
 
 	// ModId is ModDB's modidstr. It is stored as the plain id field, which is
 	// what the unique index and every lookup use.
-	ModId         string `bson:"id"`
-	Name          string `bson:"name"`
-	Author        string `bson:"author"`
-	LogoURL       string `bson:"logo_url,omitempty"`
-	ModDBURL      string `bson:"moddb_url,omitempty"`
-	Side          string `bson:"side"`
-	Audience      string `bson:"audience"`
-	Note          string `bson:"note,omitempty"`
-	Summary       string `bson:"summary,omitempty"`
+	ModId         string   `bson:"id"`
+	Name          string   `bson:"name"`
+	Author        string   `bson:"author"`
+	LogoURL       string   `bson:"logo_url,omitempty"`
+	ModDBURL      string   `bson:"moddb_url,omitempty"`
+	Side          string   `bson:"side"`
+	Audience      string   `bson:"audience"`
+	Note          string   `bson:"note,omitempty"`
+	Summary       string   `bson:"summary,omitempty"`
 	Release       *Release `bson:"release,omitempty"`
-	LatestVersion string `bson:"latest_version,omitempty"`
-	Position      int    `bson:"position"`
+	LatestVersion string   `bson:"latest_version,omitempty"`
+	Position      int      `bson:"position"`
 	// Releases is the newest-first snapshot of what ModDB lists.
 	Releases []Release `bson:"releases,omitempty"`
 }

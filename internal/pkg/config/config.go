@@ -76,6 +76,14 @@ type Config struct {
 	// ReferralRefereeCoinsReward is the number of donate-coins awarded to the
 	// player who applied a referral code (the referee).
 	ReferralRefereeCoinsReward int64 `envconfig:"REFERRAL_REFEREE_COINS_REWARD" default:"50"`
+
+	// ModsArchiveDir is the folder the "download everything" mods archive is
+	// built in; empty means <os temp dir>/vsservice-mods. The service keeps at
+	// most one finished archive there and sweeps its own files on start.
+	ModsArchiveDir string `envconfig:"MODS_ARCHIVE_DIR"`
+	// ModsArchiveMaxBytes caps that archive (1 GiB by default); a larger set of
+	// required mods is not packed and the site hides the button. 0 — no cap.
+	ModsArchiveMaxBytes int64 `envconfig:"MODS_ARCHIVE_MAX_BYTES" default:"1073741824"`
 }
 
 // New initializes from .env and returns a new Config instance.
