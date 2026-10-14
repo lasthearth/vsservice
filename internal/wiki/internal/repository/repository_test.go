@@ -3,28 +3,11 @@ package repository
 import (
 	"testing"
 
+	"github.com/lasthearth/vsservice/internal/pkg/regexsafe"
 	"github.com/lasthearth/vsservice/internal/wiki/internal/dto"
 	"github.com/lasthearth/vsservice/internal/wiki/internal/model"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
-
-func TestEscapeRegexNeutralizesMetacharacters(t *testing.T) {
-	cases := map[string]string{
-		"поселения":   "поселения",
-		"a.b":         "a\\.b",
-		"a*b":         "a\\*b",
-		"(group)":     "\\(group\\)",
-		"[class]":     "\\[class\\]",
-		"a|b":         "a\\|b",
-		"^start$":     "\\^start\\$",
-		"back\\slash": "back\\\\slash",
-	}
-
-	for input, want := range cases {
-		if got := escapeRegex(input); got != want {
-			t.Errorf("escapeRegex(%q) = %q, want %q", input, got, want)
-		}
-	}
-}
 
 // TestListFilterNeverWidensPastTheDraftGate pins the rule that keeps drafts off
 // the public list: a status filter narrows the result, it never widens it.
@@ -56,6 +39,42 @@ func TestListFilterNeverWidensPastTheDraftGate(t *testing.T) {
 				t.Errorf("status = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestListFilterEscapesTheSearchQuery pins that a search reaches the regex
+// escaped. ListArticles is in the interceptor's publicMethods, so an
+// unauthenticated caller supplies this text; unescaped, it lets them build a
+// pattern, and "(.*)*x" then makes MongoDB's regex engine backtrack until the
+// worker threads are gone. The helper has its own test - this one is the call
+// site, which is the part that can silently stop calling it.
+func TestListFilterEscapesTheSearchQuery(t *testing.T) {
+	const search = "ве.*т"
+
+	ors, ok := listFilter(model.Filter{Search: search})["$or"].([]bson.M)
+	if !ok || len(ors) == 0 {
+		t.Fatalf("$or = %v, want one condition per searched field",
+			listFilter(model.Filter{Search: search})["$or"])
+	}
+
+	escaped := regexsafe.Escape(search)
+	if escaped == search {
+		t.Fatal("the test query must contain metacharacters")
+	}
+
+	for _, condition := range ors {
+		for fieldName, value := range condition {
+			pattern, ok := value.(bson.M)
+			if !ok {
+				t.Fatalf("%s pattern = %T, want bson.M", fieldName, value)
+			}
+			if pattern["$regex"] != escaped {
+				t.Errorf("%s $regex = %v, want the escaped %q", fieldName, pattern["$regex"], escaped)
+			}
+			if pattern["$options"] != "i" {
+				t.Errorf("%s $options = %v, want i", fieldName, pattern["$options"])
+			}
+		}
 	}
 }
 

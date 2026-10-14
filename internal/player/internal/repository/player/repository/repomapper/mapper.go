@@ -11,6 +11,7 @@ import (
 	stats "github.com/lasthearth/vsservice/internal/player/internal/model/stats"
 	verification "github.com/lasthearth/vsservice/internal/player/internal/model/verification"
 	repository "github.com/lasthearth/vsservice/internal/player/internal/repository/player/repository"
+	"time"
 )
 
 type MapperImpl struct{}
@@ -30,6 +31,8 @@ func (c *MapperImpl) FromPlayer(source model.Player) mongo.Player {
 	dtoPlayer.UserGameName = source.UserGameName
 	dtoPlayer.Avatar = c.pModelAvatarToPDtoAvatar(source.Avatar)
 	dtoPlayer.IsOnline = source.IsOnline
+	dtoPlayer.About = source.About
+	dtoPlayer.AboutUpdatedAt = c.pTimeTimeToPTimeTime(source.AboutUpdatedAt)
 	dtoPlayer.PreviousNickname = source.PreviousNickname
 	dtoPlayer.LastNicknameChangedAt = goverter.TimeToTime(source.LastNicknameChangedAt)
 	dtoPlayer.Verification = c.FromVerification(source.Verification)
@@ -71,6 +74,8 @@ func (c *MapperImpl) ToPlayer(source mongo.Player, context string) model.Player 
 	modelPlayer.PreviousNickname = source.PreviousNickname
 	modelPlayer.LastNicknameChangedAt = goverter.TimeToTime(source.LastNicknameChangedAt)
 	modelPlayer.IsOnline = source.IsOnline
+	modelPlayer.About = source.About
+	modelPlayer.AboutUpdatedAt = c.pTimeTimeToPTimeTime(source.AboutUpdatedAt)
 	modelPlayer.Verification = c.ToVerification(source.Verification)
 	modelPlayer.Stats = c.statsStatsToStatsStats(source.Stats)
 	modelPlayer.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)
@@ -117,6 +122,14 @@ func (c *MapperImpl) pModelAvatarToPDtoAvatar(source *model.Avatar) *mongo.Avata
 		pDtoAvatar = &dtoAvatar
 	}
 	return pDtoAvatar
+}
+func (c *MapperImpl) pTimeTimeToPTimeTime(source *time.Time) *time.Time {
+	var pTimeTime *time.Time
+	if source != nil {
+		timeTime := goverter.TimeToTime((*source))
+		pTimeTime = &timeTime
+	}
+	return pTimeTime
 }
 func (c *MapperImpl) statsStatsToStatsStats(source stats.Stats) stats.Stats {
 	var statsStats stats.Stats

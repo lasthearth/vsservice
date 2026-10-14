@@ -15,10 +15,26 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "UpdateAvatar"):   interceptor.ScopeAuthenticated,
 		interceptor.Method(srvName + "ChangeNickname"): interceptor.ScopeAuthenticated,
 
-		// SearchUsers passes the query straight into a Mongo $regex with no
-		// escaping, anchoring or minimum length, so it is both a roster dump and
-		// a ReDoS vector. Left authenticated-only to keep this change
-		// behaviour-preserving; tracked separately.
+		// SearchUsers passes the query into a Mongo $regex. The query is escaped
+		// now, so a caller can no longer build a pattern and cannot make the regex
+		// engine backtrack; it is still unanchored and has no minimum length, so it
+		// remains a roster dump. Left authenticated-only.
 		interceptor.Method(srvName + "SearchUsers"): interceptor.ScopeAuthenticated,
+
+		// Self-service: the description belongs to the JWT subject, and the
+		// service writes nothing else.
+		interceptor.Method(srvName + "UpdateMyAbout"): interceptor.ScopeAuthenticated,
+
+		// Hiding someone else's description is moderation. The scope has to be
+		// granted to the moderator role in Logto; until it is, only a token that
+		// already carries players:moderate can call this.
+		interceptor.Method(srvName + "HideAbout"): interceptor.Scope("players:moderate"),
+
+		// ListPlayers is public (matcher.go): the site's /players page is read
+		// without an account. It is not a repeat of the leaderboard - it adds
+		// is_online, the game's live presence flag, the description the player
+		// wrote, and a match on their former nickname. All three are what the page
+		// is for (tasks/005). The takedown path is HideAbout, which answers
+		// PERMISSION_DENIED until players:moderate is granted in Logto.
 	}
 }

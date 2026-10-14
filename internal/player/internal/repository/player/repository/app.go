@@ -14,7 +14,16 @@ import (
 	"go.uber.org/zap"
 )
 
-const collName = "verification_requests"
+const (
+	collName = "verification_requests"
+	// statsCollName is the game's stats collection. The roster joins it by
+	// user_game_name the way the leaderboard does, so both show the same hours
+	// and the same last_online.
+	statsCollName = "stats"
+
+	// indexSetupTimeout bounds both index builds together.
+	indexSetupTimeout = 10 * time.Second
+)
 
 var (
 	_ service.DbRepository   = (*Repository)(nil)
@@ -39,7 +48,15 @@ type Repository struct {
 func New(opts Opts) *Repository {
 	coll := opts.Database.Collection(collName)
 	logger := opts.Logger.WithComponent("user-mongo-repository")
-	setupIndexes(logger, coll)
+
+	// One budget for both collections. The constructor runs inside fx startup,
+	// whose default timeout is 15 seconds: two sequential 10-second waits would
+	// abort the process instead of starting without an index.
+	ctx, cancel := context.WithTimeout(context.Background(), indexSetupTimeout)
+	defer cancel()
+
+	setupIndexes(ctx, logger, coll)
+	setupStatsIndexes(ctx, logger, opts.Database.Collection(statsCollName))
 	return &Repository{
 		log:    logger,
 		coll:   coll,
@@ -48,10 +65,7 @@ func New(opts Opts) *Repository {
 	}
 }
 
-func setupIndexes(log logger.Logger, coll *mongo.Collection) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
+func setupIndexes(ctx context.Context, log logger.Logger, coll *mongo.Collection) {
 	// The dominant lookup: by the SSO user id (this repository's FindOne and
 	// the cross-domain readers, e.g. appearance standings). Not unique on
 	// purpose: the check-then-create Submit flow can already have left two
@@ -61,5 +75,26 @@ func setupIndexes(log logger.Logger, coll *mongo.Collection) {
 		mongo.IndexModel{Keys: bson.D{{Key: "user_id", Value: 1}}},
 	); err != nil {
 		log.Error("failed to create index", zap.String("collection", collName), zap.Error(err))
+	}
+
+	// The roster joins this collection on the game name, and so does the
+	// leaderboard. Without an index the $lookup scans stats once per player.
+	if _, err := coll.Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{Keys: bson.D{{Key: "user_game_name", Value: 1}}},
+	); err != nil {
+		log.Error("failed to create index", zap.String("collection", collName), zap.Error(err))
+	}
+}
+
+// setupStatsIndexes creates the join key the roster and the leaderboard look
+// stats up by. The game writes this collection, and nothing else indexes it, so
+// the index is created here, next to the collection handle that reads it.
+func setupStatsIndexes(ctx context.Context, log logger.Logger, coll *mongo.Collection) {
+	if _, err := coll.Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{Keys: bson.D{{Key: "user_game_name", Value: 1}}},
+	); err != nil {
+		log.Error("failed to create index", zap.String("collection", statsCollName), zap.Error(err))
 	}
 }
