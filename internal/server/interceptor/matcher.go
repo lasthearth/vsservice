@@ -28,6 +28,7 @@ var publicMethods = map[string]struct{}{
 	"/settlement.v1.SettlementService/GetInviteLink":                 {},
 	"/user.v1.UserService/GetUser":                                   {},
 	"/user.v1.UserService/BatchGetUsers":                             {},
+	"/user.v1.UserService/ListPlayers":                               {},
 	"/settlement.v1.SettlementTagService/GetTag":                     {},
 	"/settlement.v1.SettlementTagService/GetTags":                    {},
 	"/settlement.v1.SettlementTagService/GetTagsByIds":               {},

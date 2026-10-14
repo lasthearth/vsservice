@@ -13,6 +13,9 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 	public := []string{
 		"/user.v1.UserService/GetUser",
 		"/user.v1.UserService/BatchGetUsers",
+		// The roster is public: the leaderboard already publishes every player
+		// with last_online.
+		"/user.v1.UserService/ListPlayers",
 		"/settlement.v1.SettlementService/List",
 		"/settlement.v1.SettlementService/GetInviteLink",
 		"/settlement.v1.SettlementTagService/GetTag",
@@ -29,6 +32,9 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 	protected := []string{
 		"/user.v1.UserService/SearchUsers",
 		"/user.v1.UserService/ChangeNickname",
+		// Writing a description is the caller's own; hiding one is moderation.
+		"/user.v1.UserService/UpdateMyAbout",
+		"/user.v1.UserService/HideAbout",
 		"/settlement.v1.SettlementTagService/CreateTag",
 		"/event.v1.EventService/CreateEvent",
 		"/event.v1.EventService/UpdateEvent",

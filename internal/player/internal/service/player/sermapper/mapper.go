@@ -5,6 +5,7 @@ package sermapper
 
 import (
 	v1 "github.com/lasthearth/vsservice/gen/user/v1"
+	goverter "github.com/lasthearth/vsservice/internal/pkg/goverter"
 	model "github.com/lasthearth/vsservice/internal/player/internal/model"
 )
 
@@ -21,6 +22,37 @@ func (c *MapperImpl) ToImageProto(source *model.Avatar) *v1.User_Image {
 	}
 	return pUserv1User_Image
 }
+func (c *MapperImpl) ToLastSeenCountsProto(source model.LastSeenCounts) *v1.LastSeenCounts {
+	var userv1LastSeenCounts v1.LastSeenCounts
+	userv1LastSeenCounts.All = source.All
+	userv1LastSeenCounts.Online = source.Online
+	userv1LastSeenCounts.Day = source.Day
+	userv1LastSeenCounts.Week = source.Week
+	userv1LastSeenCounts.Month = source.Month
+	userv1LastSeenCounts.Inactive = source.Inactive
+	return &userv1LastSeenCounts
+}
+func (c *MapperImpl) ToPlayerListItemProto(source model.PlayerListItem) *v1.PlayerListItem {
+	var userv1PlayerListItem v1.PlayerListItem
+	userv1PlayerListItem.UserId = source.UserId
+	userv1PlayerListItem.Nickname = source.Nickname
+	userv1PlayerListItem.Avatar = c.ToImageProto(source.Avatar)
+	userv1PlayerListItem.IsOnline = source.IsOnline
+	userv1PlayerListItem.LastOnline = goverter.TimePtrToTimestamp(source.LastOnline)
+	userv1PlayerListItem.HoursPlayed = source.HoursPlayed
+	userv1PlayerListItem.About = source.About
+	return &userv1PlayerListItem
+}
+func (c *MapperImpl) ToPlayerListItemsProto(source []model.PlayerListItem) []*v1.PlayerListItem {
+	var pUserv1PlayerListItemList []*v1.PlayerListItem
+	if source != nil {
+		pUserv1PlayerListItemList = make([]*v1.PlayerListItem, len(source))
+		for i := 0; i < len(source); i++ {
+			pUserv1PlayerListItemList[i] = c.ToPlayerListItemProto(source[i])
+		}
+	}
+	return pUserv1PlayerListItemList
+}
 func (c *MapperImpl) ToUserProto(source model.Player) *v1.User {
 	var userv1User v1.User
 	userv1User.UserId = source.UserId
@@ -29,6 +61,8 @@ func (c *MapperImpl) ToUserProto(source model.Player) *v1.User {
 	userv1User.UserName = source.UserName
 	userv1User.PreviousNickname = source.PreviousNickname
 	userv1User.IsOnline = source.IsOnline
+	userv1User.About = source.About
+	userv1User.AboutUpdatedAt = goverter.TimePtrToTimestamp(source.AboutUpdatedAt)
 	return &userv1User
 }
 func (c *MapperImpl) ToUserProtos(source []model.Player) []*v1.User {

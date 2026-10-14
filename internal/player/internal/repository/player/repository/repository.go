@@ -107,6 +107,8 @@ func (r *Repository) SearchUsers(
 			{Key: "user_id", Value: 1},
 			{Key: "previous_nickname", Value: 1},
 			{Key: "avatar", Value: 1},
+			{Key: "about", Value: 1},
+			{Key: "about_updated_at", Value: 1},
 		}).
 		SetSort(bson.D{
 			{Key: "_id", Value: 1},
@@ -151,7 +153,7 @@ func (r *Repository) UpdateById(ctx context.Context, uid string, p model.PlayerU
 	_, err := r.coll.UpdateOne(
 		ctx,
 		bson.M{"user_id": uid},
-		bson.M{"$set": update},
+		update,
 	)
 	return err
 }
@@ -161,11 +163,15 @@ func (r *Repository) UpdateByUserGameName(ctx context.Context, userGameName stri
 	_, err := r.coll.UpdateOne(
 		ctx,
 		bson.M{"user_game_name": userGameName},
-		bson.M{"$set": update},
+		update,
 	)
 	return err
 }
 
+// buildUpdateSet turns an update into the operator document the write applies.
+// Fields the caller did not set are left alone; an empty About is an unset
+// rather than an empty string, so a hidden description leaves no trace in the
+// document and reads back as "no description".
 func (r *Repository) buildUpdateSet(p model.PlayerUpdate) bson.M {
 	update := bson.M{}
 	if p.UserId != nil && *p.UserId != "" {
@@ -197,7 +203,31 @@ func (r *Repository) buildUpdateSet(p model.PlayerUpdate) bson.M {
 			update["avatar.x48"] = p.Avatar.X48
 		}
 	}
-	return update
+
+	unset := bson.M{}
+	if p.About != nil {
+		if *p.About == "" {
+			unset["about"] = ""
+			unset["about_updated_at"] = ""
+		} else {
+			update["about"] = *p.About
+		}
+	}
+	if p.AboutUpdatedAt != nil {
+		update["about_updated_at"] = *p.AboutUpdatedAt
+	}
+
+	// An operator with no fields makes MongoDB reject the whole write, so only
+	// the operators that carry something are sent.
+	doc := bson.M{}
+	if len(update) > 0 {
+		doc["$set"] = update
+	}
+	if len(unset) > 0 {
+		doc["$unset"] = unset
+	}
+
+	return doc
 }
 
 // GetByUserGameName implements event.PlayerRepository.

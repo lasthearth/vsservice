@@ -42,6 +42,12 @@ type DbRepository interface {
 		lastChangedAt time.Time,
 	) error
 	UpdateById(ctx context.Context, uid string, p model.PlayerUpdate) error
+	ListPlayers(
+		ctx context.Context,
+		filter model.PlayerListFilter,
+		page, size int,
+		now time.Time,
+	) (*model.PlayerListPage, error)
 }
 
 type Storage interface {
@@ -60,6 +66,7 @@ type Storage interface {
 // goverter:converter
 // goverter:output:file sermapper/mapper.go
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTimestamp
+// goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimePtrToTimestamp
 type Mapper interface {
 	// goverter:ignore state sizeCache unknownFields
 	ToImageProto(*model.Avatar) *userv1.User_Image
@@ -67,6 +74,13 @@ type Mapper interface {
 	// goverter:ignore state sizeCache unknownFields
 	ToUserProto(model.Player) *userv1.User
 	ToUserProtos([]model.Player) []*userv1.User
+
+	// goverter:ignore state sizeCache unknownFields
+	ToPlayerListItemProto(model.PlayerListItem) *userv1.PlayerListItem
+	ToPlayerListItemsProto([]model.PlayerListItem) []*userv1.PlayerListItem
+
+	// goverter:ignore state sizeCache unknownFields
+	ToLastSeenCountsProto(model.LastSeenCounts) *userv1.LastSeenCounts
 }
 
 // UpdateAvatar implements userv1.UserServiceServer.

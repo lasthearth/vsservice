@@ -7,25 +7,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/wiki/internal/model"
 )
 
-func TestEscapeRegexNeutralizesMetacharacters(t *testing.T) {
-	cases := map[string]string{
-		"поселения":   "поселения",
-		"a.b":         "a\\.b",
-		"a*b":         "a\\*b",
-		"(group)":     "\\(group\\)",
-		"[class]":     "\\[class\\]",
-		"a|b":         "a\\|b",
-		"^start$":     "\\^start\\$",
-		"back\\slash": "back\\\\slash",
-	}
-
-	for input, want := range cases {
-		if got := escapeRegex(input); got != want {
-			t.Errorf("escapeRegex(%q) = %q, want %q", input, got, want)
-		}
-	}
-}
-
 // TestListFilterNeverWidensPastTheDraftGate pins the rule that keeps drafts off
 // the public list: a status filter narrows the result, it never widens it.
 func TestListFilterNeverWidensPastTheDraftGate(t *testing.T) {

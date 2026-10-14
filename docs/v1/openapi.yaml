@@ -2913,6 +2913,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/google.protobuf.Empty'
+  /v1/players:
+    get:
+      tags:
+        - UserService
+      summary: |-
+        Players for the public roster: search by nickname, filter by when they
+         were last in the game, sort and page through.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): query longer than 32 characters
+           - INTERNAL (500): database failure
+      operationId: UserService_ListPlayers
+      parameters:
+        - name: query
+          in: query
+          description: |-
+            Part of the nickname (current or previous), case-insensitive.
+             Shorter than 2 characters after trimming: ignored.
+          schema:
+            type: string
+            title: query
+            description: |-
+              Part of the nickname (current or previous), case-insensitive.
+               Shorter than 2 characters after trimming: ignored.
+        - name: last_seen
+          in: query
+          schema:
+            title: last_seen
+            $ref: '#/components/schemas/user.v1.LastSeen'
+        - name: sort
+          in: query
+          schema:
+            title: sort
+            $ref: '#/components/schemas/user.v1.PlayerSort'
+        - name: page
+          in: query
+          description: 1-based page number; 0 means 1. A page past the end returns no players.
+          schema:
+            type: integer
+            title: page
+            format: int32
+            description: 1-based page number; 0 means 1. A page past the end returns no players.
+        - name: page_size
+          in: query
+          description: Default 24, at most 48.
+          schema:
+            type: integer
+            title: page_size
+            format: int32
+            description: Default 24, at most 48.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user.v1.ListPlayersResponse'
   /v1/progression/points/{point_id}/sides/{side}/trees/{tree_id}:
     get:
       tags:
@@ -5033,6 +5090,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/verification.v1.VerifyStatusResponse'
+  /v1/users/me/about:
+    put:
+      tags:
+        - UserService
+      summary: Replace the caller's description. An empty string removes it.
+      description: |-
+        The text is normalized before it is stored: line endings become \n,
+         trailing spaces are cut, more than one empty line in a row becomes one.
+
+         Errors:
+           - INVALID_ARGUMENT (400): longer than 500 characters or 8 lines, or
+             contains control characters
+           - FAILED_PRECONDITION (400): the caller is not a verified player
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: UserService_UpdateMyAbout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/user.v1.UpdateMyAboutRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user.v1.User'
   /v1/users/search:
     get:
       tags:
@@ -5081,6 +5167,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/user.v1.User'
+  /v1/users/{user_id}/about:hide:
+    post:
+      tags:
+        - UserService
+      summary: Hide a player's description. Requires players:moderate.
+      description: |-
+        The description is removed and the player is notified with the reason;
+         they may write a new one.
+
+         Errors:
+           - INVALID_ARGUMENT (400): empty reason
+           - NOT_FOUND (404): player not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing players:moderate
+           - INTERNAL (500): database failure
+      operationId: UserService_HideAbout
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: user_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  title: user_id
+                reason:
+                  type: string
+                  title: reason
+                  description: Shown to the player in the notification.
+              title: HideAboutRequest
+              required:
+                - user_id
+                - reason
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.Empty'
   /v1/users/{user_id}/avatar:
     post:
       tags:
@@ -7289,6 +7424,9 @@ components:
         Wrapper message for `float`.
 
          The JSON representation for `FloatValue` is JSON number.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       examples:
@@ -11384,6 +11522,156 @@ components:
       required:
         - user_id
       additionalProperties: false
+    user.v1.HideAboutRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          title: user_id
+        reason:
+          type: string
+          title: reason
+          description: Shown to the player in the notification.
+      title: HideAboutRequest
+      required:
+        - user_id
+        - reason
+      additionalProperties: false
+    user.v1.LastSeen:
+      type: string
+      title: LastSeen
+      enum:
+        - LAST_SEEN_UNSPECIFIED
+        - LAST_SEEN_ONLINE
+        - LAST_SEEN_DAY
+        - LAST_SEEN_WEEK
+        - LAST_SEEN_MONTH
+        - LAST_SEEN_INACTIVE
+      description: |-
+        When a player was last in the game. Each window includes the shorter
+         ones: DAY also counts players who are online now.
+    user.v1.LastSeenCounts:
+      type: object
+      properties:
+        all:
+          type: integer
+          title: all
+          format: int32
+        online:
+          type: integer
+          title: online
+          format: int32
+        day:
+          type: integer
+          title: day
+          format: int32
+        week:
+          type: integer
+          title: week
+          format: int32
+        month:
+          type: integer
+          title: month
+          format: int32
+        inactive:
+          type: integer
+          title: inactive
+          format: int32
+      title: LastSeenCounts
+      additionalProperties: false
+      description: |-
+        How many players each window holds for the same query, so the site can
+         show a count on every filter.
+    user.v1.ListPlayersRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          title: query
+          description: |-
+            Part of the nickname (current or previous), case-insensitive.
+             Shorter than 2 characters after trimming: ignored.
+        last_seen:
+          title: last_seen
+          $ref: '#/components/schemas/user.v1.LastSeen'
+        sort:
+          title: sort
+          $ref: '#/components/schemas/user.v1.PlayerSort'
+        page:
+          type: integer
+          title: page
+          format: int32
+          description: 1-based page number; 0 means 1. A page past the end returns no players.
+        page_size:
+          type: integer
+          title: page_size
+          format: int32
+          description: Default 24, at most 48.
+      title: ListPlayersRequest
+      additionalProperties: false
+    user.v1.ListPlayersResponse:
+      type: object
+      properties:
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/user.v1.PlayerListItem'
+          title: players
+        total_size:
+          type: integer
+          title: total_size
+          format: int32
+          description: Players matching query and last_seen, ignoring pagination.
+        page:
+          type: integer
+          title: page
+          format: int32
+        page_size:
+          type: integer
+          title: page_size
+          format: int32
+        counts:
+          title: counts
+          $ref: '#/components/schemas/user.v1.LastSeenCounts'
+      title: ListPlayersResponse
+      additionalProperties: false
+    user.v1.PlayerListItem:
+      type: object
+      properties:
+        user_id:
+          type: string
+          title: user_id
+        nickname:
+          type: string
+          title: nickname
+        avatar:
+          title: avatar
+          $ref: '#/components/schemas/user.v1.User.Image'
+        is_online:
+          type: boolean
+          title: is_online
+        last_online:
+          title: last_online
+          description: Unset when the game has never recorded the player.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        hours_played:
+          type: number
+          title: hours_played
+          format: double
+        about:
+          type: string
+          title: about
+      title: PlayerListItem
+      additionalProperties: false
+    user.v1.PlayerSort:
+      type: string
+      title: PlayerSort
+      enum:
+        - PLAYER_SORT_UNSPECIFIED
+        - PLAYER_SORT_LAST_SEEN
+        - PLAYER_SORT_HOURS
+        - PLAYER_SORT_NICKNAME
+      description: How the roster is ordered.
     user.v1.SearchUsersRequest:
       type: object
       properties:
@@ -11419,6 +11707,15 @@ components:
         - avatar
         - user_id
       additionalProperties: false
+    user.v1.UpdateMyAboutRequest:
+      type: object
+      properties:
+        about:
+          type: string
+          title: about
+          description: The new description; an empty string removes the current one.
+      title: UpdateMyAboutRequest
+      additionalProperties: false
     user.v1.User:
       type: object
       properties:
@@ -11440,6 +11737,16 @@ components:
         is_online:
           type: boolean
           title: is_online
+        about:
+          type: string
+          title: about
+          description: |-
+            What the player wrote about themselves: plain text, at most 500
+             characters and 8 lines. Empty when there is none or a moderator hid it.
+        about_updated_at:
+          title: about_updated_at
+          description: When the description was last changed; unset when there is none.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
       title: User
       additionalProperties: false
     user.v1.User.Image:

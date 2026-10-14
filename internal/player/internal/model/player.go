@@ -21,6 +21,11 @@ type Player struct {
 
 	IsOnline bool
 
+	// About is the description the player wrote about themselves; empty when
+	// there is none or a moderator hid it.
+	About          string
+	AboutUpdatedAt *time.Time
+
 	Verification verification.Verification
 	Stats        stats.Stats
 

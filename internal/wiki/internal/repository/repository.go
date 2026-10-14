@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"strings"
-
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox/pagination"
+	"github.com/lasthearth/vsservice/internal/pkg/regexsafe"
 	"github.com/lasthearth/vsservice/internal/wiki/internal/dto"
 	"github.com/lasthearth/vsservice/internal/wiki/internal/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -266,7 +265,7 @@ func listFilter(filter model.Filter) map[string]any {
 	}
 
 	if filter.Search != "" {
-		pattern := bson.M{"$regex": escapeRegex(filter.Search), "$options": "i"}
+		pattern := bson.M{"$regex": regexsafe.Escape(filter.Search), "$options": "i"}
 		query["$or"] = []bson.M{
 			{"title": pattern},
 			{"slug": pattern},
@@ -276,20 +275,4 @@ func listFilter(filter model.Filter) map[string]any {
 	}
 
 	return query
-}
-
-// escapeRegex neutralizes regex metacharacters in a search string, so a query is
-// only ever matched literally and cannot be used to build a pattern.
-func escapeRegex(value string) string {
-	var b []rune
-
-	for _, r := range value {
-		if strings.ContainsRune(`.*+?^$()[]{}|\\`, r) {
-			b = append(b, '\\')
-		}
-
-		b = append(b, r)
-	}
-
-	return string(b)
 }

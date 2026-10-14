@@ -7,6 +7,7 @@ import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 import "rules/v1/rules.proto";
 
 // Represents user specific actions
@@ -75,6 +76,52 @@ service UserService {
       body: "*"
     };
   }
+
+  // Replace the caller's description. An empty string removes it.
+  //
+  // The text is normalized before it is stored: line endings become \n,
+  // trailing spaces are cut, more than one empty line in a row becomes one.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): longer than 500 characters or 8 lines, or
+  //     contains control characters
+  //   - FAILED_PRECONDITION (400): the caller is not a verified player
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc UpdateMyAbout(UpdateMyAboutRequest) returns (User) {
+    option (google.api.http) = {
+      put: "/v1/users/me/about"
+      body: "*"
+    };
+  }
+
+  // Hide a player's description. Requires players:moderate.
+  //
+  // The description is removed and the player is notified with the reason;
+  // they may write a new one.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): empty reason
+  //   - NOT_FOUND (404): player not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): missing players:moderate
+  //   - INTERNAL (500): database failure
+  rpc HideAbout(HideAboutRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/users/{user_id}/about:hide"
+      body: "*"
+    };
+  }
+
+  // Players for the public roster: search by nickname, filter by when they
+  // were last in the game, sort and page through.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): query longer than 32 characters
+  //   - INTERNAL (500): database failure
+  rpc ListPlayers(ListPlayersRequest) returns (ListPlayersResponse) {
+    option (google.api.http) = {get: "/v1/players"};
+  }
 }
 
 message UpdateAvatarRequest {
@@ -106,6 +153,11 @@ message User {
   string user_name = 4;
   string previous_nickname = 5;
   bool is_online = 6;
+  // What the player wrote about themselves: plain text, at most 500
+  // characters and 8 lines. Empty when there is none or a moderator hid it.
+  string about = 7;
+  // When the description was last changed; unset when there is none.
+  google.protobuf.Timestamp about_updated_at = 8;
 
   message Image {
     string original = 1;
@@ -130,4 +182,87 @@ message ChangeNicknameRequest {
 message ChangeNicknameResponse {
   string old_nickname = 1;
   string new_nickname = 2;
+}
+
+message UpdateMyAboutRequest {
+  // The new description; an empty string removes the current one.
+  string about = 1;
+}
+
+message HideAboutRequest {
+  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Shown to the player in the notification.
+  string reason = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// When a player was last in the game. Each window includes the shorter
+// ones: DAY also counts players who are online now.
+enum LastSeen {
+  // Every player.
+  LAST_SEEN_UNSPECIFIED = 0;
+  // In the game now.
+  LAST_SEEN_ONLINE = 1;
+  // Online now or within 24 hours.
+  LAST_SEEN_DAY = 2;
+  // Within 7 days.
+  LAST_SEEN_WEEK = 3;
+  // Within 30 days.
+  LAST_SEEN_MONTH = 4;
+  // More than 30 days ago, or never recorded.
+  LAST_SEEN_INACTIVE = 5;
+}
+
+// How the roster is ordered.
+enum PlayerSort {
+  // Same as LAST_SEEN.
+  PLAYER_SORT_UNSPECIFIED = 0;
+  // Online first, then most recently seen.
+  PLAYER_SORT_LAST_SEEN = 1;
+  // Most hours first.
+  PLAYER_SORT_HOURS = 2;
+  // Alphabetical, case-insensitive.
+  PLAYER_SORT_NICKNAME = 3;
+}
+
+message ListPlayersRequest {
+  // Part of the nickname (current or previous), case-insensitive.
+  // Shorter than 2 characters after trimming: ignored.
+  string query = 1;
+  LastSeen last_seen = 2;
+  PlayerSort sort = 3;
+  // 1-based page number; 0 means 1. A page past the end returns no players.
+  int32 page = 4;
+  // Default 24, at most 48.
+  int32 page_size = 5;
+}
+
+message PlayerListItem {
+  string user_id = 1;
+  string nickname = 2;
+  User.Image avatar = 3;
+  bool is_online = 4;
+  // Unset when the game has never recorded the player.
+  google.protobuf.Timestamp last_online = 5;
+  double hours_played = 6;
+  string about = 7;
+}
+
+// How many players each window holds for the same query, so the site can
+// show a count on every filter.
+message LastSeenCounts {
+  int32 all = 1;
+  int32 online = 2;
+  int32 day = 3;
+  int32 week = 4;
+  int32 month = 5;
+  int32 inactive = 6;
+}
+
+message ListPlayersResponse {
+  repeated PlayerListItem players = 1;
+  // Players matching query and last_seen, ignoring pagination.
+  int32 total_size = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+  LastSeenCounts counts = 5;
 }
