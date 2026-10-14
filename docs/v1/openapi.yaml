@@ -2669,6 +2669,204 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/media.v1.CreateUploadUrlsResponse'
+  /v1/mods:
+    get:
+      tags:
+        - ModService
+      summary: ListMods
+      description: 'Public: mods players see, in display order. HIDDEN mods are left out.'
+      operationId: ModService_ListMods
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mod.v1.ListModsResponse'
+    post:
+      tags:
+        - ModService
+      summary: 'Staff: add a mod at a chosen version. It goes to the top of the list.'
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): unknown version, UNSPECIFIED audience, note over 160 chars
+           - NOT_FOUND (404): ModDB has no such mod
+           - ALREADY_EXISTS (409): the mod is already in the list
+           - UNAVAILABLE (503): ModDB did not answer
+      operationId: ModService_AddMod
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mod.v1.AddModRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mod.v1.Mod'
+  /v1/mods/lookup:
+    get:
+      tags:
+        - ModService
+      summary: 'Staff: look a mod up on ModDB before adding it. Nothing is stored.'
+      description: |-
+        query accepts a ModDB link (https://mods.vintagestory.at/carryon,
+         https://mods.vintagestory.at/show/mod/4405), an alias, a mod id or an asset id.
+
+         Errors:
+           - INVALID_ARGUMENT (400): empty query or a link to another site
+           - NOT_FOUND (404): ModDB has no such mod
+           - UNAVAILABLE (503): ModDB did not answer in 10 s
+      operationId: ModService_LookupMod
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+            title: query
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mod.v1.LookupModResponse'
+  /v1/mods/manage:
+    get:
+      tags:
+        - ModService
+      summary: 'Staff: every mod including HIDDEN, each with its recent releases.'
+      description: |-
+        Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing news:create
+      operationId: ModService_ListModsAdmin
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mod.v1.ListModsAdminResponse'
+  /v1/mods/order:
+    put:
+      tags:
+        - ModService
+      summary: 'Staff: set the display order. ids must hold every mod exactly once.'
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): ids differ from the stored set
+      operationId: ModService_ReorderMods
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mod.v1.ReorderModsRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mod.v1.ListModsAdminResponse'
+  /v1/mods/{id}:
+    delete:
+      tags:
+        - ModService
+      summary: 'Staff: remove a mod from the list.'
+      description: |-
+        Errors:
+           - NOT_FOUND (404): the mod is not in the list
+      operationId: ModService_DeleteMod
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.Empty'
+    patch:
+      tags:
+        - ModService
+      summary: 'Staff: change version, audience or note. Unset fields stay as they are.'
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): unknown version, UNSPECIFIED audience, note over 160 chars
+           - NOT_FOUND (404): the mod is not in the list
+           - UNAVAILABLE (503): ModDB did not answer while a new version was fetched
+      operationId: ModService_UpdateMod
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                version:
+                  type:
+                    - string
+                    - "null"
+                  title: version
+                audience:
+                  oneOf:
+                    - $ref: '#/components/schemas/mod.v1.ModAudience'
+                    - type: "null"
+                  title: audience
+                note:
+                  type:
+                    - string
+                    - "null"
+                  title: note
+              title: UpdateModRequest
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mod.v1.Mod'
+  /v1/mods:refresh:
+    post:
+      tags:
+        - ModService
+      summary: |-
+        Staff: re-read every mod from ModDB: name, author, logo, side, summary,
+         releases and latest_version. The chosen versions are never changed.
+      description: A mod ModDB fails on keeps its old data; the call still succeeds.
+      operationId: ModService_RefreshMods
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/mod.v1.RefreshModsRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mod.v1.ListModsAdminResponse'
   /v1/news:
     get:
       tags:
@@ -9039,6 +9237,271 @@ components:
           title: value
       title: FieldsEntry
       additionalProperties: false
+    mod.v1.AddModRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          title: query
+          description: The same forms as LookupMod.
+        version:
+          type: string
+          title: version
+          description: One of the releases.
+        audience:
+          title: audience
+          $ref: '#/components/schemas/mod.v1.ModAudience'
+        note:
+          type: string
+          title: note
+      title: AddModRequest
+      required:
+        - query
+        - version
+      additionalProperties: false
+    mod.v1.DeleteModRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: DeleteModRequest
+      required:
+        - id
+      additionalProperties: false
+    mod.v1.ListModsAdminRequest:
+      type: object
+      title: ListModsAdminRequest
+      additionalProperties: false
+    mod.v1.ListModsAdminResponse:
+      type: object
+      properties:
+        mods:
+          type: array
+          items:
+            $ref: '#/components/schemas/mod.v1.Mod'
+          title: mods
+      title: ListModsAdminResponse
+      additionalProperties: false
+    mod.v1.ListModsRequest:
+      type: object
+      title: ListModsRequest
+      additionalProperties: false
+    mod.v1.ListModsResponse:
+      type: object
+      properties:
+        mods:
+          type: array
+          items:
+            $ref: '#/components/schemas/mod.v1.Mod'
+          title: mods
+        archive:
+          title: archive
+          description: Unset when there is no required mod.
+          $ref: '#/components/schemas/mod.v1.ModArchive'
+      title: ListModsResponse
+      additionalProperties: false
+    mod.v1.LookupModRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          title: query
+      title: LookupModRequest
+      required:
+        - query
+      additionalProperties: false
+    mod.v1.LookupModResponse:
+      type: object
+      properties:
+        mod:
+          title: mod
+          description: audience UNSPECIFIED, release unset.
+          $ref: '#/components/schemas/mod.v1.Mod'
+        releases:
+          type: array
+          items:
+            $ref: '#/components/schemas/mod.v1.ModRelease'
+          title: releases
+          description: Newest first, at most 15.
+      title: LookupModResponse
+      additionalProperties: false
+    mod.v1.Mod:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: The releases' modidstr, e.g. "carryon".
+        name:
+          type: string
+          title: name
+        author:
+          type: string
+          title: author
+        logo_url:
+          type: string
+          title: logo_url
+          description: Empty when the mod has no logo.
+        moddb_url:
+          type: string
+          title: moddb_url
+          description: https://mods.vintagestory.at/<urlalias>, else /show/mod/<assetid>.
+        side:
+          title: side
+          $ref: '#/components/schemas/mod.v1.ModSide'
+        audience:
+          title: audience
+          $ref: '#/components/schemas/mod.v1.ModAudience'
+        note:
+          type: string
+          title: note
+          description: The staff's Russian one-liner, at most 160 characters.
+        summary:
+          type: string
+          title: summary
+          description: The first sentence of the ModDB text, plain, at most 200 characters.
+        release:
+          title: release
+          description: The version the server runs.
+          $ref: '#/components/schemas/mod.v1.ModRelease'
+        latest_version:
+          type: string
+          title: latest_version
+          description: The newest ModDB version; empty when release is the newest.
+        position:
+          type: integer
+          title: position
+          format: int32
+          description: 0 is the first.
+        updated_at:
+          title: updated_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        releases:
+          type: array
+          items:
+            $ref: '#/components/schemas/mod.v1.ModRelease'
+          title: releases
+          description: |-
+            Newest first, at most 15. Only in ListModsAdmin, ReorderMods and
+             RefreshMods.
+      title: Mod
+      additionalProperties: false
+    mod.v1.ModArchive:
+      type: object
+      properties:
+        url:
+          type: string
+          title: url
+          description: '"/v1/mods/archive.zip".'
+        count:
+          type: integer
+          title: count
+          format: int32
+          description: Required mods in it.
+        size:
+          type:
+            - integer
+            - string
+          title: size
+          format: int64
+          description: The sum of their file_size; 0 when any of them is unknown.
+        updated_at:
+          title: updated_at
+          description: The newest updated_at among them.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: ModArchive
+      additionalProperties: false
+      description: 'The "download everything" archive: REQUIRED mods only.'
+    mod.v1.ModAudience:
+      type: string
+      title: ModAudience
+      enum:
+        - MOD_AUDIENCE_UNSPECIFIED
+        - MOD_AUDIENCE_REQUIRED
+        - MOD_AUDIENCE_OPTIONAL
+        - MOD_AUDIENCE_HIDDEN
+      description: Who needs the mod.
+    mod.v1.ModRelease:
+      type: object
+      properties:
+        version:
+          type: string
+          title: version
+          description: ModDB's modversion, e.g. "2.0.0".
+        game_versions:
+          type: array
+          items:
+            type: string
+          title: game_versions
+          description: 'ModDB tags: the game versions the release runs on.'
+        file_url:
+          type: string
+          title: file_url
+          description: 'ModDB mainfile: the direct link to the file.'
+        file_name:
+          type: string
+          title: file_name
+        file_size:
+          type:
+            - integer
+            - string
+          title: file_size
+          format: int64
+          description: Bytes; 0 when unknown.
+        released_at:
+          title: released_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: ModRelease
+      additionalProperties: false
+    mod.v1.ModSide:
+      type: string
+      title: ModSide
+      enum:
+        - MOD_SIDE_UNSPECIFIED
+        - MOD_SIDE_BOTH
+        - MOD_SIDE_CLIENT
+        - MOD_SIDE_SERVER
+      description: Where the mod runs, as ModDB states it.
+    mod.v1.RefreshModsRequest:
+      type: object
+      title: RefreshModsRequest
+      additionalProperties: false
+    mod.v1.ReorderModsRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          title: ids
+      title: ReorderModsRequest
+      additionalProperties: false
+    mod.v1.UpdateModRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        version:
+          type:
+            - string
+            - "null"
+          title: version
+        audience:
+          oneOf:
+            - $ref: '#/components/schemas/mod.v1.ModAudience'
+            - type: "null"
+          title: audience
+        note:
+          type:
+            - string
+            - "null"
+          title: note
+      title: UpdateModRequest
+      required:
+        - id
+      additionalProperties: false
     news.v1.CreateNewsRequest:
       type: object
       properties:
@@ -12442,6 +12905,11 @@ tags:
        by VintageAPI reading Mongo — vsservice only manages documents and claim rows.
   - name: MediaService
     description: MediaService issues presigned POST targets for direct uploads to S3.
+  - name: ModService
+    description: |-
+      ModService is the list of game-server mods shown on the site's /mods page.
+       Reading the public list and the archive is open; managing it reuses the news
+       scope, because the people who publish news run the site's content.
   - name: NewsService
     description: Represents news service
   - name: NotificationService

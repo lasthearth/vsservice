@@ -28,6 +28,8 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/lfg.v1.LfgService/ListPosts",
 		"/lfg.v1.LfgService/GetPost",
 		"/appearance.v1.AppearanceService/ListAppearances",
+		// The roster of mods is the page every player reads.
+		"/mod.v1.ModService/ListMods",
 	}
 	protected := []string{
 		"/user.v1.UserService/SearchUsers",
@@ -59,6 +61,14 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		"/appearance.v1.AppearanceService/ResetMyAppearance",
 		"/appearance.v1.AppearanceService/GetMyStanding",
 		"/appearance.v1.AppearanceService/BuyBanner",
+		// Managing the mods reuses the scope that publishes the site's news.
+		"/mod.v1.ModService/ListModsAdmin",
+		"/mod.v1.ModService/LookupMod",
+		"/mod.v1.ModService/AddMod",
+		"/mod.v1.ModService/UpdateMod",
+		"/mod.v1.ModService/DeleteMod",
+		"/mod.v1.ModService/ReorderMods",
+		"/mod.v1.ModService/RefreshMods",
 	}
 
 	split := func(m string) interceptors.CallMeta {
