@@ -116,6 +116,44 @@ func TestListPlayersPipelineEscapesTheQuery(t *testing.T) {
 	}
 }
 
+// TestListPlayersPipelineJoinsStatsByExpression pins the join to the form the
+// MongoDB manual documents. localField and foreignField are mutually exclusive
+// with pipeline, so a server that enforces that would fail every roster request,
+// and every other test here would stay green because none of them runs a query.
+func TestListPlayersPipelineJoinsStatsByExpression(t *testing.T) {
+	pipeline := buildListPlayersPipeline(model.PlayerListFilter{}, 1, 24, fixedNow)
+
+	lookup := stageDoc(t, pipeline, "$lookup")
+
+	for _, banned := range []string{"localField", "foreignField"} {
+		if _, ok := getField(lookup, banned); ok {
+			t.Errorf("$lookup carries %q, which MongoDB does not allow next to pipeline", banned)
+		}
+	}
+
+	if _, ok := getField(lookup, "let"); !ok {
+		t.Error("$lookup has no let, so the sub-pipeline cannot see the game name")
+	}
+
+	sub, ok := getField(lookup, "pipeline")
+	if !ok {
+		t.Fatal("$lookup has no pipeline")
+	}
+	stages, ok := sub.(bson.A)
+	if !ok || len(stages) != 2 {
+		t.Fatalf("$lookup pipeline = %v, want a $match and a $group", sub)
+	}
+
+	matchStage, ok := stages[0].(bson.D)
+	if !ok || len(matchStage) == 0 || matchStage[0].Key != "$match" {
+		t.Fatalf("the first sub-pipeline stage is %v, want the $expr join condition", stages[0])
+	}
+	expr, ok := matchStage[0].Value.(bson.D)
+	if !ok || len(expr) == 0 || expr[0].Key != "$expr" {
+		t.Fatalf("the join $match is %v, want an $expr equality on the game name", matchStage[0].Value)
+	}
+}
+
 func TestListPlayersPipelineDropsNamelessApplications(t *testing.T) {
 	pipeline := buildListPlayersPipeline(model.PlayerListFilter{}, 1, 24, fixedNow)
 
@@ -283,19 +321,21 @@ func TestListPlayersPipelineSorts(t *testing.T) {
 			want: bson.D{
 				{Key: "is_online", Value: -1},
 				{Key: "last_online", Value: -1},
-				{Key: "user_game_name", Value: 1},
+				{Key: nicknameSortKey, Value: 1},
+				{Key: "_id", Value: 1},
 			},
 		},
 		{
 			sort: model.PlayerSortHours,
 			want: bson.D{
 				{Key: "hours", Value: -1},
-				{Key: "user_game_name", Value: 1},
+				{Key: nicknameSortKey, Value: 1},
+				{Key: "_id", Value: 1},
 			},
 		},
 		{
 			sort: model.PlayerSortNickname,
-			want: bson.D{{Key: "user_game_name", Value: 1}},
+			want: bson.D{{Key: nicknameSortKey, Value: 1}, {Key: "_id", Value: 1}},
 		},
 	}
 
@@ -319,9 +359,9 @@ func TestListPlayersPipelineSorts(t *testing.T) {
 
 func TestListPlayersPipelinePages(t *testing.T) {
 	cases := []struct {
-		page, size     int
-		wantSkip       int64
-		wantLimit      int64
+		page, size int
+		wantSkip   int64
+		wantLimit  int64
 	}{
 		{page: 1, size: 24, wantSkip: 0, wantLimit: 24},
 		{page: 2, size: 24, wantSkip: 24, wantLimit: 24},

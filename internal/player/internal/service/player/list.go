@@ -9,6 +9,7 @@ import (
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/player/internal/model"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -63,7 +64,12 @@ func (s *Service) ListPlayers(
 		time.Now(),
 	)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		// The roster is public. The driver's text names collections, stages and
+		// sometimes the server address, so the detail goes to the log and the
+		// caller gets a plain failure.
+		s.log.Error("failed to list players", zap.Error(err))
+
+		return nil, status.Error(codes.Internal, "failed to list players")
 	}
 
 	// The answer carries the page and the size that were actually applied, so a

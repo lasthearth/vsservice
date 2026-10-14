@@ -20,6 +20,9 @@ const (
 	// user_game_name the way the leaderboard does, so both show the same hours
 	// and the same last_online.
 	statsCollName = "stats"
+
+	// indexSetupTimeout bounds both index builds together.
+	indexSetupTimeout = 10 * time.Second
 )
 
 var (
@@ -45,8 +48,15 @@ type Repository struct {
 func New(opts Opts) *Repository {
 	coll := opts.Database.Collection(collName)
 	logger := opts.Logger.WithComponent("user-mongo-repository")
-	setupIndexes(logger, coll)
-	setupStatsIndexes(logger, opts.Database.Collection(statsCollName))
+
+	// One budget for both collections. The constructor runs inside fx startup,
+	// whose default timeout is 15 seconds: two sequential 10-second waits would
+	// abort the process instead of starting without an index.
+	ctx, cancel := context.WithTimeout(context.Background(), indexSetupTimeout)
+	defer cancel()
+
+	setupIndexes(ctx, logger, coll)
+	setupStatsIndexes(ctx, logger, opts.Database.Collection(statsCollName))
 	return &Repository{
 		log:    logger,
 		coll:   coll,
@@ -55,10 +65,7 @@ func New(opts Opts) *Repository {
 	}
 }
 
-func setupIndexes(log logger.Logger, coll *mongo.Collection) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
+func setupIndexes(ctx context.Context, log logger.Logger, coll *mongo.Collection) {
 	// The dominant lookup: by the SSO user id (this repository's FindOne and
 	// the cross-domain readers, e.g. appearance standings). Not unique on
 	// purpose: the check-then-create Submit flow can already have left two
@@ -83,10 +90,7 @@ func setupIndexes(log logger.Logger, coll *mongo.Collection) {
 // setupStatsIndexes creates the join key the roster and the leaderboard look
 // stats up by. The game writes this collection, and nothing else indexes it, so
 // the index is created here, next to the collection handle that reads it.
-func setupStatsIndexes(log logger.Logger, coll *mongo.Collection) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
+func setupStatsIndexes(ctx context.Context, log logger.Logger, coll *mongo.Collection) {
 	if _, err := coll.Indexes().CreateOne(
 		ctx,
 		mongo.IndexModel{Keys: bson.D{{Key: "user_game_name", Value: 1}}},

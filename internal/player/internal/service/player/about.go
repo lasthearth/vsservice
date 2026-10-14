@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
@@ -38,7 +39,9 @@ func (s *Service) UpdateMyAbout(
 ) (*userv1.User, error) {
 	uid, err := interceptor.GetUserID(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		s.log.Error("a request the interceptor authenticated carries no user id", zap.Error(err))
+
+		return nil, status.Error(codes.Internal, "the request carries no user id")
 	}
 
 	player, err := s.dbRepo.GetUserById(ctx, uid)
@@ -47,7 +50,9 @@ func (s *Service) UpdateMyAbout(
 			return nil, ierror.FailedPrecondition("player is not verified")
 		}
 
-		return nil, status.Error(codes.Internal, err.Error())
+		s.log.Error("failed to read the player", zap.String("user_id", uid), zap.Error(err))
+
+		return nil, status.Error(codes.Internal, "failed to read the player")
 	}
 
 	if !isVerified(player.Verification.Status) {
@@ -68,17 +73,19 @@ func (s *Service) UpdateMyAbout(
 	}
 
 	if err := s.dbRepo.UpdateById(ctx, uid, update); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		s.log.Error("failed to save the description", zap.String("user_id", uid), zap.Error(err))
+
+		return nil, status.Error(codes.Internal, "failed to save the description")
 	}
 
-	// Read back what was written, the way GetUser answers: the caller sees the
-	// normalized text it now owns, not the text it sent.
-	saved, err := s.dbRepo.GetUserById(ctx, uid)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	// The write is committed and both halves of it are already in hand, so the
+	// answer is built from them: the caller sees the normalized text it now owns,
+	// not the text it sent. Reading the player back cost a round trip and reported
+	// a transient failure of that read as an error on a write that had already
+	// succeeded, which invites the client to submit the same text again.
+	player.SetAbout(about, update.AboutUpdatedAt)
 
-	return s.mapper.ToUserProto(*saved), nil
+	return s.mapper.ToUserProto(*player), nil
 }
 
 // HideAbout implements userv1.UserServiceServer.
@@ -90,18 +97,40 @@ func (s *Service) HideAbout(
 	ctx context.Context,
 	req *userv1.HideAboutRequest,
 ) (*emptypb.Empty, error) {
-	reason := strings.TrimSpace(req.GetReason())
+	// The reason reaches the player as a notification and the audit log as a
+	// field, and the two have to read the same, so it is bounded and stripped of
+	// the characters a description is refused for. The byte bound comes first: it
+	// is what keeps a multi-megabyte body from being copied and rewritten before
+	// the answer says it is too long.
+	if len(req.GetReason()) > model.MaxReasonRunes*utf8.UTFMax {
+		return nil, ierror.InvalidArgument("reason is longer than 500 characters")
+	}
+
+	reason := strings.TrimSpace(model.SanitizeReason(req.GetReason()))
 	if reason == "" {
 		return nil, ierror.InvalidArgument("reason is empty")
+	}
+	if utf8.RuneCountInString(reason) > model.MaxReasonRunes {
+		return nil, ierror.InvalidArgument("reason is longer than 500 characters")
 	}
 
 	player, err := s.dbRepo.GetUserById(ctx, req.GetUserId())
 	if err != nil {
 		if errors.Is(err, domainerr.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, err.Error())
+			return nil, status.Error(codes.NotFound, "player not found")
 		}
 
-		return nil, status.Error(codes.Internal, err.Error())
+		s.log.Error("failed to read the player", zap.String("user_id", req.GetUserId()), zap.Error(err))
+
+		return nil, status.Error(codes.Internal, "failed to read the player")
+	}
+
+	// A hide that removes nothing is not a hide. Without this the player is told
+	// their description was hidden and the audit log records a moderation action,
+	// while no document changed - and a second click in the panel tells them
+	// again.
+	if player.About == "" {
+		return nil, ierror.FailedPrecondition("the player has no description")
 	}
 
 	if err := s.dbRepo.UpdateById(
@@ -109,7 +138,10 @@ func (s *Service) HideAbout(
 		req.GetUserId(),
 		model.PlayerUpdate{About: new(string)},
 	); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		s.log.Error("failed to remove the description",
+			zap.String("user_id", req.GetUserId()), zap.Error(err))
+
+		return nil, status.Error(codes.Internal, "failed to remove the description")
 	}
 
 	recipient := player.UserId
@@ -118,18 +150,27 @@ func (s *Service) HideAbout(
 	}
 
 	// The removal is committed, so a notification that fails must not undo it:
-	// the moderator's decision stands and the failure is only logged.
-	notifyErr := s.cnuc.CreateNotification(
-		ctx,
-		"Описание профиля скрыто",
-		fmt.Sprintf("Модератор скрыл ваше описание: %s. Вы можете написать новое.", reason),
-		notificationuc.WithUserId(recipient),
-	)
+	// the moderator's decision stands and the failure is only logged. The context
+	// outlives the request, because a moderator who hangs up after the write would
+	// otherwise leave the player with no explanation of it. WithoutCancel keeps
+	// the call on this goroutine, so the answer still waits for it.
+	switch {
+	case s.cnuc == nil:
+		s.log.Warn("no notifier is wired, the player is not told why the description was hidden",
+			zap.String("user_id", recipient))
+	default:
+		notifyErr := s.cnuc.CreateNotification(
+			context.WithoutCancel(ctx),
+			"Описание профиля скрыто",
+			fmt.Sprintf("Модератор скрыл ваше описание: %s. Вы можете написать новое.", reason),
+			notificationuc.WithUserId(recipient),
+		)
 
-	if notifyErr != nil {
-		s.log.Warn("failed to notify player about a hidden description",
-			zap.String("user_id", recipient),
-			zap.Error(notifyErr))
+		if notifyErr != nil {
+			s.log.Warn("failed to notify player about a hidden description",
+				zap.String("user_id", recipient),
+				zap.Error(notifyErr))
+		}
 	}
 
 	moderator, _ := interceptor.GetUserID(ctx)

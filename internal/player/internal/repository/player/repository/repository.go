@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/lasthearth/vsservice/internal/pkg/regexsafe"
 	dto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo"
 	verificationdto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo/verification"
 	"github.com/lasthearth/vsservice/internal/player/internal/ierror"
@@ -88,15 +89,20 @@ func (r *Repository) GetUsersByIds(ctx context.Context, ids []string) ([]model.P
 	return users, nil
 }
 
-// SearchUsers searches for players based on a query string, looking for matches in user_game_name and user_name fields.
+// SearchUsers searches for players based on a query string, looking for matches
+// in the user_game_name and user_name fields. The query reaches a $regex
+// escaped: an unescaped one lets a caller build a pattern, and a pattern such as
+// (a*)*b makes MongoDB's regex engine backtrack until the worker threads are
+// gone.
 func (r *Repository) SearchUsers(
 	ctx context.Context,
 	query string,
 ) ([]model.Player, error) {
+	escaped := regexsafe.Escape(query)
 	filter := bson.M{
 		"$or": []bson.M{
-			{"user_game_name": bson.M{"$regex": query, "$options": "i"}},
-			{"user_name": bson.M{"$regex": query, "$options": "i"}},
+			{"user_game_name": bson.M{"$regex": escaped, "$options": "i"}},
+			{"user_name": bson.M{"$regex": escaped, "$options": "i"}},
 		},
 	}
 
@@ -150,6 +156,12 @@ func (r *Repository) UpdatePlayerNickname(
 
 func (r *Repository) UpdateById(ctx context.Context, uid string, p model.PlayerUpdate) error {
 	update := r.buildUpdateSet(p)
+	if len(update) == 0 {
+		// MongoDB rejects an update document with no operators, and the caller
+		// asked for no change, so there is nothing to write.
+		return nil
+	}
+
 	_, err := r.coll.UpdateOne(
 		ctx,
 		bson.M{"user_id": uid},
@@ -160,6 +172,10 @@ func (r *Repository) UpdateById(ctx context.Context, uid string, p model.PlayerU
 
 func (r *Repository) UpdateByUserGameName(ctx context.Context, userGameName string, p model.PlayerUpdate) error {
 	update := r.buildUpdateSet(p)
+	if len(update) == 0 {
+		return nil
+	}
+
 	_, err := r.coll.UpdateOne(
 		ctx,
 		bson.M{"user_game_name": userGameName},
@@ -205,16 +221,23 @@ func (r *Repository) buildUpdateSet(p model.PlayerUpdate) bson.M {
 	}
 
 	unset := bson.M{}
-	if p.About != nil {
-		if *p.About == "" {
-			unset["about"] = ""
-			unset["about_updated_at"] = ""
-		} else {
-			update["about"] = *p.About
+	// The description and its write time are one decision, so they are made in
+	// one branch. Splitting them lets a caller that removes the text and passes a
+	// timestamp put about_updated_at in both operators, and MongoDB then rejects
+	// the whole update as a path conflict.
+	switch {
+	case p.About == nil:
+		if p.AboutUpdatedAt != nil {
+			update["about_updated_at"] = *p.AboutUpdatedAt
 		}
-	}
-	if p.AboutUpdatedAt != nil {
-		update["about_updated_at"] = *p.AboutUpdatedAt
+	case *p.About == "":
+		unset["about"] = ""
+		unset["about_updated_at"] = ""
+	default:
+		update["about"] = *p.About
+		if p.AboutUpdatedAt != nil {
+			update["about_updated_at"] = *p.AboutUpdatedAt
+		}
 	}
 
 	// An operator with no fields makes MongoDB reject the whole write, so only

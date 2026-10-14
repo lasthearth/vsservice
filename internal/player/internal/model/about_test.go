@@ -26,10 +26,25 @@ func TestNormalizeAbout(t *testing.T) {
 		{name: "runs of empty lines collapse into one", in: "первая\n\n\n\n\nвторая", want: "первая\n\nвторая"},
 		{name: "exactly the limit passes", in: full, want: full},
 		{name: "one rune over the limit fails", in: full + "я", err: ErrAboutTooLong},
+		// The byte bound is what an oversized body hits first, before the text is
+		// copied, split per line and rewritten on the way to being refused.
+		{name: "a body over the byte bound fails before any work",
+			in:  strings.Repeat("я", maxAboutBytes),
+			err: ErrAboutTooLong},
 		{name: "eight lines pass", in: eightLines, want: eightLines},
 		{name: "nine lines fail", in: nineLines, err: ErrAboutTooManyLines},
 		{name: "a control character fails", in: "привет\x07", err: ErrAboutControlCharacters},
 		{name: "a text direction mark fails", in: "привет\u202E", err: ErrAboutControlCharacters},
+		{name: "a right-to-left mark fails", in: "admin\u200F", err: ErrAboutControlCharacters},
+		{name: "a soft hyphen fails", in: "при\u00ADвет", err: ErrAboutControlCharacters},
+		{name: "a byte-order mark fails", in: "\uFEFFпривет", err: ErrAboutControlCharacters},
+		{name: "an emoji sequence keeps the joiners it needs",
+			in:   "семья \U0001F468\u200D\U0001F469\u200D\U0001F467",
+			want: "семья \U0001F468\u200D\U0001F469\u200D\U0001F467"},
+		{name: "a Unicode line separator becomes a line", in: "раз\u2028два", want: "раз\nдва"},
+		{name: "nine separator lines fail",
+			in:  strings.Repeat("строка\u2028", MaxAboutLines) + "строка",
+			err: ErrAboutTooManyLines},
 		{name: "markup stays plain text", in: "<b>жирный</b>", want: "<b>жирный</b>"},
 	}
 

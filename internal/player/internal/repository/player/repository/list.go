@@ -4,12 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/lasthearth/vsservice/internal/pkg/regexsafe"
 	dto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo"
 	"github.com/lasthearth/vsservice/internal/player/internal/model"
 	"github.com/lasthearth/vsservice/internal/player/internal/model/verification"
-	"github.com/lasthearth/vsservice/internal/pkg/regexsafe"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -21,6 +20,11 @@ const (
 	windowWeek  = 7 * 24 * time.Hour
 	windowMonth = 30 * 24 * time.Hour
 )
+
+// nicknameSortKey is the lowercased game name the roster sorts by. It stands in
+// for an aggregation collation, which cannot be limited to the sort alone: see
+// ListPlayers.
+const nicknameSortKey = "nickname_key"
 
 // ListPlayers answers the public roster page.
 //
@@ -42,12 +46,14 @@ func (r *Repository) ListPlayers(
 ) (*model.PlayerListPage, error) {
 	l := r.log.WithMethod("list_players")
 
-	// A Russian collation sorts Cyrillic by the alphabet rather than by code
-	// point, and strength 2 makes the nickname order case-insensitive, which is
-	// what the site promises.
-	opts := options.Aggregate().SetCollation(&options.Collation{Locale: "ru", Strength: 2})
-
-	cursor, err := r.coll.Aggregate(ctx, buildListPlayersPipeline(filter, page, size, now), opts)
+	// No aggregation-wide collation, deliberately. A collation also governs the
+	// $lookup equality, so two players whose game names differ only in case would
+	// join the same stats and share one another's hours, disagreeing with the
+	// leaderboard, which groups this collection without one. It would also make
+	// both user_game_name indexes unusable, because an index only serves an
+	// operation whose collation matches its own. The case-insensitive nickname
+	// order the site asks for comes from a lowercased sort key instead.
+	cursor, err := r.coll.Aggregate(ctx, buildListPlayersPipeline(filter, page, size, now))
 	if err != nil {
 		l.Error("aggregation error", zap.Error(err))
 		return nil, err
@@ -70,12 +76,13 @@ func (r *Repository) ListPlayers(
 	if len(out) > 0 {
 		facet := out[0]
 		players = make([]model.PlayerListItem, 0, len(facet.Items))
+		prefix := r.getAvatarPrefix()
 
 		for _, row := range facet.Items {
 			players = append(players, model.PlayerListItem{
 				UserId:      row.UserId,
 				Nickname:    row.Nickname,
-				Avatar:      AvatarWithPrefix(row.Avatar, r.getAvatarPrefix()),
+				Avatar:      AvatarWithPrefix(row.Avatar, prefix),
 				IsOnline:    row.IsOnline,
 				LastOnline:  row.LastOnline,
 				HoursPlayed: row.Hours,
@@ -179,18 +186,26 @@ func buildListPlayersPipeline(
 		bson.D{{Key: "$match", Value: match}},
 		// One join instead of a read per row, and grouped so the sum and the
 		// maximum come from the same place the leaderboard takes them.
+		//
+		// The join condition is an $expr inside the sub-pipeline rather than
+		// localField and foreignField: the manual names those two and pipeline as
+		// mutually exclusive. A server that starts enforcing that would fail every
+		// roster request, and the tests here, which read the built bson.A rather
+		// than run it, would stay green.
 		bson.D{{Key: "$lookup", Value: bson.D{
 			{Key: "from", Value: statsCollName},
-			{Key: "localField", Value: "user_game_name"},
-			{Key: "foreignField", Value: "user_game_name"},
-			{Key: "as", Value: "player_stats"},
+			{Key: "let", Value: bson.D{{Key: "gameName", Value: "$user_game_name"}}},
 			{Key: "pipeline", Value: bson.A{
+				bson.D{{Key: "$match", Value: bson.D{{Key: "$expr", Value: bson.D{
+					{Key: "$eq", Value: bson.A{"$user_game_name", "$$gameName"}},
+				}}}}},
 				bson.D{{Key: "$group", Value: bson.D{
 					{Key: "_id", Value: nil},
 					{Key: "hours", Value: bson.D{{Key: "$sum", Value: "$hours_played"}}},
 					{Key: "last_online", Value: bson.D{{Key: "$max", Value: "$last_online"}}},
 				}}},
 			}},
+			{Key: "as", Value: "player_stats"},
 		}}},
 		bson.D{{Key: "$addFields", Value: bson.D{
 			{Key: "hours", Value: bson.D{{Key: "$ifNull", Value: bson.A{
@@ -203,6 +218,7 @@ func buildListPlayersPipeline(
 			{Key: "has_stats", Value: bson.D{{Key: "$gt", Value: bson.A{
 				bson.D{{Key: "$size", Value: "$player_stats"}}, 0,
 			}}}},
+			{Key: nicknameSortKey, Value: bson.D{{Key: "$toLower", Value: "$user_game_name"}}},
 		}}},
 		// An approved application the game never saw is not a player yet: it
 		// stays out of the roster until it has stats or the code is entered.
@@ -322,18 +338,25 @@ func windowMatch(window model.LastSeenWindow, now time.Time) bson.M {
 }
 
 // sortStage is the roster order. A descending last_online puts the players the
-// game never recorded at the end, which is where "никогда" belongs.
+// game never recorded at the end, which is where "никогда" belongs. Nicknames
+// sort on the lowercased key, so the order does not depend on how a player
+// capitalised their name.
+//
+// Every order ends on _id. Without a key that separates every row, $sort is not
+// stable, and two players the order ties can land on the same page twice or on
+// no page at all while total_size still counts both.
 func sortStage(sort model.PlayerListSort) bson.D {
 	switch sort {
 	case model.PlayerSortHours:
-		return bson.D{{Key: "hours", Value: -1}, {Key: "user_game_name", Value: 1}}
+		return bson.D{{Key: "hours", Value: -1}, {Key: nicknameSortKey, Value: 1}, {Key: "_id", Value: 1}}
 	case model.PlayerSortNickname:
-		return bson.D{{Key: "user_game_name", Value: 1}}
+		return bson.D{{Key: nicknameSortKey, Value: 1}, {Key: "_id", Value: 1}}
 	default:
 		return bson.D{
 			{Key: "is_online", Value: -1},
 			{Key: "last_online", Value: -1},
-			{Key: "user_game_name", Value: 1},
+			{Key: nicknameSortKey, Value: 1},
+			{Key: "_id", Value: 1},
 		}
 	}
 }

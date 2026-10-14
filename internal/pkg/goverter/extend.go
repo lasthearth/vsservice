@@ -39,8 +39,13 @@ func TimeToTimestamp(t time.Time) *timestamppb.Timestamp {
 	return timestamppb.New(t)
 }
 
+// TimePtrToTimestamp converts an optional time. A time a protobuf Timestamp
+// cannot carry becomes nil instead: protojson refuses to marshal seconds
+// outside 0001-01-01..9999-12-31, so one corrupt value in a collection this
+// service does not write would otherwise fail the whole response rather than
+// that one field. The leaderboard guards its last_online for the same reason.
 func TimePtrToTimestamp(t *time.Time) *timestamppb.Timestamp {
-	if t == nil {
+	if t == nil || t.Year() < 1 || t.Year() > 9999 {
 		return nil
 	}
 	return timestamppb.New(*t)
