@@ -24,4 +24,15 @@ var (
 	ErrNoReleases = ierror.InvalidArgument("ModDB lists no releases for the mod")
 	// ErrOrder reports an order that is not a permutation of the stored mods.
 	ErrOrder = ierror.InvalidArgument("ids must list every mod exactly once")
+	// ErrNoModId reports a mod ModDB states no id for, so there is nothing to
+	// store it under.
+	ErrNoModId = ierror.InvalidArgument("ModDB names no id for the mod")
+	// ErrNoUsableFile reports a mod whose files are none of them on a host this
+	// service may fetch.
+	ErrNoUsableFile = ierror.InvalidArgument("ModDB names no file this service may fetch")
+	// ErrAssetIDRef reports a ModDB page link. Its number is an asset id, and
+	// the API resolves a mod id, so the same digits name two different mods.
+	ErrAssetIDRef = ierror.InvalidArgument(
+		"a ModDB page link carries an asset id, which the API cannot resolve: " +
+			"paste the mod's short link (mods.vintagestory.at/<alias>) or its numeric mod id")
 )

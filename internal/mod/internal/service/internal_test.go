@@ -29,7 +29,7 @@ func TestArchiveSizeIsUnknownWhenOneModIs(t *testing.T) {
 	known := requiredMod("known", "1.0.0", 1024)
 	unknown := model.Build("unknown", model.Snapshot{}, model.AudienceRequired, "", nil, fixedNow)
 
-	got := archiveProto([]model.Mod{known, unknown}, 0)
+	got := archiveProto([]model.Mod{known, unknown}, 1<<30)
 	if got == nil {
 		t.Fatal("archive is unset")
 	}
@@ -42,7 +42,7 @@ func TestArchiveSizeIsUnknownWhenOneModIs(t *testing.T) {
 }
 
 func TestArchiveSizeIsUnknownWhenAFileSizeIsZero(t *testing.T) {
-	got := archiveProto([]model.Mod{requiredMod("a", "1.0.0", 1024), requiredMod("b", "1.0.0", 0)}, 0)
+	got := archiveProto([]model.Mod{requiredMod("a", "1.0.0", 1024), requiredMod("b", "1.0.0", 0)}, 1<<30)
 
 	if got.GetSize() != 0 {
 		t.Errorf("size = %d, want 0 when one file size was never measured", got.GetSize())
@@ -60,6 +60,19 @@ func TestArchiveDescribesTheRequiredModsOnly(t *testing.T) {
 	}
 	if !got.GetUpdatedAt().AsTime().Equal(fixedNow) {
 		t.Errorf("updated_at = %v, want %v", got.GetUpdatedAt().AsTime(), fixedNow)
+	}
+}
+
+// TestArchiveIsNotOfferedWhenNothingWouldCapIt pins the two halves of one rule:
+// build refuses an archive no cap bounds, so ListMods must not advertise it.
+func TestArchiveIsNotOfferedWhenNothingWouldCapIt(t *testing.T) {
+	unknown := model.Build("unknown", model.Snapshot{}, model.AudienceRequired, "", nil, fixedNow)
+
+	if got := archiveProto([]model.Mod{unknown}, 0); got != nil {
+		t.Errorf("archive = %v, want unset: the endpoint would refuse the build", got)
+	}
+	if got := archiveProto([]model.Mod{unknown}, 1<<20); got == nil {
+		t.Error("archive is unset although the cap bounds the build")
 	}
 }
 

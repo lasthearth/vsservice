@@ -21,6 +21,14 @@ import (
 // site links the archive the list answer points at.
 const archiveURL = "/v1/mods/archive.zip"
 
+// refreshTimeout bounds one RefreshMods call. Every mod costs a read and a HEAD
+// against ModDB, so a list walked one mod after another reaches minutes when
+// ModDB answers slowly rather than refusing - past the point where the gateway
+// and the admin's browser have given up on an answer nobody will receive. A mod
+// the bound cuts off keeps what is stored, which is what a mod ModDB fails on
+// already does.
+const refreshTimeout = 60 * time.Second
+
 // ListMods implements modv1.ModServiceServer.
 //
 // The public list is what a player installs: the required mods and the optional
@@ -262,17 +270,20 @@ func (s *Service) RefreshMods(
 		return nil, err
 	}
 
+	refreshCtx, cancel := context.WithTimeout(ctx, refreshTimeout)
+	defer cancel()
+
 	for _, stored := range mods {
-		found, err := s.fetch(ctx, stored.ModId)
+		found, err := s.fetch(refreshCtx, stored.ModId)
 		if err != nil {
 			s.log.Warn("failed to read a mod from ModDB, keeping what is stored",
 				zap.String("id", stored.ModId), zap.Error(err))
 			continue
 		}
 
-		snapshot := s.snapshotOf(ctx, found, stored.Version())
+		snapshot := s.snapshotOf(refreshCtx, found, stored.Version())
 
-		_, err = s.repo.Save(ctx, stored.ModId, func(_ context.Context, mod *model.Mod) (*model.Mod, error) {
+		_, err = s.repo.Save(refreshCtx, stored.ModId, func(_ context.Context, mod *model.Mod) (*model.Mod, error) {
 			mod.SetSnapshot(snapshot)
 			return mod, nil
 		})
@@ -282,6 +293,9 @@ func (s *Service) RefreshMods(
 		}
 	}
 
+	// The caller's own context, not the bounded one: the answer is read after
+	// the refresh, and a bound that expired mid-list must not fail the read of
+	// what the list holds now.
 	return s.ListModsAdmin(ctx, &modv1.ListModsAdminRequest{})
 }
 
@@ -291,6 +305,12 @@ func (s *Service) RefreshMods(
 func (s *Service) fetch(ctx context.Context, query string) (*moddb.Mod, error) {
 	ref, err := moddb.ParseRef(query)
 	if err != nil {
+		// A page link is refused with the reason, because the admin is holding
+		// one and the generic answer would send them back to the same link.
+		if errors.Is(err, moddb.ErrAssetIDRef) {
+			return nil, ierror.ErrAssetIDRef
+		}
+
 		return nil, ierror.ErrBadQuery
 	}
 
@@ -305,10 +325,33 @@ func (s *Service) fetch(ctx context.Context, query string) (*moddb.Mod, error) {
 		return nil, err
 	}
 
-	// A mod without releases names no version the server could run and has no
-	// modidstr to be stored under.
+	// A mod without releases names no version the server could run.
 	if len(found.Releases) == 0 {
 		return nil, ierror.ErrNoReleases
+	}
+
+	// ModDB states the id on every release rather than on the mod. Without one
+	// there is nothing to store the mod under: the document would carry an empty
+	// id, the unique index would refuse the next such mod as a duplicate of it,
+	// and no rpc could address it again - UpdateMod refuses an empty id and
+	// DeleteMod would match it only by accident.
+	if modID(found.Releases) == "" {
+		return nil, ierror.ErrNoModId
+	}
+
+	// A release whose file is not on a host this service may fetch is dropped
+	// when the snapshot is built. A mod with none left has no version the server
+	// could run either.
+	usable := false
+	for _, release := range found.Releases {
+		if moddb.AllowedURL(release.MainFile) {
+			usable = true
+
+			break
+		}
+	}
+	if !usable {
+		return nil, ierror.ErrNoUsableFile
 	}
 
 	return found, nil
@@ -326,10 +369,18 @@ func (s *Service) snapshotOf(ctx context.Context, found *moddb.Mod, chosen strin
 		}
 	}
 
+	// The site renders the logo as an image source, so a URL that is not one of
+	// ModDB's own is dropped rather than stored: it would run in the page's
+	// origin or send every player's browser somewhere the staff did not choose.
+	logo := found.LogoFile
+	if !moddb.AllowedURL(logo) {
+		logo = ""
+	}
+
 	return model.Snapshot{
 		Name:     found.Name,
 		Author:   found.Author,
-		LogoURL:  found.LogoFile,
+		LogoURL:  logo,
 		ModDBURL: moddb.PageURL(found.URLAlias, found.AssetID),
 		Side:     sideOf(found.Side),
 		Summary:  moddb.Summary(found.Text),
@@ -341,12 +392,16 @@ func (s *Service) snapshotOf(ctx context.Context, found *moddb.Mod, chosen strin
 // answers newest first and the snapshot keeps that order; at most MaxReleases
 // of them are stored.
 func newestReleases(releases []moddb.Release) []model.Release {
-	if len(releases) > model.MaxReleases {
-		releases = releases[:model.MaxReleases]
-	}
+	out := make([]model.Release, 0, min(len(releases), model.MaxReleases))
 
-	out := make([]model.Release, 0, len(releases))
 	for _, release := range releases {
+		// The file URL comes out of a third-party answer and is stored, fetched
+		// and served to the site, so it is checked here, where it enters. A
+		// dropped release does not take one of the stored slots with it.
+		if !moddb.AllowedURL(release.MainFile) {
+			continue
+		}
+
 		out = append(out, model.Release{
 			Version:      release.ModVersion,
 			GameVersions: release.Tags,
@@ -354,6 +409,10 @@ func newestReleases(releases []moddb.Release) []model.Release {
 			FileName:     release.FileName,
 			ReleasedAt:   release.ReleasedAt(),
 		})
+
+		if len(out) == model.MaxReleases {
+			break
+		}
 	}
 
 	return out
@@ -403,6 +462,13 @@ func archiveProto(mods []model.Mod, maxBytes int64) *modv1.ModArchive {
 	}
 
 	if count == 0 {
+		return nil
+	}
+
+	// The endpoint refuses a build that no cap would bound, so the list must not
+	// offer one: with no cap configured and a size ModDB never reported, the
+	// button would be there and every click would answer 500.
+	if !known && maxBytes <= 0 {
 		return nil
 	}
 

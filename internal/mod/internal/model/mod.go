@@ -28,8 +28,6 @@ const (
 const (
 	// MaxNoteRunes bounds the staff's Russian one-liner.
 	MaxNoteRunes = 160
-	// MaxSnapshotRunes bounds the description taken from ModDB.
-	MaxSnapshotRunes = 200
 	// MaxReleases is how many of a mod's releases a stored mod keeps.
 	MaxReleases = 15
 )
@@ -150,10 +148,6 @@ func (m *Mod) SetRelease(release Release) {
 
 // SetPosition records where the mod stands in the list.
 func (m *Mod) SetPosition(position int) { m.Position = position }
-
-// SetUpdatedAt stamps the mod with what the stored document says, which a
-// mapper that ignores the Mongo envelope cannot carry.
-func (m *Mod) SetUpdatedAt(at time.Time) { m.UpdatedAt = at }
 
 // Touch stamps the write. mongox.UpdateDoc calls it, so the caller of an update
 // sees the persisted timestamp.

@@ -86,25 +86,43 @@ func (r *Repository) Get(ctx context.Context, modId string) (*model.Mod, error) 
 
 // Create stores a new mod at the top of the list.
 //
-// The shift is a single UpdateMany, so every stored mod moves down exactly once.
 // A mod that is already there is refused by the unique index rather than by a
-// read-then-write that two admins could both pass.
+// read-then-write two admins could both pass, and the insert runs first so that
+// the refusal leaves the stored order exactly as it was.
+//
+// The two writes are not a transaction. A failure between them leaves the new
+// mod first and the others unshifted, so two mods share position 0 until a
+// reorder renumbers the list; listSort breaks that tie by id, so the list still
+// reads as one order rather than losing a mod.
 func (r *Repository) Create(ctx context.Context, mod *model.Mod) error {
 	doc := r.mapper.FromModel(*mod)
 	doc.Model = mongox.NewModel()
 	doc.Position = 0
 
-	if _, err := r.coll.UpdateMany(ctx, bson.M{}, bson.M{"$inc": bson.M{"position": 1}}); err != nil {
-		r.logger.WithMethod("Create").Error("failed to shift positions", zap.Error(err))
-		return err
-	}
-
+	// The insert comes first, because it is what refuses a mod that is already
+	// on the list, and a refusal must not leave the list changed. Shifting every
+	// stored position first meant that a duplicate - a second click on the
+	// panel's add button - moved the whole list down and put nothing at the top,
+	// and that every retry moved it again.
 	if _, err := r.coll.InsertOne(ctx, doc); err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return ierror.ErrAlreadyExists
 		}
 
 		r.logger.WithMethod("Create").Error("failed to insert mod", zap.Error(err))
+		return err
+	}
+
+	// Everyone else moves down one. The new mod is excluded: it is already
+	// first. The envelope's version moves with the position, so a Save that read
+	// the document before this write fails its guard instead of replacing the
+	// whole document and putting the old position back.
+	if _, err := r.coll.UpdateMany(
+		ctx,
+		bson.M{"id": bson.M{"$ne": mod.ModId}},
+		bson.M{"$inc": bson.M{"position": 1, "version": 1}},
+	); err != nil {
+		r.logger.WithMethod("Create").Error("failed to shift positions", zap.Error(err))
 		return err
 	}
 
@@ -158,12 +176,23 @@ func (r *Repository) Reorder(ctx context.Context, ids []string) error {
 
 	writes := make([]mongo.WriteModel, 0, len(ids))
 	for position, id := range ids {
+		// The version moves with the position. mongox.UpdateDoc replaces a whole
+		// document under a guard on the version it read, so a reorder that left
+		// the version alone was invisible to a Save already in flight: the Save
+		// matched, replaced the document, and wrote the position it had loaded
+		// back, silently undoing the reorder.
 		writes = append(writes, mongo.NewUpdateOneModel().
 			SetFilter(bson.M{"id": id}).
-			SetUpdate(bson.M{"$set": bson.M{"position": position}}))
+			SetUpdate(bson.M{
+				"$set": bson.M{"position": position},
+				"$inc": bson.M{"version": 1},
+			}))
 	}
 
-	if _, err := r.coll.BulkWrite(ctx, writes); err != nil {
+	// Ordered: a bulk write that stops at the first failure leaves the front of
+	// the list correct and the rest as it was, which listSort still reads as one
+	// order. Unordered, it applies a scattered subset and the two ends disagree.
+	if _, err := r.coll.BulkWrite(ctx, writes, options.BulkWrite().SetOrdered(true)); err != nil {
 		r.logger.WithMethod("Reorder").Error("failed to reorder mods", zap.Error(err))
 		return err
 	}

@@ -10,10 +10,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/lasthearth/vsservice/internal/mod/internal/model"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
@@ -50,6 +52,12 @@ var (
 	errArchiveTooLarge = errors.New("the required mods exceed the archive cap")
 	// errArchiveNoSpace is a disk without room for the build.
 	errArchiveNoSpace = errors.New("not enough free disk space for the archive")
+	// errArchiveUnbounded is a build that nothing would cap.
+	errArchiveUnbounded = errors.New("the archive has no size bound")
+
+	// maxEntryNameBytes caps one entry's name. A longer one makes CreateHeader
+	// fail the whole build, and no extractor or filesystem would have used it.
+	maxEntryNameBytes = 255
 )
 
 // Archive packs the required mods into one zip and serves it over plain HTTP.
@@ -83,6 +91,16 @@ type Archive struct {
 
 // NewArchive prepares the archive folder and sweeps what an earlier run left.
 func NewArchive(mods RequiredMods, client *moddb.Client, log logger.Logger, cfg config.Config) (*Archive, error) {
+	if cfg.ModsArchiveMaxBytes < 0 {
+		// Every consumer reads the cap as "no cap" when it is not positive, and
+		// a negative one also skips the free-space check. Refusing to start is
+		// the only answer that does not silently remove both bounds; 0 is how an
+		// operator asks for no cap.
+		return nil, fmt.Errorf(
+			"MODS_ARCHIVE_MAX_BYTES is %d: a negative cap bounds nothing, use 0 for no cap",
+			cfg.ModsArchiveMaxBytes)
+	}
+
 	dir := cfg.ModsArchiveDir
 	if dir == "" {
 		dir = filepath.Join(os.TempDir(), "vsservice-mods")
@@ -136,6 +154,9 @@ func (a *Archive) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, errArchiveNoSpace):
 			a.log.Warn("not enough free disk space to build the archive", zap.Error(err))
 			http.Error(w, "the archive cannot be built right now", http.StatusServiceUnavailable)
+		case errors.Is(err, errArchiveUnbounded):
+			a.log.Error("the archive has no size bound", zap.Error(err))
+			http.Error(w, "the archive is not configured", http.StatusInternalServerError)
 		default:
 			a.log.Error("failed to build the archive", zap.Error(err))
 			http.Error(w, "could not build the archive", http.StatusBadGateway)
@@ -148,6 +169,9 @@ func (a *Archive) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// archive folder, never one a caller names.
 	file, err := os.Open(path)
 	if err != nil {
+		// The file is gone: drop it from the cache, so the next request rebuilds
+		// rather than answering 500 until the mod list happens to change.
+		a.forget(path)
 		a.log.Error("failed to open the built archive", zap.Error(err))
 		http.Error(w, "could not read the archive", http.StatusInternalServerError)
 
@@ -179,26 +203,20 @@ func (a *Archive) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // announced every player clicking "download everything" would start pulling
 // every mod out of ModDB at once.
 func (a *Archive) file(ctx context.Context, key string, mods []model.Mod) (string, error) {
-	a.mu.Lock()
-	if a.key == key && a.path != "" {
-		path := a.path
-		a.mu.Unlock()
-
+	if path, ok := a.cached(key); ok {
 		return path, nil
 	}
-	a.mu.Unlock()
 
-	built, err, _ := a.group.Do(key, func() (any, error) {
+	// DoChan rather than Do: a build can take minutes, and a caller who hangs up
+	// should stop holding a goroutine and a connection for it. The build was
+	// started without this caller's cancellation, so everyone else waiting on the
+	// same key still gets it.
+	wait := a.group.DoChan(key, func() (any, error) {
 		// Another request may have finished this very key while this one waited
 		// for its turn.
-		a.mu.Lock()
-		if a.key == key && a.path != "" {
-			path := a.path
-			a.mu.Unlock()
-
+		if path, ok := a.cached(key); ok {
 			return path, nil
 		}
-		a.mu.Unlock()
 
 		buildCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), archiveBuildTimeout)
 		defer cancel()
@@ -212,18 +230,76 @@ func (a *Archive) file(ctx context.Context, key string, mods []model.Mod) (strin
 		a.key, a.path = key, path
 		a.mu.Unlock()
 
-		// Whatever else is in the folder is for versions nobody is served any
-		// more. A player still downloading an older archive keeps reading it:
-		// removing an open file only unlinks its name.
+		// Whatever else is finished in the folder is for versions nobody is
+		// served any more. A player still downloading an older archive keeps
+		// reading it: removing an open file only unlinks its name.
 		a.sweep(path)
 
 		return path, nil
 	})
-	if err != nil {
-		return "", err
+
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case result := <-wait:
+		if result.Err != nil {
+			return "", result.Err
+		}
+
+		path, _ := result.Val.(string)
+
+		return path, nil
+	}
+}
+
+// cached is the built archive for key, when the file is still on disk. The
+// folder is not private to this process - a second replica starting up sweeps
+// it, and a cleaner for the temporary folder empties it - so a remembered name
+// is checked rather than trusted.
+func (a *Archive) cached(key string) (string, bool) {
+	a.mu.Lock()
+	path, hit := a.path, a.key == key && a.path != ""
+	a.mu.Unlock()
+
+	if !hit {
+		return "", false
+	}
+	if _, err := os.Stat(path); err != nil {
+		a.forget(path)
+
+		return "", false
 	}
 
-	return built.(string), nil
+	return path, true
+}
+
+// forget drops a cached path, so the next request rebuilds instead of answering
+// from a file that is gone.
+func (a *Archive) forget(path string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.path == path {
+		a.key, a.path = "", ""
+	}
+}
+
+// finishedBytes is the size of the archive being served now: the room a build
+// has to leave for the players still downloading it.
+func (a *Archive) finishedBytes() int64 {
+	a.mu.Lock()
+	path := a.path
+	a.mu.Unlock()
+
+	if path == "" {
+		return 0
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0
+	}
+
+	return info.Size()
 }
 
 // build downloads every required mod into a new file. A mod that cannot be read
@@ -239,25 +315,39 @@ func (a *Archive) build(ctx context.Context, key string, mods []model.Mod) (path
 		return "", errArchiveTooLarge
 	}
 
-	// A zip of stored entries is the files plus a few hundred bytes of headers
-	// each; twice the files leaves room for that and for the old archive a
-	// player may still be downloading.
+	// What the build needs is the new archive plus the finished one a player may
+	// still be downloading. Both are measured rather than assumed: the new file
+	// cannot outgrow the cap, because cappedWriter stops the build there, and the
+	// old one is on disk. Assuming twice the cap instead refused a build a small
+	// volume had room for, whenever ModDB reported no size for one mod.
 	need := expected
 	if !known {
 		need = a.maxBytes
 	}
-	if free, ok := freeBytes(a.dir); ok && need > 0 && free < 2*need {
-		return "", fmt.Errorf("%w: %d bytes free, %d wanted", errArchiveNoSpace, free, 2*need)
+	if need <= 0 {
+		// No size is known and no cap is set, so nothing bounds what this build
+		// writes. Refusing beats filling the volume the rest of the service runs
+		// on; MODS_ARCHIVE_MAX_BYTES is what removes the refusal.
+		return "", fmt.Errorf("%w: no mod reported a size and the cap is 0", errArchiveUnbounded)
+	}
+
+	want := need + a.finishedBytes()
+	if free, ok := freeBytes(a.dir); ok && free < want {
+		return "", fmt.Errorf("%w: %d bytes free, %d wanted", errArchiveNoSpace, free, want)
 	}
 
 	path = filepath.Join(a.dir, archivePrefix+key+archiveSuffix)
-	part := path + archivePartSuffix
 
-	//nolint:gosec // G304: the name is built from the archive key, a hex hash.
-	file, err := os.OpenFile(part, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	// The name being written carries a random part and is created exclusively.
+	// A predictable name in a folder this process may not have created can be
+	// replaced by a symlink first, and the build would then truncate whatever it
+	// pointed at and publish the result on a public route. The random part still
+	// matches isArchiveFile, so the sweep at start cleans up a crashed build.
+	file, err := os.CreateTemp(a.dir, archivePrefix+key+"-*"+archiveSuffix+archivePartSuffix)
 	if err != nil {
 		return "", err
 	}
+	part := file.Name()
 
 	defer func() {
 		if err != nil {
@@ -307,6 +397,14 @@ func (a *Archive) sweep(keep string) {
 		if path == keep {
 			continue
 		}
+		// A file still being written belongs to a build for another key. Only one
+		// key is deduped at a time, so two builds run in parallel when the list
+		// changes mid-download, and unlinking the other's part would make its
+		// rename fail after every byte had been downloaded. The sweep at start
+		// passes no keep and does remove them: nothing is being written then.
+		if keep != "" && strings.HasSuffix(name, archivePartSuffix) {
+			continue
+		}
 
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			a.log.Warn("failed to remove an old archive", zap.String("file", name), zap.Error(err))
@@ -318,13 +416,15 @@ func (a *Archive) sweep(keep string) {
 // stored rather than deflated: a mod file is already a zip, so compressing it
 // again buys a percent for the whole cost of running it through the packer.
 func (a *Archive) pack(ctx context.Context, writer *zip.Writer, mods []model.Mod) error {
+	taken := make(map[string]struct{}, len(mods))
+
 	for _, mod := range mods {
 		if mod.Release == nil {
 			return fmt.Errorf("mod %s has no chosen version", mod.ModId)
 		}
 
 		header := &zip.FileHeader{
-			Name:     mod.Release.FileName,
+			Name:     entryName(mod.Release.FileName, mod.ModId+"-"+mod.Release.Version+".zip", taken),
 			Method:   zip.Store,
 			Modified: mod.Release.ReleasedAt,
 		}
@@ -354,6 +454,52 @@ func (a *Archive) pack(ctx context.Context, writer *zip.Writer, mods []model.Mod
 	return nil
 }
 
+// entryName is the name one mod's file carries inside the archive.
+//
+// The name comes from ModDB, so it is treated as hostile. A path component
+// would let an extractor write outside the folder the player chose; a backslash
+// or a leading separator means the same to a different extractor; an empty name
+// produces an archive Windows refuses to open. Two mods that share a file name
+// get the second one numbered, because an extractor keeps only one of two
+// entries with the same name and the player would silently miss a required mod.
+func entryName(fileName, fallback string, taken map[string]struct{}) string {
+	name := path.Base(strings.ReplaceAll(strings.TrimSpace(fileName), "\\", "/"))
+	switch name {
+	case "", ".", "/", "..":
+		name = fallback
+	}
+
+	// Keep the extension: the game's loader and the player's extractor both go
+	// by it, so a name cut at the limit still ends in .zip. The cut backs up to
+	// a rune boundary, because the zip writer flags the name as UTF-8 and half a
+	// rune makes a strict extractor refuse the entry.
+	if len(name) > maxEntryNameBytes {
+		ext := path.Ext(name)
+		keep := maxEntryNameBytes - len(ext)
+		if keep <= 0 {
+			ext, keep = "", maxEntryNameBytes
+		}
+		for keep > 0 && !utf8.RuneStart(name[keep]) {
+			keep--
+		}
+
+		name = name[:keep] + ext
+	}
+
+	unique := name
+	for n := 2; ; n++ {
+		if _, used := taken[unique]; !used {
+			break
+		}
+
+		ext := path.Ext(unique)
+		unique = fmt.Sprintf("%s-%d%s", strings.TrimSuffix(name, ext), n, ext)
+	}
+	taken[unique] = struct{}{}
+
+	return unique
+}
+
 // archiveKey names one set of required mods: their ids and the versions the
 // server runs, in display order.
 //
@@ -368,6 +514,16 @@ func archiveKey(mods []model.Mod) string {
 		_, _ = io.WriteString(hash, "\x00")
 		_, _ = io.WriteString(hash, mod.Version())
 		_, _ = io.WriteString(hash, "\x00")
+		// The file the version points at, not only the version. ModDB can replace
+		// the bytes behind one version, and a refresh that records the new file
+		// has to force a rebuild: without this the archive keeps serving the
+		// superseded build while the list already reports the new size.
+		if mod.Release != nil {
+			_, _ = io.WriteString(hash, mod.Release.FileURL)
+			_, _ = io.WriteString(hash, "\x00")
+			_, _ = io.WriteString(hash, mod.Release.FileName)
+			_, _ = io.WriteString(hash, "\x00")
+		}
 	}
 
 	return hex.EncodeToString(hash.Sum(nil))[:16]

@@ -29,6 +29,20 @@ const BaseURL = "https://mods.vintagestory.at"
 // userAgent identifies this service to ModDB.
 const userAgent = "lasthearth-vsservice"
 
+// fileHosts are the hosts ModDB serves mod files and logos from: the API host
+// itself and its CDN. Both the file this service downloads and the URL it hands
+// the site are checked against them.
+//
+// ModDB names those URLs in its own answer, so without a check the service
+// fetches whatever that field says. An address inside the network this runs in
+// would be fetched from here and served back to any player through the public
+// archive route, and the same string reaches the site as an image source or a
+// download link it renders as its own.
+var fileHosts = map[string]struct{}{
+	"mods.vintagestory.at":     {},
+	"moddbcdn.vintagestory.at": {},
+}
+
 // apiTimeout bounds one ModDB API call. ModDB answers in milliseconds when it
 // answers at all; ten seconds is where the site should say "try later" instead
 // of holding the admin's request open.
@@ -47,6 +61,11 @@ var (
 	// ErrInvalidRef reports a query that names no ModDB mod: empty text, a link
 	// to another site, or a path ModDB does not serve.
 	ErrInvalidRef = errors.New("moddb: not a moddb reference")
+	// ErrAssetIDRef reports a ModDB page link, whose number is an asset id and
+	// not the mod id the API resolves. It is a kind of ErrInvalidRef, so a caller
+	// that only tells a bad reference from a good one still refuses it.
+	ErrAssetIDRef = fmt.Errorf("%w: %s", ErrInvalidRef,
+		"a page link carries an asset id, which the ModDB API cannot resolve")
 )
 
 // Client reads ModDB. The zero value is not usable; use New.
@@ -61,9 +80,10 @@ func New() *Client {
 	return &Client{
 		baseURL: BaseURL,
 		api:     &http.Client{Timeout: apiTimeout},
-		// A mod file is megabytes and the gateway streams it to the player, so
-		// a download is bounded by the request context, not by a client
-		// timeout: cutting off a slow download would break the archive.
+		// A mod file is megabytes, so a download gets no client timeout: cutting
+		// one off mid-body would break the archive. What bounds it is the context
+		// the caller passes, which for a build is one budget over the whole
+		// archive rather than one per file.
 		files: &http.Client{},
 	}
 }
@@ -103,8 +123,23 @@ func (r Release) ReleasedAt() time.Time {
 	return t.UTC()
 }
 
-// GetMod reads one mod. ref is an asset id, a url alias or a mod id — the three
-// keys mods.vintagestory.at/api/mod/{key} accepts.
+// AllowedURL reports whether raw is an https URL on a host ModDB owns. A caller
+// stores or fetches a URL from a ModDB answer only after this says yes: the
+// answer is third-party data, and the archive route that serves what was
+// fetched is public.
+func AllowedURL(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Scheme != "https" {
+		return false
+	}
+
+	_, ok := fileHosts[strings.ToLower(parsed.Hostname())]
+
+	return ok
+}
+
+// GetMod reads one mod. ref is a url alias or a mod id, the two keys
+// mods.vintagestory.at/api/mod/{key} accepts; ParseRef produces one.
 func (c *Client) GetMod(ctx context.Context, ref string) (*Mod, error) {
 	endpoint := c.baseURL + "/api/mod/" + url.PathEscape(ref)
 
@@ -134,11 +169,17 @@ func (c *Client) GetMod(ctx context.Context, ref string) (*Mod, error) {
 		return nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
 	}
 
-	if payload.StatusCode == bodyStatusNotFound || payload.Mod == nil {
+	// The status first. ModDB states a failure in the body with no mod beside
+	// it, and testing the missing mod first reported every one of them as "no
+	// such mod": an upstream 400 or 500 then read as a mod that was pulled from
+	// ModDB, and the admin removed it from the list instead of retrying.
+	switch {
+	case payload.StatusCode == bodyStatusNotFound:
 		return nil, ErrNotFound
-	}
-	if payload.StatusCode != bodyStatusOK {
+	case payload.StatusCode != bodyStatusOK:
 		return nil, fmt.Errorf("%w: status %s", ErrUnavailable, payload.StatusCode)
+	case payload.Mod == nil:
+		return nil, ErrNotFound
 	}
 
 	return payload.Mod, nil

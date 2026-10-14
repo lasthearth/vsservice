@@ -19,9 +19,12 @@ func TestParseRef(t *testing.T) {
 			want:  "carryon",
 		},
 		{
-			name:  "an asset id link",
+			// A page link carries an asset id, and /api/mod/{n} resolves a mod
+			// id: /show/mod/4405 is Carry On's page while /api/mod/4405 answers
+			// Goblin Voices. Resolving it would store the wrong mod.
+			name:  "a page link is refused, not resolved to another mod",
 			query: "https://mods.vintagestory.at/show/mod/4405",
-			want:  "4405",
+			err:   ErrAssetIDRef,
 		},
 		{
 			name:  "a bare alias",
@@ -29,9 +32,10 @@ func TestParseRef(t *testing.T) {
 			want:  "carryon",
 		},
 		{
-			name:  "a bare asset id",
-			query: "4405",
-			want:  "4405",
+			// A bare number is a mod id, which is what the API takes.
+			name:  "a bare mod id",
+			query: "890",
+			want:  "890",
 		},
 		{
 			name:  "a mod id with a dash",
@@ -76,6 +80,11 @@ func TestParseRef(t *testing.T) {
 		{
 			name:  "a show path without a mod",
 			query: "https://mods.vintagestory.at/show/mod",
+			err:   ErrInvalidRef,
+		},
+		{
+			name:  "a page link whose number is not a number",
+			query: "https://mods.vintagestory.at/show/mod/carryon!",
 			err:   ErrInvalidRef,
 		},
 	}
@@ -126,6 +135,35 @@ func TestSummary(t *testing.T) {
 			name: "a description without a full stop is kept whole",
 			text: "<p>No punctuation here</p>",
 			want: "No punctuation here",
+		},
+		{
+			// A version number opens a great many ModDB descriptions. Cutting at
+			// the first period byte stored "1." as the whole summary of a mod
+			// whose text opens "1.17.9 Patched an Exploit...".
+			name: "a period inside a version number ends no sentence",
+			text: "<p>1.17.9 Patched an exploit. Also fixed a crash.</p>",
+			want: "1.17.9 Patched an exploit.",
+		},
+		{
+			// An abbreviation still reads as a sentence end. What matters is
+			// that the cut lands on a boundary rather than inside a token.
+			name: "an abbreviation ends the sentence early but whole",
+			text: "<p>Adds new blocks, e.g. quartz and marble.</p>",
+			want: "Adds new blocks, e.g.",
+		},
+		{
+			// Carry On's real description opens with a link, and a stripped
+			// inline tag leaves a space where it stood.
+			name: "a sentence that ended in a link keeps no stray space",
+			text: "<p>Fork of the mod by copygirl - <a href=\"https://mods.vintagestory.at/show/mod/38\">CarryCapacity</a>. Carry On lets you pick up blocks.</p>",
+			want: "Fork of the mod by copygirl - CarryCapacity.",
+		},
+		{
+			// ModDB descriptions open with a zero-width space and indent with
+			// no-break space runs, neither of which \s matches.
+			name: "a zero-width and a no-break space are whitespace",
+			text: "<p>\u200bNote:\u00a0v5 is out.</p>",
+			want: "Note: v5 is out.",
 		},
 		{
 			name: "empty",

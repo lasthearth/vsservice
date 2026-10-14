@@ -17,14 +17,19 @@ const host = "mods.vintagestory.at"
 var keyPattern = regexp.MustCompile("^[A-Za-z0-9_-]+$")
 
 // ParseRef turns what an admin typed into the key that
-// mods.vintagestory.at/api/mod/{key} takes.
+// mods.vintagestory.at/api/mod/{key} takes. The key is a url alias or a mod id.
 //
 // The admin panel promises these shapes:
 //
-//	https://mods.vintagestory.at/carryon       -> carryon
-//	https://mods.vintagestory.at/show/mod/4405 -> 4405
-//	carryon                                    -> carryon
-//	4405                                       -> 4405
+//	https://mods.vintagestory.at/carryon -> carryon
+//	carryon                              -> carryon
+//	890                                  -> 890   (Carry On's mod id)
+//
+// A page link of the form /show/mod/{N} is refused rather than resolved, because
+// its N is an asset id and the API takes a mod id: /show/mod/4405 is Carry On's
+// page, while /api/mod/4405 answers Goblin Voices. ModDB offers no lookup by
+// asset id, so passing the number on would store a different mod than the one
+// the admin was looking at and report no error. See ErrAssetIDRef.
 //
 // Anything else — an empty query, a link to another site, a path ModDB does not
 // serve — is ErrInvalidRef, so a typo is answered at once instead of with a
@@ -59,14 +64,22 @@ func ParseRef(query string) (string, error) {
 	case len(segments) == 1:
 		return bareRef(segments[0])
 	case len(segments) == 3 && segments[0] == "show" && segments[1] == "mod":
-		return bareRef(segments[2])
+		// The number here is an asset id, and /api/mod/{n} resolves a mod id. The
+		// two name different mods, and a lookup that returned one would store the
+		// wrong mod as required and say nothing about it.
+		if _, err := bareRef(segments[2]); err != nil {
+			return "", ErrInvalidRef
+		}
+
+		return "", ErrAssetIDRef
 	default:
 		return "", ErrInvalidRef
 	}
 }
 
 // PageURL is the mod's page on ModDB: its alias when it has one, and the
-// numeric asset page otherwise.
+// numeric asset page otherwise. It is a link for a reader to open, not a
+// lookup key: the asset form is what ParseRef refuses.
 func PageURL(urlAlias string, assetID int) string {
 	if strings.TrimSpace(urlAlias) != "" {
 		return BaseURL + "/" + urlAlias
