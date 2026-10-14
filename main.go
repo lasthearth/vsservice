@@ -16,6 +16,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/lfg"
 	"github.com/lasthearth/vsservice/internal/mail"
 	"github.com/lasthearth/vsservice/internal/media"
+	"github.com/lasthearth/vsservice/internal/mod"
 	"github.com/lasthearth/vsservice/internal/news"
 	"github.com/lasthearth/vsservice/internal/notification"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
@@ -107,6 +108,7 @@ func main() {
 		reaction.App,
 		lfg.App,
 		appearance.App,
+		mod.App,
 	)
 
 	a.Run()

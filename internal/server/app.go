@@ -14,6 +14,7 @@ import (
 	lfgv1 "github.com/lasthearth/vsservice/gen/lfg/v1"
 	mailv1 "github.com/lasthearth/vsservice/gen/mail/v1"
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
+	modv1 "github.com/lasthearth/vsservice/gen/mod/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
 	progressionv1 "github.com/lasthearth/vsservice/gen/progression/v1"
@@ -25,6 +26,7 @@ import (
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
+	"github.com/lasthearth/vsservice/internal/mod"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
@@ -64,6 +66,9 @@ type Opts struct {
 	LfgV1           lfgv1.LfgServiceServer
 	AppearanceV1    appearancev1.AppearanceServiceServer
 	WikiV1          wikiv1.WikiServiceServer
+	ModV1           modv1.ModServiceServer
+	// ModArchive is the plain-HTTP route the gRPC services cannot serve.
+	ModArchive mod.ArchiveHandler
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -95,6 +100,8 @@ type Server struct {
 	lfgV1               lfgv1.LfgServiceServer
 	appearanceV1        appearancev1.AppearanceServiceServer
 	wikiV1              wikiv1.WikiServiceServer
+	modV1               modv1.ModServiceServer
+	modArchive          mod.ArchiveHandler
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -131,6 +138,8 @@ func New(opts Opts) *Server {
 		lfgV1:               opts.LfgV1,
 		appearanceV1:        opts.AppearanceV1,
 		wikiV1:              opts.WikiV1,
+		modV1:               opts.ModV1,
+		modArchive:          opts.ModArchive,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}

@@ -1,0 +1,210 @@
+syntax = "proto3";
+
+package mod.v1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// ModService is the list of game-server mods shown on the site's /mods page.
+// Reading the public list and the archive is open; managing it reuses the news
+// scope, because the people who publish news run the site's content.
+service ModService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Public: mods players see, in display order. HIDDEN mods are left out.
+  rpc ListMods(ListModsRequest) returns (ListModsResponse) {
+    option (google.api.http) = {get: "/v1/mods"};
+  }
+
+  // Staff: every mod including HIDDEN, each with its recent releases.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): missing news:create
+  rpc ListModsAdmin(ListModsAdminRequest) returns (ListModsAdminResponse) {
+    option (google.api.http) = {get: "/v1/mods/manage"};
+  }
+
+  // Staff: look a mod up on ModDB before adding it. Nothing is stored.
+  //
+  // query accepts a ModDB link (https://mods.vintagestory.at/carryon,
+  // https://mods.vintagestory.at/show/mod/4405), an alias, a mod id or an asset id.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): empty query or a link to another site
+  //   - NOT_FOUND (404): ModDB has no such mod
+  //   - UNAVAILABLE (503): ModDB did not answer in 10 s
+  rpc LookupMod(LookupModRequest) returns (LookupModResponse) {
+    option (google.api.http) = {get: "/v1/mods/lookup"};
+  }
+
+  // Staff: add a mod at a chosen version. It goes to the top of the list.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): unknown version, UNSPECIFIED audience, note over 160 chars
+  //   - NOT_FOUND (404): ModDB has no such mod
+  //   - ALREADY_EXISTS (409): the mod is already in the list
+  //   - UNAVAILABLE (503): ModDB did not answer
+  rpc AddMod(AddModRequest) returns (Mod) {
+    option (google.api.http) = {post: "/v1/mods" body: "*"};
+  }
+
+  // Staff: change version, audience or note. Unset fields stay as they are.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): unknown version, UNSPECIFIED audience, note over 160 chars
+  //   - NOT_FOUND (404): the mod is not in the list
+  //   - UNAVAILABLE (503): ModDB did not answer while a new version was fetched
+  rpc UpdateMod(UpdateModRequest) returns (Mod) {
+    option (google.api.http) = {patch: "/v1/mods/{id}" body: "*"};
+  }
+
+  // Staff: remove a mod from the list.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): the mod is not in the list
+  rpc DeleteMod(DeleteModRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/v1/mods/{id}"};
+  }
+
+  // Staff: set the display order. ids must hold every mod exactly once.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): ids differ from the stored set
+  rpc ReorderMods(ReorderModsRequest) returns (ListModsAdminResponse) {
+    option (google.api.http) = {put: "/v1/mods/order" body: "*"};
+  }
+
+  // Staff: re-read every mod from ModDB: name, author, logo, side, summary,
+  // releases and latest_version. The chosen versions are never changed.
+  //
+  // A mod ModDB fails on keeps its old data; the call still succeeds.
+  rpc RefreshMods(RefreshModsRequest) returns (ListModsAdminResponse) {
+    option (google.api.http) = {post: "/v1/mods:refresh" body: "*"};
+  }
+}
+
+// Who needs the mod.
+enum ModAudience {
+  MOD_AUDIENCE_UNSPECIFIED = 0;
+  // Without it the game will not join the server.
+  MOD_AUDIENCE_REQUIRED = 1;
+  // Client-side extra players may install.
+  MOD_AUDIENCE_OPTIONAL = 2;
+  // Server-only; not shown to players and not in the archive.
+  MOD_AUDIENCE_HIDDEN = 3;
+}
+
+// Where the mod runs, as ModDB states it.
+enum ModSide {
+  MOD_SIDE_UNSPECIFIED = 0;
+  MOD_SIDE_BOTH = 1;
+  MOD_SIDE_CLIENT = 2;
+  MOD_SIDE_SERVER = 3;
+}
+
+message ModRelease {
+  // ModDB's modversion, e.g. "2.0.0".
+  string version = 1;
+  // ModDB tags: the game versions the release runs on.
+  repeated string game_versions = 2;
+  // ModDB mainfile: the direct link to the file.
+  string file_url = 3;
+  string file_name = 4;
+  // Bytes; 0 when unknown.
+  int64 file_size = 5;
+  google.protobuf.Timestamp released_at = 6;
+}
+
+message Mod {
+  // The releases' modidstr, e.g. "carryon".
+  string id = 1;
+  string name = 2;
+  string author = 3;
+  // Empty when the mod has no logo.
+  string logo_url = 4;
+  // https://mods.vintagestory.at/<urlalias>, else /show/mod/<assetid>.
+  string moddb_url = 5;
+  ModSide side = 6;
+  ModAudience audience = 7;
+  // The staff's Russian one-liner, at most 160 characters.
+  string note = 8;
+  // The first sentence of the ModDB text, plain, at most 200 characters.
+  string summary = 9;
+  // The version the server runs.
+  ModRelease release = 10;
+  // The newest ModDB version; empty when release is the newest.
+  string latest_version = 11;
+  // 0 is the first.
+  int32 position = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  // Newest first, at most 15. Only in ListModsAdmin, ReorderMods and
+  // RefreshMods.
+  repeated ModRelease releases = 14;
+}
+
+// The "download everything" archive: REQUIRED mods only.
+message ModArchive {
+  // "/v1/mods/archive.zip".
+  string url = 1;
+  // Required mods in it.
+  int32 count = 2;
+  // The sum of their file_size; 0 when any of them is unknown.
+  int64 size = 3;
+  // The newest updated_at among them.
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message ListModsRequest {}
+
+message ListModsResponse {
+  repeated Mod mods = 1;
+  // Unset when there is no required mod.
+  ModArchive archive = 2;
+}
+
+message ListModsAdminRequest {}
+
+message ListModsAdminResponse {
+  repeated Mod mods = 1;
+}
+
+message LookupModRequest {
+  string query = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message LookupModResponse {
+  // audience UNSPECIFIED, release unset.
+  Mod mod = 1;
+  // Newest first, at most 15.
+  repeated ModRelease releases = 2;
+}
+
+message AddModRequest {
+  // The same forms as LookupMod.
+  string query = 1 [(google.api.field_behavior) = REQUIRED];
+  // One of the releases.
+  string version = 2 [(google.api.field_behavior) = REQUIRED];
+  ModAudience audience = 3;
+  string note = 4;
+}
+
+message UpdateModRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  optional string version = 2;
+  optional ModAudience audience = 3;
+  optional string note = 4;
+}
+
+message DeleteModRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ReorderModsRequest {
+  repeated string ids = 1;
+}
+
+message RefreshModsRequest {}

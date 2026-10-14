@@ -28,6 +28,7 @@ import (
 	lfgv1 "github.com/lasthearth/vsservice/gen/lfg/v1"
 	mailv1 "github.com/lasthearth/vsservice/gen/mail/v1"
 	mediav1 "github.com/lasthearth/vsservice/gen/media/v1"
+	modv1 "github.com/lasthearth/vsservice/gen/mod/v1"
 	newsv1 "github.com/lasthearth/vsservice/gen/news/v1"
 	notificationv1 "github.com/lasthearth/vsservice/gen/notification/v1"
 	progressionv1 "github.com/lasthearth/vsservice/gen/progression/v1"
@@ -128,6 +129,7 @@ func (s *Server) Build() error {
 	reactionv1.RegisterReactionServiceServer(srv, s.reactionV1)
 	lfgv1.RegisterLfgServiceServer(srv, s.lfgV1)
 	appearancev1.RegisterAppearanceServiceServer(srv, s.appearanceV1)
+	modv1.RegisterModServiceServer(srv, s.modV1)
 	reflection.Register(srv)
 
 	// After registration so GetServiceInfo() sees every service. Fails startup
@@ -267,6 +269,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 		return errors.Wrap(err, "register appearance service handler")
 	}
 
+	if err := modv1.RegisterModServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register mod service handler")
+	}
+
 	handler := cors.New(cors.Options{
 		AllowedOrigins: s.corsAllowedOrigins(),
 		AllowedMethods: []string{
@@ -296,6 +302,15 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 		s.logtoWebhookService.HandleWebhook(w, r)
 	}); err != nil {
 		return errors.Wrap(err, "register logto webhook handler")
+	}
+
+	// The mods archive is a file, not a message: it is built once from the
+	// required mods and streamed with range support, which the gRPC gateway
+	// cannot do for a response this shape.
+	if err := mux.HandlePath("GET", "/v1/mods/archive.zip", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+		s.modArchive.ServeHTTP(w, r)
+	}); err != nil {
+		return errors.Wrap(err, "register mod archive handler")
 	}
 
 	wshandler := wsproxy.WebsocketProxy(handler)
