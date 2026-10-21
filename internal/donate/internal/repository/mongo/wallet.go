@@ -40,37 +40,8 @@ func (r *Repository) AddCoinsToWallet(ctx context.Context, playerID, playerName 
 
 	now := time.Now()
 	filter := bson.M{"player_id": playerID}
+	update := addCoinsUpdate(playerName, amount, mongox.NewModel().Id, now)
 
-	setFields := bson.D{{Key: "updated_at", Value: now}}
-	setOnInsertFields := bson.D{
-		{Key: "_id", Value: mongox.NewModel().Id},
-		{Key: "created_at", Value: now},
-		// Start the optimistic-concurrency counter, so a wallet created here is
-		// not stuck on the guard's "missing or zero" branch, which two
-		// concurrent UpdateWallet calls could both satisfy once.
-		{Key: "version", Value: int64(1)},
-	}
-	// An empty playerName means the caller has no display name to report
-	// (e.g. cross-domain credits like referral rewards). Only overwrite an
-	// existing wallet's player_name when a non-empty name is supplied, so
-	// such calls don't blank out a name set by a previous call.
-	if playerName != "" {
-		setFields = append(setFields, bson.E{Key: "player_name", Value: playerName})
-	} else {
-		setOnInsertFields = append(setOnInsertFields, bson.E{Key: "player_name", Value: playerName})
-	}
-
-	update := bson.D{
-		// The version moves with every credit. A $inc that leaves version
-		// alone is invisible to UpdateWallet's guarded ReplaceOne: an
-		// in-flight withdrawal that read the document before the credit
-		// still matches the old version and replaces the whole document,
-		// silently erasing the credited coins. Moving the version makes the
-		// guard lose, reload and re-apply the withdrawal on fresh state.
-		{Key: "$inc", Value: bson.D{{Key: "coins", Value: amount}, {Key: "version", Value: int64(1)}}},
-		{Key: "$set", Value: setFields},
-		{Key: "$setOnInsert", Value: setOnInsertFields},
-	}
 	opts := options.FindOneAndUpdate().
 		SetUpsert(true).
 		SetReturnDocument(options.After)
@@ -83,6 +54,46 @@ func (r *Repository) AddCoinsToWallet(ctx context.Context, playerID, playerName 
 	}
 
 	return d.Coins, nil
+}
+
+// addCoinsUpdate builds the credit's update document. id seeds the wallet when
+// the upsert inserts one.
+//
+// One path may appear in one operator only. MongoDB rejects a document that
+// names the same path twice with "Updating the path 'X' would create a conflict
+// at 'X'", and it rejects it on the update path too, not just on the insert — so
+// one repeated field breaks every credit, for every player. version lives in
+// $inc alone: on an insert the increment itself creates it at 1, which keeps a
+// new wallet off the guard's "missing or zero" branch in mongox.UpdateDoc, a
+// branch two concurrent UpdateWallet calls could both satisfy once.
+func addCoinsUpdate(playerName string, amount int64, id bson.ObjectID, now time.Time) bson.D {
+	setFields := bson.D{{Key: "updated_at", Value: now}}
+	setOnInsertFields := bson.D{
+		{Key: "_id", Value: id},
+		{Key: "created_at", Value: now},
+	}
+
+	// An empty playerName means the caller has no display name to report
+	// (e.g. cross-domain credits like referral rewards). Only overwrite an
+	// existing wallet's player_name when a non-empty name is supplied, so
+	// such calls don't blank out a name set by a previous call.
+	if playerName != "" {
+		setFields = append(setFields, bson.E{Key: "player_name", Value: playerName})
+	} else {
+		setOnInsertFields = append(setOnInsertFields, bson.E{Key: "player_name", Value: playerName})
+	}
+
+	return bson.D{
+		// The version moves with every credit. A $inc that leaves version
+		// alone is invisible to UpdateWallet's guarded ReplaceOne: an
+		// in-flight withdrawal that read the document before the credit
+		// still matches the old version and replaces the whole document,
+		// silently erasing the credited coins. Moving the version makes the
+		// guard lose, reload and re-apply the withdrawal on fresh state.
+		{Key: "$inc", Value: bson.D{{Key: "coins", Value: amount}, {Key: "version", Value: int64(1)}}},
+		{Key: "$set", Value: setFields},
+		{Key: "$setOnInsert", Value: setOnInsertFields},
+	}
 }
 
 // ListWallets returns all wallets sorted by coins DESC, cursor-paginated.
