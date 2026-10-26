@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"mime"
-	"regexp"
 	"strings"
 	"time"
 
@@ -252,8 +251,9 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 		)
 	}
 
-	if !isValidNickname(req.GetNewNickname()) {
-		return nil, status.Error(codes.InvalidArgument, "invalid nickname format")
+	// The shape is checked before the read, so a malformed name costs no query.
+	if !model.ValidNickname(req.GetNewNickname()) {
+		return nil, model.ErrNicknameInvalid
 	}
 
 	player, err := s.dbRepo.GetUserById(ctx, req.GetUserId())
@@ -261,33 +261,33 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if player.UserGameName == req.GetNewNickname() {
-		return nil, status.Error(
-			codes.InvalidArgument,
-			"new nickname must be different from the current one",
-		)
+	if err := player.CheckNicknameChange(req.GetNewNickname()); err != nil {
+		return nil, err
 	}
 
 	now := time.Now()
 
-	// Check cooldown period - 6 months = 183 days = 183 * 24 * 60 * 60 seconds
-	cd := time.Hour * 24 * 183
-
-	nextChangeAllowed := player.LastNicknameChangedAt.Add(cd)
-	if now.Before(nextChangeAllowed) {
+	// The cooldown is the model's, so a grant from an admin - which clears the
+	// recorded change - lifts it on this path without a second rule here.
+	if !player.CanChangeNickname(now) {
 		return nil, status.Error(
 			codes.FailedPrecondition,
-			"nickname change is on cooldown, try again after: "+nextChangeAllowed.Format(time.RFC3339),
+			"nickname change is on cooldown, try again after: "+
+				player.NicknameChangeAllowedAt().Format(time.RFC3339),
 		)
 	}
 
 	oldNickname := player.UserGameName
 
+	if err := player.SetNickname(req.GetNewNickname(), now); err != nil {
+		return nil, err
+	}
+
 	err = s.dbRepo.UpdatePlayerNickname(
 		ctx,
 		req.GetUserId(),
-		req.GetNewNickname(),
-		oldNickname,
+		player.UserGameName,
+		player.PreviousNickname,
 		now,
 	)
 	if err != nil {
@@ -300,13 +300,13 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 		nerr := s.sendAdminNotification(
 			bctx,
 			oldNickname,
-			req.GetNewNickname(),
+			player.UserGameName,
 		)
 		if nerr != nil {
 			s.log.Error("Failed to send admin notification for nickname change",
 				zap.String("player_id", req.GetUserId()),
 				zap.String("old_nickname", oldNickname),
-				zap.String("new_nickname", req.GetNewNickname()),
+				zap.String("new_nickname", player.UserGameName),
 				zap.Error(nerr),
 			)
 		}
@@ -314,22 +314,8 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 
 	return &userv1.ChangeNicknameResponse{
 		OldNickname: oldNickname,
-		NewNickname: req.GetNewNickname(),
+		NewNickname: player.UserGameName,
 	}, nil
-}
-
-// isValidNickname validates that the nickname is 15 characters or less and contains alphanumeric characters and special characters
-func isValidNickname(nickname string) bool {
-	if len(nickname) == 0 || len(nickname) > 15 {
-		return false
-	}
-
-	matched, err := regexp.MatchString(`^[a-zA-Z0-9_\-]+$`, nickname)
-	if err != nil || !matched {
-		return false
-	}
-
-	return true
 }
 
 // sendAdminNotification sends a notification to all admin users about a nickname change

@@ -71,4 +71,36 @@ func TestBuildUpdateSetWritesTheDescriptionAsOneDecision(t *testing.T) {
 			t.Errorf("update document = %v, want it empty", got)
 		}
 	})
+
+	// A grant clears the recorded change; a rename writes one. Both in the same
+	// document would name last_nickname_changed_at in $set and $unset, and
+	// MongoDB rejects the whole update for the path conflict.
+	t.Run("a grant removes the recorded change", func(t *testing.T) {
+		got := r.buildUpdateSet(model.PlayerUpdate{ClearNicknameCooldown: true})
+
+		unset, ok := got["$unset"].(bson.M)
+		if !ok {
+			t.Fatalf("$unset = %v, want the removed field", got["$unset"])
+		}
+		if _, present := unset["last_nickname_changed_at"]; !present {
+			t.Error("$unset does not remove last_nickname_changed_at")
+		}
+		if set, present := got["$set"]; present {
+			t.Errorf("$set = %v, want none: the field cannot be both written and removed", set)
+		}
+	})
+
+	t.Run("a grant wins over a timestamp in the same update", func(t *testing.T) {
+		got := r.buildUpdateSet(model.PlayerUpdate{
+			ClearNicknameCooldown: true,
+			LastNicknameChangedAt: &stamp,
+		})
+
+		if set, present := got["$set"]; present {
+			t.Errorf("$set = %v, want none", set)
+		}
+		if _, ok := got["$unset"].(bson.M); !ok {
+			t.Error("$unset is missing, so the cooldown would survive the grant")
+		}
+	})
 }

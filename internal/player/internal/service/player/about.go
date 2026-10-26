@@ -97,21 +97,9 @@ func (s *Service) HideAbout(
 	ctx context.Context,
 	req *userv1.HideAboutRequest,
 ) (*emptypb.Empty, error) {
-	// The reason reaches the player as a notification and the audit log as a
-	// field, and the two have to read the same, so it is bounded and stripped of
-	// the characters a description is refused for. The byte bound comes first: it
-	// is what keeps a multi-megabyte body from being copied and rewritten before
-	// the answer says it is too long.
-	if len(req.GetReason()) > model.MaxReasonRunes*utf8.UTFMax {
-		return nil, ierror.InvalidArgument("reason is longer than 500 characters")
-	}
-
-	reason := strings.TrimSpace(model.SanitizeReason(req.GetReason()))
-	if reason == "" {
-		return nil, ierror.InvalidArgument("reason is empty")
-	}
-	if utf8.RuneCountInString(reason) > model.MaxReasonRunes {
-		return nil, ierror.InvalidArgument("reason is longer than 500 characters")
+	reason, err := normalizeReason(req.GetReason(), true)
+	if err != nil {
+		return nil, err
 	}
 
 	player, err := s.dbRepo.GetUserById(ctx, req.GetUserId())
@@ -181,4 +169,29 @@ func (s *Service) HideAbout(
 		zap.String("reason", reason))
 
 	return &emptypb.Empty{}, nil
+}
+
+// normalizeReason bounds and cleans the reason a moderator gives for changing
+// someone else's profile. The reason reaches the player as a notification and
+// the audit log as a field, and the two have to read the same, so it is stripped
+// of the characters a description is refused for. The byte bound comes first:
+// it is what keeps a multi-megabyte body from being copied and rewritten before
+// the answer says it is too long.
+//
+// An optional reason may be empty: a rename or a grant needs no explanation.
+func normalizeReason(raw string, required bool) (string, error) {
+	if len(raw) > model.MaxReasonRunes*utf8.UTFMax {
+		return "", ierror.InvalidArgument("reason is longer than 500 characters")
+	}
+
+	reason := strings.TrimSpace(model.SanitizeReason(raw))
+	if reason == "" && required {
+		return "", ierror.InvalidArgument("reason is empty")
+	}
+
+	if utf8.RuneCountInString(reason) > model.MaxReasonRunes {
+		return "", ierror.InvalidArgument("reason is longer than 500 characters")
+	}
+
+	return reason, nil
 }

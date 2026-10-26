@@ -37,6 +37,10 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		// Writing a description is the caller's own; hiding one is moderation.
 		"/user.v1.UserService/UpdateMyAbout",
 		"/user.v1.UserService/HideAbout",
+		// Renaming someone else and lifting their cooldown are both moderated by
+		// their own scope in the player service.
+		"/user.v1.UserService/AdminChangeNickname",
+		"/user.v1.UserService/AdminGrantNicknameChange",
 		"/settlement.v1.SettlementTagService/CreateTag",
 		"/event.v1.EventService/CreateEvent",
 		"/event.v1.EventService/UpdateEvent",

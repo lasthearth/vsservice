@@ -24,11 +24,13 @@ import (
 // playerState is the stored state of one player the fake repository keeps. It
 // is a plain struct so a test can change it without writing model fields.
 type playerState struct {
-	id       string
-	gameName string
-	status   verification.Status
-	about    string
-	aboutAt  *time.Time
+	id         string
+	gameName   string
+	previous   string
+	lastChange time.Time
+	status     verification.Status
+	about      string
+	aboutAt    *time.Time
 }
 
 // write records one update the service asked the repository for.
@@ -37,11 +39,20 @@ type write struct {
 	update model.PlayerUpdate
 }
 
+// nickWrite records one nickname change the service asked the repository for.
+type nickWrite struct {
+	userId   string
+	old      string
+	new      string
+	lastSeen time.Time
+}
+
 type fakeRepo struct {
-	players map[string]*playerState
-	writes  []write
-	page    *model.PlayerListPage
-	listErr error
+	players    map[string]*playerState
+	writes     []write
+	nickWrites []nickWrite
+	page       *model.PlayerListPage
+	listErr    error
 
 	gotFilter model.PlayerListFilter
 	gotPage   int
@@ -56,12 +67,14 @@ func (r *fakeRepo) GetUserById(_ context.Context, id string) (*model.Player, err
 	}
 
 	return &model.Player{
-		UserId:         p.id,
-		UserName:       p.gameName,
-		UserGameName:   p.gameName,
-		About:          p.about,
-		AboutUpdatedAt: p.aboutAt,
-		Verification:   verification.Verification{Status: p.status},
+		UserId:                p.id,
+		UserName:              p.gameName,
+		UserGameName:          p.gameName,
+		PreviousNickname:      p.previous,
+		LastNicknameChangedAt: p.lastChange,
+		About:                 p.about,
+		AboutUpdatedAt:        p.aboutAt,
+		Verification:          verification.Verification{Status: p.status},
 	}, nil
 }
 
@@ -73,7 +86,26 @@ func (r *fakeRepo) SearchUsers(context.Context, string) ([]model.Player, error) 
 	return nil, nil
 }
 
-func (r *fakeRepo) UpdatePlayerNickname(context.Context, string, string, string, time.Time) error {
+// UpdatePlayerNickname applies the rename the way the real repository does and
+// records what it was asked for.
+func (r *fakeRepo) UpdatePlayerNickname(
+	_ context.Context,
+	uid, newNickname, previousNickname string,
+	lastChangedAt time.Time,
+) error {
+	r.nickWrites = append(r.nickWrites, nickWrite{
+		userId: uid, old: previousNickname, new: newNickname, lastSeen: lastChangedAt,
+	})
+
+	p, ok := r.players[uid]
+	if !ok {
+		return nil
+	}
+
+	p.previous = previousNickname
+	p.gameName = newNickname
+	p.lastChange = lastChangedAt
+
 	return nil
 }
 
@@ -83,7 +115,15 @@ func (r *fakeRepo) UpdateById(_ context.Context, uid string, p model.PlayerUpdat
 	r.writes = append(r.writes, write{userId: uid, update: p})
 
 	p1, ok := r.players[uid]
-	if !ok || p.About == nil {
+	if !ok {
+		return nil
+	}
+
+	if p.ClearNicknameCooldown {
+		p1.lastChange = time.Time{}
+	}
+
+	if p.About == nil {
 		return nil
 	}
 
@@ -146,12 +186,30 @@ func newService(t *testing.T) (*Service, *fakeRepo, *fakeNotifier) {
 	repo := &fakeRepo{players: map[string]*playerState{}}
 	notices := &fakeNotifier{}
 
-	// Storage and the SSO repository are not reached by these rpcs.
-	svc := New(Opts{DbRepo: repo, Mapper: &sermapper.MapperImpl{}, Logger: l})
+	// Storage is not reached by these rpcs. The SSO repository is stubbed
+	// because ChangeNickname tells the admins about a self-service change in a
+	// background goroutine, and a nil repository there would panic the test
+	// process instead of failing one assertion.
+	svc := New(Opts{
+		DbRepo:  repo,
+		SsoRepo: &fakeSso{},
+		Mapper:  &sermapper.MapperImpl{},
+		Logger:  l,
+	})
 	svc.cnuc = notices
 
 	return svc, repo, notices
 }
+
+// fakeSso stands in for Logto. It keeps no admins, so a self-service change
+// notifies nobody and leaves the fake notifier to the admin tests.
+type fakeSso struct {
+	admins []string
+}
+
+func (s *fakeSso) UpdateUserAvatar(context.Context, string, string) error { return nil }
+
+func (s *fakeSso) GetAdminUsers(context.Context) ([]string, error) { return s.admins, nil }
 
 func as(uid string) context.Context {
 	return interceptor.ContextWithUserID(context.Background(), uid)
@@ -497,5 +555,229 @@ func TestScopeDeclaresTheNewMethods(t *testing.T) {
 	}
 	if got, ok := scope["/user.v1.UserService/UpdateMyAbout"]; !ok || got != interceptor.ScopeAuthenticated {
 		t.Errorf("UpdateMyAbout scope = %q (declared %v), want authenticated", got, ok)
+	}
+	if got, ok := scope["/user.v1.UserService/AdminChangeNickname"]; !ok || got != "players:nickname:write" {
+		t.Errorf("AdminChangeNickname scope = %q (declared %v), want players:nickname:write", got, ok)
+	}
+	if got, ok := scope["/user.v1.UserService/AdminGrantNicknameChange"]; !ok || got != "players:nickname:grant" {
+		t.Errorf("AdminGrantNicknameChange scope = %q (declared %v), want players:nickname:grant", got, ok)
+	}
+}
+
+func TestChangeNicknameRefusesWhileTheCooldownHolds(t *testing.T) {
+	svc, repo, _ := newService(t)
+	repo.players["u1"] = &playerState{id: "u1", gameName: "Veter", lastChange: time.Now().Add(-time.Hour)}
+
+	_, err := svc.ChangeNickname(as("u1"), &userv1.ChangeNicknameRequest{UserId: "u1", NewNickname: "Dozhd"})
+
+	if code := statusCode(t, err); code != codes.FailedPrecondition {
+		t.Errorf("code = %v, want FailedPrecondition", code)
+	}
+	if len(repo.nickWrites) != 0 {
+		t.Errorf("a refused rename reached the repository: %v", repo.nickWrites)
+	}
+}
+
+func TestAdminChangeNicknameIgnoresTheCooldown(t *testing.T) {
+	svc, repo, notices := newService(t)
+	recent := time.Now().Add(-24 * time.Hour)
+	repo.players["u1"] = &playerState{id: "u1", gameName: "Veter", lastChange: recent}
+
+	got, err := svc.AdminChangeNickname(as("mod"), &userv1.AdminChangeNicknameRequest{
+		UserId: "u1", NewNickname: "Dozhd", Reason: "  просьба игрока  ",
+	})
+	if err != nil {
+		t.Fatalf("AdminChangeNickname: %v", err)
+	}
+
+	if got.GetOldNickname() != "Veter" || got.GetNewNickname() != "Dozhd" {
+		t.Errorf("answer = %q -> %q, want Veter -> Dozhd", got.GetOldNickname(), got.GetNewNickname())
+	}
+	if got.GetNextChangeAllowedAt() == nil {
+		t.Fatal("next_change_allowed_at is unset, want the new cooldown")
+	}
+	if !got.GetNextChangeAllowedAt().AsTime().After(time.Now().Add(180 * 24 * time.Hour)) {
+		t.Errorf("next change at %v, want a fresh 6-month cooldown", got.GetNextChangeAllowedAt().AsTime())
+	}
+
+	if len(repo.nickWrites) != 1 {
+		t.Fatalf("nickname writes = %d, want 1", len(repo.nickWrites))
+	}
+	w := repo.nickWrites[0]
+	if w.userId != "u1" || w.old != "Veter" || w.new != "Dozhd" {
+		t.Errorf("write = %+v, want Veter -> Dozhd for u1", w)
+	}
+	if !w.lastSeen.After(recent) {
+		t.Errorf("recorded change at %v, want the cooldown restarted", w.lastSeen)
+	}
+	if repo.players["u1"].gameName != "Dozhd" || repo.players["u1"].previous != "Veter" {
+		t.Errorf("stored state = %+v, want the old name kept", repo.players["u1"])
+	}
+
+	if notices.calls != 1 {
+		t.Fatalf("notifications = %d, want 1", notices.calls)
+	}
+	if notices.title != "Никнейм изменён администратором" {
+		t.Errorf("title = %q", notices.title)
+	}
+	want := "Администратор изменил ваш никнейм с 'Veter' на 'Dozhd'. Причина: просьба игрока"
+	if notices.message != want {
+		t.Errorf("message = %q, want %q", notices.message, want)
+	}
+}
+
+func TestAdminChangeNicknameRefusesAnUnknownPlayer(t *testing.T) {
+	svc, repo, _ := newService(t)
+
+	_, err := svc.AdminChangeNickname(as("mod"), &userv1.AdminChangeNicknameRequest{
+		UserId: "nobody", NewNickname: "Dozhd",
+	})
+
+	if code := statusCode(t, err); code != codes.NotFound {
+		t.Errorf("code = %v, want NotFound", code)
+	}
+	if len(repo.nickWrites) != 0 {
+		t.Errorf("a refused rename reached the repository: %v", repo.nickWrites)
+	}
+}
+
+func TestAdminChangeNicknameRefusesANicknameTheGameRejects(t *testing.T) {
+	cases := []struct {
+		name     string
+		nickname string
+	}{
+		{"empty", ""},
+		{"too long", strings.Repeat("a", 16)},
+		{"a space", "Dozhd idet"},
+		{"punctuation", "Dozhd!"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, repo, _ := newService(t)
+			repo.players["u1"] = &playerState{id: "u1", gameName: "Veter"}
+
+			_, err := svc.AdminChangeNickname(as("mod"), &userv1.AdminChangeNicknameRequest{
+				UserId: "u1", NewNickname: tc.nickname,
+			})
+
+			if code := domainCode(t, err); code != codes.InvalidArgument {
+				t.Errorf("code = %v, want InvalidArgument", code)
+			}
+			if len(repo.nickWrites) != 0 {
+				t.Errorf("a refused rename reached the repository: %v", repo.nickWrites)
+			}
+		})
+	}
+}
+
+func TestAdminChangeNicknameRefusesTheNameItAlreadyHas(t *testing.T) {
+	svc, repo, _ := newService(t)
+	repo.players["u1"] = &playerState{id: "u1", gameName: "Veter"}
+
+	_, err := svc.AdminChangeNickname(as("mod"), &userv1.AdminChangeNicknameRequest{
+		UserId: "u1", NewNickname: "Veter",
+	})
+
+	if code := domainCode(t, err); code != codes.InvalidArgument {
+		t.Errorf("code = %v, want InvalidArgument", code)
+	}
+	if len(repo.nickWrites) != 0 {
+		t.Errorf("a no-op rename reached the repository: %v", repo.nickWrites)
+	}
+}
+
+func TestAdminChangeNicknameSurvivesAFailedNotification(t *testing.T) {
+	svc, repo, notices := newService(t)
+	notices.err = errors.New("the notification service is down")
+	repo.players["u1"] = &playerState{id: "u1", gameName: "Veter"}
+
+	if _, err := svc.AdminChangeNickname(as("mod"), &userv1.AdminChangeNicknameRequest{
+		UserId: "u1", NewNickname: "Dozhd",
+	}); err != nil {
+		t.Fatalf("a failing notification must not fail the rename: %v", err)
+	}
+
+	if repo.players["u1"].gameName != "Dozhd" {
+		t.Errorf("nickname = %q, want the rename kept", repo.players["u1"].gameName)
+	}
+}
+
+func TestAdminGrantNicknameChangeLiftsTheCooldown(t *testing.T) {
+	svc, repo, notices := newService(t)
+	repo.players["u1"] = &playerState{id: "u1", gameName: "Veter", lastChange: time.Now().Add(-time.Hour)}
+
+	if _, err := svc.AdminGrantNicknameChange(as("mod"), &userv1.AdminGrantNicknameChangeRequest{
+		UserId: "u1", Reason: "исключение",
+	}); err != nil {
+		t.Fatalf("AdminGrantNicknameChange: %v", err)
+	}
+
+	if !repo.players["u1"].lastChange.IsZero() {
+		t.Errorf("recorded change = %v, want it cleared", repo.players["u1"].lastChange)
+	}
+	if len(repo.writes) != 1 || !repo.writes[0].update.ClearNicknameCooldown {
+		t.Fatalf("writes = %v, want one that clears the cooldown", repo.writes)
+	}
+	if notices.calls != 1 || notices.title != "Смена никнейма разрешена" {
+		t.Errorf("notification = %q (%d calls), want the grant notice", notices.title, notices.calls)
+	}
+
+	// The point of the grant: the player's own request now passes the cooldown
+	// check that refused it above.
+	if _, err := svc.ChangeNickname(as("u1"), &userv1.ChangeNicknameRequest{
+		UserId: "u1", NewNickname: "Dozhd",
+	}); err != nil {
+		t.Fatalf("the player still cannot rename after a grant: %v", err)
+	}
+	if repo.players["u1"].gameName != "Dozhd" {
+		t.Errorf("nickname = %q, want the player's own choice", repo.players["u1"].gameName)
+	}
+}
+
+func TestAdminGrantNicknameChangeRefusesWhenNothingToGrant(t *testing.T) {
+	svc, repo, notices := newService(t)
+	repo.players["u1"] = &playerState{id: "u1", gameName: "Veter"}
+
+	_, err := svc.AdminGrantNicknameChange(as("mod"), &userv1.AdminGrantNicknameChangeRequest{
+		UserId: "u1",
+	})
+
+	if code := domainCode(t, err); code != codes.FailedPrecondition {
+		t.Errorf("code = %v, want FailedPrecondition", code)
+	}
+	if len(repo.writes) != 0 {
+		t.Errorf("a refused grant reached the repository: %v", repo.writes)
+	}
+	if notices.calls != 0 {
+		t.Errorf("notifications = %d, want none", notices.calls)
+	}
+}
+
+func TestAdminGrantNicknameChangeRefusesAnUnknownPlayer(t *testing.T) {
+	svc, _, _ := newService(t)
+
+	_, err := svc.AdminGrantNicknameChange(as("mod"), &userv1.AdminGrantNicknameChangeRequest{
+		UserId: "nobody",
+	})
+
+	if code := statusCode(t, err); code != codes.NotFound {
+		t.Errorf("code = %v, want NotFound", code)
+	}
+}
+
+func TestAdminNicknameReasonIsBounded(t *testing.T) {
+	svc, repo, _ := newService(t)
+	repo.players["u1"] = &playerState{id: "u1", gameName: "Veter", lastChange: time.Now().Add(-time.Hour)}
+
+	_, err := svc.AdminChangeNickname(as("mod"), &userv1.AdminChangeNicknameRequest{
+		UserId: "u1", NewNickname: "Dozhd", Reason: strings.Repeat("я", model.MaxReasonRunes+1),
+	})
+
+	if code := domainCode(t, err); code != codes.InvalidArgument {
+		t.Errorf("code = %v, want InvalidArgument", code)
+	}
+	if len(repo.nickWrites) != 0 {
+		t.Errorf("a rename with an oversized reason reached the repository: %v", repo.nickWrites)
 	}
 }
