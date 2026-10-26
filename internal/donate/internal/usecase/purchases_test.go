@@ -156,7 +156,7 @@ func (f *fakeRepo) withItem(id, name string, price int64) *model.ShopItem {
 // withKitItem seeds an available kit-type item at the given price. Code doubles
 // as the kit code the mail composer expands.
 func (f *fakeRepo) withKitItem(id, name, code string, price int64) *model.ShopItem {
-	item := model.NewKitShopItem(code, name, "", "", price, []model.KitEntry{{Name: "x", Quantity: 1}})
+	item := model.NewKitShopItem(code, name, "", "", price)
 	item.MarkCreated(id, time.Now())
 	f.items[id] = item
 	return item

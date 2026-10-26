@@ -9,12 +9,15 @@ import "context"
 
 // KitItem is one entry of a kit's contents. game_code + type identify the asset
 // (VintageAPI resolves it at claim); attr_snapshot is an opaque base64
-// TreeAttribute snapshot ("" = plain stack) carried through server-side.
+// TreeAttribute snapshot ("" = plain stack) carried through server-side;
+// image_url is the game-rendered icon uploaded at capture ("" when that
+// best-effort upload failed).
 type KitItem struct {
 	GameCode     string
 	Type         string
 	Quantity     int32
 	AttrSnapshot string
+	ImageURL     string
 }
 
 // KitDef is a captured kit's read-model: its code, its contents and its

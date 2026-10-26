@@ -91,7 +91,7 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 		)
 	}
 
-	category, err := s.kitLookup.GetCategory(ctx, req.GetCode())
+	summary, err := s.kitLookup.Get(ctx, req.GetCode())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
 			return nil, status.Error(codes.NotFound, "kit code not captured")
@@ -104,11 +104,10 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 		return nil, err
 	}
 
-	entries, err := protoEntriesToModel(req.GetEntries())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	item := model.NewKitShopItem(req.GetCode(), req.GetName(), req.GetDescription(), req.GetImageUrl(), req.GetPrice(), entries)
+	// req.Entries is ignored: a kit entry's витрина is derived from the
+	// captured kit's items at read time, so a hand-typed display list can
+	// never drift from what the purchase actually delivers.
+	item := model.NewKitShopItem(req.GetCode(), req.GetName(), req.GetDescription(), req.GetImageUrl(), req.GetPrice())
 
 	if req.GetHasDiscount() {
 		if err := item.SetDiscount(req.GetDiscountPercent()); err != nil {
@@ -121,15 +120,6 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 		goverter.TimestampToTimePtr(req.GetDiscountStartsAt()),
 		goverter.TimestampToTimePtr(req.GetDiscountEndsAt()),
 	)
-
-	// Validate entry image URLs for kit
-	for _, e := range req.GetEntries() {
-		if e.GetImageUrl() != "" {
-			if err := s.validateImageURL(e.GetImageUrl()); err != nil {
-				return nil, err
-			}
-		}
-	}
 
 	if err := item.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -149,7 +139,7 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 
 	pb := s.mapper.ToShopItemProto(created)
 	s.fillNowFields(pb, created)
-	pb.Category = category
+	applyKitSummary(pb, summary)
 	return &donatev1.CreateShopItemResponse{Item: pb}, nil
 }
 
@@ -168,10 +158,11 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 
 	// A changed code names a different captured kit: validate it the same way
 	// the create path does, before any write happens.
-	var category string
+	var summary KitSummary
+	haveSummary := false
 	if code := req.GetCode(); code != "" {
 		var err error
-		category, err = s.kitLookup.GetCategory(ctx, code)
+		summary, err = s.kitLookup.Get(ctx, code)
 		if err != nil {
 			if isDomainError(err, codes.NotFound) {
 				return nil, status.Error(codes.NotFound, "kit code not captured")
@@ -179,6 +170,7 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 			l.Error("failed to look up kit", zap.Error(err))
 			return nil, status.Error(codes.Internal, "failed to update shop item")
 		}
+		haveSummary = true
 	}
 
 	if req.GetImageUrl() != "" {
@@ -187,19 +179,10 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 		}
 	}
 
-	// Validate entry image URLs
-	for _, e := range req.GetEntries() {
-		if e.GetImageUrl() != "" {
-			if err := s.validateImageURL(e.GetImageUrl()); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	entries, err := protoEntriesToModel(req.GetEntries())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
+	// req.Entries is ignored, same as on create: the витрина of a kit entry is
+	// derived from the captured kit's items at read time. Passing nil below
+	// also wipes any legacy stored entries on this update — the drift dies
+	// with the first re-save.
 
 	updated, err := s.repo.UpdateShopItem(ctx, req.GetId(), func(_ context.Context, item *model.ShopItem) (*model.ShopItem, error) {
 		imageURL := item.ImageURL
@@ -225,7 +208,6 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 			Price:            req.GetPrice(),
 			IsAvailable:      req.GetIsAvailable(),
 			Type:             itemType,
-			Entries:          entries,
 			HasDiscount:      req.GetHasDiscount(),
 			DiscountPercent:  req.GetDiscountPercent(),
 			Privileges:       protoPrivilegesToModel(req.GetPrivileges()),
@@ -264,13 +246,13 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 
 	pb := s.mapper.ToShopItemProto(updated)
 	s.fillNowFields(pb, updated)
-	if category == "" && updated.Type == model.ItemTypeKit {
-		// The code did not change: join the kit's category for the response.
-		if cat, err := s.kitLookup.GetCategory(ctx, updated.Code); err == nil {
-			category = cat
+	if !haveSummary {
+		// The code did not change: fetch the kit's summary for the response.
+		if sum, err := s.kitLookup.Get(ctx, updated.Code); err == nil {
+			summary = sum
 		}
 	}
-	pb.Category = category
+	applyKitSummary(pb, summary)
 	return &donatev1.UpdateShopItemResponse{Item: pb}, nil
 }
 
@@ -454,17 +436,20 @@ func (s *Service) AdminListAllShopItems(ctx context.Context, _ *donatev1.AdminLi
 }
 
 // shopItemsProto maps shop items to proto, stamps the two computed fields from
-// one clock and joins the kit categories in one catalog read. Both shop lists
-// go through it so they answer the same shape.
+// one clock and joins the kits in one catalog read — category AND витрина:
+// a kit entry's entries are derived from the captured kit's items (game code,
+// stack size, game-rendered icon), never from a stored display list. Both
+// shop lists go through it so they answer the same shape.
 //
-// Fail-open on the join: a kit lookup outage leaves the categories empty rather
-// than 500-ing the list — the entry itself stays sellable.
+// Fail-open on the join: a kit lookup outage leaves the categories empty and
+// the stored legacy entries in place rather than 500-ing the list — the entry
+// itself stays sellable.
 func (s *Service) shopItemsProto(ctx context.Context, l logger.Logger, items []*model.ShopItem) []*donatev1.ShopItem {
-	categories := map[string]string{}
-	if cats, err := s.kitLookup.Categories(ctx); err == nil {
-		categories = cats
+	catalog := map[string]KitSummary{}
+	if cat, err := s.kitLookup.Catalog(ctx); err == nil {
+		catalog = cat
 	} else {
-		l.Warn("failed to join kit categories; shop items list without them", zap.Error(err))
+		l.Warn("failed to join kit catalog; shop items list without categories and derived entries", zap.Error(err))
 	}
 
 	now := time.Now()
@@ -472,10 +457,31 @@ func (s *Service) shopItemsProto(ctx context.Context, l logger.Logger, items []*
 	for i, m := range items {
 		s.fillNowFieldsAt(pbItems[i], m, now)
 		if m.Type == model.ItemTypeKit {
-			pbItems[i].Category = categories[m.Code]
+			if summary, ok := catalog[m.Code]; ok {
+				applyKitSummary(pbItems[i], summary)
+			}
+			// No captured kit (yet): the stored legacy entries stay as they
+			// are, so a hidden pre-capture entry still renders for the admin.
 		}
 	}
 	return pbItems
+}
+
+// applyKitSummary stamps the kit-derived fields onto a wire shop item: the
+// category and the витрина — one entry per captured kit item, named by its
+// game code, sized by its stack, pictured by the icon uploaded at capture.
+func applyKitSummary(pb *donatev1.ShopItem, summary KitSummary) {
+	pb.Category = summary.Category
+	entries := make([]*donatev1.KitEntry, len(summary.Items))
+	for i, it := range summary.Items {
+		entries[i] = &donatev1.KitEntry{
+			Name:        it.GameCode,
+			Description: "",
+			ImageUrl:    it.ImageURL,
+			Quantity:    it.Quantity,
+		}
+	}
+	pb.Entries = entries
 }
 
 func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*donatev1.BuyItemResponse, error) {
@@ -548,20 +554,6 @@ func protoPrivilegesToModel(ps []*donatev1.Privilege) []model.Privilege {
 		}
 	}
 	return result
-}
-
-// protoEntriesToModel converts proto KitEntry slice to model KitEntry slice.
-func protoEntriesToModel(entries []*donatev1.KitEntry) ([]model.KitEntry, error) {
-	result := make([]model.KitEntry, len(entries))
-	for i, e := range entries {
-		result[i] = model.KitEntry{
-			Name:        e.GetName(),
-			Description: e.GetDescription(),
-			ImageURL:    e.GetImageUrl(),
-			Quantity:    e.GetQuantity(),
-		}
-	}
-	return result, nil
 }
 
 // itemTypeFromProto converts a proto ItemType to the string used in the model.

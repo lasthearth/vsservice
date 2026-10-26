@@ -43,20 +43,21 @@ func (r *updateItemRepo) UpdateShopItem(
 }
 
 // stubKitLookup stands in for the kitdef read port: every code resolves to a
-// known category, so the kit-only validation passes.
+// known summary, so the kit-only validation passes and the витрина join has
+// something to derive.
 type stubKitLookup struct {
-	categories map[string]string
+	catalog map[string]service.KitSummary
 }
 
-func (s *stubKitLookup) GetCategory(ctx context.Context, code string) (string, error) {
-	if c, ok := s.categories[code]; ok {
-		return c, nil
+func (s *stubKitLookup) Get(ctx context.Context, code string) (service.KitSummary, error) {
+	if sum, ok := s.catalog[code]; ok {
+		return sum, nil
 	}
-	return "kit", nil
+	return service.KitSummary{Category: "kit"}, nil
 }
 
-func (s *stubKitLookup) Categories(ctx context.Context) (map[string]string, error) {
-	return s.categories, nil
+func (s *stubKitLookup) Catalog(ctx context.Context) (map[string]service.KitSummary, error) {
+	return s.catalog, nil
 }
 
 func newService(t *testing.T, repo service.DonateRepository) *service.Service {
@@ -74,7 +75,21 @@ func newService(t *testing.T, repo service.DonateRepository) *service.Service {
 		// with, and the create path requires an image_url.
 		MediaURL: mediaurl.New(config.Config{CdnUrl: "https://cdn.test"}),
 		KitLookup: &stubKitLookup{
-			categories: map[string]string{"code": "kit", "foodkit": "privilege"},
+			catalog: map[string]service.KitSummary{
+				"code": {
+					Category: "kit",
+					Items: []service.KitItemView{
+						{GameCode: "game:sword", Quantity: 1, ImageURL: "https://cdn.test/kit-icons/sword.png"},
+					},
+				},
+				"foodkit": {
+					Category: "privilege",
+					Items: []service.KitItemView{
+						{GameCode: "game:bread", Quantity: 2, ImageURL: "https://cdn.test/kit-icons/bread.png"},
+						{GameCode: "game:resin", Quantity: 16, ImageURL: "https://cdn.test/kit-icons/resin.png"},
+					},
+				},
+			},
 		},
 	})
 }
@@ -83,7 +98,7 @@ func newService(t *testing.T, repo service.DonateRepository) *service.Service {
 // the client as InvalidArgument. It used to be a gRPC status, which no
 // isDomainError branch matched, so it fell through to Internal.
 func TestUpdateShopItemRejectsAnInvalidDiscountWithInvalidArgument(t *testing.T) {
-	item := model.NewKitShopItem("code", "Sword", "", "", 100, []model.KitEntry{{Name: "Sword", Quantity: 1}})
+	item := model.NewKitShopItem("code", "Sword", "", "", 100)
 	svc := newService(t, &updateItemRepo{item: item})
 
 	_, err := svc.UpdateShopItem(context.Background(), &donatev1.UpdateShopItemRequest{
@@ -110,7 +125,7 @@ func TestUpdateShopItemRejectsAnInvalidDiscountWithInvalidArgument(t *testing.T)
 // fall through to 500 "failed to update shop item"; the caller must get the 409
 // that names the code as the problem.
 func TestUpdateShopItemAnswersAlreadyExistsForATakenCode(t *testing.T) {
-	item := model.NewKitShopItem("code", "Sword", "", "", 100, []model.KitEntry{{Name: "Sword", Quantity: 1}})
+	item := model.NewKitShopItem("code", "Sword", "", "", 100)
 	svc := newService(t, &updateItemRepo{item: item, err: ierror.ErrShopCodeExists})
 
 	_, err := svc.UpdateShopItem(context.Background(), &donatev1.UpdateShopItemRequest{
@@ -256,7 +271,7 @@ func (r *listAllItemsRepo) ListShopItems(_ context.Context, availableOnly bool) 
 // repository for every entry and answer them in the same shape the public list
 // does: is_available telling the two apart, and the kit category joined.
 func TestAdminListAllShopItemsReturnsTheHiddenEntries(t *testing.T) {
-	published := model.NewKitShopItem("code", "Sword", "", "", 100, []model.KitEntry{{Name: "Sword", Quantity: 1}})
+	published := model.NewKitShopItem("code", "Sword", "", "", 100)
 	// Reconstituted, not constructed: this is what the repository hands the
 	// service for a persisted entry the site hid.
 	hidden := model.ReconstituteShopItem(
@@ -291,6 +306,26 @@ func TestAdminListAllShopItemsReturnsTheHiddenEntries(t *testing.T) {
 	}
 	if got, want := items[1].GetCategory(), "privilege"; got != want {
 		t.Fatalf("items[1].category = %q, want %q", got, want)
+	}
+
+	// The витрина is derived from the captured kit, not from a stored display
+	// list: one entry per kit item, named by its game code and pictured by the
+	// game-rendered icon. The hidden entry's hand-typed "Bread" row is gone.
+	derived := items[1].GetEntries()
+	if len(derived) != 2 {
+		t.Fatalf("items[1].entries = %d, want 2 derived from the kit", len(derived))
+	}
+	if got, want := derived[0].GetName(), "game:bread"; got != want {
+		t.Fatalf("items[1].entries[0].name = %q, want %q", got, want)
+	}
+	if got, want := derived[0].GetQuantity(), int32(2); got != want {
+		t.Fatalf("items[1].entries[0].quantity = %d, want %d", got, want)
+	}
+	if got, want := derived[0].GetImageUrl(), "https://cdn.test/kit-icons/bread.png"; got != want {
+		t.Fatalf("items[1].entries[0].image_url = %q, want the game-uploaded icon", got)
+	}
+	if got, want := derived[1].GetImageUrl(), "https://cdn.test/kit-icons/resin.png"; got != want {
+		t.Fatalf("items[1].entries[1].image_url = %q, want the game-uploaded icon", got)
 	}
 }
 
@@ -332,10 +367,10 @@ func TestAdminListAllShopItemsSurvivesAKitLookupOutage(t *testing.T) {
 // failingKitLookup stands for a kitdef outage.
 type failingKitLookup struct{}
 
-func (failingKitLookup) GetCategory(context.Context, string) (string, error) {
-	return "", errors.New("kitdef is down")
+func (failingKitLookup) Get(context.Context, string) (service.KitSummary, error) {
+	return service.KitSummary{}, errors.New("kitdef is down")
 }
 
-func (failingKitLookup) Categories(context.Context) (map[string]string, error) {
+func (failingKitLookup) Catalog(context.Context) (map[string]service.KitSummary, error) {
 	return nil, errors.New("kitdef is down")
 }

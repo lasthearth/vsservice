@@ -73,7 +73,12 @@ func NewShopItem(code, name, description, imageURL string, price int64) *ShopIte
 	}
 }
 
-func NewKitShopItem(code, name, description, imageURL string, price int64, entries []KitEntry) *ShopItem {
+// NewKitShopItem creates a kit-type entry. The витрина (Entries) is NOT
+// stored for kits: it is derived at read time from the captured kit's items
+// (game code, quantity, game-rendered icon), so a hand-typed display list can
+// never drift from what the purchase actually delivers. The Entries field
+// stays on the struct only to decode legacy documents.
+func NewKitShopItem(code, name, description, imageURL string, price int64) *ShopItem {
 	return &ShopItem{
 		Code:        code,
 		Name:        name,
@@ -82,7 +87,6 @@ func NewKitShopItem(code, name, description, imageURL string, price int64, entri
 		Price:       price,
 		IsAvailable: true,
 		Type:        ItemTypeKit,
-		Entries:     entries,
 	}
 }
 
@@ -151,19 +155,10 @@ func (s *ShopItem) Validate() error {
 			return fmt.Errorf("privilege %d text cannot be empty", i)
 		}
 	}
-	if s.Type == ItemTypeKit {
-		if len(s.Entries) == 0 {
-			return errors.New("kit must have at least one entry")
-		}
-		for i, e := range s.Entries {
-			if e.Name == "" {
-				return errors.New("kit entry name cannot be empty")
-			}
-			if e.Quantity <= 0 {
-				return fmt.Errorf("kit entry %d quantity must be positive", i)
-			}
-		}
-	}
+	// No Entries validation for kits: the витрина is derived from the captured
+	// kit at read time, and the kit itself is validated by the capture (always
+	// at least one item) and by RemoveKitItem (refuses to empty one). Legacy
+	// documents still decode their stored Entries, but nothing enforces them.
 	return nil
 }
 
