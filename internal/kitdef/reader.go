@@ -45,6 +45,7 @@ func toReadModel(kit *model.KitDef) *kitdefread.KitDef {
 			Type:         it.Type,
 			Quantity:     it.Quantity,
 			AttrSnapshot: it.AttrSnapshot,
+			ImageURL:     it.ImageURL,
 		}
 	}
 	return &kitdefread.KitDef{Code: kit.Code, Category: kit.Category, Items: items}

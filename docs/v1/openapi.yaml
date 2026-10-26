@@ -1139,6 +1139,9 @@ paths:
                   items:
                     $ref: '#/components/schemas/donate.v1.KitEntry'
                   title: entries
+                  description: |-
+                    Ignored: the витрина is derived from the captured kit at read time. The
+                     stored legacy rows are wiped by the update.
                 has_discount:
                   type: boolean
                   title: has_discount
@@ -7006,6 +7009,7 @@ components:
           items:
             $ref: '#/components/schemas/donate.v1.KitEntry'
           title: entries
+          description: 'Ignored: the витрина is derived from the captured kit at read time.'
         has_discount:
           type: boolean
           title: has_discount
@@ -7114,6 +7118,14 @@ components:
           format: int32
       title: KitEntry
       additionalProperties: false
+      description: |-
+        One витрина row of a shop item. For kit entries the wire list is DERIVED at
+         read time from the captured kit's items (name = game code, quantity = stack
+         size, image_url = the game-rendered icon uploaded at capture); the
+         hand-typed display list is gone, so what the shop shows is what the
+         purchase delivers. The fields stay on the messages so a legacy client's
+         entries are simply ignored, and legacy documents' stored rows surface only
+         while a kit was never captured.
     donate.v1.ListMyPurchasesRequest:
       type: object
       title: ListMyPurchasesRequest
@@ -7327,6 +7339,9 @@ components:
           items:
             $ref: '#/components/schemas/donate.v1.KitEntry'
           title: entries
+          description: |-
+            For kit entries: derived at read time from the captured kit's items.
+             Empty only when the kit was never captured (a hidden pre-capture entry).
         has_discount:
           type: boolean
           title: has_discount
@@ -7433,6 +7448,9 @@ components:
           items:
             $ref: '#/components/schemas/donate.v1.KitEntry'
           title: entries
+          description: |-
+            Ignored: the витрина is derived from the captured kit at read time. The
+             stored legacy rows are wiped by the update.
         has_discount:
           type: boolean
           title: has_discount
