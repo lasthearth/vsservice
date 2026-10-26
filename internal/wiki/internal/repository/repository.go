@@ -189,9 +189,9 @@ func (r *Repository) toModel(stored dto.Article) *model.Article {
 	article := r.mapper.FromArticle(stored)
 	article.AdoptDocument(model.Envelope{
 		Id:        stored.Model.Id.Hex(),
-		CreatedAt: stored.Model.CreatedAt,
-		UpdatedAt: stored.Model.UpdatedAt,
-		Version:   stored.Model.Version,
+		CreatedAt: stored.CreatedAt,
+		UpdatedAt: stored.UpdatedAt,
+		Version:   stored.Version,
 	})
 
 	revisions := make([]model.Revision, 0, len(stored.Revisions))
@@ -200,9 +200,9 @@ func (r *Repository) toModel(stored dto.Article) *model.Article {
 		converted := r.mapper.FromRevision(revision)
 		converted.Article.AdoptDocument(model.Envelope{
 			Id:        revision.Article.Model.Id.Hex(),
-			CreatedAt: revision.Article.Model.CreatedAt,
-			UpdatedAt: revision.Article.Model.UpdatedAt,
-			Version:   revision.Article.Model.Version,
+			CreatedAt: revision.Article.CreatedAt,
+			UpdatedAt: revision.Article.UpdatedAt,
+			Version:   revision.Article.Version,
 		})
 
 		revisions = append(revisions, converted)

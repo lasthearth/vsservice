@@ -28,8 +28,7 @@ func DomainErrorUnaryInterceptor(
 		return resp, err
 	}
 
-	var de *ierror.DomainError
-	if errors.As(err, &de) {
+	if de, ok := errors.AsType[*ierror.DomainError](err); ok {
 		return resp, status.Error(de.Code, de.Message)
 	}
 
@@ -52,8 +51,7 @@ func DomainErrorStreamInterceptor(
 		return err
 	}
 
-	var de *ierror.DomainError
-	if errors.As(err, &de) {
+	if de, ok := errors.AsType[*ierror.DomainError](err); ok {
 		return status.Error(de.Code, de.Message)
 	}
 

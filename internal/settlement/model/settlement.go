@@ -183,6 +183,13 @@ func (s *Settlement) NextNotifierReissue() int {
 	return s.NotifierReissues
 }
 
+// MirrorNotifierReissues adopts n as the reissue counter. The request keeps a copy of the
+// counter, so a settlement re-created under this id continues the numbering of its earlier
+// life instead of handing out numbers the earlier life already spent.
+func (s *Settlement) MirrorNotifierReissues(n int) {
+	s.NotifierReissues = n
+}
+
 func (s *Settlement) IsOwner(userId string) bool {
 	m := s.member(userId)
 	return m != nil && m.IsOwner()

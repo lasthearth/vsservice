@@ -3,7 +3,9 @@
 #
 #   make lint-build   -> produces ./custom-gcl
 #   make lint         -> ./custom-gcl run ./...
-version: v2.12.2
+# v2.15.0: first line whose golangci-lint builds with Go 1.26 — v2.12.2 was
+# built with go1.25 and refuses to typecheck this go1.26.6 module.
+version: v2.15.0
 name: custom-gcl
 destination: .
 plugins:

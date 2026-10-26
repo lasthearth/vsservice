@@ -132,7 +132,7 @@ func NewSuggestion(input SuggestionInput, authorName string, now time.Time) (*Su
 type SuggestionInput struct {
 	// ArticleId is set when the proposal changes an existing article.
 	ArticleId string
-	Proposal  Article
+	Proposal  ArticleInput
 	Note      string
 	// BaseVersion is the article version the client last read; 0 accepts the
 	// stored article as it is.
@@ -261,4 +261,14 @@ type SuggestionFilter struct {
 type SuggestionPage struct {
 	Suggestions []*Suggestion
 	Next        string
+}
+
+// Add appends a proposal to the page.
+func (p *SuggestionPage) Add(suggestion *Suggestion) {
+	p.Suggestions = append(p.Suggestions, suggestion)
+}
+
+// LimitToAuthor narrows the list to one author's proposals.
+func (f *SuggestionFilter) LimitToAuthor(authorName string) {
+	f.AuthorName = authorName
 }

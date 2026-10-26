@@ -682,7 +682,7 @@ func TestSubmitRejectedRequestKeepsTypedCoordinates(t *testing.T) {
 func TestApproveUpgradeNotifiesMembersWithBoundedConcurrency(t *testing.T) {
 	set := memberSet(model.SettlementTypeVillage)
 	for i := range 40 {
-		set.Members = append(set.Members, model.Member{UserId: fmt.Sprintf("m%02d", i), RoleIds: []string{}})
+		set.AddMember(fmt.Sprintf("m%02d", i))
 	}
 	repo := &notifierRepo{
 		request: &model.SettlementVerification{Id: "s1", Status: model.SettlementStatusPending},
@@ -806,8 +806,8 @@ func TestReissueKeyChangesWithTheSubmission(t *testing.T) {
 
 	// The settlement is deleted and re-created: a new submission, and the counter
 	// the request mirrored keeps the numbering going.
-	repo.request.UpdatedAt = time.UnixMilli(1800000000000)
-	repo.set.NotifierReissues = repo.mirroredReissues
+	repo.request.RecordResubmission(time.UnixMilli(1800000000000))
+	repo.set.MirrorNotifierReissues(repo.mirroredReissues)
 
 	if _, err := svc.ReissueNotifier(context.Background(), &settlementv1.ReissueNotifierRequest{SettlementId: "s1"}); err != nil {
 		t.Fatal(err)

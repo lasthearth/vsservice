@@ -9,8 +9,8 @@ import (
 
 var now = time.Date(2026, 10, 12, 10, 0, 0, 0, time.UTC)
 
-func draft() Article {
-	return Article{Title: "Как объявить набег", Section: SectionWar, Body: "## Шаги"}
+func draft() ArticleInput {
+	return ArticleInput{Title: "Как объявить набег", Section: SectionWar, Body: "## Шаги"}
 }
 
 func created(t *testing.T) *Article {
@@ -26,7 +26,7 @@ func created(t *testing.T) *Article {
 }
 
 func TestNewArticleFillsDefaults(t *testing.T) {
-	article, err := NewArticle(Article{Title: "Поселения"}, "author-1", now)
+	article, err := NewArticle(ArticleInput{Title: "Поселения"}, "author-1", now)
 	if err != nil {
 		t.Fatalf("NewArticle: %v", err)
 	}
@@ -49,21 +49,21 @@ func TestNewArticleFillsDefaults(t *testing.T) {
 }
 
 func TestNewArticleRejectsEmptyTitle(t *testing.T) {
-	_, err := NewArticle(Article{Title: ""}, "author-1", now)
+	_, err := NewArticle(ArticleInput{Title: ""}, "author-1", now)
 	if !errors.Is(err, errTitleRequired) {
 		t.Fatalf("err = %v, want title required", err)
 	}
 }
 
 func TestNewArticleRejectsUnknownSection(t *testing.T) {
-	_, err := NewArticle(Article{Title: "Статья", Section: "nope"}, "author-1", now)
+	_, err := NewArticle(ArticleInput{Title: "Статья", Section: "nope"}, "author-1", now)
 	if !errors.Is(err, errSectionUnknown) {
 		t.Fatalf("err = %v, want unknown section", err)
 	}
 }
 
 func TestNewArticleRejectsUnknownStatus(t *testing.T) {
-	_, err := NewArticle(Article{Title: "Статья", Status: "hidden"}, "author-1", now)
+	_, err := NewArticle(ArticleInput{Title: "Статья", Status: "hidden"}, "author-1", now)
 	if !errors.Is(err, errStatusUnknown) {
 		t.Fatalf("err = %v, want unknown status", err)
 	}
@@ -198,7 +198,7 @@ func TestRestoreBringsBackTheSavedState(t *testing.T) {
 
 func TestRestoreRejectsForeignRevision(t *testing.T) {
 	article := created(t)
-	foreign := Revision{ArticleId: "other-article", Article: draft()}
+	foreign := Revision{ArticleId: "other-article", Article: draft().Article()}
 
 	if err := article.Restore(foreign, "author-1", now); !errors.Is(err, ErrRevisionNotFound) {
 		t.Fatalf("err = %v, want revision not found", err)

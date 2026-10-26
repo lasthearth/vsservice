@@ -219,12 +219,12 @@ func (r *Repository) getSuggestionByFilter(
 // suggestionToModel converts a stored proposal and applies its envelope.
 func (r *Repository) suggestionToModel(stored dto.Suggestion) *model.Suggestion {
 	suggestion := r.mapper.FromSuggestion(stored)
-	suggestion.AdoptDocument(stored.Model.Id.Hex(), stored.Model.CreatedAt)
+	suggestion.AdoptDocument(stored.Model.Id.Hex(), stored.CreatedAt)
 	suggestion.AdoptEnvelope(model.Envelope{
 		Id:        stored.Model.Id.Hex(),
-		CreatedAt: stored.Model.CreatedAt,
-		UpdatedAt: stored.Model.UpdatedAt,
-		Version:   stored.Model.Version,
+		CreatedAt: stored.CreatedAt,
+		UpdatedAt: stored.UpdatedAt,
+		Version:   stored.Version,
 	})
 
 	// The base is a nested document, so the mapper leaves its envelope alone;
@@ -233,9 +233,9 @@ func (r *Repository) suggestionToModel(stored dto.Suggestion) *model.Suggestion 
 	if suggestion.Base != nil && stored.Base != nil {
 		suggestion.Base.AdoptDocument(model.Envelope{
 			Id:        stored.Base.Model.Id.Hex(),
-			CreatedAt: stored.Base.Model.CreatedAt,
-			UpdatedAt: stored.Base.Model.UpdatedAt,
-			Version:   stored.Base.Model.Version,
+			CreatedAt: stored.Base.CreatedAt,
+			UpdatedAt: stored.Base.UpdatedAt,
+			Version:   stored.Base.Version,
 		})
 	}
 

@@ -23,8 +23,8 @@ var fixturePlacement = model.NotifierPlacement{
 // standing. Every single-settlement handler below answers from it.
 func fixtureRepo() *notifierRepo {
 	set := memberSet(model.SettlementTypeVillage)
-	set.ImperialFavor = 10
-	set.RolesEnabled = true
+	set.AddFavor(10)
+	set.SetRolesEnabled(true)
 
 	other := &model.Settlement{
 		Id:            "s2",

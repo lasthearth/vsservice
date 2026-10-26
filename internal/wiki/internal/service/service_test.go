@@ -79,7 +79,7 @@ func (f *fakeRepo) ListSuggestions(
 		if filter.Status != "" && suggestion.Status != filter.Status {
 			continue
 		}
-		page.Suggestions = append(page.Suggestions, suggestion)
+		page.Add(suggestion)
 	}
 
 	return page, nil
@@ -212,9 +212,9 @@ func (f *fakeRepo) List(_ context.Context, filter model.Filter, _ string, _ int6
 		} else if filter.Status != "" && article.Status != filter.Status {
 			continue
 		}
-		page.Articles = append(page.Articles, article)
+		page.Add(article)
 	}
-	page.Total = int64(len(page.Articles))
+	page.Count(int64(len(page.Articles)))
 
 	return page, nil
 }
@@ -235,7 +235,7 @@ func (f *fakeRepo) Save(_ context.Context, article *model.Article, expectedVersi
 	}
 
 	saved := *article
-	saved.Envelope.Version = stored.Envelope.Version + 1
+	saved.Envelope.SetVersion(stored.Envelope.Version + 1)
 	f.articles[saved.Envelope.Id] = &saved
 	f.saved++
 
