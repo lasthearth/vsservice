@@ -16,12 +16,15 @@ type KitItem struct {
 }
 
 // Kit is the shared `kits` document. The game writes code/items/created_at
-// Mongo-direct; vsservice writes only title (and bumps updated_at). code carries
-// a UNIQUE index.
+// (plus the category chosen at capture) Mongo-direct; vsservice writes title
+// and category (and bumps updated_at). code carries a UNIQUE index. No
+// omitempty on category: documents written by the game always carry it, and
+// old documents decode to "" — which reads as the "kit" default.
 type Kit struct {
 	mongox.Model `bson:",inline"`
 	Code         string    `bson:"code"`
 	Title        string    `bson:"title"`
+	Category     string    `bson:"category"`
 	Items        []KitItem `bson:"items"`
 }
 

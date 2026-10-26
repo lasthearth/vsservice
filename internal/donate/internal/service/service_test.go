@@ -32,6 +32,23 @@ func (r *updateItemRepo) UpdateShopItem(
 	return updateFn(ctx, r.item)
 }
 
+// stubKitLookup stands in for the kitdef read port: every code resolves to a
+// known category, so the kit-only validation passes.
+type stubKitLookup struct {
+	categories map[string]string
+}
+
+func (s *stubKitLookup) GetCategory(ctx context.Context, code string) (string, error) {
+	if c, ok := s.categories[code]; ok {
+		return c, nil
+	}
+	return "kit", nil
+}
+
+func (s *stubKitLookup) Categories(ctx context.Context) (map[string]string, error) {
+	return s.categories, nil
+}
+
 func newService(t *testing.T, repo service.DonateRepository) *service.Service {
 	t.Helper()
 	zc := zap.NewProductionConfig()
@@ -44,6 +61,9 @@ func newService(t *testing.T, repo service.DonateRepository) *service.Service {
 		Logger:   l,
 		Mapper:   &sermapper.MapperImpl{},
 		MediaURL: mediaurl.New(config.Config{}),
+		KitLookup: &stubKitLookup{
+			categories: map[string]string{"code": "kit", "foodkit": "privilege"},
+		},
 	})
 }
 
@@ -51,7 +71,7 @@ func newService(t *testing.T, repo service.DonateRepository) *service.Service {
 // the client as InvalidArgument. It used to be a gRPC status, which no
 // isDomainError branch matched, so it fell through to Internal.
 func TestUpdateShopItemRejectsAnInvalidDiscountWithInvalidArgument(t *testing.T) {
-	item := model.NewShopItem("code", "Sword", "", "", 100)
+	item := model.NewKitShopItem("code", "Sword", "", "", 100, []model.KitEntry{{Name: "Sword", Quantity: 1}})
 	svc := newService(t, &updateItemRepo{item: item})
 
 	_, err := svc.UpdateShopItem(context.Background(), &donatev1.UpdateShopItemRequest{

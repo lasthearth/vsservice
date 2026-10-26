@@ -13,7 +13,7 @@ import (
 
 func TestBuyAtFullPrice(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
-	repo.withItem("i1", "Sword", 30)
+	repo.withKitItem("i1", "Sword", "code-i1", 30)
 
 	p, err := newPurchases(repo).Buy(context.Background(), "p1", "i1")
 	if err != nil {
@@ -43,7 +43,7 @@ func TestBuyAtFullPrice(t *testing.T) {
 
 func TestBuyInsideDiscountWindowCapturesTheDiscount(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
-	item := repo.withItem("i1", "Sword", 50)
+	item := repo.withKitItem("i1", "Sword", "code-i1", 50)
 	if err := item.SetDiscount(40); err != nil {
 		t.Fatalf("SetDiscount: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestBuyInsideDiscountWindowCapturesTheDiscount(t *testing.T) {
 // A discount whose window has closed must not apply, even with HasDiscount set.
 func TestBuyOutsideDiscountWindowPaysFullPrice(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
-	item := repo.withItem("i1", "Sword", 50)
+	item := repo.withKitItem("i1", "Sword", "code-i1", 50)
 	if err := item.SetDiscount(40); err != nil {
 		t.Fatalf("SetDiscount: %v", err)
 	}
@@ -197,33 +197,26 @@ func TestBuyKeepsThePurchaseWhenTheLedgerFails(t *testing.T) {
 	}
 }
 
-// An item purchase composes an item-mail and stamps the purchase issued by
-// system:mail in the same Buy sequence.
-func TestBuyItemComposesItemMailAndStampsIssued(t *testing.T) {
+// A legacy item-typed entry can no longer be bought: donate sells captured
+// kits only, and the compose step is kit-only. An item entry that slipped
+// past create/update is refused instead of composing a mail from a hand-typed
+// game code — nothing is composed and the purchase is not stamped issued.
+func TestBuyLegacyItemEntryIsRefused(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
 	repo.withItem("i1", "Sword", 30)
 	mail := &fakeMail{}
 
-	p, err := newPurchasesWithMail(repo, mail).Buy(context.Background(), "p1", "i1")
-	if err != nil {
-		t.Fatalf("Buy: %v", err)
+	_, err := newPurchasesWithMail(repo, mail).Buy(context.Background(), "p1", "i1")
+	if !errors.Is(err, ierror.ErrItemTypeDisabled) {
+		t.Fatalf("Buy: got %v, want ErrItemTypeDisabled", err)
 	}
-
-	if len(mail.itemCalls) != 1 {
-		t.Fatalf("item mail calls = %d, want exactly one", len(mail.itemCalls))
+	if len(mail.itemCalls) != 0 || len(mail.kitCalls) != 0 {
+		t.Fatalf("composed item=%d kit=%d mails, want none", len(mail.itemCalls), len(mail.kitCalls))
 	}
-	if len(mail.kitCalls) != 0 {
-		t.Fatalf("kit mail calls = %d, want none for an item purchase", len(mail.kitCalls))
-	}
-	call := mail.itemCalls[0]
-	if call.recipient != "p1" || call.purchaseID != p.Id {
-		t.Fatalf("item mail = recipient %q purchase %q, want p1 / %s", call.recipient, call.purchaseID, p.Id)
-	}
-	if len(call.items) != 1 || call.items[0].GameCode != "code-i1" || call.items[0].Quantity != 1 || call.items[0].Type != "item" {
-		t.Fatalf("item spec = %+v, want one code-i1 x1 type=item", call.items)
-	}
-	if p.IssuedAt == nil || p.IssuedBy == nil || *p.IssuedBy != "system:mail" {
-		t.Fatalf("purchase = issued_at %v issued_by %v, want stamped by system:mail", p.IssuedAt, p.IssuedBy)
+	for _, p := range repo.purchases {
+		if p.IsIssued() {
+			t.Fatal("purchase was stamped issued despite the refusal")
+		}
 	}
 }
 
@@ -258,7 +251,7 @@ func TestBuyKitComposesKitMailAndStampsIssued(t *testing.T) {
 // truth) but is not stamped issued.
 func TestBuyLeavesPurchaseUnstampedWhenComposeFails(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
-	repo.withItem("i1", "Sword", 30)
+	repo.withKitItem("i1", "Sword", "code-i1", 30)
 	mail := &fakeMail{err: errors.New("compose failed")}
 
 	_, err := newPurchasesWithMail(repo, mail).Buy(context.Background(), "p1", "i1")

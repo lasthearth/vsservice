@@ -23,6 +23,10 @@ func (stubKitReader) GetKit(context.Context, string) (*kitdefread.KitDef, error)
 	return nil, errors.New("stub")
 }
 
+func (stubKitReader) ListKits(context.Context) ([]*kitdefread.KitDef, error) {
+	return nil, errors.New("stub")
+}
+
 // TestWiring pins that mail's fx graph resolves: the generated sermapper is
 // provided in the outer fx.go, the repository binds to the service interface,
 // the service satisfies the gRPC server, and the outward composer port is

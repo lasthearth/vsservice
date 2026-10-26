@@ -19,7 +19,9 @@ import (
 type Mapper interface {
 	// DiscountActive and EffectivePrice are clock-dependent, so the mapper does
 	// not compute them — Service.fillNowFieldsAt stamps both from one `now`.
-	// goverter:ignore state sizeCache unknownFields DiscountActive EffectivePrice
+	// Category is joined from the captured kit, not stored on the item —
+	// Service fills it on the read/create/update paths.
+	// goverter:ignore state sizeCache unknownFields DiscountActive EffectivePrice Category
 	// goverter:map ImageURL ImageUrl
 	// goverter:map Type ItemType | github.com/lasthearth/vsservice/internal/donate/internal/goverter:ItemTypeModelToProto
 	ToShopItemProto(*model.ShopItem) *donatev1.ShopItem

@@ -3,6 +3,7 @@ package kitdef
 import (
 	"context"
 
+	"github.com/lasthearth/vsservice/internal/kitdef/internal/model"
 	"github.com/lasthearth/vsservice/internal/kitdef/internal/service"
 	"github.com/lasthearth/vsservice/internal/kitdef/kitdefread"
 )
@@ -21,6 +22,22 @@ func (r *reader) GetKit(ctx context.Context, code string) (*kitdefread.KitDef, e
 	if err != nil {
 		return nil, err
 	}
+	return toReadModel(kit), nil
+}
+
+func (r *reader) ListKits(ctx context.Context) ([]*kitdefread.KitDef, error) {
+	kits, err := r.svc.ListKitsModel(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*kitdefread.KitDef, len(kits))
+	for i, kit := range kits {
+		out[i] = toReadModel(kit)
+	}
+	return out, nil
+}
+
+func toReadModel(kit *model.KitDef) *kitdefread.KitDef {
 	items := make([]kitdefread.KitItem, len(kit.Items))
 	for i, it := range kit.Items {
 		items[i] = kitdefread.KitItem{
@@ -30,5 +47,5 @@ func (r *reader) GetKit(ctx context.Context, code string) (*kitdefread.KitDef, e
 			AttrSnapshot: it.AttrSnapshot,
 		}
 	}
-	return &kitdefread.KitDef{Code: kit.Code, Items: items}, nil
+	return &kitdefread.KitDef{Code: kit.Code, Category: kit.Category, Items: items}
 }

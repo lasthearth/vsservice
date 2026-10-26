@@ -43,6 +43,10 @@ message ShopItem {
   google.protobuf.Timestamp discount_starts_at = 16; // nil = открыто слева
   google.protobuf.Timestamp discount_ends_at = 17;   // nil = открыто справа
   bool discount_active = 18;                          // вычисляемое по now(), для UI-бейджа
+  // Category of the kit this entry sells ("kit" | "privilege" | "special"),
+  // joined at read time from the captured kit. Empty when the kit is missing
+  // or the entry predates the field.
+  string category = 19;
 }
 
 message CreateShopItemRequest {
