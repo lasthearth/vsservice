@@ -42,8 +42,14 @@ service DonateService {
 
   // Admin: create a new shop item.
   //
+  // Donate sells captured kits only: item_type must be ITEM_TYPE_KIT, and the
+  // code must name a kit the game has captured (a single-item product is a
+  // kit of one item, captured the same way).
+  //
   // Errors:
-  //   - INVALID_ARGUMENT (400): missing or invalid fields
+  //   - INVALID_ARGUMENT (400): missing or invalid fields, item_type other
+  //     than ITEM_TYPE_KIT
+  //   - NOT_FOUND (404): kit code not captured
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - PERMISSION_DENIED (403): insufficient privileges
   //   - INTERNAL (500): database failure
@@ -56,9 +62,13 @@ service DonateService {
 
   // Admin: update an existing shop item.
   //
+  // Same kit-only rules as CreateShopItem: the resulting item_type must be
+  // ITEM_TYPE_KIT, and a changed code must name a captured kit.
+  //
   // Errors:
-  //   - INVALID_ARGUMENT (400): missing or invalid fields
-  //   - NOT_FOUND (404): item not found
+  //   - INVALID_ARGUMENT (400): missing or invalid fields, item_type other
+  //     than ITEM_TYPE_KIT
+  //   - NOT_FOUND (404): item not found, or kit code not captured
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - PERMISSION_DENIED (403): insufficient privileges
   //   - INTERNAL (500): database failure

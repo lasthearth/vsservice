@@ -79,20 +79,35 @@ func (s *Service) DeductCoins(ctx context.Context, req *donatev1.DeductCoinsRequ
 func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopItemRequest) (*donatev1.CreateShopItemResponse, error) {
 	l := s.log.With(zap.String("method", "CreateShopItem"))
 
+	// Donate sells captured kits only: the code must name a kit the game
+	// captured, because the code IS the delivery key (the purchase composes a
+	// kit-mail from it). A single-item product is a kit of one item, captured
+	// the same way — the hand-typed item code path is closed.
+	if req.GetItemType() != donatev1.ItemType_ITEM_TYPE_KIT {
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"item-type shop entries are disabled: donate sells captured kits only; a single-item product is a kit of one item",
+		)
+	}
+
+	category, err := s.kitLookup.GetCategory(ctx, req.GetCode())
+	if err != nil {
+		if isDomainError(err, codes.NotFound) {
+			return nil, status.Error(codes.NotFound, "kit code not captured")
+		}
+		l.Error("failed to look up kit", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to create shop item")
+	}
+
 	if err := s.validateImageURL(req.GetImageUrl()); err != nil {
 		return nil, err
 	}
 
-	var item *model.ShopItem
-	if req.GetItemType() == donatev1.ItemType_ITEM_TYPE_KIT {
-		entries, err := protoEntriesToModel(req.GetEntries())
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-		item = model.NewKitShopItem(req.GetCode(), req.GetName(), req.GetDescription(), req.GetImageUrl(), req.GetPrice(), entries)
-	} else {
-		item = model.NewShopItem(req.GetCode(), req.GetName(), req.GetDescription(), req.GetImageUrl(), req.GetPrice())
+	entries, err := protoEntriesToModel(req.GetEntries())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	item := model.NewKitShopItem(req.GetCode(), req.GetName(), req.GetDescription(), req.GetImageUrl(), req.GetPrice(), entries)
 
 	if req.GetHasDiscount() {
 		if err := item.SetDiscount(req.GetDiscountPercent()); err != nil {
@@ -127,11 +142,37 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 
 	pb := s.mapper.ToShopItemProto(created)
 	s.fillNowFields(pb, created)
+	pb.Category = category
 	return &donatev1.CreateShopItemResponse{Item: pb}, nil
 }
 
 func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopItemRequest) (*donatev1.UpdateShopItemResponse, error) {
 	l := s.log.With(zap.String("method", "UpdateShopItem"), zap.String("id", req.GetId()))
+
+	// Kits only, same as CreateShopItem: an explicit item type is refused, and
+	// a request that leaves the type unspecified must still land on a kit — a
+	// legacy item entry cannot be re-saved without being switched to a kit.
+	if req.GetItemType() == donatev1.ItemType_ITEM_TYPE_ITEM {
+		return nil, status.Error(
+			codes.InvalidArgument,
+			"item-type shop entries are disabled: donate sells captured kits only; a single-item product is a kit of one item",
+		)
+	}
+
+	// A changed code names a different captured kit: validate it the same way
+	// the create path does, before any write happens.
+	var category string
+	if code := req.GetCode(); code != "" {
+		var err error
+		category, err = s.kitLookup.GetCategory(ctx, code)
+		if err != nil {
+			if isDomainError(err, codes.NotFound) {
+				return nil, status.Error(codes.NotFound, "kit code not captured")
+			}
+			l.Error("failed to look up kit", zap.Error(err))
+			return nil, status.Error(codes.Internal, "failed to update shop item")
+		}
+	}
 
 	if req.GetImageUrl() != "" {
 		if err := s.validateImageURL(req.GetImageUrl()); err != nil {
@@ -162,6 +203,11 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 		itemType := model.ItemType(itemTypeFromProto(req.GetItemType()))
 		if itemType == "" {
 			itemType = item.Type
+		}
+		if itemType != model.ItemTypeKit {
+			return nil, pkgerr.InvalidArgument(
+				"item-type shop entries are disabled: donate sells captured kits only; a single-item product is a kit of one item",
+			)
 		}
 
 		u := model.ShopItemUpdate{
@@ -206,6 +252,13 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 
 	pb := s.mapper.ToShopItemProto(updated)
 	s.fillNowFields(pb, updated)
+	if category == "" && updated.Type == model.ItemTypeKit {
+		// The code did not change: join the kit's category for the response.
+		if cat, err := s.kitLookup.GetCategory(ctx, updated.Code); err == nil {
+			category = cat
+		}
+	}
+	pb.Category = category
 	return &donatev1.UpdateShopItemResponse{Item: pb}, nil
 }
 
@@ -366,10 +419,23 @@ func (s *Service) ListShopItems(ctx context.Context, _ *donatev1.ListShopItemsRe
 		return nil, status.Error(codes.Internal, "failed to list shop items")
 	}
 
+	// Join the kits' categories in one catalog read. Fail-open: a kit lookup
+	// outage leaves the categories empty rather than 500-ing the public shop
+	// list — the entry itself stays sellable.
+	categories := map[string]string{}
+	if cats, err := s.kitLookup.Categories(ctx); err == nil {
+		categories = cats
+	} else {
+		l.Warn("failed to join kit categories; shop items list without them", zap.Error(err))
+	}
+
 	now := time.Now()
 	pbItems := s.mapper.ToShopItemsProto(items)
 	for i, m := range items {
 		s.fillNowFieldsAt(pbItems[i], m, now)
+		if m.Type == model.ItemTypeKit {
+			pbItems[i].Category = categories[m.Code]
+		}
 	}
 	return &donatev1.ListShopItemsResponse{Items: pbItems}, nil
 }

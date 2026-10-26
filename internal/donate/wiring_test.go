@@ -2,11 +2,13 @@ package donate_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	donatev1 "github.com/lasthearth/vsservice/gen/donate/v1"
 	"github.com/lasthearth/vsservice/internal/donate"
 	"github.com/lasthearth/vsservice/internal/donate/donateuc"
+	"github.com/lasthearth/vsservice/internal/kitdef/kitdefread"
 	"github.com/lasthearth/vsservice/internal/mail/mailcompose"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
@@ -33,6 +35,17 @@ func (stubComposer) ComposeNotificationMail(context.Context, string, string, str
 	return nil
 }
 
+// stubKitReader stands in for kitdef's public read port so donate's graph
+// resolves without the kitdef module.
+type stubKitReader struct{}
+
+func (stubKitReader) GetKit(context.Context, string) (*kitdefread.KitDef, error) {
+	return nil, errors.New("stub")
+}
+func (stubKitReader) ListKits(context.Context) ([]*kitdefread.KitDef, error) {
+	return nil, errors.New("stub")
+}
+
 // TestWiring pins that donate's graph still resolves after the purchase rules
 // moved into internal/usecase behind fx.Private — the failure mode a compile
 // cannot catch.
@@ -47,6 +60,7 @@ func TestWiring(t *testing.T) {
 		fx.Supply(fx.Annotate(l, fx.As(new(logger.Logger)))),
 		fx.Supply(&mongo.Database{}, &mongo.Client{}, mediaurl.New(config.Config{})),
 		fx.Supply(fx.Annotate(stubComposer{}, fx.As(new(mailcompose.MailComposer)))),
+		fx.Supply(fx.Annotate(stubKitReader{}, fx.As(new(kitdefread.Reader)))),
 		donate.App,
 		fx.Invoke(func(donatev1.DonateServiceServer, *donateuc.AddCoinsUseCase) {}),
 	)

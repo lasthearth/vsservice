@@ -84,28 +84,27 @@ func (uc *Purchases) Buy(ctx context.Context, playerID, itemID string) (*model.P
 			return err
 		},
 		// Compose the delivery mail and stamp the purchase issued. This is the
-		// donate→mail seam: an item purchase becomes an item-mail, a kit purchase
-		// a kit-mail (expanded server-side from the kit code == item.Code). Both
-		// composes are idempotent on purchase.Id, so a retry after a mid-sequence
-		// failure returns the same mail. If compose fails the seq returns the
-		// error: the purchase exists but is not stamped issued (reconcile is fog
-		// — not built here). Mirrors the ledger step's "purchase is the record of
-		// truth" semantics.
+		// donate→mail seam: a purchase is a kit-mail, expanded server-side from
+		// the kit code == item.Code. The compose is idempotent on purchase.Id,
+		// so a retry after a mid-sequence failure returns the same mail. If
+		// compose fails the seq returns the error: the purchase exists but is
+		// not stamped issued (reconcile is fog — not built here). Mirrors the
+		// ledger step's "purchase is the record of truth" semantics.
+		//
+		// There is no item branch any more: donate sells captured kits only
+		// (create/update refuse anything else), so an item-typed entry here is
+		// a legacy document that slipped past — refuse it instead of composing
+		// a mail from a hand-typed game code.
 		func(ctx context.Context) error {
+			if item.Type != model.ItemTypeKit {
+				return ierror.ErrItemTypeDisabled
+			}
+
 			title := "Покупка: " + item.Name
 			body := fmt.Sprintf("Оплачено %d монет (базовая цена %d, скидка %d%%).", price, item.Price, discountPercent)
 
-			switch item.Type {
-			case model.ItemTypeKit:
-				if err := uc.mail.ComposeKitMail(ctx, playerID, item.Code, title, body, purchase.Id); err != nil {
-					return err
-				}
-			default: // model.ItemTypeItem
-				if err := uc.mail.ComposeItemMail(ctx, playerID, title, body, purchase.Id, []ItemSpec{
-					{GameCode: item.Code, Quantity: 1, AttrSnapshot: "", Type: "item"},
-				}); err != nil {
-					return err
-				}
+			if err := uc.mail.ComposeKitMail(ctx, playerID, item.Code, title, body, purchase.Id); err != nil {
+				return err
 			}
 
 			updated, err := uc.repo.UpdatePurchase(ctx, purchase.Id, func(_ context.Context, p *model.Purchase) (*model.Purchase, error) {

@@ -47,6 +47,10 @@ var App = fx.Options(
 			// at the composition seam. donate imports mailcompose (public); mail
 			// never imports donate.
 			newMailComposerAdapter,
+			// Adapt kitdef's public read port to donate's consumer KitLookup at
+			// the composition seam. donate imports kitdefread (public); kitdef
+			// never imports donate.
+			newKitLookupAdapter,
 		),
 
 		fx.Provide(

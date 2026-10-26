@@ -26,6 +26,7 @@ func (c *MapperImpl) ToKitDefProto(source *model.KitDef) *v1.KitDef {
 		}
 		kitdefv1KitDef.CreatedAt = goverter1.TimeToTimestamp((*source).CreatedAt)
 		kitdefv1KitDef.UpdatedAt = goverter1.TimeToTimestamp((*source).UpdatedAt)
+		kitdefv1KitDef.Category = (*source).Category
 		pKitdefv1KitDef = &kitdefv1KitDef
 	}
 	return pKitdefv1KitDef

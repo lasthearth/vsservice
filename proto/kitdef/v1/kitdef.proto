@@ -11,18 +11,28 @@ import "google/protobuf/timestamp.proto";
 // collection.
 //
 // Ownership is split by field, not by document: the game (VintageAPI) is the
-// content writer via Mongo-direct ($setOnInsert code/items/created_at), while
-// vsservice writes only display metadata (title). The two writers touch
-// disjoint fields, so they never collide. vsservice NEVER inserts a kit and
-// NEVER writes content — an unknown code is NotFound, not a new document.
+// content writer via Mongo-direct ($setOnInsert code/items/created_at, plus a
+// $set of the category chosen at capture time), while vsservice writes the
+// display metadata (title, category). The two writers touch disjoint fields,
+// so they never collide: the game bypasses mongox versioning, and the site
+// writes only site-owned fields with a narrow $set. vsservice NEVER inserts a
+// kit — an unknown code is NotFound, not a new document.
+//
+// Removing an item from a captured kit (RemoveKitItem) is a deliberate admin
+// exception to "the game writes content": a site admin trims a mis-captured
+// kit by position, without a re-capture in game. Already-composed mails keep
+// their own attachment snapshot, so a trim never rewrites a past delivery.
+// Category writes are last-write-wins between the game and the site.
 //
 // attr_snapshot (the base64 TreeAttribute per item) is deliberately absent from
 // the wire types below: it is server-side only, mirroring DailyRewards keeping
-// attributes off the client. Both rpcs require the admin scope kit:edit.
+// attributes off the client. All rpcs require the admin scope kit:edit.
 service KitDefService {
   // Admin: list every captured kit with its display metadata and item icons.
   //
-  // Returns all kits in one response — attr_snapshot is not exposed.
+  // Returns all kits in one response — attr_snapshot is not exposed. Kits
+  // whose category was never set (or was captured before the field existed)
+  // report "kit".
   //
   // Errors:
   //   - UNAUTHENTICATED (401): missing or invalid auth token
@@ -32,20 +42,43 @@ service KitDefService {
     option (google.api.http) = {get: "/v1/kitdefs"};
   }
 
-  // Admin: rename a kit (set its display title). Metadata-only $set, no upsert.
+  // Admin: update a captured kit's display metadata (title and/or category).
   //
   // NotFound when the kit was never captured by the game — vsservice does not
-  // insert. Only the title changes; code/items/created_at stay the game's.
+  // insert. Each field is optional: a nil (absent) field is left unchanged; a
+  // set title must be non-empty; a set category must be one of
+  // "kit" | "privilege" | "special". Only the named fields and updated_at are
+  // written (narrow $set, no upsert); code/items/created_at stay the game's.
   //
   // Errors:
-  //   - INVALID_ARGUMENT (400): empty code or title
+  //   - INVALID_ARGUMENT (400): empty code, empty title, unknown category
   //   - NOT_FOUND (404): kit was never captured
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - PERMISSION_DENIED (403): missing kit:edit scope
   //   - INTERNAL (500): database failure
-  rpc RenameKit(RenameKitRequest) returns (RenameKitResponse) {
+  rpc UpdateKit(UpdateKitRequest) returns (UpdateKitResponse) {
     option (google.api.http) = {
-      post: "/v1/kitdefs/{code}:rename"
+      patch: "/v1/kitdefs/{code}"
+      body: "*"
+    };
+  }
+
+  // Admin: remove one item from a captured kit, by its position in the items
+  // list (the index the site read from ListKits). The attr snapshots of the
+  // remaining items are preserved — that is why the removal is targeted and
+  // not a whole-list replacement. Refuses to remove the last item: an empty
+  // kit is treated as missing, and a claimless kit-mail must never exist.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): empty code or index out of range
+  //   - NOT_FOUND (404): kit was never captured
+  //   - FAILED_PRECONDITION (412): removal would leave the kit empty
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): missing kit:edit scope
+  //   - INTERNAL (500): database failure
+  rpc RemoveKitItem(RemoveKitItemRequest) returns (RemoveKitItemResponse) {
+    option (google.api.http) = {
+      post: "/v1/kitdefs/{code}/items/{index}:remove"
       body: "*"
     };
   }
@@ -63,15 +96,18 @@ message KitItem {
   string image_url = 4;
 }
 
-// KitDef is a captured kit: game-owned content plus vsservice-owned title.
+// KitDef is a captured kit: game-owned content plus vsservice-owned metadata.
 message KitDef {
   // Unique upsert key, written by the game.
   string code = 1;
-  // Display name, written by RenameKit.
+  // Display name, written by UpdateKit.
   string title = 2;
   repeated KitItem items = 3;
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp updated_at = 5;
+  // "kit" (default) | "privilege" | "special". Written by the game at capture
+  // and by UpdateKit; a captured-but-unset field decodes to "kit".
+  string category = 6;
 }
 
 message ListKitsRequest {}
@@ -80,17 +116,41 @@ message ListKitsResponse {
   repeated KitDef kits = 1;
 }
 
-message RenameKitRequest {
-  // Upsert key of the kit to rename.
+message UpdateKitRequest {
+  // Code of the captured kit to update.
   string code = 1 [
     (google.api.field_behavior) = REQUIRED,
     (buf.validate.field).string.min_len = 1
   ];
-  // New display title.
-  string title = 2 [
+  // New display title. nil = leave unchanged; when set, must be non-empty.
+  optional string title = 2 [(buf.validate.field).string = {min_len: 1}];
+  // New category. nil = leave unchanged.
+  optional string category = 3 [(buf.validate.field).string = {in: [
+    "kit",
+    "privilege",
+    "special"
+  ]}];
+}
+
+message UpdateKitResponse {
+  // The kit as it stands after the update.
+  KitDef kit = 1;
+}
+
+message RemoveKitItemRequest {
+  // Code of the captured kit to trim.
+  string code = 1 [
     (google.api.field_behavior) = REQUIRED,
     (buf.validate.field).string.min_len = 1
   ];
+  // Position of the item in the kit's items list, as read from ListKits.
+  int32 index = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).int32.gte = 0
+  ];
 }
 
-message RenameKitResponse {}
+message RemoveKitItemResponse {
+  // The kit as it stands after the removal.
+  KitDef kit = 1;
+}
