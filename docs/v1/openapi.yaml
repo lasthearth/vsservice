@@ -643,6 +643,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/google.protobuf.Empty'
+  /v1/donate/admin/shop/items:
+    get:
+      tags:
+        - DonateService
+      summary: 'Admin: list every shop entry, hidden ones included.'
+      description: |-
+        The public ListShopItems answers available entries only, so an entry the
+         site hid (is_available = false) vanished from the admin panel as well and
+         could not be found to be published again. Each item carries is_available,
+         so the panel tells a published entry from a hidden one, and category,
+         joined from the captured kit the same way the public list joins it.
+
+         Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: DonateService_AdminListAllShopItems
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/donate.v1.AdminListAllShopItemsResponse'
   /v1/donate/me/balance:
     get:
       tags:
@@ -1034,6 +1058,8 @@ paths:
            - INVALID_ARGUMENT (400): missing or invalid fields, item_type other
              than ITEM_TYPE_KIT
            - NOT_FOUND (404): kit code not captured
+           - ALREADY_EXISTS (409): a shop entry with this code already exists,
+             hidden entries included
            - UNAUTHENTICATED (401): missing or invalid auth token
            - PERMISSION_DENIED (403): insufficient privileges
            - INTERNAL (500): database failure
@@ -1064,6 +1090,8 @@ paths:
            - INVALID_ARGUMENT (400): missing or invalid fields, item_type other
              than ITEM_TYPE_KIT
            - NOT_FOUND (404): item not found, or kit code not captured
+           - ALREADY_EXISTS (409): the new code is already held by another shop
+             entry, hidden entries included
            - UNAUTHENTICATED (401): missing or invalid auth token
            - PERMISSION_DENIED (403): insufficient privileges
            - INTERNAL (500): database failure
@@ -6873,6 +6901,20 @@ components:
           type: string
           title: next_page_token
       title: AdminListAllPurchasesResponse
+      additionalProperties: false
+    donate.v1.AdminListAllShopItemsRequest:
+      type: object
+      title: AdminListAllShopItemsRequest
+      additionalProperties: false
+    donate.v1.AdminListAllShopItemsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/donate.v1.ShopItem'
+          title: items
+      title: AdminListAllShopItemsResponse
       additionalProperties: false
     donate.v1.AdminListPendingPurchasesRequest:
       type: object
