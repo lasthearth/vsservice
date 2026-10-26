@@ -50,6 +50,8 @@ service DonateService {
   //   - INVALID_ARGUMENT (400): missing or invalid fields, item_type other
   //     than ITEM_TYPE_KIT
   //   - NOT_FOUND (404): kit code not captured
+  //   - ALREADY_EXISTS (409): a shop entry with this code already exists,
+  //     hidden entries included
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - PERMISSION_DENIED (403): insufficient privileges
   //   - INTERNAL (500): database failure
@@ -69,6 +71,8 @@ service DonateService {
   //   - INVALID_ARGUMENT (400): missing or invalid fields, item_type other
   //     than ITEM_TYPE_KIT
   //   - NOT_FOUND (404): item not found, or kit code not captured
+  //   - ALREADY_EXISTS (409): the new code is already held by another shop
+  //     entry, hidden entries included
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - PERMISSION_DENIED (403): insufficient privileges
   //   - INTERNAL (500): database failure
@@ -89,6 +93,24 @@ service DonateService {
   rpc DeleteShopItem(DeleteShopItemRequest) returns (DeleteShopItemResponse) {
     option (google.api.http) = {
       delete: "/v1/donate/shop/items/{id}"
+    };
+  }
+
+  // Admin: list every shop entry, hidden ones included.
+  //
+  // The public ListShopItems answers available entries only, so an entry the
+  // site hid (is_available = false) vanished from the admin panel as well and
+  // could not be found to be published again. Each item carries is_available,
+  // so the panel tells a published entry from a hidden one, and category,
+  // joined from the captured kit the same way the public list joins it.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc AdminListAllShopItems(AdminListAllShopItemsRequest) returns (AdminListAllShopItemsResponse) {
+    option (google.api.http) = {
+      get: "/v1/donate/admin/shop/items"
     };
   }
 

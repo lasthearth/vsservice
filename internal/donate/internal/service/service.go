@@ -10,6 +10,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/donate/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/donate/internal/model"
 	pkgerr "github.com/lasthearth/vsservice/internal/pkg/ierror"
+	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -136,6 +137,12 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 
 	created, err := s.repo.CreateShopItem(ctx, item)
 	if err != nil {
+		// A code another entry already holds, hidden entries included: the
+		// repository reports it as a domain error and the caller gets 409 over
+		// the gateway instead of a 500 that says nothing about the code.
+		if isDomainError(err, codes.AlreadyExists) {
+			return nil, status.Error(codes.AlreadyExists, err.Error())
+		}
 		l.Error("failed to create shop item", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to create shop item")
 	}
@@ -245,6 +252,11 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 		}
 		if isDomainError(err, codes.InvalidArgument) {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		// Moving the entry onto a code another entry holds, hidden ones
+		// included: the same unique index the create path hits, so the same 409.
+		if isDomainError(err, codes.AlreadyExists) {
+			return nil, status.Error(codes.AlreadyExists, err.Error())
 		}
 		l.Error("failed to update shop item", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to update shop item")
@@ -419,9 +431,35 @@ func (s *Service) ListShopItems(ctx context.Context, _ *donatev1.ListShopItemsRe
 		return nil, status.Error(codes.Internal, "failed to list shop items")
 	}
 
-	// Join the kits' categories in one catalog read. Fail-open: a kit lookup
-	// outage leaves the categories empty rather than 500-ing the public shop
-	// list — the entry itself stays sellable.
+	return &donatev1.ListShopItemsResponse{Items: s.shopItemsProto(ctx, l, items)}, nil
+}
+
+// AdminListAllShopItems answers the admin panel: every shop entry, the hidden
+// ones included. The public list filters on is_available, so an entry the site
+// hid was invisible in the one panel that can publish it again.
+//
+// Scope: donate:shop:update (scope.go). There is no donate:shop:read, and the
+// token that edits the shop in the panel carries update, so the admin read of
+// the same resource shares it.
+func (s *Service) AdminListAllShopItems(ctx context.Context, _ *donatev1.AdminListAllShopItemsRequest) (*donatev1.AdminListAllShopItemsResponse, error) {
+	l := s.log.With(zap.String("method", "AdminListAllShopItems"))
+
+	items, err := s.repo.ListShopItems(ctx, false)
+	if err != nil {
+		l.Error("failed to list shop items", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to list shop items")
+	}
+
+	return &donatev1.AdminListAllShopItemsResponse{Items: s.shopItemsProto(ctx, l, items)}, nil
+}
+
+// shopItemsProto maps shop items to proto, stamps the two computed fields from
+// one clock and joins the kit categories in one catalog read. Both shop lists
+// go through it so they answer the same shape.
+//
+// Fail-open on the join: a kit lookup outage leaves the categories empty rather
+// than 500-ing the list — the entry itself stays sellable.
+func (s *Service) shopItemsProto(ctx context.Context, l logger.Logger, items []*model.ShopItem) []*donatev1.ShopItem {
 	categories := map[string]string{}
 	if cats, err := s.kitLookup.Categories(ctx); err == nil {
 		categories = cats
@@ -437,7 +475,7 @@ func (s *Service) ListShopItems(ctx context.Context, _ *donatev1.ListShopItemsRe
 			pbItems[i].Category = categories[m.Code]
 		}
 	}
-	return &donatev1.ListShopItemsResponse{Items: pbItems}, nil
+	return pbItems
 }
 
 func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*donatev1.BuyItemResponse, error) {

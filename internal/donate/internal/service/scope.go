@@ -10,6 +10,7 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "CreateShopItem"):            interceptor.Scope("donate:shop:create"),
 		interceptor.Method(srvName + "UpdateShopItem"):            interceptor.Scope("donate:shop:update"),
 		interceptor.Method(srvName + "DeleteShopItem"):            interceptor.Scope("donate:shop:delete"),
+		interceptor.Method(srvName + "AdminListAllShopItems"):     interceptor.Scope("donate:shop:update"),
 		interceptor.Method(srvName + "Refund"):                    interceptor.Scope("donate:purchase:refund"),
 		interceptor.Method(srvName + "AdminGetPlayerBalance"):     interceptor.Scope("donate:wallet:read"),
 		interceptor.Method(srvName + "ListTransactions"):          interceptor.Scope("donate:transaction:list"),

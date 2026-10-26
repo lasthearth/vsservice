@@ -23,6 +23,9 @@ func (r *Repository) CreateShopItem(ctx context.Context, item *model.ShopItem) (
 
 	result, err := r.shopColl.InsertOne(ctx, d)
 	if err != nil {
+		if dup := duplicateCodeErr(err); dup != nil {
+			return nil, dup
+		}
 		l.Error("failed to insert shop item", zap.Error(err))
 		return nil, err
 	}
@@ -34,6 +37,20 @@ func (r *Repository) CreateShopItem(ctx context.Context, item *model.ShopItem) (
 
 	item.MarkCreated(oid.Hex(), now)
 	return item, nil
+}
+
+// duplicateCodeErr reports a rejection by the unique index on code (see
+// setupIndexes) as the domain error the service answers 409 for, and nil for
+// every other write failure. Both shop-item writes can hit it: the insert of a
+// new entry, and the replace that moves an entry onto another code. A hidden
+// entry still holds its code, so the code can be taken by an entry the public
+// list does not show; that is a name the caller picks again, not a server
+// failure.
+func duplicateCodeErr(err error) error {
+	if mgo.IsDuplicateKeyError(err) {
+		return ierror.ErrShopCodeExists
+	}
+	return nil
 }
 
 func (r *Repository) GetShopItem(ctx context.Context, id string) (*model.ShopItem, error) {
@@ -77,8 +94,13 @@ func (r *Repository) UpdateShopItem(
 		shopItemToDTO,
 		updateFn,
 	)
-	if err != nil && !errors.Is(err, ierror.ErrNotFound) {
-		l.Error("failed to update shop item", zap.Error(err))
+	if err != nil {
+		if dup := duplicateCodeErr(err); dup != nil {
+			return nil, dup
+		}
+		if !errors.Is(err, ierror.ErrNotFound) {
+			l.Error("failed to update shop item", zap.Error(err))
+		}
 	}
 	return updated, err
 }

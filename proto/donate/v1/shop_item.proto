@@ -101,3 +101,9 @@ message ListShopItemsRequest {}
 message ListShopItemsResponse {
   repeated ShopItem items = 1;
 }
+
+message AdminListAllShopItemsRequest {}
+
+message AdminListAllShopItemsResponse {
+  repeated ShopItem items = 1;
+}
