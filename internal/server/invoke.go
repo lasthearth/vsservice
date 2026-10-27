@@ -10,6 +10,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/jwt"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/metrics"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -36,6 +37,9 @@ var App = fx.Options(
 
 		fx.Provide(
 			interceptor.NewAuth,
+			interceptor.NewIdentity,
+			interceptor.NewAccessLog,
+			interceptor.NewDomainErrors,
 			New,
 		),
 
@@ -96,5 +100,20 @@ var App = fx.Options(
 				)
 			},
 		),
+	),
+
+	// A module of its own so the scrape listener is not built inside the
+	// gateway chain: no CORS, no withRequestLog, no runtime.ServeMux. It only
+	// shares the DI graph, which is how interceptor.NewAccessLog above reaches
+	// *metrics.Metrics.
+	fx.Module(
+		"metrics",
+		fx.Decorate(
+			func(l logger.Logger) logger.Logger {
+				return l.WithScope("metrics")
+			},
+		),
+		fx.Provide(metrics.New),
+		fx.Invoke(metrics.Run),
 	),
 )

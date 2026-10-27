@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"runtime/debug"
 	"slices"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/go-faster/errors"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	protovalidatemw "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
@@ -45,11 +45,9 @@ import (
 	"github.com/rs/cors"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 // Build constructs the gRPC server, registers every service and verifies that
@@ -60,17 +58,18 @@ import (
 // coverage check would then leave the process alive with no gRPC server rather
 // than refusing to start.
 func (s *Server) Build() error {
-	logOpts := []logging.Option{
-		logging.WithLogOnEvents(
-		// logging.StartCall,
-		// logging.FinishCall,
-		),
-	}
-
 	recoveryOpts := []recovery.Option{
-		recovery.WithRecoveryHandler(func(p any) (err error) {
-			s.log.Error("Recovered from panic", zap.Any("panic", p))
-			return status.Error(codes.Internal, "Internal server error")
+		recovery.WithRecoveryHandlerContext(func(ctx context.Context, p any) (err error) {
+			// The ctx carries request_id (identity runs inside recovery) and
+			// user_id when auth completed, so a panic replays under the same
+			// id as the call it killed.
+			logger.From(ctx, s.log).Error("recovered from panic",
+				zap.String("event", "grpc.call.panic"),
+				zap.String("component", "grpc"),
+				zap.Any("panic", p),
+				zap.String("stack", string(debug.Stack())),
+			)
+			return interceptor.InternalStatus(ctx)
 		}),
 	}
 
@@ -83,26 +82,33 @@ func (s *Server) Build() error {
 	srv := grpc.NewServer(
 		grpc.MaxRecvMsgSize(60*mb),
 		// recovery is first, so it is the outermost interceptor and covers the
-		// auth and logging interceptors too. grpc-go does not recover panics
-		// itself, so anything panicking outside recovery's scope kills the
-		// process.
+		// identity, auth and access interceptors too. grpc-go does not recover
+		// panics itself, so anything panicking outside recovery's scope kills
+		// the process.
+		//
+		// identity precedes auth: public methods skip auth, and they still
+		// need a request_id. access follows auth so the record carries
+		// user_id. domain_error is innermost: it sanitizes the cause, and the
+		// access record then shows exactly what the client received.
 		grpc.ChainUnaryInterceptor(
 			recovery.UnaryServerInterceptor(recoveryOpts...),
+			s.identityInterceptor.Unary(),
 			selector.UnaryServerInterceptor(s.authInterceptor.Unary(), selector.MatchFunc(func(ctx context.Context, callMeta interceptors.CallMeta) bool {
 				return interceptor.AuthMatcher(ctx, callMeta, s.c)
 			})),
-			logging.UnaryServerInterceptor(interceptorLogger(s.log), logOpts...),
+			s.accessLog.Unary(),
 			protovalidatemw.UnaryServerInterceptor(validator),
-			interceptor.DomainErrorUnaryInterceptor,
+			s.domainErrors.Unary(),
 		),
 		grpc.ChainStreamInterceptor(
 			recovery.StreamServerInterceptor(recoveryOpts...),
+			s.identityInterceptor.Stream(),
 			selector.StreamServerInterceptor(s.authInterceptor.Stream(), selector.MatchFunc(func(ctx context.Context, callMeta interceptors.CallMeta) bool {
 				return interceptor.AuthMatcher(ctx, callMeta, s.c)
 			})),
-			logging.StreamServerInterceptor(interceptorLogger(s.log), logOpts...),
+			s.accessLog.Stream(),
 			protovalidatemw.StreamServerInterceptor(validator),
-			interceptor.DomainErrorStreamInterceptor,
+			s.domainErrors.Stream(),
 		),
 	)
 
@@ -166,6 +172,10 @@ func (s *Server) Run(ctx context.Context, network, address string) error {
 
 // RunInProcessGateway starts the invoke in process http gateway.
 func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string, opts ...runtime.ServeMuxOption) error {
+	// The gateway dials the gRPC port over TCP, so an HTTP request becomes a
+	// separate gRPC call. Forwarding the id is what keeps both records under
+	// one request_id.
+	opts = append(opts, runtime.WithIncomingHeaderMatcher(forwardRequestIDHeader))
 	mux := runtime.NewServeMux(opts...)
 
 	// The client must accept what the server may answer: list responses embed
@@ -295,7 +305,7 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 		},
 		AllowCredentials: true,
 		Debug:            s.c.AppEnv != "prod",
-	}).Handler(mux)
+	}).Handler(s.withRequestLog(mux))
 
 	// Register the Logto webhook endpoint
 	if err := mux.HandlePath("POST", "/logtohook", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
@@ -352,10 +362,4 @@ func (s *Server) GracefulStop(ctx context.Context) {
 			grpclog.Errorf("Failed to shutdown http gateway server: %v", err)
 		}
 	}
-}
-
-// interceptorLogger Retrieved from
-// https://github.com/grpc-ecosystem/go-grpc-middleware/blob/62b7de50cda5a5d633f1013bfbe50e0f38db34ef/interceptors/logging/examples/zap/example_test.go#L17
-func interceptorLogger(l logger.Logger) logging.Logger {
-	return l.ToLoggingLogger()
 }

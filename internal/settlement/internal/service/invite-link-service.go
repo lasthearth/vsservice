@@ -145,6 +145,17 @@ func (s *Service) JoinByInviteLink(ctx context.Context, req *settlementv1.JoinBy
 		return nil, err
 	}
 
+	// The link's code stays out of the record: it is the credential that lets a
+	// player in, and the link id names the same row without handing it over.
+	s.opFor(ctx).Event(opMemberJoined).
+		Entity(entitySettlement, link.SettlementId).
+		Field(
+			zap.String("via", "invite_link"),
+			zap.String("link_id", link.Id),
+			zap.Int32("uses", link.Uses),
+		).
+		Info("member joined through an invite link")
+
 	s.notifyCreator(ctx, link)
 
 	return &settlementv1.JoinByInviteLinkResponse{SettlementId: link.SettlementId}, nil

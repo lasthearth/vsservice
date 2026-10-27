@@ -126,6 +126,17 @@ func (s *Service) ApproveJoinRequest(ctx context.Context, req *settlementv1.Appr
 		return nil, err
 	}
 
+	// The applicant is the member and the approver is the actor: the record
+	// names both, plus which of the three join paths brought the member in.
+	s.opFor(ctx).Event(opMemberJoined).
+		Entity(entitySettlement, req.GetSettlementId()).
+		Field(
+			zap.String("member_id", applicantID),
+			zap.String("via", "join_request"),
+			zap.String("join_request_id", req.GetJoinRequestId()),
+		).
+		Info("member joined the settlement")
+
 	// Notify the applicant. Failure must not undo the join, so it is logged and
 	// swallowed — mirrors the news domain.
 	set, gerr := s.dbRepo.GetSettlement(ctx, req.GetSettlementId())
@@ -181,8 +192,12 @@ func (s *Service) LeaveSettlement(ctx context.Context, req *settlementv1.LeaveSe
 	// with other members is never disbanded — its owner role has somewhere to go.
 	if group.IsGuild() && group.IsSoloOwner(uid) {
 		if !req.GetDisband() {
-			s.log.Info("leaving a solo guild needs the disband confirmation",
-				zap.String("settlement_id", req.GetSettlementId()), zap.String("user_id", uid))
+			// Nothing was deleted, so the record is a Warn that names the
+			// missing confirmation instead of an Error.
+			s.opFor(ctx).Event(opLeaveDeny).
+				Entity(entitySettlement, req.GetSettlementId()).
+				Reason("leaving a solo guild needs the disband confirmation").
+				Warn("leave refused: disband confirmation required")
 			return nil, ierror.ErrDisbandRequired
 		}
 		// The delete carries the same condition, so a player who joined since the read above makes
@@ -193,8 +208,10 @@ func (s *Service) LeaveSettlement(ctx context.Context, req *settlementv1.LeaveSe
 		// The verification request stays, the way an admin's DeleteSettlement leaves it: a founder
 		// who submits again gets the same request document back, and a guild re-created under the
 		// same id continues the notifier numbering instead of restarting it.
-		s.log.Info("guild disbanded by its last owner",
-			zap.String("settlement_id", req.GetSettlementId()), zap.String("user_id", uid))
+		s.opFor(ctx).Event(opDisbanded).
+			Entity(entitySettlement, req.GetSettlementId()).
+			Reason("the last owner left").
+			Info("guild disbanded by its last owner")
 		return &settlementv1.LeaveSettlementResponse{Disbanded: true}, nil
 	}
 
@@ -209,6 +226,13 @@ func (s *Service) LeaveSettlement(ctx context.Context, req *settlementv1.LeaveSe
 	if err != nil {
 		return nil, err
 	}
+
+	// A leave is the member removing themselves: same fact class as an eviction,
+	// but the actor and the member are one and the same.
+	s.opFor(ctx).Event(opMemberLeft).
+		Entity(entitySettlement, req.GetSettlementId()).
+		Info("member left the settlement")
+
 	return &settlementv1.LeaveSettlementResponse{}, nil
 }
 
@@ -271,6 +295,14 @@ func (s *Service) TransferOwnership(ctx context.Context, req *settlementv1.Trans
 	if err != nil {
 		return nil, err
 	}
+
+	// Control of the group moves here: the actor is the owner who gave it up,
+	// and the field names who took it.
+	s.opFor(ctx).Event(opOwnershipTransferred).
+		Entity(entitySettlement, req.GetSettlementId()).
+		Field(zap.String("to_user_id", req.GetToUserId())).
+		Info("settlement ownership transferred")
+
 	proto, err := s.settlementProto(ctx, *updated)
 	if err != nil {
 		return nil, err

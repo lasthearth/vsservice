@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/messaging"
 	"github.com/nats-io/nats.go"
 )
 
@@ -29,7 +30,9 @@ type BusOption func(*natsBus)
 
 func WithLogger(l logger.Logger) BusOption {
 	return func(b *natsBus) {
-		b.log = l
+		// Tagged adds the nats component once here instead of on every record.
+		// A nil logger stays nil: call sites without one keep their guard.
+		b.log = messaging.Tagged(l)
 	}
 }
 

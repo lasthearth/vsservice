@@ -14,19 +14,36 @@ import (
 	"go.uber.org/zap"
 )
 
-func New(cfg config.Config) *mongo.Client {
+// New builds the MongoDB client and attaches the command monitor that makes
+// driver operations visible in the application log. It still panics on
+// failure — fx startup cannot continue without storage — but the reason is
+// logged first, because a panic during boot otherwise reaches the operator
+// without the fields the record would have carried. The connection string is
+// never logged: it holds credentials.
+func New(cfg config.Config, log logger.Logger) *mongo.Client {
+	l := log.WithComponent(componentMongo)
+
 	file, err := os.ReadFile(cfg.MongoUrlFile)
 	if err != nil {
+		l.Error("read mongo url file failed", zap.String("path", cfg.MongoUrlFile), zap.Error(err))
 		panic(err)
 	}
 
-	client, err := mongo.Connect(options.Client().ApplyURI(string(file)))
+	monitor := newCommandMonitor(log, cfg.MongoSlowMS)
+
+	client, err := mongo.Connect(
+		options.Client().
+			ApplyURI(string(file)).
+			SetMonitor(monitor.monitor()),
+	)
 	if err != nil {
+		l.Error("mongo connect failed", zap.Error(err))
 		panic(err)
 	}
 
 	err = client.Ping(context.Background(), nil)
 	if err != nil {
+		l.Error("mongo ping failed", zap.Error(err))
 		panic(err)
 	}
 	return client

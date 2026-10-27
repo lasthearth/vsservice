@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/zap"
@@ -26,9 +27,14 @@ func TestBuildRejectsUnclassifiedMethods(t *testing.T) {
 
 	// No scopers registered, so every non-public method is unclassified. The
 	// service implementations are never invoked, only registered.
+	// Nil metrics: Build is what this test exercises, and *metrics.Metrics is
+	// nil-safe.
 	s := &Server{
-		authInterceptor: interceptor.NewAuth(interceptor.Opts{Log: l}),
-		log:             l,
+		authInterceptor:     interceptor.NewAuth(interceptor.Opts{Log: l}),
+		identityInterceptor: interceptor.NewIdentity(),
+		accessLog:           interceptor.NewAccessLog(l, config.Config{}, nil),
+		domainErrors:        interceptor.NewDomainErrors(l),
+		log:                 l,
 	}
 
 	err = s.Build()

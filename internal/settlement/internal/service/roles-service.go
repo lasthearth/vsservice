@@ -235,5 +235,12 @@ func (s *Service) DeleteSettlement(ctx context.Context, req *settlementv1.Delete
 	if err := s.dbRepo.DeleteSettlement(ctx, req.GetSettlementId()); err != nil {
 		return nil, err
 	}
+
+	// Admin-only and not undoable: the group, its members' belonging and its
+	// notifier binding all go with it, while the verification request stays.
+	s.opFor(ctx).Event(opDeleted).
+		Entity(entitySettlement, req.GetSettlementId()).
+		Info("settlement deleted")
+
 	return &settlementv1.DeleteSettlementResponse{}, nil
 }

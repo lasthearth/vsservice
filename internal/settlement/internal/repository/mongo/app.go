@@ -112,7 +112,10 @@ func New(opts Opts) (*Repository, error) {
 	flColl := opts.Database.Collection(imperialFavorLogCollName)
 	ilColl := opts.Database.Collection(settlementInviteLinkCollName)
 	snColl := opts.Database.Collection(settlementNotifierCollName)
-	logger := opts.Log.WithComponent("settlement-mongo-repository")
+	// The component names the layer, not the module: the plan's enum is
+	// grpc|gateway|repo|mongo|nats|http|job|webhook, and the module already
+	// rides along in scope, which fx sets per domain.
+	logger := opts.Log.WithComponent("repo")
 	if err := setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl, ilColl, snColl); err != nil {
 		return nil, err
 	}

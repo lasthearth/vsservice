@@ -31,7 +31,11 @@ func (s *Service) AddImperialFavor(ctx context.Context, req *settlementv1.AddImp
 		},
 	)
 	if err != nil {
-		l.Error("failed to add imperial favor", zap.Error(err))
+		s.opFor(ctx).Event(opFavorGranted).
+			Entity(entitySettlement, req.GetSettlementId()).
+			Reason(req.GetReason()).
+			Field(zap.Int64("amount", req.GetAmount()), zap.String("currency", favor)).
+			Error("failed to add imperial favor", err)
 		return nil, err
 	}
 
@@ -41,8 +45,23 @@ func (s *Service) AddImperialFavor(ctx context.Context, req *settlementv1.AddImp
 		Amount:       req.GetAmount(),
 		Reason:       req.GetReason(),
 	}); err != nil {
+		// The ledger row is a separate fact from the balance change above: the
+		// favor is already on the settlement, so this failure costs a report
+		// line, not the grant.
 		l.Error("failed to create favor log", zap.Error(err))
 	}
+
+	// The updated settlement carries the new balance, so the record states it
+	// without a second read.
+	s.opFor(ctx).Event(opFavorGranted).
+		Entity(entitySettlement, req.GetSettlementId()).
+		Reason(req.GetReason()).
+		Field(
+			zap.Int64("amount", req.GetAmount()),
+			zap.Int64("balance", updated.ImperialFavor),
+			zap.String("currency", favor),
+		).
+		Info("imperial favor granted")
 
 	proto, err := s.settlementProto(ctx, *updated)
 	if err != nil {
@@ -75,7 +94,18 @@ func (s *Service) DeductImperialFavor(ctx context.Context, req *settlementv1.Ded
 		},
 	)
 	if err != nil {
-		l.Error("failed to deduct imperial favor", zap.Error(err))
+		op := s.opFor(ctx).
+			Entity(entitySettlement, req.GetSettlementId()).
+			Field(zap.Int64("amount", req.GetAmount()), zap.String("currency", favor))
+		// "Insufficient imperial favor" reaches here as InvalidArgument from the
+		// update closure: a rule the admin can act on, so it is a Warn with the
+		// reason. Anything else is a failed write and stays an Error with the
+		// cause attached.
+		if status.Code(err) == codes.InvalidArgument {
+			op.Event(opFavorDeductRefused).Reason(err.Error()).Warn("deduction refused by the favor rules")
+			return nil, err
+		}
+		op.Event(opFavorDeducted).Reason(req.GetReason()).Error("failed to deduct imperial favor", err)
 		return nil, err
 	}
 
@@ -85,8 +115,21 @@ func (s *Service) DeductImperialFavor(ctx context.Context, req *settlementv1.Ded
 		Amount:       -req.GetAmount(),
 		Reason:       req.GetReason(),
 	}); err != nil {
+		// The ledger row is a separate fact from the balance change above: the
+		// favor is already off the settlement, so this failure costs a report
+		// line, not the deduction.
 		l.Error("failed to create favor log", zap.Error(err))
 	}
+
+	s.opFor(ctx).Event(opFavorDeducted).
+		Entity(entitySettlement, req.GetSettlementId()).
+		Reason(req.GetReason()).
+		Field(
+			zap.Int64("amount", req.GetAmount()),
+			zap.Int64("balance", updated.ImperialFavor),
+			zap.String("currency", favor),
+		).
+		Info("imperial favor deducted")
 
 	proto, err := s.settlementProto(ctx, *updated)
 	if err != nil {

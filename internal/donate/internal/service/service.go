@@ -29,16 +29,35 @@ func (s *Service) AddCoins(ctx context.Context, req *donatev1.AddCoinsRequest) (
 
 	newCoins, err := s.repo.AddCoinsToWallet(ctx, req.GetPlayerId(), req.GetPlayerName(), req.GetAmount())
 	if err != nil {
-		l.Error("failed to add coins", zap.Error(err))
+		// The balance is what a coin grant is: the record names the amount it
+		// tried to move and the reason it was asked to, so a support ticket can
+		// be answered from the log even when the write never landed.
+		s.opFor(ctx).Event(opWalletCredited).
+			Entity(entityWallet, req.GetPlayerId()).
+			Reason(req.GetReason()).
+			Field(zap.Int64("amount", req.GetAmount()), zap.String("currency", coins)).
+			Error("failed to credit the wallet", err)
 		return nil, status.Error(codes.Internal, "failed to add coins")
 	}
 
 	tx := model.NewCreditTransaction(req.GetPlayerId(), req.GetAmount(), req.GetReason())
 	if _, err := s.repo.CreateTransaction(ctx, tx); err != nil {
+		// The ledger row is a separate fact from the credit above: the coins are
+		// already on the wallet, so this failure costs a report line, not money.
 		l.Error("failed to record transaction", zap.Error(err))
 	}
 
-	l.Info("coins added", zap.Int64("amount", req.GetAmount()), zap.Int64("new_coins", newCoins))
+	// The credit answer carries the new balance, so the record states it
+	// without a second read of the wallet.
+	s.opFor(ctx).Event(opWalletCredited).
+		Entity(entityWallet, req.GetPlayerId()).
+		Reason(req.GetReason()).
+		Field(
+			zap.Int64("amount", req.GetAmount()),
+			zap.Int64("balance", newCoins),
+			zap.String("currency", coins),
+		).
+		Info("coins credited")
 	return &donatev1.AddCoinsResponse{Coins: newCoins}, nil
 }
 
@@ -59,21 +78,49 @@ func (s *Service) DeductCoins(ctx context.Context, req *donatev1.DeductCoinsRequ
 	})
 	if err != nil {
 		if isDomainError(err, codes.FailedPrecondition) {
+			// A rule the player can see and act on, not a failure: the
+			// wallet is intact, so the record is a Warn that carries the reason.
+			s.opFor(ctx).Event(opWalletDebitRefused).
+				Entity(entityWallet, req.GetPlayerId()).
+				Reason(err.Error()).
+				Field(zap.Int64("amount", req.GetAmount()), zap.String("currency", coins)).
+				Warn("debit refused by the wallet rules")
 			return nil, status.Error(codes.FailedPrecondition, err.Error())
 		}
 		if isDomainError(err, codes.NotFound) {
+			s.opFor(ctx).Event(opWalletDebitRefused).
+				Entity(entityWallet, req.GetPlayerId()).
+				Reason("wallet not found").
+				Field(zap.Int64("amount", req.GetAmount()), zap.String("currency", coins)).
+				Warn("debit refused by the wallet rules")
 			return nil, status.Error(codes.NotFound, "wallet not found")
 		}
-		l.Error("failed to deduct coins", zap.Error(err))
+		s.opFor(ctx).Event(opWalletDebited).
+			Entity(entityWallet, req.GetPlayerId()).
+			Reason(req.GetReason()).
+			Field(zap.Int64("amount", req.GetAmount()), zap.String("currency", coins)).
+			Error("failed to debit the wallet", err)
 		return nil, status.Error(codes.Internal, "failed to deduct coins")
 	}
 
 	tx := model.NewDebitTransaction(req.GetPlayerId(), req.GetAmount(), req.GetReason())
 	if _, err := s.repo.CreateTransaction(ctx, tx); err != nil {
+		// The ledger row is a separate fact from the debit above: the coins are
+		// already off the wallet, so this failure costs a report line, not money.
 		l.Error("failed to record transaction", zap.Error(err))
 	}
 
-	l.Info("coins deducted", zap.Int64("amount", req.GetAmount()), zap.Int64("new_coins", newCoins))
+	// The withdrawal ran inside the update closure, so newCoins is the balance
+	// the write left behind: no second read to state it.
+	s.opFor(ctx).Event(opWalletDebited).
+		Entity(entityWallet, req.GetPlayerId()).
+		Reason(req.GetReason()).
+		Field(
+			zap.Int64("amount", req.GetAmount()),
+			zap.Int64("balance", newCoins),
+			zap.String("currency", coins),
+		).
+		Info("coins debited")
 	return &donatev1.DeductCoinsResponse{Coins: newCoins}, nil
 }
 
@@ -270,19 +317,44 @@ func (s *Service) DeleteShopItem(ctx context.Context, req *donatev1.DeleteShopIt
 }
 
 func (s *Service) Refund(ctx context.Context, req *donatev1.RefundRequest) (*donatev1.RefundResponse, error) {
-	l := s.log.With(zap.String("method", "Refund"), zap.String("purchase_id", req.GetPurchaseId()))
-
 	purchase, err := s.purchases.Refund(ctx, req.GetPurchaseId(), req.GetReason())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
+			s.opFor(ctx).Event(opPurchaseRefundRefused).
+				Entity(entityPurchase, req.GetPurchaseId()).
+				Reason("purchase not found").
+				Warn("refund refused: no such purchase")
 			return nil, status.Error(codes.NotFound, "purchase not found")
 		}
 		if isDomainError(err, codes.FailedPrecondition) {
+			// "Already refunded" is the answer, not a fault: the guard is what
+			// keeps a retry from paying twice, so the refusal is the fact worth
+			// keeping.
+			s.opFor(ctx).Event(opPurchaseRefundRefused).
+				Entity(entityPurchase, req.GetPurchaseId()).
+				Reason(err.Error()).
+				Warn("refund refused by the purchase rules")
 			return nil, status.Error(codes.FailedPrecondition, err.Error())
 		}
-		l.Error("failed to refund purchase", zap.Error(err))
+		s.opFor(ctx).Event(opPurchaseRefunded).
+			Entity(entityPurchase, req.GetPurchaseId()).
+			Reason(req.GetReason()).
+			Error("failed to refund the purchase", err)
 		return nil, status.Error(codes.Internal, "failed to refund purchase")
 	}
+
+	// The refunded purchase carries what was paid, so the record states the
+	// money that went back without reading the wallet again.
+	s.opFor(ctx).Event(opPurchaseRefunded).
+		Entity(entityPurchase, purchase.Id).
+		Reason(req.GetReason()).
+		Transition(string(model.PurchaseStatusActive), string(purchase.Status)).
+		Field(
+			zap.String("item_id", purchase.ItemID),
+			zap.Int64("amount", purchase.PricePaid),
+			zap.String("currency", coins),
+		).
+		Info("purchase refunded")
 
 	return &donatev1.RefundResponse{Purchase: s.mapper.ToPurchaseProto(purchase)}, nil
 }
@@ -330,8 +402,6 @@ func (s *Service) AdminListAllPurchases(ctx context.Context, req *donatev1.Admin
 }
 
 func (s *Service) MarkPurchaseIssued(ctx context.Context, req *donatev1.MarkPurchaseIssuedRequest) (*donatev1.MarkPurchaseIssuedResponse, error) {
-	l := s.log.With(zap.String("method", "MarkPurchaseIssued"), zap.String("purchase_id", req.GetPurchaseId()))
-
 	adminID, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
@@ -340,14 +410,33 @@ func (s *Service) MarkPurchaseIssued(ctx context.Context, req *donatev1.MarkPurc
 	purchase, err := s.purchases.MarkIssued(ctx, req.GetPurchaseId(), adminID)
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
+			s.opFor(ctx).Event(opPurchaseIssueRefused).
+				Entity(entityPurchase, req.GetPurchaseId()).
+				Reason("purchase not found").
+				Warn("issue refused: no such purchase")
 			return nil, status.Error(codes.NotFound, "purchase not found")
 		}
 		if isDomainError(err, codes.FailedPrecondition) {
+			s.opFor(ctx).Event(opPurchaseIssueRefused).
+				Entity(entityPurchase, req.GetPurchaseId()).
+				Reason(err.Error()).
+				Warn("issue refused by the purchase rules")
 			return nil, status.Error(codes.FailedPrecondition, err.Error())
 		}
-		l.Error("failed to mark purchase issued", zap.Error(err))
+		s.opFor(ctx).Event(opPurchaseIssued).
+			Entity(entityPurchase, req.GetPurchaseId()).
+			Error("failed to mark purchase issued", err)
 		return nil, status.Error(codes.Internal, "failed to mark purchase issued")
 	}
+
+	// The admin who delivered the kit is the fact a later dispute asks about,
+	// and opFor already carries them as actor_id from the token the handler
+	// read above.
+	s.opFor(ctx).Event(opPurchaseIssued).
+		Entity(entityPurchase, purchase.Id).
+		Transition(string(purchase.Status), "issued").
+		Field(zap.String("item_id", purchase.ItemID)).
+		Info("purchase issued")
 
 	return &donatev1.MarkPurchaseIssuedResponse{Purchase: s.mapper.ToPurchaseProto(purchase)}, nil
 }
@@ -532,8 +621,6 @@ func firstNonEmpty(values ...string) string {
 }
 
 func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*donatev1.BuyItemResponse, error) {
-	l := s.log.With(zap.String("method", "BuyItem"), zap.String("item_id", req.GetItemId()))
-
 	playerID, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
@@ -542,14 +629,43 @@ func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*d
 	purchase, err := s.purchases.Buy(ctx, playerID, req.GetItemId())
 	if err != nil {
 		if isDomainError(err, codes.NotFound) {
+			s.opFor(ctx).Event(opPurchaseRefused).
+				Entity("shop_item", req.GetItemId()).
+				Reason("item not found or unavailable").
+				Warn("purchase refused: the item is not on sale")
 			return nil, status.Error(codes.NotFound, "item not found or unavailable")
 		}
 		if isDomainError(err, codes.FailedPrecondition) {
+			// Insufficient funds and the closed item-type path both land here:
+			// the wallet is untouched, so the record is a Warn with the reason
+			// the rules gave.
+			s.opFor(ctx).Event(opPurchaseRefused).
+				Entity("shop_item", req.GetItemId()).
+				Reason(err.Error()).
+				Warn("purchase refused by the wallet or item rules")
 			return nil, status.Error(codes.FailedPrecondition, err.Error())
 		}
-		l.Error("failed to buy item", zap.Error(err))
+		s.opFor(ctx).Event(opPurchaseCompleted).
+			Entity("shop_item", req.GetItemId()).
+			Error("failed to buy item", err)
 		return nil, status.Error(codes.Internal, "failed to buy item")
 	}
+
+	// The purchase carries the price that was actually charged and the discount
+	// that produced it, so the record states the money without another read.
+	// The wallet debit itself happens inside the purchase sequence, one fact
+	// away: this record is the purchase, not the balance line.
+	s.opFor(ctx).Event(opPurchaseCompleted).
+		Entity(entityPurchase, purchase.Id).
+		Field(
+			zap.String("item_id", purchase.ItemID),
+			zap.Int64("amount", purchase.PricePaid),
+			zap.Int64("base_price", purchase.BasePrice),
+			zap.Int32("discount_percent", purchase.DiscountPercent),
+			zap.String("currency", coins),
+			zap.String("state", string(purchase.Status)),
+		).
+		Info("purchase completed")
 
 	return &donatev1.BuyItemResponse{Purchase: s.mapper.ToPurchaseProto(purchase)}, nil
 }

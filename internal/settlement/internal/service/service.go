@@ -44,12 +44,6 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 		}
 	}
 
-	s.log.Info("submitting settlement request",
-		zap.String("leader_id", userID),
-		zap.String("settlement_name", req.GetName()),
-		zap.String("kind", string(kind)),
-		zap.Int("attachments", len(req.GetAttachments())))
-
 	// Each kind keeps its own request, so this lookup never mistakes a pending guild for a
 	// settlement one and never levels a settlement up on a guild submission.
 	found, err := s.dbRepo.GetSettlementRequestByLeader(ctx, userID, kind)
@@ -73,7 +67,12 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 	}
 	if kind == model.KindGuild {
 		if err := memberships.MayOwnGuild(); err != nil {
-			s.log.Info("guild submission refused", zap.Error(err), zap.String("user_id", userID))
+			// A rule the player can act on (leave the settlement first), so the
+			// record is a Warn with the reason, not an Error.
+			requestEntity(s.opFor(ctx).Event(opRequestSubmissionDeny), found).
+				Reason(err.Error()).
+				Field(submissionFields(kind, req.GetName(), len(attachs))...).
+				Warn("guild submission refused by the membership rules")
 			return nil, mapModelErr(err)
 		}
 	}
@@ -82,8 +81,10 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 	// request stayed.
 	if found == nil {
 		if err := memberships.MayJoin(kind); err != nil {
-			s.log.Info("submission refused by the membership rules",
-				zap.Error(err), zap.String("user_id", userID), zap.String("kind", string(kind)))
+			requestEntity(s.opFor(ctx).Event(opRequestSubmissionDeny), found).
+				Reason(err.Error()).
+				Field(submissionFields(kind, req.GetName(), len(attachs))...).
+				Warn("submission refused by the membership rules")
 			return nil, mapModelErr(err)
 		}
 	}
@@ -105,9 +106,19 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 	if found == nil {
 		if err := s.dbRepo.CreateRequest(ctx, opts); err != nil {
-			s.log.Error("failed to create new settlement request", zap.Error(err))
+			s.opFor(ctx).Event(opRequestSubmitted).
+				Field(submissionFields(kind, req.GetName(), len(attachs))...).
+				Error("failed to create the settlement request", err)
 			return nil, err
 		}
+
+		// No entity id on a first submission: the repository mints the request
+		// id and answers only an error, so the record names the actor and the
+		// kind. Every later record carries the id.
+		s.opFor(ctx).Event(opRequestSubmitted).
+			Transition("", string(model.SettlementStatusPending)).
+			Field(submissionFields(kind, req.GetName(), len(attachs))...).
+			Info("settlement request submitted")
 
 		return &settlementv1.SubmitResponse{}, nil
 	}
@@ -118,18 +129,22 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 	// a first-time rejected one has no settlement behind it, so neither can have a
 	// block standing. Both used to pay for a query whose result was thrown away.
 	if found.Status == model.SettlementStatusPending {
-		s.log.Info("request already submitted", zap.String("user_id", userID))
+		requestEntity(s.opFor(ctx).Event(opRequestSubmissionDeny), found).
+			Reason("settlement request already pending").
+			Field(submissionFields(kind, req.GetName(), len(attachs))...).
+			Warn("submission refused: a request of this kind already stands")
 		return nil, status.Error(codes.AlreadyExists, "settlement request already pending")
 	}
 
 	// A guild keeps its tier, so LvlUp leaves it where it is and a further submission only
 	// re-verifies the profile.
+	//
+	// The tier move is recorded after the write below, not here: a request that
+	// failed to persist did not level up, and the record must not claim it did.
+	leveledFrom, leveledTo := "", ""
 	if found.Status == model.SettlementStatusApproved {
 		found.LvlUp()
-		s.log.Debug("settlement level up",
-			zap.String("before", string(opts.Type)),
-			zap.String("after", string(found.Type)),
-		)
+		leveledFrom, leveledTo = string(opts.Type), string(found.Type)
 	}
 
 	// The settlement id is the request id. While its notifier block stands the
@@ -150,9 +165,11 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 			opts.Coordinates, coordinatesLocked = model.ResolveCoordinates(opts.Coordinates, &placement)
 		}
 		if coordinatesLocked {
-			// Deterministic, so a support request can be answered from the log alone:
-			// the player typed coordinates and the block overrode them.
-			s.log.Info("notifier position overrides the submitted coordinates",
+			// The repository owns this fact as the Warn record
+			// settlement.request.coordinates_overridden, so this line stays a
+			// Debug trace of the same resolution and carries no event key: one
+			// fact, one record.
+			s.log.Debug("notifier position overrides the submitted coordinates",
 				zap.String("settlement_id", found.Id),
 				zap.Int("resolved_x", opts.Coordinates.X),
 				zap.Int("resolved_y", opts.Coordinates.Y))
@@ -161,11 +178,27 @@ func (s *Service) Submit(ctx context.Context, req *settlementv1.SubmitRequest) (
 
 	opts.Type = found.Type
 	if err := s.dbRepo.UpdateRequest(ctx, opts); err != nil {
-		s.log.Error("failed to update settlement request", zap.Error(err))
+		requestEntity(s.opFor(ctx).Event(opRequestSubmitted), found).
+			Field(submissionFields(kind, req.GetName(), len(attachs))...).
+			Error("failed to update the settlement request", err)
 		return nil, err
 	}
 
-	s.log.Info("settlement req created", zap.Int("attachment", len(attachs)))
+	// One record per fact: the resubmission itself, and the tier move it asked
+	// for when the request was already approved. Both are written only after
+	// the update landed.
+	requestEntity(s.opFor(ctx).Event(opRequestSubmitted), found).
+		Transition(string(found.Status), string(model.SettlementStatusPending)).
+		Field(append(submissionFields(kind, req.GetName(), len(attachs)),
+			zap.Bool("coordinates_locked", coordinatesLocked))...).
+		Info("settlement request submitted")
+
+	if leveledTo != "" {
+		requestEntity(s.opFor(ctx).Event(opLevelUp), found).
+			Transition(leveledFrom, leveledTo).
+			Field(zap.String("kind", string(kind))).
+			Info("settlement request leveled up")
+	}
 
 	return &settlementv1.SubmitResponse{CoordinatesLocked: coordinatesLocked}, nil
 }
@@ -234,8 +267,6 @@ func (s *Service) ListPending(ctx context.Context, req *settlementv1.ListPending
 
 // Approve implements settlementv1.SettlementServiceServer
 func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest) (*settlementv1.ApproveResponse, error) {
-	s.log.Info("approving settlement request", zap.String("settlement_id", req.GetId()))
-
 	request, err := s.dbRepo.GetSettlementRequest(ctx, req.GetId())
 	if err != nil {
 		s.log.Error("failed to get settlement", zap.Error(err))
@@ -263,8 +294,13 @@ func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest)
 		// the whole approval back. The author may have joined a group in the hours between the
 		// submission and now.
 		if err := s.ensureAuthorMayBeApproved(ctx, *request, creating); err != nil {
-			s.log.Info("approval refused by the membership rules",
-				zap.Error(err), zap.String("leader_id", request.Leader.UserId))
+			// A rule that denied a moderator, so the transaction rolls back and
+			// nothing changed: a Warn that carries the reason and the author it
+			// was checked against.
+			requestEntity(s.opFor(ctx).Event(opRequestApprovalDeny), request).
+				Reason(err.Error()).
+				Field(zap.String("leader_id", request.Leader.UserId)).
+				Warn("approval refused by the membership rules")
 			return err
 		}
 
@@ -282,9 +318,32 @@ func (s *Service) Approve(ctx context.Context, req *settlementv1.ApproveRequest)
 		return s.mailOwnersAboutUpgrade(ctx, *res)
 	})
 	if err != nil {
-		s.log.Error("failed to approve settlement", zap.Error(err))
+		requestEntity(s.opFor(ctx).Event(opRequestApproved), request).
+			Error("failed to approve the settlement request", err)
 		return nil, err
 	}
+
+	// Recorded after the commit: a rolled-back approval created nothing, and the
+	// record must not claim otherwise. The settlement id is the request id, so
+	// the entity this names is the group the approval just made or raised.
+	op := s.opFor(ctx).Event(opRequestApproved).
+		Entity(entitySettlement, req.GetId()).
+		Transition(string(model.SettlementStatusPending), string(model.SettlementStatusApproved)).
+		Field(
+			zap.Bool("created", result.Created),
+			zap.String("kind", string(result.Settlement.Kind())),
+			zap.String("leader_id", result.Settlement.Leader.UserId),
+		)
+	if upgraded(*result) {
+		// The tier change is the fact an upgrade approval is about; the level_up
+		// key stays with the submission that asked for it, so one lifecycle does
+		// not count the same level twice.
+		op = op.Field(
+			zap.String("type_from", string(result.PreviousType)),
+			zap.String("type_to", string(result.Settlement.Type)),
+		)
+	}
+	op.Info("settlement request approved")
 
 	// Site notifications are best effort and go out after the commit: a failing
 	// notification must not undo an approval, and a rolled-back one must not
@@ -333,24 +392,26 @@ func (s *Service) ensureAuthorMayBeApproved(ctx context.Context, request model.S
 
 // Reject implements settlementv1.SettlementServiceServer
 func (s *Service) Reject(ctx context.Context, req *settlementv1.RejectRequest) (*settlementv1.RejectResponse, error) {
-	s.log.Info("rejecting settlement request",
-		zap.String("settlement_id", req.GetId()),
-		zap.String("rejection_reason", req.GetRejectionReason()))
-
 	if err := s.dbRepo.Reject(ctx, req.GetId(), req.GetRejectionReason()); err != nil {
-		s.log.Error("failed to reject settlement", zap.Error(err))
+		s.opFor(ctx).Event(opRequestRejected).
+			Entity(entityRequest, req.GetId()).
+			Error("failed to reject the settlement request", err)
 		return nil, err
 	}
+
+	// The moderator's reason is the fact the author will ask about, so it rides
+	// on the record instead of a second line.
+	s.opFor(ctx).Event(opRequestRejected).
+		Entity(entityRequest, req.GetId()).
+		Transition(string(model.SettlementStatusPending), string(model.SettlementStatusRejected)).
+		Reason(req.GetRejectionReason()).
+		Info("settlement request rejected")
 
 	return &settlementv1.RejectResponse{}, nil
 }
 
 // RemoveMember implements settlementv1.SettlementServiceServer
 func (s *Service) RemoveMember(ctx context.Context, req *settlementv1.RemoveMemberRequest) (*settlementv1.RemoveMemberResponse, error) {
-	s.log.Info("removing member from settlement",
-		zap.String("settlement_id", req.GetSettlementId()),
-		zap.String("user_id", req.GetUserId()))
-
 	uid, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		s.log.Error("failed to get user id", zap.Error(err))
@@ -362,26 +423,36 @@ func (s *Service) RemoveMember(ctx context.Context, req *settlementv1.RemoveMemb
 	// any settlement — the ids are readable from the public Get/List RPCs.
 	if lerr := s.dbRepo.IsLeaderOfSettlement(ctx, req.GetSettlementId(), uid); lerr != nil {
 		if serr := s.requireScope(ctx, manageScope); serr != nil {
-			s.log.Warn("member removal denied: not leader and no manage scope",
-				zap.String("user_id", uid), zap.Error(lerr))
+			// Nothing changed, so the record is a Warn with the rule that
+			// denied it. member_id names the eviction target: the caller is
+			// already on the record as actor_id and as the ctx user_id.
+			s.opFor(ctx).Event(opMemberRemovalDeny).
+				Entity(entitySettlement, req.GetSettlementId()).
+				Field(zap.String("member_id", req.GetUserId())).
+				Reason("caller is neither the settlement leader nor a moderator").
+				Warn("member removal denied")
 			return nil, serr
 		}
 	}
 
 	if err := s.dbRepo.RemoveMember(ctx, req.GetSettlementId(), req.GetUserId()); err != nil {
-		s.log.Error("failed to remove member", zap.Error(err))
+		s.opFor(ctx).Event(opMemberRemoved).
+			Entity(entitySettlement, req.GetSettlementId()).
+			Field(zap.String("member_id", req.GetUserId())).
+			Error("failed to remove the member", err)
 		return nil, err
 	}
+
+	s.opFor(ctx).Event(opMemberRemoved).
+		Entity(entitySettlement, req.GetSettlementId()).
+		Field(zap.String("member_id", req.GetUserId())).
+		Info("member removed from the settlement")
 
 	return &settlementv1.RemoveMemberResponse{}, nil
 }
 
 // InviteMember implements settlementv1.SettlementServiceServer
 func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemberRequest) (*settlementv1.InviteMemberResponse, error) {
-	s.log.Info("inviting member to settlement",
-		zap.String("settlement_id", req.GetSettlementId()),
-		zap.String("user_id", req.GetUserId()))
-
 	uid, err := interceptor.GetUserID(ctx)
 	if err != nil {
 		s.log.Error("failed to get user id", zap.Error(err))
@@ -399,17 +470,32 @@ func (s *Service) InviteMember(ctx context.Context, req *settlementv1.InviteMemb
 	// a guild member to a settlement; only a second membership of the same kind, and a guild owner
 	// invited into a settlement, are refused.
 	if err := s.dbRepo.EnsureMayJoin(ctx, req.GetUserId(), set.Kind()); err != nil {
-		s.log.Info("invitation refused by the membership rules",
-			zap.Error(err),
-			zap.String("user_id", req.GetUserId()),
-			zap.String("kind", string(set.Kind())))
+		s.opFor(ctx).Event(opInvitationDeny).
+			Entity(entitySettlement, req.GetSettlementId()).
+			Field(
+				zap.String("member_id", req.GetUserId()),
+				zap.String("kind", string(set.Kind())),
+			).
+			Reason(err.Error()).
+			Warn("invitation refused by the membership rules")
 		return nil, err
 	}
 
 	if err := s.dbRepo.CreateInvitation(ctx, req.GetSettlementId(), req.GetUserId()); err != nil {
-		s.log.Error("failed to add member", zap.Error(err))
+		s.opFor(ctx).Event(opInvitationSent).
+			Entity(entitySettlement, req.GetSettlementId()).
+			Field(zap.String("member_id", req.GetUserId())).
+			Error("failed to write the invitation", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	s.opFor(ctx).Event(opInvitationSent).
+		Entity(entitySettlement, req.GetSettlementId()).
+		Field(
+			zap.String("member_id", req.GetUserId()),
+			zap.String("kind", string(set.Kind())),
+		).
+		Info("invitation sent")
 
 	return &settlementv1.InviteMemberResponse{}, nil
 }
@@ -457,9 +543,16 @@ func (s *Service) RevokeInvitation(ctx context.Context, req *settlementv1.Revoke
 	}
 
 	if err := s.dbRepo.DeleteInvitationForLeader(ctx, req.GetInvitationId(), req.GetSettlementId()); err != nil {
-		l.Error("failed to revoke invitation", zap.Error(err))
+		s.opFor(ctx).Event(opInvitationRevoked).
+			Entity(entityInvitation, req.GetInvitationId()).
+			Error("failed to revoke the invitation", err)
 		return nil, err
 	}
+
+	s.opFor(ctx).Event(opInvitationRevoked).
+		Entity(entityInvitation, req.GetInvitationId()).
+		Field(zap.String("settlement_id", req.GetSettlementId())).
+		Info("invitation revoked")
 
 	return &settlementv1.RevokeInvitationResponse{}, nil
 }
@@ -474,9 +567,17 @@ func (s *Service) AcceptInvitation(ctx context.Context, req *settlementv1.Accept
 
 	// TODO: утекла бизнесуха в репу, придумать как вынести транкзакции и отрефакторить репу
 	if err := s.dbRepo.AcceptInvitation(ctx, req.GetInvitationId(), uid); err != nil {
-		s.log.Error("failed to accept invitation", zap.Error(err))
+		s.opFor(ctx).Event(opInvitationAccepted).
+			Entity(entityInvitation, req.GetInvitationId()).
+			Error("failed to accept the invitation", err)
 		return nil, err
 	}
+
+	// The invited player is the actor here, and the settlement they joined is
+	// written by the repository, so the record names the invitation.
+	s.opFor(ctx).Event(opInvitationAccepted).
+		Entity(entityInvitation, req.GetInvitationId()).
+		Info("invitation accepted")
 
 	return &settlementv1.AcceptInvitationResponse{}, nil
 }
@@ -503,9 +604,15 @@ func (s *Service) RejectInvitation(ctx context.Context, req *settlementv1.Reject
 	}
 
 	if err := s.dbRepo.DeleteInvitationForUser(ctx, req.GetInvitationId(), uid); err != nil {
-		s.log.Error("failed to delete invitation", zap.Error(err))
+		s.opFor(ctx).Event(opInvitationRejected).
+			Entity(entityInvitation, req.GetInvitationId()).
+			Error("failed to reject the invitation", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	s.opFor(ctx).Event(opInvitationRejected).
+		Entity(entityInvitation, req.GetInvitationId()).
+		Info("invitation rejected")
 
 	return &settlementv1.RejectInvitationResponse{}, nil
 }

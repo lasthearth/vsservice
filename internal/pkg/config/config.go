@@ -16,6 +16,16 @@ type Config struct {
 	// DisableAuthMatcher disables interceptor for auth token.
 	DisableAuthMatcher bool `envconfig:"DISABLE_AUTH_MATCHER" default:"false"`
 
+	// LogLevel is the minimum level emitted. Accepts debug, info, warn, error.
+	LogLevel string `envconfig:"LOG_LEVEL" default:"info"`
+	// LogFormat forces the encoder: json or console. Empty derives it from
+	// AppEnv (console in dev, json otherwise).
+	LogFormat string `envconfig:"LOG_FORMAT"`
+	// LogSampleReads keeps 1 record in N for successful high-volume reads
+	// (List*/Get* and the world-status RPCs). 0 or 1 disables sampling.
+	// Errors, warnings and writes are never sampled.
+	LogSampleReads int `envconfig:"LOG_SAMPLE_READS" default:"10"`
+
 	JWKS_URL string `envconfig:"JWKS_URL"`
 	// Issuer and Audience are required because golang-jwt treats an empty
 	// expected value as "skip this check": leaving either unset silently
@@ -25,8 +35,21 @@ type Config struct {
 
 	GrpcPort     int `envconfig:"GRPC_PORT" default:"50051"`
 	GateAwayPort int `envconfig:"GATEAWAY_PORT" default:"6969"`
+	// MetricsPort serves the Prometheus scrape endpoint. It is NOT routed
+	// through the gateway or Traefik and carries no auth, so the listener must
+	// never sit on a public interface.
+	MetricsPort int `envconfig:"METRICS_PORT" default:"6970"`
+	// MetricsBindAddr is the interface that endpoint binds. The loopback default
+	// fits a local run. A container deployment sets 0.0.0.0: a listener on the
+	// container's own loopback is unreachable from the Prometheus container,
+	// which scrapes over the private overlay network; the port stays
+	// unpublished, so all-interfaces inside the container is still not public.
+	MetricsBindAddr string `envconfig:"METRICS_BIND_ADDR" default:"127.0.0.1"`
 
 	MongoUrlFile string `envconfig:"MONGO_URL_FILE" required:"true"`
+	// MongoSlowMS is the command duration above which the driver monitor logs
+	// mongo.command.slow. Failed commands are always logged.
+	MongoSlowMS int64 `envconfig:"MONGO_SLOW_MS" default:"250"`
 
 	CdnUrl string `envconfig:"CDN_URL"`
 
@@ -59,6 +82,13 @@ type Config struct {
 	MinioUseSSL    bool   `envconfig:"MINIO_USE_SSL"`
 
 	NatsUrl string `envconfig:"NATS_URL"`
+	// NatsMaxDeliverLog is the delivery attempt above which a redelivery is
+	// logged at Warn instead of Error.
+	NatsMaxDeliverLog uint64 `envconfig:"NATS_MAX_DELIVER_LOG" default:"3"`
+
+	// HTTPClientLog enables the outbound HTTP client hooks (request, response,
+	// final failure after retries).
+	HTTPClientLog bool `envconfig:"HTTP_CLIENT_LOG" default:"true"`
 
 	DiscordBotToken        string   `envconfig:"DISCORD_BOT_TOKEN" required:"true"`
 	DiscordBaseURL         string   `envconfig:"DISCORD_BASE_URL" default:"https://discord.com/api/v10"`

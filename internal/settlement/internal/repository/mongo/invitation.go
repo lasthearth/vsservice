@@ -22,7 +22,7 @@ func (r *Repository) GetUserInvitations(ctx context.Context, userID string) ([]m
 		).
 		WithMethod("get_user_invitations")
 
-	l.Info("getting user invitations")
+	l.Debug("getting user invitations")
 
 	filter := bson.M{"user_id": userID}
 	cursor, err := r.setInvColl.Find(ctx, filter)
@@ -42,7 +42,7 @@ func (r *Repository) GetUserInvitations(ctx context.Context, userID string) ([]m
 		return nil, err
 	}
 
-	l.Info("user invitations retrieved successfully")
+	l.Debug("user invitations retrieved successfully")
 
 	return r.mapper.ToInvModels(invitations), nil
 }
@@ -54,7 +54,7 @@ func (r *Repository) AcceptInvitation(ctx context.Context, invitationID, userID 
 		).
 		WithMethod("accept_invitation")
 
-	l.Info("accepting invitation")
+	l.Debug("accepting invitation")
 
 	session, err := r.client.StartSession()
 	if err != nil {
@@ -135,7 +135,7 @@ func (r *Repository) AcceptInvitation(ctx context.Context, invitationID, userID 
 			return err
 		}
 
-		l.Info(
+		l.Debug(
 			"invitation accepted successfully",
 			zap.Int64("modified_settlement", upd.ModifiedCount),
 		)
@@ -153,7 +153,7 @@ func (r *Repository) GetInvitations(ctx context.Context, settlementID string) ([
 		).
 		WithMethod("get_invitations")
 
-	l.Info("getting invitations")
+	l.Debug("getting invitations")
 
 	filter := bson.M{"settlement_id": settlementID}
 	cursor, err := r.setInvColl.Find(ctx, filter)
@@ -173,7 +173,7 @@ func (r *Repository) GetInvitations(ctx context.Context, settlementID string) ([
 		return nil, err
 	}
 
-	l.Info("invitations retrieved successfully")
+	l.Debug("invitations retrieved successfully")
 
 	return r.mapper.ToInvModels(invitations), nil
 }
@@ -187,7 +187,7 @@ func (r *Repository) CreateInvitation(ctx context.Context, settlementID, userID 
 		).
 		WithMethod("create_invitation")
 
-	l.Info("creating invitation")
+	l.Debug("creating invitation")
 	dto := invitationdto.Invitation{
 		Id:           bson.NewObjectIDFromTimestamp(time.Now()),
 		UserId:       userID,
@@ -200,7 +200,7 @@ func (r *Repository) CreateInvitation(ctx context.Context, settlementID, userID 
 		return err
 	}
 
-	l.Info("invitation created successfully")
+	l.Debug("invitation created successfully")
 	return nil
 }
 
@@ -212,7 +212,7 @@ func (r *Repository) RemoveMember(ctx context.Context, settlementID, userID stri
 			zap.String("user_id", userID)).
 		WithMethod("remove_member")
 
-	l.Info("removing member from settlement")
+	l.Debug("removing member from settlement")
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -248,7 +248,7 @@ func (r *Repository) RemoveMember(ctx context.Context, settlementID, userID stri
 		return err
 	}
 
-	l.Info(
+	l.Debug(
 		"successfully removed member from settlement",
 		zap.Int64(
 			"modified_count",
@@ -265,7 +265,7 @@ func (r *Repository) getInvitation(ctx context.Context, invitationID string) (*m
 		).
 		WithMethod("get_invitation")
 
-	l.Info("getting invitation")
+	l.Debug("getting invitation")
 
 	oid, err := mongomodel.ParseObjectID(invitationID)
 	if err != nil {
@@ -291,7 +291,7 @@ func (r *Repository) getInvitation(ctx context.Context, invitationID string) (*m
 
 	res := r.mapper.ToInvModel(dto)
 
-	l.Info("invitation retrieved successfully")
+	l.Debug("invitation retrieved successfully")
 
 	return &res, nil
 }
@@ -303,7 +303,7 @@ func (r *Repository) DeleteInvitationForUser(ctx context.Context, invitationID, 
 		).
 		WithMethod("delete_invitation")
 
-	l.Info("deleting invitation")
+	l.Debug("deleting invitation")
 
 	oid, err := mongomodel.ParseObjectID(invitationID)
 	if err != nil {
@@ -316,7 +316,7 @@ func (r *Repository) DeleteInvitationForUser(ctx context.Context, invitationID, 
 		return err
 	}
 
-	l.Info("invitation deleted successfully")
+	l.Debug("invitation deleted successfully")
 
 	return nil
 }
@@ -328,7 +328,7 @@ func (r *Repository) DeleteInvitationForLeader(ctx context.Context, invitationID
 		).
 		WithMethod("delete_invitation")
 
-	l.Info("deleting invitation")
+	l.Debug("deleting invitation")
 
 	oid, err := mongomodel.ParseObjectID(invitationID)
 	if err != nil {
@@ -341,7 +341,7 @@ func (r *Repository) DeleteInvitationForLeader(ctx context.Context, invitationID
 		return err
 	}
 
-	l.Info("invitation deleted successfully")
+	l.Debug("invitation deleted successfully")
 
 	return nil
 }
@@ -353,7 +353,7 @@ func (r *Repository) DeleteInvitation(ctx context.Context, invitationID string) 
 		).
 		WithMethod("delete_invitation")
 
-	l.Info("deleting invitation")
+	l.Debug("deleting invitation")
 
 	oid, err := mongomodel.ParseObjectID(invitationID)
 	if err != nil {
@@ -366,7 +366,7 @@ func (r *Repository) DeleteInvitation(ctx context.Context, invitationID string) 
 		return err
 	}
 
-	l.Info("invitation deleted successfully")
+	l.Debug("invitation deleted successfully")
 
 	return nil
 }

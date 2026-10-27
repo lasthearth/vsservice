@@ -38,7 +38,10 @@ import (
 type Opts struct {
 	fx.In
 
-	AuthInterceptor *interceptor.Auth
+	AuthInterceptor     *interceptor.Auth
+	IdentityInterceptor *interceptor.Identity
+	AccessLog           *interceptor.AccessLog
+	DomainErrors        *interceptor.DomainErrors
 
 	Config config.Config
 
@@ -74,7 +77,10 @@ type Opts struct {
 }
 
 type Server struct {
-	authInterceptor *interceptor.Auth
+	authInterceptor     *interceptor.Auth
+	identityInterceptor *interceptor.Identity
+	accessLog           *interceptor.AccessLog
+	domainErrors        *interceptor.DomainErrors
 
 	c                   config.Config
 	leaderboardV1       leaderboardv1.LeaderboardServiceServer
@@ -114,6 +120,9 @@ type Server struct {
 func New(opts Opts) *Server {
 	return &Server{
 		authInterceptor:     opts.AuthInterceptor,
+		identityInterceptor: opts.IdentityInterceptor,
+		accessLog:           opts.AccessLog,
+		domainErrors:        opts.DomainErrors,
 		c:                   opts.Config,
 		leaderboardV1:       opts.LeaderboardV1,
 		rulesV1:             opts.RulesV1,

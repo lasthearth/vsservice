@@ -4,17 +4,31 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"time"
 
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-func generateMsgID[T any](event T) string {
-	data, _ := json.Marshal(event)
+// msgIDFromBytes derives the JetStream message id from the exact bytes going on
+// the wire, so the id stays the sha256 of the published payload (the value the
+// server dedupes on) and the payload is marshalled only once.
+func msgIDFromBytes(data []byte) string {
 	hash := sha256.Sum256(data)
 	return hex.EncodeToString(hash[:])
+}
+
+// headersSupported reports whether the connection behind js can carry message
+// headers. JetStream needs a server new enough to always support them, and the
+// check keeps a core-NATS connection that does not: there the publish degrades
+// to a headerless one instead of failing. A nil connection reports true so the
+// header logic stays exercised by fakes.
+func headersSupported(js jetstream.JetStream) bool {
+	nc := js.Conn()
+	if nc == nil {
+		return true
+	}
+	return nc.HeadersSupported()
 }
 
 func ensureStream(js jetstream.JetStream, name string, subjects []string) error {

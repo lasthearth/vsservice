@@ -48,7 +48,9 @@ func (r *Repository) CreateJoinRequest(ctx context.Context, settlementID, userID
 		// The unique (user_id, settlement_id) index fires when the same player applies to the same
 		// group twice. It says nothing about membership, so it must not answer as a membership error.
 		if mongo.IsDuplicateKeyError(err) {
-			l.Info("an application to this group already stands")
+			l.Warn("an application to this group already stands",
+				zap.String("event", "settlement.join_request.duplicate"),
+			)
 			return repoerr.ErrJoinRequestExists
 		}
 		l.Error("failed to create join request", zap.Error(err))

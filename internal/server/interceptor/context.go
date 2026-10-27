@@ -60,6 +60,12 @@ func GetUserID(ctx context.Context) (string, error) {
 }
 
 func provideReqID(ctx context.Context) (context.Context, error) {
+	// The identity interceptor provisioned the id for every call already.
+	// authorize may also run standalone (tests), so only mint when missing.
+	if rid, err := GetRequestID(ctx); err == nil && rid != "" {
+		return ctx, nil
+	}
+
 	rid, err := uuid.NewV7()
 	if err != nil {
 		return nil, errors.New("failed to generate rid")

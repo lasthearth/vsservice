@@ -39,7 +39,14 @@ func (s *Service) TransferImperialFavor(ctx context.Context, req *settlementv1.T
 		},
 	)
 	if err != nil {
-		l.Error("failed to deduct favor from source", zap.Error(err))
+		s.opFor(ctx).Event(opFavorTransferred).
+			Entity(entitySettlement, req.GetFromSettlementId()).
+			Field(
+				zap.String("to_settlement_id", req.GetToSettlementId()),
+				zap.Int64("amount", req.GetAmount()),
+				zap.String("currency", favor),
+			).
+			Error("failed to deduct favor from source", err)
 		return nil, err
 	}
 
@@ -50,22 +57,53 @@ func (s *Service) TransferImperialFavor(ctx context.Context, req *settlementv1.T
 		},
 	)
 	if err != nil {
-		l.Error("failed to add favor to target (deduction already applied)", zap.Error(err))
+		// The source is already deducted and the two writes are not atomic, so
+		// this record is the only trace of favor that left one settlement and
+		// never reached the other: it says so in the reason.
+		s.opFor(ctx).Event(opFavorTransferred).
+			Entity(entitySettlement, req.GetFromSettlementId()).
+			Field(
+				zap.String("to_settlement_id", req.GetToSettlementId()),
+				zap.Int64("amount", req.GetAmount()),
+				zap.Int64("from_balance", from.ImperialFavor),
+				zap.String("currency", favor),
+			).
+			Reason("the source was deducted and crediting the target failed").
+			Error("failed to add favor to target", err)
 		return nil, err
 	}
 
-	_ = s.dbRepo.CreateFavorLog(ctx, model.ImperialFavorLog{
+	// Both balances moved, so the transfer is the fact to keep: one record, with
+	// what each side ended on.
+	s.opFor(ctx).Event(opFavorTransferred).
+		Entity(entitySettlement, req.GetFromSettlementId()).
+		Field(
+			zap.String("to_settlement_id", req.GetToSettlementId()),
+			zap.Int64("amount", req.GetAmount()),
+			zap.Int64("from_balance", from.ImperialFavor),
+			zap.Int64("to_balance", to.ImperialFavor),
+			zap.String("currency", favor),
+		).
+		Info("imperial favor transferred")
+
+	// The ledger rows report the transfer; a missing one costs a report line,
+	// not the favor, so the failure is logged and the transfer still answers.
+	if err := s.dbRepo.CreateFavorLog(ctx, model.ImperialFavorLog{
 		SettlementId: req.GetFromSettlementId(),
 		AdminId:      callerID,
 		Amount:       -req.GetAmount(),
 		Reason:       "transfer to " + req.GetToSettlementId(),
-	})
-	_ = s.dbRepo.CreateFavorLog(ctx, model.ImperialFavorLog{
+	}); err != nil {
+		l.Warn("failed to write the source favor ledger row", zap.Error(err))
+	}
+	if err := s.dbRepo.CreateFavorLog(ctx, model.ImperialFavorLog{
 		SettlementId: req.GetToSettlementId(),
 		AdminId:      callerID,
 		Amount:       req.GetAmount(),
 		Reason:       "transfer from " + req.GetFromSettlementId(),
-	})
+	}); err != nil {
+		l.Warn("failed to write the target favor ledger row", zap.Error(err))
+	}
 
 	fromProto, err := s.settlementProto(ctx, *from)
 	if err != nil {

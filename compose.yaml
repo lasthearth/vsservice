@@ -14,11 +14,19 @@ services:
       DISCORD_BASE_URL: ${DISCORD_BASE_URL:-https://discord.com/api/v10}
       DISCORD_NEWS_WEBHOOK_URL: ${DISCORD_NEWS_WEBHOOK_URL}
       DISCORD_ALLOWED_CHANNELS: ${DISCORD_ALLOWED_CHANNELS}
+      METRICS_PORT: ${METRICS_PORT:-6970}
+      # The scrape endpoint carries no auth, so it binds loopback by default.
+      # A deployment where Prometheus reaches it over a private container
+      # network sets 0.0.0.0 and publishes nothing.
+      METRICS_BIND_ADDR: ${METRICS_BIND_ADDR:-127.0.0.1}
     volumes:
       - ./mongo/url.txt:/etc/vsservice/mongo/url.txt
     ports:
       - "50051:50051"
       - "6969:6969"
+      # To scrape from the host in a local run, set METRICS_BIND_ADDR=0.0.0.0
+      # and publish the port on loopback only:
+      # - "127.0.0.1:6970:6970"
 
   swagger-ui:
     image: swaggerapi/swagger-ui

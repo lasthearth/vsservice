@@ -23,7 +23,7 @@ func (r *Repository) Create(ctx context.Context, dto settlementdto.Settlement) e
 	// to neither of the two unique indexes that keep one membership per kind.
 	dto.Kind = string(model.SettlementType(dto.Type).Kind())
 
-	r.log.Info("creating new settlement",
+	r.log.Debug("creating new settlement",
 		zap.String("leader_id", dto.Leader.UserId),
 		zap.String("settlement_name", dto.Name),
 		zap.String("settlement_type", dto.Type))
@@ -41,7 +41,7 @@ func (r *Repository) Create(ctx context.Context, dto settlementdto.Settlement) e
 		return err
 	}
 
-	r.log.Info("successfully created settlement",
+	r.log.Debug("successfully created settlement",
 		zap.String("leader_id", dto.Leader.UserId),
 		zap.String("model_id", dto.Id.Hex()))
 	return nil
@@ -72,7 +72,7 @@ func (r *Repository) Update(ctx context.Context, opts service.UpdateSettlementOp
 			zap.String("settlement_type", string(opts.Type)),
 		).
 		WithMethod("update")
-	l.Info("updating settlement")
+	l.Debug("updating settlement")
 
 	objectID, err := mongomodel.ParseObjectID(opts.ID)
 	if err != nil {
@@ -113,7 +113,7 @@ func (r *Repository) Update(ctx context.Context, opts service.UpdateSettlementOp
 		return err
 	}
 
-	l.Info(
+	l.Debug(
 		"successfully updated settlement",
 		zap.Int64("modified_count", result.MatchedCount),
 	)
@@ -273,7 +273,7 @@ func (r *Repository) GetAllByKind(ctx context.Context, kind model.SettlementKind
 	for i := range res {
 		res[i].DeriveLeader()
 	}
-	l.Info("groups retrieved", zap.Int("count", len(res)))
+	l.Debug("groups retrieved", zap.Int("count", len(res)))
 	return res, nil
 }
 
@@ -286,7 +286,7 @@ func (r *Repository) IsLeaderOfSettlement(ctx context.Context, settlementID, use
 			zap.String("user_id", userID),
 		).
 		WithMethod("is_leader_of_settlement")
-	l.Info("checking if user is owner of settlement")
+	l.Debug("checking if user is owner of settlement")
 
 	setId, err := mongomodel.ParseObjectID(settlementID)
 	if err != nil {
@@ -372,11 +372,13 @@ func (r *Repository) DeleteSoloGuild(ctx context.Context, guildID, userID string
 		if count == 0 {
 			return repoerr.ErrNotFound
 		}
-		l.Info("the guild gained a member before the disband landed")
+		l.Warn("the guild gained a member before the disband landed",
+			zap.String("event", "settlement.guild.disband_conflict"),
+		)
 		return repoerr.ErrDisbandConflict
 	}
 
-	l.Info("guild disbanded by its last owner")
+	l.Debug("guild disbanded by its last owner")
 	r.deleteGroupRelations(ctx, guildID)
 	return nil
 }

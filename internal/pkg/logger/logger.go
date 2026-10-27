@@ -7,6 +7,7 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Logger interface {
@@ -23,6 +24,11 @@ type Logger interface {
 	WithComponent(component string) Logger
 
 	ToLoggingLogger() logging.Logger
+
+	// Sync flushes buffered entries. Called from the fx OnStop hook: the
+	// constructor used to sync once at startup, so shutdown records could be
+	// lost.
+	Sync() error
 }
 
 type logger struct {
@@ -31,19 +37,30 @@ type logger struct {
 }
 
 func New(cfg *zap.Config, fields ...zap.Field) (Logger, error) {
-	baseLogger, err := cfg.Build()
+	baseLogger, err := cfg.Build(zap.WrapCore(func(c zapcore.Core) zapcore.Core {
+		return redactingCore{Core: c}
+	}))
 	if err != nil {
 		return nil, errors.Wrap(err, "new logger")
 	}
 
 	baseLogger = baseLogger.With(fields...)
 
-	defer func() { _ = baseLogger.Sync() }()
-
 	return &logger{
 		Config: cfg,
 		Logger: baseLogger,
 	}, nil
+}
+
+// NewWithCore builds a Logger on an arbitrary zap core, behind the same
+// redaction New applies. It exists so tests can capture records in memory
+// without opening a file sink, which Windows keeps locked for the life of the
+// process.
+func NewWithCore(core zapcore.Core) Logger {
+	return &logger{
+		Config: &zap.Config{},
+		Logger: zap.New(redactingCore{Core: core}),
+	}
 }
 
 func (l *logger) Named(name string) Logger {
@@ -92,20 +109,12 @@ func (l *logger) ToLoggingLogger() logging.Logger {
 	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
 		f := make([]zap.Field, 0, len(fields)/2)
 
-		for i := 0; i < len(fields); i += 2 {
-			key := fields[i]
-			value := fields[i+1]
-
-			switch v := value.(type) {
-			case string:
-				f = append(f, zap.String(key.(string), v))
-			case int:
-				f = append(f, zap.Int(key.(string), v))
-			case bool:
-				f = append(f, zap.Bool(key.(string), v))
-			default:
-				f = append(f, zap.Any(key.(string), v))
+		for i := 0; i+1 < len(fields); i += 2 {
+			key, ok := fields[i].(string)
+			if !ok {
+				continue
 			}
+			f = append(f, toField(key, fields[i+1]))
 		}
 
 		log := l.WithOptions(zap.AddCallerSkip(1)).With(f...)

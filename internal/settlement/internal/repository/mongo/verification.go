@@ -22,7 +22,7 @@ import (
 )
 
 func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementOpts) error {
-	r.log.Info("creating new settlement request",
+	r.log.Debug("creating new settlement request",
 		zap.String("leader_id", opts.Leader.UserId),
 		zap.String("settlement_name", opts.Name),
 		zap.String("settlement_type", string(opts.Type)))
@@ -54,8 +54,10 @@ func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementO
 		// The per-kind unique index on leader.user_id fires when one player submits the same kind
 		// twice at once. That is an answer for the site, not a storage failure.
 		if mongo.IsDuplicateKeyError(err) {
-			r.log.Info("a request of this kind already stands",
-				zap.String("leader_id", opts.Leader.UserId), zap.String("kind", dto.Kind))
+			r.log.Warn("a request of this kind already stands",
+				zap.String("event", "settlement.request.duplicate_kind"),
+				zap.String("leader_id", opts.Leader.UserId),
+				zap.String("kind", dto.Kind))
 			return repoerr.ErrAlreadySubmitted
 		}
 		r.log.Error("failed to insert settlement request",
@@ -65,14 +67,14 @@ func (r *Repository) CreateRequest(ctx context.Context, opts service.SettlementO
 		return err
 	}
 
-	r.log.Info("successfully created settlement request",
+	r.log.Debug("successfully created settlement request",
 		zap.String("leader_id", opts.Leader.UserId),
 		zap.String("model_id", dto.Id.Hex()))
 	return nil
 }
 
 func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementOpts) error {
-	r.log.Info("updating settlement request",
+	r.log.Debug("updating settlement request",
 		zap.String("leader_id", opts.Leader.UserId),
 		zap.String("settlement_name", opts.Name),
 		zap.String("settlement_type", string(opts.Type)))
@@ -119,7 +121,7 @@ func (r *Repository) UpdateRequest(ctx context.Context, opts service.SettlementO
 		return err
 	}
 
-	r.log.Info("successfully updated verification request",
+	r.log.Debug("successfully updated verification request",
 		zap.String("user_id", opts.Leader.UserId),
 		zap.Int64("modified_count", result.ModifiedCount))
 	return nil
@@ -178,7 +180,8 @@ func (r *Repository) readApprovalCoordinates(ctx context.Context, settlementID s
 
 	resolved := approvalCoordinates(submitted, &placement)
 	if resolved != submitted {
-		r.log.Info("notifier position overrides the request coordinates",
+		r.log.Warn("notifier position overrides the request coordinates",
+			zap.String("event", "settlement.request.coordinates_overridden"),
 			zap.String("settlement_id", settlementID),
 			zap.Int("submitted_x", submitted.X), zap.Int("submitted_y", submitted.Y),
 			zap.Int("resolved_x", resolved.X), zap.Int("resolved_y", resolved.Y))
@@ -197,7 +200,7 @@ func (r *Repository) Approve(ctx context.Context, id string) (*service.ApprovalR
 	l := r.log.
 		With(zap.String("settlement_id", id)).
 		WithMethod("approve")
-	l.Info("approving settlement request")
+	l.Debug("approving settlement request")
 
 	objectID, err := mongomodel.ParseObjectID(id)
 	if err != nil {
@@ -247,7 +250,7 @@ func (r *Repository) Approve(ctx context.Context, id string) (*service.ApprovalR
 		return nil, err
 	}
 
-	l.Info("successfully approved settlement request")
+	l.Debug("successfully approved settlement request")
 	l.Debug("leader here", zap.String("leader_id", dto.Leader.UserId))
 
 	// The settlement id is the request id. Create it, or update it when an
@@ -323,7 +326,7 @@ func (r *Repository) Reject(ctx context.Context, id string, rejectionReason stri
 	l := r.log.
 		With(zap.String("settlement_id", id)).
 		WithMethod("reject")
-	l.Info("rejecting settlement request")
+	l.Debug("rejecting settlement request")
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -370,7 +373,7 @@ func (r *Repository) Reject(ctx context.Context, id string, rejectionReason stri
 		return err
 	}
 
-	l.Info(
+	l.Debug(
 		"successfully rejected settlement request",
 		zap.Int64("updated_count", updated.ModifiedCount),
 	)
@@ -379,7 +382,7 @@ func (r *Repository) Reject(ctx context.Context, id string, rejectionReason stri
 
 // GetSettlementRequest implements service.SettlementRepository.
 func (r *Repository) GetSettlementRequest(ctx context.Context, id string) (*model.SettlementVerification, error) {
-	r.log.Info("retrieving settlement request by ID", zap.String("req_id", id))
+	r.log.Debug("retrieving settlement request by ID", zap.String("req_id", id))
 
 	objectID, err := mongomodel.ParseObjectID(id)
 	if err != nil {
@@ -411,7 +414,7 @@ func (r *Repository) GetSettlementRequest(ctx context.Context, id string) (*mode
 // leader holds. Each kind keeps its own request, so the kind is part of the lookup and matches the
 // per-kind unique index on leader.user_id.
 func (r *Repository) GetSettlementRequestByLeader(ctx context.Context, leaderID string, kind model.SettlementKind) (*model.SettlementVerification, error) {
-	r.log.Info("retrieving settlement request by leaderID",
+	r.log.Debug("retrieving settlement request by leaderID",
 		zap.String("leader_id", leaderID), zap.String("kind", string(kind)))
 
 	res := r.setReqColl.FindOne(ctx, bson.M{"leader.user_id": leaderID, "kind": string(kind)})
@@ -437,7 +440,7 @@ func (r *Repository) GetSettlementRequestByLeader(ctx context.Context, leaderID 
 // GetPendingSettlements implements service.SettlementDbRepository. KindAny lists both kinds, so the
 // moderation queue never hides a guild request.
 func (r *Repository) GetPendingSettlements(ctx context.Context, kind model.SettlementKind) ([]model.SettlementVerification, error) {
-	r.log.Info("retrieving pending settlement requests", zap.String("kind", string(kind)))
+	r.log.Debug("retrieving pending settlement requests", zap.String("kind", string(kind)))
 
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -468,6 +471,6 @@ func (r *Repository) GetPendingSettlements(ctx context.Context, kind model.Settl
 		return *item.ToModel()
 	})
 
-	r.log.Info("successfully retrieved pending settlements", zap.Int("count", len(res)))
+	r.log.Debug("successfully retrieved pending settlements", zap.Int("count", len(res)))
 	return res, nil
 }

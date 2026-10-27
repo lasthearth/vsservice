@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -48,12 +49,14 @@ func (interceptor *Auth) Stream() grpc.StreamServerInterceptor {
 func (interceptor *Auth) authorize(ctx context.Context, method string) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return ctx, status.Errorf(codes.Unauthenticated, "metadata is not provided")
+		return ctx, interceptor.deny(ctx, method, "no_metadata",
+			status.Errorf(codes.Unauthenticated, "metadata is not provided"))
 	}
 
 	values := md["authorization"]
 	if len(values) == 0 {
-		return ctx, status.Errorf(codes.Unauthenticated, "authorization token is not provided")
+		return ctx, interceptor.deny(ctx, method, "no_token",
+			status.Errorf(codes.Unauthenticated, "authorization token is not provided"))
 	}
 
 	accessToken := values[0]
@@ -62,12 +65,14 @@ func (interceptor *Auth) authorize(ctx context.Context, method string) (context.
 	// here instead of panicking on the slice that used to follow.
 	token, ok := strings.CutPrefix(accessToken, bearerPrefix)
 	if !ok || token == "" {
-		return ctx, status.Errorf(codes.Unauthenticated, "invalid authorization token format")
+		return ctx, interceptor.deny(ctx, method, "bad_token_format",
+			status.Errorf(codes.Unauthenticated, "invalid authorization token format"))
 	}
 
 	claims, err := interceptor.jwtManager.Verify(token)
 	if err != nil {
-		return ctx, status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
+		return ctx, interceptor.deny(ctx, method, "invalid_token",
+			status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err))
 	}
 
 	ctx, err = provideReqID(ctx)
@@ -95,11 +100,33 @@ func (interceptor *Auth) authorize(ctx context.Context, method string) (context.
 		if slices.Contains(strings.Fields(claims.Scope), string(requiredScope)) {
 			return ctx, nil
 		}
-		return ctx, status.Errorf(codes.PermissionDenied, "no permission to access this resource")
+		return ctx, interceptor.deny(ctx, method, "missing_scope:"+string(requiredScope),
+			status.Errorf(codes.PermissionDenied, "no permission to access this resource"))
 	}
 
 	// Methods absent from the policy table are authenticated but not
 	// scope-checked: fail-open by omission. Deliberately unchanged — the
 	// alternative requires a Logto scope for every method.
 	return ctx, nil
+}
+
+// deny logs one record per refused call and returns the status unchanged. The
+// log names the reason; the response stays as generic as it was, and neither
+// carries the token.
+func (interceptor *Auth) deny(ctx context.Context, method, reason string, err error) error {
+	fields := []zap.Field{
+		zap.String("event", "grpc.auth.denied"),
+		zap.String("component", "grpc"),
+		zap.String("reason", reason),
+		zap.String("method", method),
+	}
+	if rid, ridErr := GetRequestID(ctx); ridErr == nil {
+		fields = append(fields, zap.String("request_id", rid))
+	}
+	if uid, uidErr := GetUserID(ctx); uidErr == nil && uid != "" {
+		fields = append(fields, zap.String("user_id", uid))
+	}
+
+	interceptor.log.Warn("grpc call denied", fields...)
+	return err
 }
