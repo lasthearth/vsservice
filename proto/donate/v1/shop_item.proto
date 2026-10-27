@@ -55,6 +55,10 @@ message ShopItem {
   // joined at read time from the captured kit. Empty when the kit is missing
   // or the entry predates the field.
   string category = 19;
+  // Витрина section of the entry inside its category (e.g. "food",
+  // "weapons"): a key the site maps to a label. Empty means no section; the
+  // shop shows such entries under "all". Display only.
+  string section = 20;
 }
 
 message CreateShopItemRequest {
@@ -71,6 +75,10 @@ message CreateShopItemRequest {
   repeated Privilege privileges = 10;
   google.protobuf.Timestamp discount_starts_at = 11;
   google.protobuf.Timestamp discount_ends_at = 12;
+  // Витрина section of the entry inside its category (e.g. "food",
+  // "weapons"): a key the site maps to a label. Empty means no section; the
+  // shop shows such entries under "all". Display only.
+  string section = 13;
 }
 
 message CreateShopItemResponse {
@@ -94,6 +102,10 @@ message UpdateShopItemRequest {
   repeated Privilege privileges = 12;
   google.protobuf.Timestamp discount_starts_at = 13;
   google.protobuf.Timestamp discount_ends_at = 14;
+  // Витрина section of the entry inside its category (e.g. "food",
+  // "weapons"): a key the site maps to a label. Empty means no section; the
+  // shop shows such entries under "all". Display only.
+  string section = 15;
 }
 
 message UpdateShopItemResponse {

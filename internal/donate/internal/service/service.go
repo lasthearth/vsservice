@@ -107,6 +107,7 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 	entries := s.kitEntriesFromProto(req.GetEntries())
 	item := model.NewKitShopItem(req.GetCode(), req.GetName(), req.GetDescription(), req.GetImageUrl(), req.GetPrice())
 	item.SetEntries(entries)
+	item.SetSection(req.GetSection())
 
 	if req.GetHasDiscount() {
 		if err := item.SetDiscount(req.GetDiscountPercent()); err != nil {
@@ -210,6 +211,7 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 			Privileges:       protoPrivilegesToModel(req.GetPrivileges()),
 			DiscountStartsAt: goverter.TimestampToTimePtr(req.GetDiscountStartsAt()),
 			DiscountEndsAt:   goverter.TimestampToTimePtr(req.GetDiscountEndsAt()),
+			Section:          req.GetSection(),
 		}
 		item.Apply(u)
 

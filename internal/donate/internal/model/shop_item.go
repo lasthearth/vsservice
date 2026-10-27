@@ -3,7 +3,9 @@ package model
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type ItemType string
@@ -41,6 +43,7 @@ type ShopItemUpdate struct {
 	Privileges                        []Privilege
 	DiscountStartsAt                  *time.Time
 	DiscountEndsAt                    *time.Time
+	Section                           string
 }
 
 // ShopItem is an item available for purchase in the donate shop.
@@ -59,8 +62,11 @@ type ShopItem struct {
 	Privileges       []Privilege
 	DiscountStartsAt *time.Time
 	DiscountEndsAt   *time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	// Section is the витрина section inside the category ("food", "weapons"…).
+	// Display only; empty means none.
+	Section   string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func NewShopItem(code, name, description, imageURL string, price int64) *ShopItem {
@@ -154,6 +160,9 @@ func (s *ShopItem) Validate() error {
 			return fmt.Errorf("privilege %d text cannot be empty", i)
 		}
 	}
+	if utf8.RuneCountInString(s.Section) > MaxSectionLength {
+		return fmt.Errorf("section cannot be longer than %d characters", MaxSectionLength)
+	}
 	for i, e := range s.Entries {
 		if e.GameCode == "" {
 			return fmt.Errorf("kit entry %d game_code cannot be empty", i)
@@ -177,6 +186,15 @@ func (s *ShopItem) Apply(u ShopItemUpdate) {
 	s.Privileges = u.Privileges
 	s.DiscountStartsAt = u.DiscountStartsAt
 	s.DiscountEndsAt = u.DiscountEndsAt
+	s.SetSection(u.Section)
+}
+
+// MaxSectionLength caps the витрина section key, in characters.
+const MaxSectionLength = 64
+
+// SetSection sets the витрина section; surrounding spaces are dropped.
+func (s *ShopItem) SetSection(section string) {
+	s.Section = strings.TrimSpace(section)
 }
 
 // SetDiscountWindow sets the discount time window. Pass nil to open either end.
