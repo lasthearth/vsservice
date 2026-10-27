@@ -10,18 +10,18 @@ enum ItemType {
   ITEM_TYPE_KIT = 2;
 }
 
-// One витрина row of a shop item. For kit entries the wire list is DERIVED at
-// read time from the captured kit's items (name = game code, quantity = stack
-// size, image_url = the game-rendered icon uploaded at capture); the
-// hand-typed display list is gone, so what the shop shows is what the
-// purchase delivers. The fields stay on the messages so a legacy client's
-// entries are simply ignored, and legacy documents' stored rows surface only
-// while a kit was never captured.
+// One витрина row of a shop item: how a captured kit item is shown to players.
+// The contents (which item, how many) always come from the captured kit; the
+// row only decorates it. game_code picks the captured item the row belongs to,
+// and the rows keep the order the admin set. Shown name, description and
+// image_url fall back to the item's game code and captured icon when empty;
+// quantity is ignored on write and always answered from the kit.
 message KitEntry {
   string name = 1;
   string description = 2;
   string image_url = 3;
   int32 quantity = 4;
+  string game_code = 5;
 }
 // Privilege describes a perk granted by the item (e.g. colored nick, Discord role).
 message Privilege {
@@ -41,8 +41,8 @@ message ShopItem {
   // Unique identifier used to correlate the item with in-game assets.
   string code = 9;
   ItemType item_type = 10;
-  // For kit entries: derived at read time from the captured kit's items.
-  // Empty only when the kit was never captured (a hidden pre-capture entry).
+  // The витрина rows. Empty means none were stored: the captured kit's items
+  // are shown instead.
   repeated KitEntry entries = 11;
   bool has_discount = 12;
   int32 discount_percent = 13;   // 0..100
@@ -64,7 +64,7 @@ message CreateShopItemRequest {
   int64 price = 4;
   string code = 5;
   ItemType item_type = 6;
-  // Ignored: the витрина is derived from the captured kit at read time.
+  // The витрина rows of the kit entry, in the order given.
   repeated KitEntry entries = 7;
   bool has_discount = 8;
   int32 discount_percent = 9;
@@ -87,8 +87,7 @@ message UpdateShopItemRequest {
   bool is_available = 6;
   string code = 7;
   ItemType item_type = 8;
-  // Ignored: the витрина is derived from the captured kit at read time. The
-  // stored legacy rows are wiped by the update.
+  // The витрина rows of the kit entry, in the order given.
   repeated KitEntry entries = 9;
   bool has_discount = 10;
   int32 discount_percent = 11;

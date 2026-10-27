@@ -104,10 +104,9 @@ func (s *Service) CreateShopItem(ctx context.Context, req *donatev1.CreateShopIt
 		return nil, err
 	}
 
-	// req.Entries is ignored: a kit entry's витрина is derived from the
-	// captured kit's items at read time, so a hand-typed display list can
-	// never drift from what the purchase actually delivers.
+	entries := s.kitEntriesFromProto(req.GetEntries())
 	item := model.NewKitShopItem(req.GetCode(), req.GetName(), req.GetDescription(), req.GetImageUrl(), req.GetPrice())
+	item.SetEntries(entries)
 
 	if req.GetHasDiscount() {
 		if err := item.SetDiscount(req.GetDiscountPercent()); err != nil {
@@ -179,10 +178,7 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 		}
 	}
 
-	// req.Entries is ignored, same as on create: the витрина of a kit entry is
-	// derived from the captured kit's items at read time. Passing nil below
-	// also wipes any legacy stored entries on this update — the drift dies
-	// with the first re-save.
+	entries := s.kitEntriesFromProto(req.GetEntries())
 
 	updated, err := s.repo.UpdateShopItem(ctx, req.GetId(), func(_ context.Context, item *model.ShopItem) (*model.ShopItem, error) {
 		imageURL := item.ImageURL
@@ -208,6 +204,7 @@ func (s *Service) UpdateShopItem(ctx context.Context, req *donatev1.UpdateShopIt
 			Price:            req.GetPrice(),
 			IsAvailable:      req.GetIsAvailable(),
 			Type:             itemType,
+			Entries:          entries,
 			HasDiscount:      req.GetHasDiscount(),
 			DiscountPercent:  req.GetDiscountPercent(),
 			Privileges:       protoPrivilegesToModel(req.GetPrivileges()),
@@ -436,13 +433,12 @@ func (s *Service) AdminListAllShopItems(ctx context.Context, _ *donatev1.AdminLi
 }
 
 // shopItemsProto maps shop items to proto, stamps the two computed fields from
-// one clock and joins the kits in one catalog read — category AND витрина:
-// a kit entry's entries are derived from the captured kit's items (game code,
-// stack size, game-rendered icon), never from a stored display list. Both
-// shop lists go through it so they answer the same shape.
+// one clock and joins the kits in one catalog read: the category, and the
+// витрина where the admin stored none. Both shop lists go through it so they
+// answer the same shape.
 //
 // Fail-open on the join: a kit lookup outage leaves the categories empty and
-// the stored legacy entries in place rather than 500-ing the list — the entry
+// the stored entries as they are rather than 500-ing the list — the entry
 // itself stays sellable.
 func (s *Service) shopItemsProto(ctx context.Context, l logger.Logger, items []*model.ShopItem) []*donatev1.ShopItem {
 	catalog := map[string]KitSummary{}
@@ -468,20 +464,69 @@ func (s *Service) shopItemsProto(ctx context.Context, l logger.Logger, items []*
 }
 
 // applyKitSummary stamps the kit-derived fields onto a wire shop item: the
-// category and the витрина — one entry per captured kit item, named by its
-// game code, sized by its stack, pictured by the icon uploaded at capture.
+// category and the витрина. The витрина is built from the captured kit, so the
+// contents are always what the purchase delivers; the stored rows only decorate
+// them (see displayKitEntries).
 func applyKitSummary(pb *donatev1.ShopItem, summary KitSummary) {
 	pb.Category = summary.Category
-	entries := make([]*donatev1.KitEntry, len(summary.Items))
-	for i, it := range summary.Items {
-		entries[i] = &donatev1.KitEntry{
-			Name:        it.GameCode,
-			Description: "",
-			ImageUrl:    it.ImageURL,
-			Quantity:    it.Quantity,
+	pb.Entries = displayKitEntries(pb.GetEntries(), summary.Items)
+}
+
+// displayKitEntries builds the витрина of a kit: one row per captured kit item,
+// in the order of the stored rows. A stored row names its captured item by
+// game_code (the first still-unmatched item with that code), and its name,
+// description and image replace the item's own when set. Items without a stored
+// row follow in kit order, shown by their game code and captured icon. Stored
+// rows for items the kit no longer holds are dropped. With no stored rows the
+// result is the captured kit itself.
+func displayKitEntries(stored []*donatev1.KitEntry, captured []KitItemView) []*donatev1.KitEntry {
+	used := make([]bool, len(captured))
+	out := make([]*donatev1.KitEntry, 0, len(captured))
+
+	for _, row := range stored {
+		idx := -1
+		for i, c := range captured {
+			if !used[i] && c.GameCode == row.GetGameCode() {
+				idx = i
+				break
+			}
+		}
+		if idx < 0 {
+			continue
+		}
+		used[idx] = true
+		c := captured[idx]
+		out = append(out, &donatev1.KitEntry{
+			GameCode:    c.GameCode,
+			Name:        firstNonEmpty(row.GetName(), c.GameCode),
+			Description: row.GetDescription(),
+			ImageUrl:    firstNonEmpty(row.GetImageUrl(), c.ImageURL),
+			Quantity:    c.Quantity,
+		})
+	}
+
+	for i, c := range captured {
+		if used[i] {
+			continue
+		}
+		out = append(out, &donatev1.KitEntry{
+			GameCode: c.GameCode,
+			Name:     c.GameCode,
+			ImageUrl: c.ImageURL,
+			Quantity: c.Quantity,
+		})
+	}
+	return out
+}
+
+// firstNonEmpty returns the first value that is not empty.
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
 		}
 	}
-	pb.Entries = entries
+	return ""
 }
 
 func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*donatev1.BuyItemResponse, error) {
@@ -542,6 +587,33 @@ func (s *Service) ListWallets(ctx context.Context, req *donatev1.ListWalletsRequ
 func isDomainError(err error, code codes.Code) bool {
 	var de *pkgerr.DomainError
 	return errors.As(err, &de) && de.Code == code
+}
+
+// kitEntriesFromProto converts the витрина rows the admin sent, keeping their
+// order. It is lenient on purpose, so an older client or a round-tripped
+// витрина never fails the save: a row without game_code cannot be matched to a
+// captured kit item and is dropped (such rows were ignored before as well), and
+// an image whose host is not allowed (e.g. a captured icon sent back as is) is
+// cleared, so the row falls back to the captured icon. Quantity is not kept:
+// it always comes from the kit.
+func (s *Service) kitEntriesFromProto(entries []*donatev1.KitEntry) []model.KitEntry {
+	result := make([]model.KitEntry, 0, len(entries))
+	for _, e := range entries {
+		if e.GetGameCode() == "" {
+			continue
+		}
+		imageURL := e.GetImageUrl()
+		if imageURL != "" && s.validateImageURL(imageURL) != nil {
+			imageURL = ""
+		}
+		result = append(result, model.KitEntry{
+			GameCode:    e.GetGameCode(),
+			Name:        e.GetName(),
+			Description: e.GetDescription(),
+			ImageURL:    imageURL,
+		})
+	}
+	return result
 }
 
 // protoPrivilegesToModel converts proto Privilege slice to model Privilege slice.

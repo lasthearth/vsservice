@@ -13,8 +13,10 @@ const (
 	ItemTypeKit  ItemType = "kit"
 )
 
-// KitEntry describes a single item inside a kit.
+// KitEntry is a витрина row of a kit shop entry: how one captured kit item is
+// shown. GameCode names the captured item; contents always come from the kit.
 type KitEntry struct {
+	GameCode    string
 	Name        string
 	Description string
 	ImageURL    string
@@ -73,11 +75,8 @@ func NewShopItem(code, name, description, imageURL string, price int64) *ShopIte
 	}
 }
 
-// NewKitShopItem creates a kit-type entry. The витрина (Entries) is NOT
-// stored for kits: it is derived at read time from the captured kit's items
-// (game code, quantity, game-rendered icon), so a hand-typed display list can
-// never drift from what the purchase actually delivers. The Entries field
-// stays on the struct only to decode legacy documents.
+// NewKitShopItem creates a kit-type entry. Its витрина rows (Entries) are set
+// by the caller with SetEntries; the contents are the captured kit's.
 func NewKitShopItem(code, name, description, imageURL string, price int64) *ShopItem {
 	return &ShopItem{
 		Code:        code,
@@ -155,10 +154,11 @@ func (s *ShopItem) Validate() error {
 			return fmt.Errorf("privilege %d text cannot be empty", i)
 		}
 	}
-	// No Entries validation for kits: the витрина is derived from the captured
-	// kit at read time, and the kit itself is validated by the capture (always
-	// at least one item) and by RemoveKitItem (refuses to empty one). Legacy
-	// documents still decode their stored Entries, but nothing enforces them.
+	for i, e := range s.Entries {
+		if e.GameCode == "" {
+			return fmt.Errorf("kit entry %d game_code cannot be empty", i)
+		}
+	}
 	return nil
 }
 
@@ -183,6 +183,12 @@ func (s *ShopItem) Apply(u ShopItemUpdate) {
 func (s *ShopItem) SetDiscountWindow(start, end *time.Time) {
 	s.DiscountStartsAt = start
 	s.DiscountEndsAt = end
+}
+
+// SetEntries sets the витрина rows of a kit entry. The order given is kept:
+// it is the order the shop shows and the order it is stored in.
+func (s *ShopItem) SetEntries(entries []KitEntry) {
+	s.Entries = entries
 }
 
 // SetPrivileges sets the item privileges.

@@ -115,6 +115,7 @@ func shopItemFromDTO(d dto.ShopItem) *model.ShopItem {
 	entries := make([]model.KitEntry, len(d.Entries))
 	for i, e := range d.Entries {
 		entries[i] = model.KitEntry{
+			GameCode:    e.GameCode,
 			Name:        e.Name,
 			Description: e.Description,
 			ImageURL:    e.ImageURL,
@@ -149,6 +150,7 @@ func shopItemToDTO(m *model.ShopItem) dto.ShopItem {
 	entries := make([]dto.KitEntryDTO, len(m.Entries))
 	for i, e := range m.Entries {
 		entries[i] = dto.KitEntryDTO{
+			GameCode:    e.GameCode,
 			Name:        e.Name,
 			Description: e.Description,
 			ImageURL:    e.ImageURL,

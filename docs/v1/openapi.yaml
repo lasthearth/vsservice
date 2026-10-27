@@ -1250,8 +1250,7 @@ paths:
                     $ref: '#/components/schemas/donate.v1.KitEntry'
                   title: entries
                   description: |-
-                    Ignored: the витрина is derived from the captured kit at read time. The
-                     stored legacy rows are wiped by the update.
+                    The витрина rows of the kit entry, in the order given.
                 has_discount:
                   type: boolean
                   title: has_discount
@@ -7119,7 +7118,7 @@ components:
           items:
             $ref: '#/components/schemas/donate.v1.KitEntry'
           title: entries
-          description: 'Ignored: the витрина is derived from the captured kit at read time.'
+          description: 'The витрина rows of the kit entry, in the order given.'
         has_discount:
           type: boolean
           title: has_discount
@@ -7559,8 +7558,7 @@ components:
             $ref: '#/components/schemas/donate.v1.KitEntry'
           title: entries
           description: |-
-            Ignored: the витрина is derived from the captured kit at read time. The
-             stored legacy rows are wiped by the update.
+            The витрина rows of the kit entry, in the order given.
         has_discount:
           type: boolean
           title: has_discount
