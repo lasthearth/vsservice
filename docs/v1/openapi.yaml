@@ -402,6 +402,116 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/settlement.v1.SetRolesEnabledResponse'
+  /v1/admin/users/{user_id}/nickname:
+    put:
+      tags:
+        - UserService
+      summary: |-
+        Change another player's nickname on their behalf, ignoring the cooldown.
+         Requires players:nickname:write.
+      description: |-
+        The change is recorded as an ordinary nickname change: the previous name is
+         kept and the player's 6-month cooldown starts now. The player is notified
+         with the reason.
+
+         Errors:
+           - INVALID_ARGUMENT (400): invalid nickname format; new nickname same as current;
+             reason longer than 500 characters
+           - NOT_FOUND (404): player not found
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing players:nickname:write
+           - INTERNAL (500): database failure
+      operationId: UserService_AdminChangeNickname
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: user_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  title: user_id
+                new_nickname:
+                  type: string
+                  title: new_nickname
+                  pattern: ^[a-zA-Z0-9_-]{1,15}$
+                  description: '1-15 characters: letters, digits, underscore, dash.'
+                reason:
+                  type: string
+                  title: reason
+                  description: Shown to the player in the notification. Optional, at most 500 characters.
+              title: AdminChangeNicknameRequest
+              required:
+                - user_id
+                - new_nickname
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/user.v1.AdminChangeNicknameResponse'
+  /v1/admin/users/{user_id}/nickname:grant:
+    post:
+      tags:
+        - UserService
+      summary: |-
+        Allow a player to change their own nickname before the 6-month cooldown
+         expires. Requires players:nickname:grant.
+      description: |-
+        The recorded change time is cleared, so ChangeNickname accepts the player's
+         own request immediately; that change then starts a fresh cooldown. The
+         player is notified with the reason.
+
+         Errors:
+           - INVALID_ARGUMENT (400): reason longer than 500 characters
+           - NOT_FOUND (404): player not found
+           - FAILED_PRECONDITION (400): the player can already change their nickname
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): missing players:nickname:grant
+           - INTERNAL (500): database failure
+      operationId: UserService_AdminGrantNicknameChange
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: user_id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  title: user_id
+                reason:
+                  type: string
+                  title: reason
+                  description: Shown to the player in the notification. Optional, at most 500 characters.
+              title: AdminGrantNicknameChangeRequest
+              required:
+                - user_id
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.Empty'
   /v1/appearances:
     get:
       tags:
@@ -12108,6 +12218,55 @@ components:
           type: string
           title: id
       title: CreateResponse
+      additionalProperties: false
+    user.v1.AdminChangeNicknameRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          title: user_id
+        new_nickname:
+          type: string
+          title: new_nickname
+          pattern: ^[a-zA-Z0-9_-]{1,15}$
+          description: '1-15 characters: letters, digits, underscore, dash.'
+        reason:
+          type: string
+          title: reason
+          description: Shown to the player in the notification. Optional, at most 500 characters.
+      title: AdminChangeNicknameRequest
+      required:
+        - user_id
+        - new_nickname
+      additionalProperties: false
+    user.v1.AdminChangeNicknameResponse:
+      type: object
+      properties:
+        old_nickname:
+          type: string
+          title: old_nickname
+        new_nickname:
+          type: string
+          title: new_nickname
+        next_change_allowed_at:
+          title: next_change_allowed_at
+          description: When the player may change the nickname again.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: AdminChangeNicknameResponse
+      additionalProperties: false
+    user.v1.AdminGrantNicknameChangeRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          title: user_id
+        reason:
+          type: string
+          title: reason
+          description: Shown to the player in the notification. Optional, at most 500 characters.
+      title: AdminGrantNicknameChangeRequest
+      required:
+        - user_id
       additionalProperties: false
     user.v1.BatchGetUsersRequest:
       type: object

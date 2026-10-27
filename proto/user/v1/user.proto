@@ -77,6 +77,48 @@ service UserService {
     };
   }
 
+  // Change another player's nickname on their behalf, ignoring the cooldown.
+  // Requires players:nickname:write.
+  //
+  // The change is recorded as an ordinary nickname change: the previous name is
+  // kept and the player's 6-month cooldown starts now. The player is notified
+  // with the reason.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): invalid nickname format; new nickname same as current;
+  //     reason longer than 500 characters
+  //   - NOT_FOUND (404): player not found
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): missing players:nickname:write
+  //   - INTERNAL (500): database failure
+  rpc AdminChangeNickname(AdminChangeNicknameRequest) returns (AdminChangeNicknameResponse) {
+    option (google.api.http) = {
+      put: "/v1/admin/users/{user_id}/nickname"
+      body: "*"
+    };
+  }
+
+  // Allow a player to change their own nickname before the 6-month cooldown
+  // expires. Requires players:nickname:grant.
+  //
+  // The recorded change time is cleared, so ChangeNickname accepts the player's
+  // own request immediately; that change then starts a fresh cooldown. The
+  // player is notified with the reason.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): reason longer than 500 characters
+  //   - NOT_FOUND (404): player not found
+  //   - FAILED_PRECONDITION (400): the player can already change their nickname
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): missing players:nickname:grant
+  //   - INTERNAL (500): database failure
+  rpc AdminGrantNicknameChange(AdminGrantNicknameChangeRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/admin/users/{user_id}/nickname:grant"
+      body: "*"
+    };
+  }
+
   // Replace the caller's description. An empty string removes it.
   //
   // The text is normalized before it is stored: line endings become \n,
@@ -182,6 +224,30 @@ message ChangeNicknameRequest {
 message ChangeNicknameResponse {
   string old_nickname = 1;
   string new_nickname = 2;
+}
+
+message AdminChangeNicknameRequest {
+  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // 1-15 characters: letters, digits, underscore, dash.
+  string new_nickname = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {pattern: "^[a-zA-Z0-9_-]{1,15}$"}
+  ];
+  // Shown to the player in the notification. Optional, at most 500 characters.
+  string reason = 3;
+}
+
+message AdminChangeNicknameResponse {
+  string old_nickname = 1;
+  string new_nickname = 2;
+  // When the player may change the nickname again.
+  google.protobuf.Timestamp next_change_allowed_at = 3;
+}
+
+message AdminGrantNicknameChangeRequest {
+  string user_id = 1 [(google.api.field_behavior) = REQUIRED];
+  // Shown to the player in the notification. Optional, at most 500 characters.
+  string reason = 2;
 }
 
 message UpdateMyAboutRequest {

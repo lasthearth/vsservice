@@ -202,7 +202,11 @@ func (r *Repository) buildUpdateSet(p model.PlayerUpdate) bson.M {
 	if p.PreviousNickname != nil && *p.PreviousNickname != "" {
 		update["previous_nickname"] = *p.PreviousNickname
 	}
-	if p.LastNicknameChangedAt != nil {
+	// A grant and a recorded change are mutually exclusive: writing the field in
+	// $set and $unset in one update makes MongoDB reject the whole document.
+	// ClearNicknameCooldown wins, because a caller that clears it is asking for
+	// the cooldown to be gone.
+	if p.LastNicknameChangedAt != nil && !p.ClearNicknameCooldown {
 		update["last_nickname_changed_at"] = *p.LastNicknameChangedAt
 	}
 	if p.IsOnline != nil {
@@ -221,6 +225,10 @@ func (r *Repository) buildUpdateSet(p model.PlayerUpdate) bson.M {
 	}
 
 	unset := bson.M{}
+	if p.ClearNicknameCooldown {
+		unset["last_nickname_changed_at"] = ""
+	}
+
 	// The description and its write time are one decision, so they are made in
 	// one branch. Splitting them lets a caller that removes the text and passes a
 	// timestamp put about_updated_at in both operators, and MongoDB then rejects

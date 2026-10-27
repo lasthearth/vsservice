@@ -30,6 +30,16 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		// already carries players:moderate can call this.
 		interceptor.Method(srvName + "HideAbout"): interceptor.Scope("players:moderate"),
 
+		// Renaming someone else is a narrower right than moderation: it is
+		// granted to the support role, not to every moderator. Until the scope is
+		// granted in Logto, only a token that already carries it can call this.
+		interceptor.Method(srvName + "AdminChangeNickname"): interceptor.Scope("players:nickname:write"),
+
+		// Lifting a player's cooldown lets them rename themselves, so it is
+		// separate from renaming for them: support may grant a change without
+		// choosing the name. Same Logto grant requirement as above.
+		interceptor.Method(srvName + "AdminGrantNicknameChange"): interceptor.Scope("players:nickname:grant"),
+
 		// ListPlayers is public (matcher.go): the site's /players page is read
 		// without an account. It is not a repeat of the leaderboard - it adds
 		// is_online, the game's live presence flag, the description the player
