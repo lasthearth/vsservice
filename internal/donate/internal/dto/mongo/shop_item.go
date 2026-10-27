@@ -7,6 +7,7 @@ import (
 )
 
 type KitEntryDTO struct {
+	GameCode    string `bson:"game_code,omitempty"`
 	Name        string `bson:"name"`
 	Description string `bson:"description"`
 	ImageURL    string `bson:"image_url"`

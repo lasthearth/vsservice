@@ -57,27 +57,34 @@ func TestShopItem_Validate(t *testing.T) {
 			true,
 		},
 		{
-			// Entries are no longer stored for kits — the витрина is derived
-			// from the captured kit at read time — so a kit entry validates on
-			// its own fields, with or without legacy entries decoded onto it.
+			// No витрина rows stored: the shop falls back to the captured kit.
 			"kit without entries",
 			func() *ShopItem { return NewKitShopItem("kit_a", "Kit", "desc", "url", 100) },
 			false,
 		},
 		{
-			"kit with legacy entries",
+			"kit with stored entries",
 			func() *ShopItem {
 				item := NewKitShopItem("kit_a", "Kit", "desc", "url", 100)
-				item.Entries = []KitEntry{{Name: "Sword", Quantity: 1}}
+				item.Entries = []KitEntry{{GameCode: "game:sword", Name: "Sword", Quantity: 1}}
 				return item
 			},
 			false,
 		},
 		{
-			"kit legacy entries are not validated",
+			"kit entry without game code",
 			func() *ShopItem {
 				item := NewKitShopItem("kit_a", "Kit", "desc", "url", 100)
-				item.Entries = []KitEntry{{Name: "", Quantity: 0}}
+				item.SetEntries([]KitEntry{{Name: "Sword", Quantity: 1}})
+				return item
+			},
+			true,
+		},
+		{
+			"kit entry with game code and empty name",
+			func() *ShopItem {
+				item := NewKitShopItem("kit_a", "Kit", "desc", "url", 100)
+				item.SetEntries([]KitEntry{{GameCode: "game:sword", Name: ""}})
 				return item
 			},
 			false,

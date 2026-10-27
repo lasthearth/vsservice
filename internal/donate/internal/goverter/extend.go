@@ -25,6 +25,7 @@ func KitEntryModelToProto(e model.KitEntry) *donatev1.KitEntry {
 		Description: e.Description,
 		ImageUrl:    e.ImageURL,
 		Quantity:    e.Quantity,
+		GameCode:    e.GameCode,
 	}
 }
 
