@@ -109,6 +109,11 @@ type Envelope struct {
 	Version   int64
 }
 
+// SetVersion records which revision of the stored document this is.
+func (e *Envelope) SetVersion(version int64) {
+	e.Version = version
+}
+
 // Revision is a saved state of an article.
 //
 // It stores the article as it was, which is what makes a restore possible, and
@@ -123,21 +128,83 @@ type Revision struct {
 	SavedAt    time.Time
 }
 
+// ArticleInput is the editable content of a page as a client sends it.
+//
+// It carries what an editor writes and nothing else: the identity, the author,
+// the timestamps and the history belong to the stored document, so a client
+// cannot name them.
+type ArticleInput struct {
+	Slug        string
+	Title       string
+	Section     string
+	Lead        string
+	Cover       *Cover
+	Tags        []string
+	GameVersion string
+	QuickAnswer *QuickAnswer
+	Related     []string
+	Body        string
+	Status      string
+}
+
+// Article turns editor input into a page that carries content and no identity.
+func (in ArticleInput) Article() Article {
+	return Article{
+		Slug:        in.Slug,
+		Title:       in.Title,
+		Section:     in.Section,
+		Lead:        in.Lead,
+		Cover:       in.Cover,
+		Tags:        in.Tags,
+		GameVersion: in.GameVersion,
+		QuickAnswer: in.QuickAnswer,
+		Related:     in.Related,
+		Body:        in.Body,
+		Status:      in.Status,
+	}
+}
+
+// WithSlug fills an empty slug from the title, which is the address the page
+// gets when the editor did not choose one.
+func (in ArticleInput) WithSlug() ArticleInput {
+	if in.Slug == "" {
+		in.Slug = Slugify(in.Title)
+	}
+
+	return in
+}
+
+// Input returns the editable content of the page, which is what an edit
+// replaces.
+func (a *Article) Input() ArticleInput {
+	return ArticleInput{
+		Slug:        a.Slug,
+		Title:       a.Title,
+		Section:     a.Section,
+		Lead:        a.Lead,
+		Cover:       a.Cover,
+		Tags:        a.Tags,
+		GameVersion: a.GameVersion,
+		QuickAnswer: a.QuickAnswer,
+		Related:     a.Related,
+		Body:        a.Body,
+		Status:      a.Status,
+	}
+}
+
 // NewArticle builds a draft article out of editor input.
 //
 // The slug falls back to the title when the editor left it empty, the section
 // falls back to the first section, and the status defaults to draft so a
 // half-written page is never published by accident.
-func NewArticle(input Article, authorName string, now time.Time) (*Article, error) {
-	article := input
+func NewArticle(input ArticleInput, authorName string, now time.Time) (*Article, error) {
+	article := input.Article()
 	article.AuthorName = authorName
 	article.CreatedBy = authorName
 	article.Envelope = Envelope{Version: 1, CreatedAt: now, UpdatedAt: now}
 	article.Revisions = nil
 
-	if article.Slug == "" {
-		article.Slug = Slugify(article.Title)
-	}
+	article.DeriveSlug()
 
 	if article.Status == "" {
 		article.Status = StatusDraft
@@ -152,6 +219,14 @@ func NewArticle(input Article, authorName string, now time.Time) (*Article, erro
 	}
 
 	return &article, nil
+}
+
+// DeriveSlug fills an empty slug from the title, which is the address a page
+// gets when the editor did not choose one.
+func (a *Article) DeriveSlug() {
+	if a.Slug == "" {
+		a.Slug = Slugify(a.Title)
+	}
 }
 
 // AssignAuthor records who wrote a page that did not exist before. The
@@ -219,12 +294,12 @@ func (a *Article) size() int {
 // The version the caller read is checked against the stored one first, so an
 // editor working on a stale page is told to reload instead of overwriting
 // someone else's work.
-func (a *Article) ApplyEdit(input Article, authorName string, expectedVersion int64, now time.Time) error {
+func (a *Article) ApplyEdit(input ArticleInput, authorName string, expectedVersion int64, now time.Time) error {
 	if expectedVersion != 0 && expectedVersion != a.Envelope.Version {
 		return ErrVersionConflict
 	}
 
-	edit := input
+	edit := input.Article()
 	edit.Envelope = a.Envelope
 	edit.Envelope.UpdatedAt = now
 	edit.AuthorName = authorName
@@ -232,9 +307,7 @@ func (a *Article) ApplyEdit(input Article, authorName string, expectedVersion in
 	edit.Envelope.Version = a.Envelope.Version + 1
 	edit.Revisions = a.Revisions
 
-	if edit.Slug == "" {
-		edit.Slug = Slugify(edit.Title)
-	}
+	edit.DeriveSlug()
 
 	if edit.Section == "" {
 		edit.Section = a.Section
@@ -317,9 +390,9 @@ func (a *Article) AdoptDocument(envelope Envelope) {
 // The service uses it to hand the fields that arrived over the wire to the
 // domain without touching them itself; identity and timestamps are not part of
 // the input and are applied by the repository from the stored document.
-func (a *Article) Adopt(input Article) {
+func (a *Article) Adopt(input ArticleInput) {
 	envelope := a.Envelope
-	*a = input
+	*a = input.Article()
 	a.Envelope = envelope
 }
 
@@ -346,10 +419,10 @@ func (a *Article) Touch(_ time.Time) {}
 // a revision stores: nesting the whole history inside every revision would grow
 // the document without bound.
 func (a *Article) withoutHistory() Article {
-	copy := *a
-	copy.Revisions = nil
+	snapshot := *a
+	snapshot.Revisions = nil
 
-	return copy
+	return snapshot
 }
 
 // PruneRevisions keeps the newest revisions and drops the rest.
@@ -369,6 +442,16 @@ type Page struct {
 	Total int64
 }
 
+// Add appends an article to the page.
+func (p *Page) Add(article *Article) {
+	p.Articles = append(p.Articles, article)
+}
+
+// Count records how many articles match the filter, ignoring pagination.
+func (p *Page) Count(total int64) {
+	p.Total = total
+}
+
 // Filter narrows a list request.
 type Filter struct {
 	// Section limits the result to one section when set.
@@ -382,4 +465,9 @@ type Filter struct {
 	Tag string
 	// IncludeDrafts lets an authorized editor see unpublished articles.
 	IncludeDrafts bool
+}
+
+// AllowDrafts lets an authorized editor see unpublished articles.
+func (f *Filter) AllowDrafts(allow bool) {
+	f.IncludeDrafts = allow
 }

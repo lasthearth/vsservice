@@ -154,8 +154,8 @@ func (s *Service) HideAbout(
 	// outlives the request, because a moderator who hangs up after the write would
 	// otherwise leave the player with no explanation of it. WithoutCancel keeps
 	// the call on this goroutine, so the answer still waits for it.
-	switch {
-	case s.cnuc == nil:
+	switch s.cnuc {
+	case nil:
 		s.log.Warn("no notifier is wired, the player is not told why the description was hidden",
 			zap.String("user_id", recipient))
 	default:

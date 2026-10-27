@@ -27,6 +27,14 @@ type SettlementVerification struct {
 	CreatedAt       time.Time
 }
 
+// RecordResubmission stamps the request with the moment it was filed again. The request is
+// erased with the player, not with the settlement, so a settlement deleted and re-created is
+// approved from a request written a second time; this last-write stamp is what tells the two
+// lives of one id apart.
+func (s *SettlementVerification) RecordResubmission(at time.Time) {
+	s.UpdatedAt = at
+}
+
 // LvlUp moves the request to the next tier of its kind. A guild has one tier and stays where it
 // is, so a further guild submission only re-verifies the profile.
 func (s *SettlementVerification) LvlUp() {

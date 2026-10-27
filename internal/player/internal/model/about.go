@@ -132,7 +132,7 @@ func SanitizeReason(raw string) string {
 	var b strings.Builder
 
 	for _, r := range replaced {
-		if r == '\n' || !(unicode.IsControl(r) || isInvisible(r)) {
+		if r == '\n' || (!unicode.IsControl(r) && !isInvisible(r)) {
 			b.WriteRune(r)
 		}
 	}

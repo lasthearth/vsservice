@@ -22,7 +22,7 @@ func TestSuggestionBaseSurvivesTheDocumentRoundTrip(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	articleID := bson.NewObjectID().Hex()
 
-	base, err := model.NewArticle(model.Article{
+	base, err := model.NewArticle(model.ArticleInput{
 		Title:   "Поселения",
 		Section: model.SectionSettlements,
 		Body:    "## Роли",
@@ -39,7 +39,7 @@ func TestSuggestionBaseSurvivesTheDocumentRoundTrip(t *testing.T) {
 
 	suggestion, err := model.NewSuggestion(model.SuggestionInput{
 		ArticleId: articleID,
-		Proposal: model.Article{
+		Proposal: model.ArticleInput{
 			Title:   "Поселения и роли",
 			Section: model.SectionSettlements,
 			Body:    "## Роли и налоги",

@@ -99,10 +99,12 @@ func TestNotifierKeysDifferAcrossSettlementLives(t *testing.T) {
 // onto the mail the first attempt already wrote.
 func TestNotifierDeliveryKeyIsStableForOneSubmission(t *testing.T) {
 	at := time.UnixMilli(1700000000000)
-	if NotifierDeliveryKey("s1", at) != NotifierDeliveryKey("s1", at) {
+	deliveryKey := NotifierDeliveryKey("s1", at)
+	if retried := NotifierDeliveryKey("s1", at); deliveryKey != retried {
 		t.Error("delivery key is not stable for one submission")
 	}
-	if NotifierReissueKey("s1", at, 2) != NotifierReissueKey("s1", at, 2) {
+	reissueKey := NotifierReissueKey("s1", at, 2)
+	if retried := NotifierReissueKey("s1", at, 2); reissueKey != retried {
 		t.Error("reissue key is not stable for one submission")
 	}
 	// The delivery and reissue namespaces never collide, whatever the stamp.

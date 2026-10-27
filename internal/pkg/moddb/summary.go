@@ -49,7 +49,7 @@ func Summary(text string) string {
 // mod whose text opens with a version number, and "Adds new blocks, e." for one
 // that abbreviates.
 func sentenceEnd(s string) int {
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] != '.' {
 			continue
 		}

@@ -85,7 +85,7 @@ func (s *Service) ListSuggestions(
 
 	filter := model.SuggestionFilter{Status: ProtoToSuggestionStatus(req.GetStatus())}
 	if !s.canReview(ctx) {
-		filter.AuthorName = author
+		filter.LimitToAuthor(author)
 	}
 
 	limit := int64(req.GetPageSize())
@@ -251,7 +251,7 @@ func (s *Service) applySuggestion(
 		proposal.Publish()
 		article.SaveRevision("Утверждённое предложение игрока", now)
 
-		if err := article.ApplyEdit(proposal, suggestion.AuthorName, expected, now); err != nil {
+		if err := article.ApplyEdit(proposal.Input(), suggestion.AuthorName, expected, now); err != nil {
 			return nil, err
 		}
 

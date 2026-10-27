@@ -1,6 +1,9 @@
 package model
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestSlugifyTransliteratesRussian(t *testing.T) {
 	cases := map[string]string{
@@ -20,11 +23,7 @@ func TestSlugifyTransliteratesRussian(t *testing.T) {
 }
 
 func TestSlugifyTruncatesWithoutTrailingDash(t *testing.T) {
-	long := ""
-	for i := range 30 {
-		long += "poselenie "
-		_ = i
-	}
+	long := strings.Repeat("poselenie ", 30)
 
 	got := Slugify(long)
 	if len(got) > MaxSlugLength {

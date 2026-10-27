@@ -20,8 +20,7 @@ import (
 
 // code is the gRPC code the domain interceptor will answer with.
 func code(err error) codes.Code {
-	var de *pkgerr.DomainError
-	if errors.As(err, &de) {
+	if de, ok := errors.AsType[*pkgerr.DomainError](err); ok {
 		return de.Code
 	}
 	return codes.Unknown

@@ -7,7 +7,6 @@ import (
 	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/lasthearth/vsservice/internal/wiki/internal/model"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -69,9 +68,7 @@ func (s *Service) UpdateArticle(ctx context.Context, req *wikiv1.UpdateArticleRe
 	}
 
 	input := s.fromProto(req.GetArticle())
-	if input.Slug == "" {
-		input.Slug = model.Slugify(input.Title)
-	}
+	input = input.WithSlug()
 
 	if taken, err := s.slugTaken(ctx, input.Slug, id); err != nil {
 		return nil, err
@@ -146,7 +143,7 @@ func (s *Service) ListArticles(ctx context.Context, req *wikiv1.ListArticlesRequ
 
 	// The list is public, so an unpublished page never leaves the service
 	// unless the caller asked for drafts and is allowed to write.
-	filter.IncludeDrafts = filter.Status == model.StatusDraft && s.canEdit(ctx)
+	filter.AllowDrafts(filter.Status == model.StatusDraft && s.canEdit(ctx))
 
 	limit := int64(req.GetPageSize())
 	if limit <= 0 {
@@ -252,15 +249,15 @@ func (s *Service) toProto(article *model.Article) *wikiv1.Article {
 //
 // The fields are collected here and handed to the domain in one call: the
 // service reads the request, and the model decides what an article is made of.
-func (s *Service) fromProto(input *wikiv1.Article) model.Article {
+func (s *Service) fromProto(input *wikiv1.Article) model.ArticleInput {
 	if input == nil {
-		return model.Article{}
+		return model.ArticleInput{}
 	}
 
 	cover := input.GetCover()
 	answer := input.GetQuickAnswer()
 
-	return model.Article{
+	return model.ArticleInput{
 		Slug:        input.GetSlug(),
 		Title:       input.GetTitle(),
 		Section:     input.GetSection(),
@@ -303,11 +300,4 @@ func findRevision(revisions []model.Revision, id string) (model.Revision, bool) 
 	}
 
 	return model.Revision{}, false
-}
-
-// logValidation keeps the logger in use at the validation boundary, where a
-// rejected edit is worth a line: it is the difference between a typo and a
-// broken client.
-func (s *Service) logValidation(err error) {
-	s.logger.Warn("wiki article rejected", zap.Error(err))
 }

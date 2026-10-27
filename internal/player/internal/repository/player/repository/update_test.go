@@ -8,8 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-func aboutPtr(s string) *string { return &s }
-
 // TestBuildUpdateSetWritesTheDescriptionAsOneDecision pins that about and
 // about_updated_at are written and removed together. MongoDB rejects an update
 // that names one path in both $set and $unset, and it rejects the whole write:
@@ -19,7 +17,7 @@ func TestBuildUpdateSetWritesTheDescriptionAsOneDecision(t *testing.T) {
 	stamp := time.Date(2026, time.March, 14, 12, 0, 0, 0, time.UTC)
 
 	t.Run("a description and its stamp are set together", func(t *testing.T) {
-		got := r.buildUpdateSet(model.PlayerUpdate{About: aboutPtr("лес"), AboutUpdatedAt: &stamp})
+		got := r.buildUpdateSet(model.PlayerUpdate{About: new("лес"), AboutUpdatedAt: &stamp})
 
 		set, ok := got["$set"].(bson.M)
 		if !ok {
@@ -34,7 +32,7 @@ func TestBuildUpdateSetWritesTheDescriptionAsOneDecision(t *testing.T) {
 	})
 
 	t.Run("a removal takes the stamp with it even when a caller passes one", func(t *testing.T) {
-		got := r.buildUpdateSet(model.PlayerUpdate{About: aboutPtr(""), AboutUpdatedAt: &stamp})
+		got := r.buildUpdateSet(model.PlayerUpdate{About: new(""), AboutUpdatedAt: &stamp})
 
 		unset, ok := got["$unset"].(bson.M)
 		if !ok {
@@ -53,7 +51,7 @@ func TestBuildUpdateSetWritesTheDescriptionAsOneDecision(t *testing.T) {
 
 	t.Run("a removal keeps the other fields of the same update", func(t *testing.T) {
 		online := true
-		got := r.buildUpdateSet(model.PlayerUpdate{About: aboutPtr(""), IsOnline: &online})
+		got := r.buildUpdateSet(model.PlayerUpdate{About: new(""), IsOnline: &online})
 
 		set, ok := got["$set"].(bson.M)
 		if !ok || set["is_online"] != true {
