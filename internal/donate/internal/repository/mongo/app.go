@@ -131,12 +131,14 @@ func shopItemFromDTO(d dto.ShopItem) *model.ShopItem {
 		}
 	}
 
-	return model.ReconstituteShopItem(
+	item := model.ReconstituteShopItem(
 		d.Id.Hex(), d.Code, d.Name, d.Description, d.ImageURL,
 		d.Price, d.IsAvailable, t, entries,
 		d.HasDiscount, d.DiscountPercent, privileges,
 		d.DiscountStartsAt, d.DiscountEndsAt, d.CreatedAt, d.UpdatedAt,
 	)
+	item.SetSection(d.Section)
+	return item
 }
 
 // shopItemToDTO builds a BSON-ready ShopItem DTO from a domain model. The
@@ -180,6 +182,7 @@ func shopItemToDTO(m *model.ShopItem) dto.ShopItem {
 		Privileges:       privileges,
 		DiscountStartsAt: m.DiscountStartsAt,
 		DiscountEndsAt:   m.DiscountEndsAt,
+		Section:          m.Section,
 	}
 	return d
 }

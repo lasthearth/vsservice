@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -88,6 +89,24 @@ func TestShopItem_Validate(t *testing.T) {
 				return item
 			},
 			false,
+		},
+		{
+			"kit with a section",
+			func() *ShopItem {
+				item := NewKitShopItem("kit_a", "Kit", "desc", "url", 100)
+				item.SetSection("food")
+				return item
+			},
+			false,
+		},
+		{
+			"section too long",
+			func() *ShopItem {
+				item := NewKitShopItem("kit_a", "Kit", "desc", "url", 100)
+				item.SetSection(strings.Repeat("я", MaxSectionLength+1))
+				return item
+			},
+			true,
 		},
 		{
 			"discount percent 101",
@@ -314,4 +333,17 @@ func TestShopItem_Validate_DiscountWindow(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 	})
+}
+
+// SetSection drops surrounding spaces, and Apply goes through it as well.
+func TestShopItem_SetSectionTrims(t *testing.T) {
+	item := NewKitShopItem("kit_a", "Kit", "desc", "url", 100)
+	item.SetSection("  food ")
+	if item.Section != "food" {
+		t.Fatalf("section = %q, want %q", item.Section, "food")
+	}
+	item.Apply(ShopItemUpdate{Code: "kit_a", Name: "Kit", Type: ItemTypeKit, Section: " weapons "})
+	if item.Section != "weapons" {
+		t.Fatalf("section after Apply = %q, want %q", item.Section, "weapons")
+	}
 }

@@ -34,4 +34,5 @@ type ShopItem struct {
 	Privileges       []PrivilegeDTO `bson:"privileges,omitempty"`
 	DiscountStartsAt *time.Time     `bson:"discount_starts_at,omitempty"`
 	DiscountEndsAt   *time.Time     `bson:"discount_ends_at,omitempty"`
+	Section          string         `bson:"section,omitempty"`
 }

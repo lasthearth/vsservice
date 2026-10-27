@@ -1159,6 +1159,13 @@ paths:
                 discount_ends_at:
                   title: discount_ends_at
                   $ref: '#/components/schemas/google.protobuf.Timestamp'
+                section:
+                  type: string
+                  title: section
+                  description: |-
+                    Витрина section of the entry inside its category (e.g. "food",
+                    "weapons"): a key the site maps to a label. Empty means no section; the
+                    shop shows such entries under "all". Display only.
               title: UpdateShopItemRequest
               additionalProperties: false
         required: true
@@ -7027,6 +7034,13 @@ components:
         discount_ends_at:
           title: discount_ends_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
+        section:
+          type: string
+          title: section
+          description: |-
+            Витрина section of the entry inside its category (e.g. "food",
+            "weapons"): a key the site maps to a label. Empty means no section; the
+            shop shows such entries under "all". Display only.
       title: CreateShopItemRequest
       additionalProperties: false
     donate.v1.CreateShopItemResponse:
@@ -7380,6 +7394,13 @@ components:
             Category of the kit this entry sells ("kit" | "privilege" | "special"),
              joined at read time from the captured kit. Empty when the kit is missing
              or the entry predates the field.
+        section:
+          type: string
+          title: section
+          description: |-
+            Витрина section of the entry inside its category (e.g. "food",
+            "weapons"): a key the site maps to a label. Empty means no section; the
+            shop shows such entries under "all". Display only.
       title: ShopItem
       additionalProperties: false
     donate.v1.Transaction:
@@ -7467,6 +7488,13 @@ components:
         discount_ends_at:
           title: discount_ends_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
+        section:
+          type: string
+          title: section
+          description: |-
+            Витрина section of the entry inside its category (e.g. "food",
+            "weapons"): a key the site maps to a label. Empty means no section; the
+            shop shows such entries under "all". Display only.
       title: UpdateShopItemRequest
       additionalProperties: false
     donate.v1.UpdateShopItemResponse:

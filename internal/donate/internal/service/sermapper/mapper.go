@@ -73,6 +73,7 @@ func (c *MapperImpl) ToShopItemProto(source *model.ShopItem) *v1.ShopItem {
 		}
 		donatev1ShopItem.DiscountStartsAt = goverter1.TimePtrToTimestamp((*source).DiscountStartsAt)
 		donatev1ShopItem.DiscountEndsAt = goverter1.TimePtrToTimestamp((*source).DiscountEndsAt)
+		donatev1ShopItem.Section = (*source).Section
 		pDonatev1ShopItem = &donatev1ShopItem
 	}
 	return pDonatev1ShopItem
