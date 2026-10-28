@@ -6,10 +6,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-// UnboundNotifierCollection is the collection that holds the heralds standing
-// with no settlement behind them.
-const UnboundNotifierCollection = "unbound_notifiers"
-
 // Unbound is a document of the unbound_notifiers collection: a herald block
 // that stands with no settlement bound to it. The game server (VintageAPI) owns
 // the writes, one row per block position; vsservice only reads it, so the
@@ -26,7 +22,12 @@ type Unbound struct {
 	Position Position      `bson:"position"`
 	// Variant is the block's tier variant, e.g. "khutor" or "camp". It tells the
 	// pins apart on a map; the site does not serve it yet.
-	Variant  string    `bson:"variant"`
+	Variant string `bson:"variant"`
+	// Name is what is written into the block in game ("Шахта", "Перевал"). A
+	// neutral herald has no settlement whose name the map could label the pin
+	// with, so this is the label. The game server rewrites it on every report,
+	// because a player renames the block while it stands.
+	Name     string    `bson:"name"`
 	PlacedBy string    `bson:"placed_by"`
 	PlacedAt time.Time `bson:"placed_at"`
 }

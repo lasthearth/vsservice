@@ -295,6 +295,61 @@ func TestListNotifierPositionsServesNeutralHeralds(t *testing.T) {
 	}
 }
 
+// A bound pin is labelled with its settlement's name, read live, so a rename made on the site
+// shows at once. A neutral pin keeps the name written into the block in game: there is no
+// settlement to read a label from, and that name is the only one it has.
+func TestListNotifierPositionsLabelsThePins(t *testing.T) {
+	repo := fixtureRepo()
+	repo.placements = []model.NotifierPlacement{
+		{SettlementId: "s1", Position: model.Vector3{X: 7, Y: 64, Z: -300}},
+		{Position: model.Vector3{X: 21, Y: 66, Z: -4}, Name: "Шахта"},
+	}
+	svc, _, _ := newNotifierService(t, repo)
+
+	res, err := svc.ListNotifierPositions(context.Background(), &settlementv1.ListNotifierPositionsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := res.GetPlacements()
+	if len(got) != 2 {
+		t.Fatalf("placements = %v, want the bound and the neutral one", got)
+	}
+	if name := got[0].GetName(); name != "Северный Оплот" {
+		t.Errorf("bound name = %q, want the settlement's name", name)
+	}
+	if name := got[1].GetName(); name != "Шахта" {
+		t.Errorf("neutral name = %q, want the name written on the block", name)
+	}
+}
+
+// A placement outlives DeleteSettlement, so a bound pin can name a group the site no longer
+// serves. It keeps its id and answers no name rather than borrowing one from another settlement:
+// the client drops a pin it cannot resolve against List.
+func TestListNotifierPositionsLeavesADanglingPinUnnamed(t *testing.T) {
+	repo := fixtureRepo()
+	repo.placements = []model.NotifierPlacement{
+		{SettlementId: "gone", Position: model.Vector3{X: 1, Y: 2, Z: 3}},
+	}
+	svc, _, _ := newNotifierService(t, repo)
+
+	res, err := svc.ListNotifierPositions(context.Background(), &settlementv1.ListNotifierPositionsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := res.GetPlacements()
+	if len(got) != 1 {
+		t.Fatalf("placements = %v, want the one dangling pin", got)
+	}
+	if got[0].GetSettlementId() != "gone" {
+		t.Errorf("settlement_id = %q, want gone", got[0].GetSettlementId())
+	}
+	if name := got[0].GetName(); name != "" {
+		t.Errorf("name = %q, want empty for a settlement the site no longer serves", name)
+	}
+}
+
 // submitRepo is a settlement whose request was already approved once, so Submit
 // takes the upgrade path: the only one where a block can override coordinates.
 func submitRepo(placement *model.NotifierPlacement) *notifierRepo {

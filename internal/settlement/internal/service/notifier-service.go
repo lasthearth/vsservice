@@ -288,20 +288,78 @@ func (s *Service) ReissueNotifier(ctx context.Context, req *settlementv1.Reissue
 // the map draws one pin per standing block in a single call, and a placement
 // discloses nothing Get does not already serve for one settlement.
 //
-// One read answers the whole list. Filling Settlement.notifier_position in List
+// One read answers the positions. Filling Settlement.notifier_position in List
 // instead would cost one read per row, which is why that field stays unset there.
+// The labels of the bound pins come from a second read of the settlements: a
+// bound herald wears its settlement's name, and reading it here shows a rename
+// made on the site at once instead of waiting for the game to report it back.
 func (s *Service) ListNotifierPositions(
 	ctx context.Context,
 	_ *settlementv1.ListNotifierPositionsRequest,
 ) (*settlementv1.ListNotifierPositionsResponse, error) {
+	l := s.log.WithMethod("ListNotifierPositions")
+
 	placements, err := s.dbRepo.ListNotifiers(ctx)
 	if err != nil {
-		s.log.WithMethod("ListNotifierPositions").
-			Error("failed to list notifier placements", zap.Error(err))
+		l.Error("failed to list notifier placements", zap.Error(err))
 		return nil, err
 	}
 
-	return &settlementv1.ListNotifierPositionsResponse{
-		Placements: s.mapper.ToNotifierPlacementsProto(placements),
-	}, nil
+	pins := s.mapper.ToNotifierPlacementsProto(placements)
+	if err := s.labelBoundPins(ctx, placements, pins); err != nil {
+		l.Error("failed to label notifier placements", zap.Error(err))
+		return nil, err
+	}
+
+	return &settlementv1.ListNotifierPositionsResponse{Placements: pins}, nil
+}
+
+// labelBoundPins writes each bound pin's settlement name onto it. A neutral pin
+// keeps the name the game reported: it is the one written into the block, and
+// there is no settlement to read a label from.
+//
+// The two slices are one list in two shapes, model and wire, and the mapper keeps
+// the order and the length, so index i is the same pin in both. The bounds check
+// is what makes that safe if a mapper ever disagrees.
+func (s *Service) labelBoundPins(
+	ctx context.Context,
+	placements []model.NotifierPlacement,
+	pins []*settlementv1.NotifierPlacement,
+) error {
+	bound := false
+	for _, placement := range placements {
+		if placement.SettlementId != "" {
+			bound = true
+			break
+		}
+	}
+	// A world of neutral heralds only needs no settlement read at all.
+	if !bound {
+		return nil
+	}
+
+	sets, err := s.dbRepo.GetAllByKind(ctx, model.KindSettlement)
+	if err != nil {
+		return err
+	}
+	names := make(map[string]string, len(sets))
+	for _, set := range sets {
+		names[set.Id] = set.Name
+	}
+
+	for i, placement := range placements {
+		if i >= len(pins) || pins[i] == nil || placement.SettlementId == "" {
+			continue
+		}
+		// A name the game already reported wins: it is the one written on the
+		// block, so an owner's rename in game survives here until the site
+		// renames the settlement.
+		if pins[i].GetName() != "" {
+			continue
+		}
+		if name, ok := names[placement.SettlementId]; ok {
+			pins[i].Name = name
+		}
+	}
+	return nil
 }

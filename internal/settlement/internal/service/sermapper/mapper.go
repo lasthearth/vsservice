@@ -120,6 +120,7 @@ func (c *MapperImpl) ToNotifierPlacementProto(source model.NotifierPlacement) *v
 	var settlementv1NotifierPlacement v1.NotifierPlacement
 	settlementv1NotifierPlacement.SettlementId = source.SettlementId
 	settlementv1NotifierPlacement.Position = c.ToVector3Proto(source.Position)
+	settlementv1NotifierPlacement.Name = source.Name
 	return &settlementv1NotifierPlacement
 }
 func (c *MapperImpl) ToNotifierPlacementsProto(source []model.NotifierPlacement) []*v1.NotifierPlacement {
