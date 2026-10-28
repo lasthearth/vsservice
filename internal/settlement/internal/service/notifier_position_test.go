@@ -264,6 +264,37 @@ func TestListNotifierPositionsFailsOnReadError(t *testing.T) {
 	}
 }
 
+// A neutral herald — a manual tier, a block an admin placed, one an admin unbound and left
+// standing — has no settlement behind it. The map still draws it: an empty settlement_id is what
+// marks the pin neutral, so it must survive the mapping instead of being dropped as incomplete.
+func TestListNotifierPositionsServesNeutralHeralds(t *testing.T) {
+	repo := fixtureRepo()
+	repo.placements = []model.NotifierPlacement{
+		{SettlementId: "s1", Position: model.Vector3{X: 7, Y: 64, Z: -300}},
+		{Position: model.Vector3{X: 21, Y: 66, Z: -4}},
+	}
+	svc, _, _ := newNotifierService(t, repo)
+
+	res, err := svc.ListNotifierPositions(context.Background(), &settlementv1.ListNotifierPositionsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := res.GetPlacements()
+	if len(got) != 2 {
+		t.Fatalf("placements = %v, want the bound and the neutral one", got)
+	}
+	if got[0].GetSettlementId() != "s1" {
+		t.Errorf("settlement_id = %q, want s1", got[0].GetSettlementId())
+	}
+	if id := got[1].GetSettlementId(); id != "" {
+		t.Errorf("settlement_id = %q, want empty for a neutral herald", id)
+	}
+	if p := got[1].GetPosition(); p.GetX() != 21 || p.GetY() != 66 || p.GetZ() != -4 {
+		t.Errorf("position = %v, want (21,66,-4)", p)
+	}
+}
+
 // submitRepo is a settlement whose request was already approved once, so Submit
 // takes the upgrade path: the only one where a block can override coordinates.
 func submitRepo(placement *model.NotifierPlacement) *notifierRepo {
