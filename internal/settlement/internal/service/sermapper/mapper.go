@@ -116,6 +116,22 @@ func (c *MapperImpl) ToMembersProto(source []model.Member) []*v1.Member {
 	}
 	return pSettlementv1MemberList
 }
+func (c *MapperImpl) ToNotifierPlacementProto(source model.NotifierPlacement) *v1.NotifierPlacement {
+	var settlementv1NotifierPlacement v1.NotifierPlacement
+	settlementv1NotifierPlacement.SettlementId = source.SettlementId
+	settlementv1NotifierPlacement.Position = c.ToVector3Proto(source.Position)
+	return &settlementv1NotifierPlacement
+}
+func (c *MapperImpl) ToNotifierPlacementsProto(source []model.NotifierPlacement) []*v1.NotifierPlacement {
+	var pSettlementv1NotifierPlacementList []*v1.NotifierPlacement
+	if source != nil {
+		pSettlementv1NotifierPlacementList = make([]*v1.NotifierPlacement, len(source))
+		for i := 0; i < len(source); i++ {
+			pSettlementv1NotifierPlacementList[i] = c.ToNotifierPlacementProto(source[i])
+		}
+	}
+	return pSettlementv1NotifierPlacementList
+}
 func (c *MapperImpl) ToRoleProto(source model.Role) *v1.Role {
 	var settlementv1Role v1.Role
 	settlementv1Role.Id = source.Id

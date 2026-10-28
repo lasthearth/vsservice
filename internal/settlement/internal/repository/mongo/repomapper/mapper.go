@@ -167,6 +167,16 @@ func (c *MapperImpl) ToNotifierPlacement(source notifier.Notifier) model.Notifie
 	modelNotifierPlacement.PlacedAt = goverter.TimeToTime(source.PlacedAt)
 	return modelNotifierPlacement
 }
+func (c *MapperImpl) ToNotifierPlacements(source []notifier.Notifier) []model.NotifierPlacement {
+	var modelNotifierPlacementList []model.NotifierPlacement
+	if source != nil {
+		modelNotifierPlacementList = make([]model.NotifierPlacement, len(source))
+		for i := 0; i < len(source); i++ {
+			modelNotifierPlacementList[i] = c.ToNotifierPlacement(source[i])
+		}
+	}
+	return modelNotifierPlacementList
+}
 func (c *MapperImpl) ToSettlementDTO(source model.Settlement) settlement.Settlement {
 	var settlementdtoSettlement settlement.Settlement
 	settlementdtoSettlement.Name = source.Name

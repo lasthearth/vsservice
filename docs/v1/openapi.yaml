@@ -1249,8 +1249,7 @@ paths:
                   items:
                     $ref: '#/components/schemas/donate.v1.KitEntry'
                   title: entries
-                  description: |-
-                    The витрина rows of the kit entry, in the order given.
+                  description: The витрина rows of the kit entry, in the order given.
                 has_discount:
                   type: boolean
                   title: has_discount
@@ -1274,8 +1273,8 @@ paths:
                   title: section
                   description: |-
                     Витрина section of the entry inside its category (e.g. "food",
-                    "weapons"): a key the site maps to a label. Empty means no section; the
-                    shop shows such entries under "all". Display only.
+                     "weapons"): a key the site maps to a label. Empty means no section; the
+                     shop shows such entries under "all". Display only.
               title: UpdateShopItemRequest
               additionalProperties: false
         required: true
@@ -4230,6 +4229,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/settlement.v1.CancelJoinRequestResponse'
+  /v1/settlements/notifiers:
+    get:
+      tags:
+        - SettlementService
+      summary: |-
+        List where every notifier block stands. Public, so the map draws every pin in one call
+         instead of one Get per settlement.
+      description: |-
+        The list holds the blocks that stand right now: the game server writes a placement when a
+         block is placed and deletes it when the block is broken, and one block stands per settlement.
+         A guild herald carries no settlement binding and writes no placement, so no guild appears
+         here. settlement_id names the group the block belongs to; it is the id List and Get serve.
+
+         A placement outlives DeleteSettlement, because the block still stands in the world after the
+         group is gone, so an id here may name a group the site no longer serves. A client drops the
+         pins it cannot resolve against List.
+
+         Errors:
+           - INTERNAL (500): database failure
+      operationId: SettlementService_ListNotifierPositions
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/settlement.v1.ListNotifierPositionsResponse'
   /v1/settlements/tags:
     get:
       tags:
@@ -7125,7 +7151,7 @@ components:
           items:
             $ref: '#/components/schemas/donate.v1.KitEntry'
           title: entries
-          description: 'The витрина rows of the kit entry, in the order given.'
+          description: The витрина rows of the kit entry, in the order given.
         has_discount:
           type: boolean
           title: has_discount
@@ -7149,8 +7175,8 @@ components:
           title: section
           description: |-
             Витрина section of the entry inside its category (e.g. "food",
-            "weapons"): a key the site maps to a label. Empty means no section; the
-            shop shows such entries under "all". Display only.
+             "weapons"): a key the site maps to a label. Empty means no section; the
+             shop shows such entries under "all". Display only.
       title: CreateShopItemRequest
       additionalProperties: false
     donate.v1.CreateShopItemResponse:
@@ -7239,16 +7265,18 @@ components:
           type: integer
           title: quantity
           format: int32
+        game_code:
+          type: string
+          title: game_code
       title: KitEntry
       additionalProperties: false
       description: |-
-        One витрина row of a shop item. For kit entries the wire list is DERIVED at
-         read time from the captured kit's items (name = game code, quantity = stack
-         size, image_url = the game-rendered icon uploaded at capture); the
-         hand-typed display list is gone, so what the shop shows is what the
-         purchase delivers. The fields stay on the messages so a legacy client's
-         entries are simply ignored, and legacy documents' stored rows surface only
-         while a kit was never captured.
+        One витрина row of a shop item: how a captured kit item is shown to players.
+         The contents (which item, how many) always come from the captured kit; the
+         row only decorates it. game_code picks the captured item the row belongs to,
+         and the rows keep the order the admin set. Shown name, description and
+         image_url fall back to the item's game code and captured icon when empty;
+         quantity is ignored on write and always answered from the kit.
     donate.v1.ListMyPurchasesRequest:
       type: object
       title: ListMyPurchasesRequest
@@ -7463,8 +7491,8 @@ components:
             $ref: '#/components/schemas/donate.v1.KitEntry'
           title: entries
           description: |-
-            For kit entries: derived at read time from the captured kit's items.
-             Empty only when the kit was never captured (a hidden pre-capture entry).
+            The витрина rows. Empty means none were stored: the captured kit's items
+             are shown instead.
         has_discount:
           type: boolean
           title: has_discount
@@ -7509,8 +7537,8 @@ components:
           title: section
           description: |-
             Витрина section of the entry inside its category (e.g. "food",
-            "weapons"): a key the site maps to a label. Empty means no section; the
-            shop shows such entries under "all". Display only.
+             "weapons"): a key the site maps to a label. Empty means no section; the
+             shop shows such entries under "all". Display only.
       title: ShopItem
       additionalProperties: false
     donate.v1.Transaction:
@@ -7578,8 +7606,7 @@ components:
           items:
             $ref: '#/components/schemas/donate.v1.KitEntry'
           title: entries
-          description: |-
-            The витрина rows of the kit entry, in the order given.
+          description: The витрина rows of the kit entry, in the order given.
         has_discount:
           type: boolean
           title: has_discount
@@ -7603,8 +7630,8 @@ components:
           title: section
           description: |-
             Витрина section of the entry inside its category (e.g. "food",
-            "weapons"): a key the site maps to a label. Empty means no section; the
-            shop shows such entries under "all". Display only.
+             "weapons"): a key the site maps to a label. Empty means no section; the
+             shop shows such entries under "all". Display only.
       title: UpdateShopItemRequest
       additionalProperties: false
     donate.v1.UpdateShopItemResponse:
@@ -11442,6 +11469,20 @@ components:
           title: join_requests
       title: ListJoinRequestsResponse
       additionalProperties: false
+    settlement.v1.ListNotifierPositionsRequest:
+      type: object
+      title: ListNotifierPositionsRequest
+      additionalProperties: false
+    settlement.v1.ListNotifierPositionsResponse:
+      type: object
+      properties:
+        placements:
+          type: array
+          items:
+            $ref: '#/components/schemas/settlement.v1.NotifierPlacement'
+          title: placements
+      title: ListNotifierPositionsResponse
+      additionalProperties: false
     settlement.v1.ListPendingRequest:
       type: object
       properties:
@@ -11496,6 +11537,22 @@ components:
       required:
         - user_id
       additionalProperties: false
+    settlement.v1.NotifierPlacement:
+      type: object
+      properties:
+        settlement_id:
+          type: string
+          title: settlement_id
+          description: The settlement the block belongs to.
+        position:
+          title: position
+          description: The block position in the game world.
+          $ref: '#/components/schemas/settlement.v1.Vector3'
+      title: NotifierPlacement
+      additionalProperties: false
+      description: |-
+        Where one settlement's notifier block stands. The server owns the placement: a block placed in
+         game writes it, the site only reads it.
     settlement.v1.Permission:
       type: string
       title: Permission

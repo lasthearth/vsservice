@@ -17,6 +17,9 @@ func TestAuthMatcherPublicMethods(t *testing.T) {
 		// with last_online.
 		"/user.v1.UserService/ListPlayers",
 		"/settlement.v1.SettlementService/List",
+		// The map draws a pin for every standing block; a position discloses
+		// nothing Get does not already serve for one settlement.
+		"/settlement.v1.SettlementService/ListNotifierPositions",
 		"/settlement.v1.SettlementService/GetInviteLink",
 		"/settlement.v1.SettlementTagService/GetTag",
 		"/settlement.v1.SettlementTagService/GetTags",

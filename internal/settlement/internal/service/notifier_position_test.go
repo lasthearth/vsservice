@@ -206,6 +206,64 @@ func TestListLeavesTheNotifierPositionUnset(t *testing.T) {
 	}
 }
 
+// The public list answers every standing block in one read. Each pin names the
+// settlement it belongs to, which is what lets the map join a position with the
+// group List already serves.
+func TestListNotifierPositionsServesEveryPlacement(t *testing.T) {
+	repo := fixtureRepo()
+	repo.placements = []model.NotifierPlacement{
+		{SettlementId: "s1", Position: model.Vector3{X: 7, Y: 64, Z: -300}, PlacedBy: "owner1"},
+		{SettlementId: "s2", Position: model.Vector3{X: -12, Y: 70, Z: 44}},
+	}
+	svc, _, _ := newNotifierService(t, repo)
+
+	res, err := svc.ListNotifierPositions(context.Background(), &settlementv1.ListNotifierPositionsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := res.GetPlacements()
+	if len(got) != 2 {
+		t.Fatalf("placements = %v, want both", got)
+	}
+	if got[0].GetSettlementId() != "s1" || got[1].GetSettlementId() != "s2" {
+		t.Errorf("settlement ids = %q, %q; want s1 and s2 in the order the store answered",
+			got[0].GetSettlementId(), got[1].GetSettlementId())
+	}
+	if p := got[0].GetPosition(); p.GetX() != 7 || p.GetY() != 64 || p.GetZ() != -300 {
+		t.Errorf("position = %v, want (7,64,-300)", p)
+	}
+	if p := got[1].GetPosition(); p.GetX() != -12 || p.GetY() != 70 || p.GetZ() != 44 {
+		t.Errorf("position = %v, want (-12,70,44)", p)
+	}
+}
+
+// No block stands is a normal answer: an empty list, not an error. A world
+// nobody has built on yet must still serve the map.
+func TestListNotifierPositionsServesAnEmptyWorld(t *testing.T) {
+	svc, _, _ := newNotifierService(t, fixtureRepo())
+
+	res, err := svc.ListNotifierPositions(context.Background(), &settlementv1.ListNotifierPositionsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.GetPlacements()) != 0 {
+		t.Errorf("placements = %v, want none", res.GetPlacements())
+	}
+}
+
+// A failing read is an error, never an empty list: the map would draw no pin and
+// look like a world with no blocks in it.
+func TestListNotifierPositionsFailsOnReadError(t *testing.T) {
+	repo := fixtureRepo()
+	repo.listErr = errors.New("connection reset")
+	svc, _, _ := newNotifierService(t, repo)
+
+	if _, err := svc.ListNotifierPositions(context.Background(), &settlementv1.ListNotifierPositionsRequest{}); !errors.Is(err, repo.listErr) {
+		t.Fatalf("want the read error, got %v", err)
+	}
+}
+
 // submitRepo is a settlement whose request was already approved once, so Submit
 // takes the upgrade path: the only one where a block can override coordinates.
 func submitRepo(placement *model.NotifierPlacement) *notifierRepo {
