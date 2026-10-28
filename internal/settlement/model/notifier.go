@@ -99,12 +99,19 @@ type Vector3 struct {
 	Z int
 }
 
-// NotifierPlacement is where a settlement's notifier block stands. It is
-// written by the game server when the block is placed or broken; the site only
-// reads it, so the model has no mutators.
+// NotifierPlacement is where a herald block stands. It is written by the game
+// server when the block is placed or broken; the site only reads it, so the
+// model has no mutators.
+//
+// SettlementId is empty for a neutral herald — a manual tier, a block an admin
+// placed, or one an admin unbound and left standing. Name is the block's label:
+// for a neutral herald the name written into it in game, and empty for a bound
+// one, whose label is its settlement's name and is filled where the settlement
+// is read.
 type NotifierPlacement struct {
 	SettlementId string
 	Position     Vector3
+	Name         string
 	PlacedBy     string
 	PlacedAt     time.Time
 }

@@ -65,6 +65,10 @@ type Mapper interface {
 
 	FromSettlementsDTO([]settlementdto.Settlement) []model.Settlement
 
+	// Name has no source in the bound collection: it stores no label, and a bound
+	// herald is labelled with its settlement's name, filled where the settlement
+	// is read.
+	// goverter:ignore Name
 	ToNotifierPlacement(dto notifierdto.Notifier) model.NotifierPlacement
 	ToNotifierPlacements(dto []notifierdto.Notifier) []model.NotifierPlacement
 

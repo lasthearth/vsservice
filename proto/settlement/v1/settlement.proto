@@ -108,6 +108,9 @@ service SettlementService {
   // is neither: it carries no settlement binding and writes no placement, so no guild appears
   // here.
   //
+  // Every pin carries the label the map shows: name is the settlement's current name for a bound
+  // herald, and the name written into the block in game for a neutral one.
+  //
   // The bound pins come first, ordered by settlement_id, then the neutral ones ordered by
   // position. A placement outlives DeleteSettlement, because the block still stands in the world
   // after the group is gone, so an id here may name a group the site no longer serves. A client
@@ -971,6 +974,11 @@ message NotifierPlacement {
   string settlement_id = 1;
   // The block position in the game world.
   Vector3 position = 2;
+  // The label of the pin. A bound herald answers its settlement's current name, so a rename on the
+  // site shows at once. A neutral herald answers the name written into the block in game, which
+  // stays the placeholder the game gives it until an owner or an admin renames it. Empty for a
+  // bound herald whose settlement is gone: a placement outlives DeleteSettlement.
+  string name = 3;
 }
 
 message ListNotifierPositionsResponse {

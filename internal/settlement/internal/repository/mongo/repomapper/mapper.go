@@ -218,6 +218,7 @@ func (c *MapperImpl) ToSettlementDTO(source model.Settlement) settlement.Settlem
 func (c *MapperImpl) ToUnboundPlacement(source notifier.Unbound) model.NotifierPlacement {
 	var modelNotifierPlacement model.NotifierPlacement
 	modelNotifierPlacement.Position = c.notifierdtoPositionToModelVector3(source.Position)
+	modelNotifierPlacement.Name = source.Name
 	modelNotifierPlacement.PlacedBy = source.PlacedBy
 	modelNotifierPlacement.PlacedAt = goverter.TimeToTime(source.PlacedAt)
 	return modelNotifierPlacement
