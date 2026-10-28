@@ -58,6 +58,7 @@ type Mapper interface {
 	FromSettlementsDTO([]settlementdto.Settlement) []model.Settlement
 
 	ToNotifierPlacement(dto notifierdto.Notifier) model.NotifierPlacement
+	ToNotifierPlacements(dto []notifierdto.Notifier) []model.NotifierPlacement
 
 	// goverter:autoMap Model
 	FromSettlementDTO(dto settlementdto.Settlement) model.Settlement

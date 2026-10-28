@@ -283,3 +283,25 @@ func (s *Service) ReissueNotifier(ctx context.Context, req *settlementv1.Reissue
 	l.Info("notifier reissued", zap.Int("number", number), zap.String("user_id", recipient))
 	return &settlementv1.ReissueNotifierResponse{Number: int32(number)}, nil
 }
+
+// ListNotifierPositions implements settlementv1.SettlementServiceServer. Public:
+// the map draws one pin per standing block in a single call, and a placement
+// discloses nothing Get does not already serve for one settlement.
+//
+// One read answers the whole list. Filling Settlement.notifier_position in List
+// instead would cost one read per row, which is why that field stays unset there.
+func (s *Service) ListNotifierPositions(
+	ctx context.Context,
+	_ *settlementv1.ListNotifierPositionsRequest,
+) (*settlementv1.ListNotifierPositionsResponse, error) {
+	placements, err := s.dbRepo.ListNotifiers(ctx)
+	if err != nil {
+		s.log.WithMethod("ListNotifierPositions").
+			Error("failed to list notifier placements", zap.Error(err))
+		return nil, err
+	}
+
+	return &settlementv1.ListNotifierPositionsResponse{
+		Placements: s.mapper.ToNotifierPlacementsProto(placements),
+	}, nil
+}

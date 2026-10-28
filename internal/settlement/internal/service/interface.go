@@ -27,6 +27,12 @@ type Mapper interface {
 	// goverter:ignore state sizeCache unknownFields
 	ToVector3Proto(model.Vector3) *settlementv1.Vector3
 
+	// Only the settlement binding and the position go out: placed_by and placed_at
+	// stay in the collection, and this rpc is public.
+	// goverter:ignore state sizeCache unknownFields
+	ToNotifierPlacementProto(model.NotifierPlacement) *settlementv1.NotifierPlacement
+	ToNotifierPlacementsProto([]model.NotifierPlacement) []*settlementv1.NotifierPlacement
+
 	// goverter:ignore state sizeCache unknownFields
 	ToAttachmentProto(model.Attachment) *settlementv1.Attachment
 	ToAttachmentsProto([]model.Attachment) []*settlementv1.Attachment
@@ -113,6 +119,11 @@ type SettlementDbRepository interface {
 	// false while none is placed. The collection is written by the game server;
 	// vsservice only reads it.
 	GetNotifier(ctx context.Context, settlementID string) (placement model.NotifierPlacement, found bool, err error)
+
+	// ListNotifiers returns every placement that stands, sorted by settlement id.
+	// The game server deletes a document when a block is broken, so the
+	// collection is the whole answer and one read serves the public map.
+	ListNotifiers(ctx context.Context) ([]model.NotifierPlacement, error)
 
 	// InTransaction runs fn in one MongoDB transaction: every repository call and
 	// every mail written with the ctx fn receives commits or rolls back together.

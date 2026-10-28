@@ -26,6 +26,7 @@ var publicMethods = map[string]struct{}{
 	"/donate.v1.DonateService/ListShopItems":                         {},
 	"/settlement.v1.SettlementService/Get":                           {},
 	"/settlement.v1.SettlementService/List":                          {},
+	"/settlement.v1.SettlementService/ListNotifierPositions":         {},
 	"/settlement.v1.SettlementService/GetInviteLink":                 {},
 	"/user.v1.UserService/GetUser":                                   {},
 	"/user.v1.UserService/BatchGetUsers":                             {},

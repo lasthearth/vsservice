@@ -134,6 +134,10 @@ type notifierRepo struct {
 	notifierErr error
 	// notifierReads counts the calls, to pin which Submit paths pay for one.
 	notifierReads int
+	// placements is the whole standing set ListNotifiers answers with, and
+	// listErr makes that read fail.
+	placements []model.NotifierPlacement
+	listErr    error
 
 	// approval outcome
 	approval    *service.ApprovalResult
@@ -204,6 +208,15 @@ func (r *notifierRepo) GetNotifier(context.Context, string) (model.NotifierPlace
 		return model.NotifierPlacement{}, false, nil
 	}
 	return *r.placement, true, nil
+}
+
+// ListNotifiers answers the whole standing set in one read, the way the public
+// list needs it.
+func (r *notifierRepo) ListNotifiers(context.Context) ([]model.NotifierPlacement, error) {
+	if r.listErr != nil {
+		return nil, r.listErr
+	}
+	return r.placements, nil
 }
 
 // lookup finds a stored settlement by id: the primary one first, then others.

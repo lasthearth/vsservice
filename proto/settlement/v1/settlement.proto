@@ -97,6 +97,24 @@ service SettlementService {
     option (google.api.http) = {get: "/v1/settlements"};
   }
 
+  // List where every notifier block stands. Public, so the map draws every pin in one call
+  // instead of one Get per settlement.
+  //
+  // The list holds the blocks that stand right now: the game server writes a placement when a
+  // block is placed and deletes it when the block is broken, and one block stands per settlement.
+  // A guild herald carries no settlement binding and writes no placement, so no guild appears
+  // here. settlement_id names the group the block belongs to; it is the id List and Get serve.
+  //
+  // A placement outlives DeleteSettlement, because the block still stands in the world after the
+  // group is gone, so an id here may name a group the site no longer serves. A client drops the
+  // pins it cannot resolve against List.
+  //
+  // Errors:
+  //   - INTERNAL (500): database failure
+  rpc ListNotifierPositions(ListNotifierPositionsRequest) returns (ListNotifierPositionsResponse) {
+    option (google.api.http) = {get: "/v1/settlements/notifiers"};
+  }
+
   // List pending verification requests. Requires admin privileges.
   //
   // kind unset means both kinds, so the moderation queue never hides a guild request.
@@ -937,6 +955,21 @@ message ListRequest {
 
 message ListResponse {
   repeated Settlement settlements = 1;
+}
+
+message ListNotifierPositionsRequest {}
+
+// Where one settlement's notifier block stands. The server owns the placement: a block placed in
+// game writes it, the site only reads it.
+message NotifierPlacement {
+  // The settlement the block belongs to.
+  string settlement_id = 1;
+  // The block position in the game world.
+  Vector3 position = 2;
+}
+
+message ListNotifierPositionsResponse {
+  repeated NotifierPlacement placements = 1;
 }
 
 message ListPendingRequest {

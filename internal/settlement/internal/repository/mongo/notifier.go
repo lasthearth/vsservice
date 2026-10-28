@@ -8,6 +8,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/settlement/model"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
 
 	notifierdto "github.com/lasthearth/vsservice/internal/settlement/internal/dto/mongo/notifier"
@@ -30,6 +31,42 @@ func (r *Repository) GetNotifier(ctx context.Context, settlementID string) (mode
 	}
 
 	return r.mapper.ToNotifierPlacement(dto), true, nil
+}
+
+// ListNotifiers implements service.SettlementDbRepository: every placement that
+// stands. The game server inserts a document when a block is placed and deletes
+// it when the block is broken, so the collection is the whole answer and the
+// read needs no filter.
+//
+// The sort is on settlement_id, which the unique index already carries, so one
+// world answers every read in the same order.
+func (r *Repository) ListNotifiers(ctx context.Context) ([]model.NotifierPlacement, error) {
+	l := r.log.WithMethod("list_notifiers")
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	found, err := r.notifierColl.Find(ctx, bson.M{},
+		options.Find().SetSort(bson.D{{Key: "settlement_id", Value: 1}}))
+	if err != nil {
+		l.Error("find error", zap.Error(err))
+		return nil, err
+	}
+	defer func() {
+		if err := found.Close(ctx); err != nil {
+			l.Error("cursor close failed", zap.Error(err))
+		}
+	}()
+
+	var dtos []notifierdto.Notifier
+	if err := found.All(ctx, &dtos); err != nil {
+		l.Error("cursor error", zap.Error(err))
+		return nil, err
+	}
+
+	placements := r.mapper.ToNotifierPlacements(dtos)
+	l.Debug("notifier placements retrieved", zap.Int("count", len(placements)))
+	return placements, nil
 }
 
 // InTransaction implements service.SettlementDbRepository.
