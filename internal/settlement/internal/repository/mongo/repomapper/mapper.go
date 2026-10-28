@@ -215,6 +215,23 @@ func (c *MapperImpl) ToSettlementDTO(source model.Settlement) settlement.Settlem
 	settlementdtoSettlement.NotifierReissues = source.NotifierReissues
 	return settlementdtoSettlement
 }
+func (c *MapperImpl) ToUnboundPlacement(source notifier.Unbound) model.NotifierPlacement {
+	var modelNotifierPlacement model.NotifierPlacement
+	modelNotifierPlacement.Position = c.notifierdtoPositionToModelVector3(source.Position)
+	modelNotifierPlacement.PlacedBy = source.PlacedBy
+	modelNotifierPlacement.PlacedAt = goverter.TimeToTime(source.PlacedAt)
+	return modelNotifierPlacement
+}
+func (c *MapperImpl) ToUnboundPlacements(source []notifier.Unbound) []model.NotifierPlacement {
+	var modelNotifierPlacementList []model.NotifierPlacement
+	if source != nil {
+		modelNotifierPlacementList = make([]model.NotifierPlacement, len(source))
+		for i := 0; i < len(source); i++ {
+			modelNotifierPlacementList[i] = c.ToUnboundPlacement(source[i])
+		}
+	}
+	return modelNotifierPlacementList
+}
 func (c *MapperImpl) attachmentdtoAttachmentToAttachmentdtoAttachment(source attachment.Attachment) attachment.Attachment {
 	var attachmentdtoAttachment attachment.Attachment
 	attachmentdtoAttachment.Url = source.Url

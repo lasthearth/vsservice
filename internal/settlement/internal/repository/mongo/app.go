@@ -31,6 +31,14 @@ const (
 	// settlementNotifierCollName is written by the game server; vsservice only
 	// reads it and creates its unique index.
 	settlementNotifierCollName = "settlement_notifiers"
+	// unboundNotifierCollName holds the heralds that stand with no settlement
+	// behind them. The game server writes it, one row per block position;
+	// vsservice only reads it and creates the same unique index.
+	unboundNotifierCollName = "unbound_notifiers"
+	// unboundNotifierIndexName is the name both writers of the index agree on:
+	// the game server ensures it at boot too, and MongoDB refuses a second index
+	// of the same name with different options.
+	unboundNotifierIndexName = "position_unique"
 )
 
 var _ service.SettlementRepository = (*Repository)(nil)
@@ -59,6 +67,13 @@ type Mapper interface {
 
 	ToNotifierPlacement(dto notifierdto.Notifier) model.NotifierPlacement
 	ToNotifierPlacements(dto []notifierdto.Notifier) []model.NotifierPlacement
+
+	// SettlementId has no source: an unbound herald belongs to no settlement, and
+	// the empty id is what the map reads as a neutral pin. Variant describes the
+	// pin and has no field on the model, so it stays in the collection.
+	// goverter:ignore SettlementId
+	ToUnboundPlacement(dto notifierdto.Unbound) model.NotifierPlacement
+	ToUnboundPlacements(dto []notifierdto.Unbound) []model.NotifierPlacement
 
 	// goverter:autoMap Model
 	FromSettlementDTO(dto settlementdto.Settlement) model.Settlement
@@ -100,6 +115,8 @@ type Repository struct {
 	inviteLinkColl *mongo.Collection
 	// Settlement notifier placements collection (read-only here)
 	notifierColl *mongo.Collection
+	// Herald placements with no settlement behind them (read-only here)
+	unboundNotifierColl *mongo.Collection
 	// MongoDB client used for transactions
 	client *mongo.Client
 	mapper Mapper
@@ -113,24 +130,26 @@ func New(opts Opts) (*Repository, error) {
 	flColl := opts.Database.Collection(imperialFavorLogCollName)
 	ilColl := opts.Database.Collection(settlementInviteLinkCollName)
 	snColl := opts.Database.Collection(settlementNotifierCollName)
+	unColl := opts.Database.Collection(unboundNotifierCollName)
 	// The component names the layer, not the module: the plan's enum is
 	// grpc|gateway|repo|mongo|nats|http|job|webhook, and the module already
 	// rides along in scope, which fx sets per domain.
 	logger := opts.Log.WithComponent("repo")
-	if err := setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl, ilColl, snColl); err != nil {
+	if err := setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl, ilColl, snColl, unColl); err != nil {
 		return nil, err
 	}
 	return &Repository{
-		log:            logger,
-		setColl:        sColl,
-		setReqColl:     srColl,
-		setInvColl:     siColl,
-		setJoinReqColl: sjrColl,
-		favorLogColl:   flColl,
-		inviteLinkColl: ilColl,
-		notifierColl:   snColl,
-		client:         opts.Client,
-		mapper:         opts.Mapper,
+		log:                 logger,
+		setColl:             sColl,
+		setReqColl:          srColl,
+		setInvColl:          siColl,
+		setJoinReqColl:      sjrColl,
+		favorLogColl:        flColl,
+		inviteLinkColl:      ilColl,
+		notifierColl:        snColl,
+		unboundNotifierColl: unColl,
+		client:              opts.Client,
+		mapper:              opts.Mapper,
 	}, nil
 }
 
@@ -143,6 +162,7 @@ func setupIndexes(
 	favorLogColl *mongo.Collection,
 	inviteLinkColl *mongo.Collection,
 	notifierColl *mongo.Collection,
+	unboundNotifierColl *mongo.Collection,
 ) error {
 	// An optional index only speeds a read up, so a failure to create one is logged and carried on.
 	createIndex := func(coll *mongo.Collection, spec mongo.IndexModel) {
@@ -241,6 +261,22 @@ func setupIndexes(
 	createIndex(notifierColl, mongo.IndexModel{
 		Keys:    bson.D{{Key: "settlement_id", Value: 1}},
 		Options: options.Index().SetUnique(true),
+	})
+
+	// One herald stands per position. The game server upserts by position when a
+	// block with no settlement behind it is placed, or re-reported on a chunk
+	// load, so this index is what keeps one row per block.
+	//
+	// The name and the keys are the ones the game server ensures at boot as well:
+	// MongoDB refuses a second index of the same name with different options, so
+	// the two writers of this collection have to agree on the exact spec.
+	createIndex(unboundNotifierColl, mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "position.x", Value: 1},
+			{Key: "position.y", Value: 1},
+			{Key: "position.z", Value: 1},
+		},
+		Options: options.Index().SetUnique(true).SetName(unboundNotifierIndexName),
 	})
 
 	return nil
