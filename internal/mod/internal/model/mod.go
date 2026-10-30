@@ -15,6 +15,19 @@ const (
 	AudienceHidden
 )
 
+// Source is where the record of a mod comes from. The game server reports the
+// required mods in a manifest; the staff adds the optional ones by hand.
+type Source uint8
+
+const (
+	SourceUnspecified Source = iota
+	// SourceServer marks a mod the game server's manifest describes. The sync
+	// owns it: the staff may change its note, not its version or audience.
+	SourceServer
+	// SourceAdmin marks a mod the staff added by hand.
+	SourceAdmin
+)
+
 // Side is where the mod runs, as ModDB states it.
 type Side uint8
 
@@ -39,7 +52,15 @@ type Release struct {
 	FileURL      string
 	FileName     string
 	FileSize     int64
-	ReleasedAt   time.Time
+	// SHA256 is the hex digest the manifest reported for the file; empty when
+	// the source states none. The archive does not verify it: it is kept so a
+	// later check can tell a replaced file without reading it again.
+	SHA256 string
+	// FileKey is the object key of the file in the mods bucket; empty for a
+	// mod downloaded from an external host. The archive reads the object
+	// directly when no CDN URL is configured.
+	FileKey    string
+	ReleasedAt time.Time
 }
 
 // Snapshot is everything ModDB says about a mod: the part the staff does not
@@ -65,8 +86,11 @@ type Mod struct {
 	ModDBURL string
 	Side     Side
 	Audience Audience
-	Note     string
-	Summary  string
+	// Source is where this record comes from; documents written before it
+	// existed leave it unspecified and IsServer classifies them by audience.
+	Source  Source
+	Note    string
+	Summary string
 	// Release is the version the server runs; nil until one is chosen.
 	Release *Release
 	// LatestVersion is the newest version ModDB lists; empty when Release is
@@ -79,6 +103,34 @@ type Mod struct {
 	// Releases is the newest-first snapshot of what ModDB lists. It is served to
 	// staff only.
 	Releases []Release
+}
+
+// SetServerManifest makes the mod what the game server's manifest reports.
+//
+// The server decides the mod, so it becomes REQUIRED and server-sourced. The
+// note and the position stay: neither is the server's to say, and the sync
+// running every minute must not undo an edit or a reorder.
+func (m *Mod) SetServerManifest(snapshot Snapshot, release Release) {
+	m.SetSnapshot(snapshot)
+	m.SetRelease(release)
+	m.SetAudience(AudienceRequired)
+	m.SetSource(SourceServer)
+}
+
+// NewServerManifest builds a mod the manifest describes that the list does not
+// hold yet: REQUIRED, server-sourced, no note, at position.
+func NewServerManifest(
+	modId string,
+	snapshot Snapshot,
+	release Release,
+	position int,
+	now time.Time,
+) Mod {
+	mod := Build(modId, snapshot, AudienceRequired, "", &release, now)
+	mod.SetSource(SourceServer)
+	mod.SetPosition(position)
+
+	return mod
 }
 
 // Build assembles a mod from what ModDB says and what the staff decided.
@@ -135,6 +187,26 @@ func (r *Release) SetFileSize(size int64) { r.FileSize = size }
 
 // SetAudience records who needs the mod.
 func (m *Mod) SetAudience(audience Audience) { m.Audience = audience }
+
+// SetSource records where the mod's record comes from.
+func (m *Mod) SetSource(source Source) { m.Source = source }
+
+// IsServer reports whether the game server's manifest owns the mod.
+//
+// A document written before source existed states the same thing through its
+// audience: the old list held the server's required mods and the staff's
+// optional extras, so REQUIRED is server-sourced and every other audience is
+// the staff's.
+func (m *Mod) IsServer() bool {
+	switch m.Source {
+	case SourceServer:
+		return true
+	case SourceAdmin:
+		return false
+	default:
+		return m.Audience == AudienceRequired
+	}
+}
 
 // SetNote stores the staff's one-liner; the caller has already checked it.
 func (m *Mod) SetNote(note string) { m.Note = note }

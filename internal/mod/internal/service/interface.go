@@ -37,6 +37,10 @@ type Repository interface {
 	) (*model.Mod, error)
 	Delete(ctx context.Context, modId string) error
 	Reorder(ctx context.Context, ids []string) error
+	// Sync writes the server-sourced part of the list: the mods in mods are
+	// stored by id (a new one after the last position) and removeIds are
+	// deleted. Everything else stays untouched.
+	Sync(ctx context.Context, mods []model.Mod, removeIds []string) error
 }
 
 // RequiredMods reads the mods the "download everything" archive packs.

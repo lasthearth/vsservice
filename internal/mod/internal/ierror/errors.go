@@ -19,6 +19,10 @@ var (
 	ErrNote = ierror.InvalidArgument("note must be at most 160 characters and free of control characters")
 	// ErrAlreadyExists reports that the mod is already on the list.
 	ErrAlreadyExists = ierror.AlreadyExists("the mod is already in the list")
+	// ErrServerMod reports an edit of a mod the game server's manifest owns.
+	// The sync rewrites its version and audience, so the staff may only change
+	// its note, and deleting it would only remove it until the next sync.
+	ErrServerMod = ierror.InvalidArgument("required mods come from the server")
 	// ErrNoReleases reports a mod ModDB lists no releases for, so nothing can
 	// say which version the server would run.
 	ErrNoReleases = ierror.InvalidArgument("ModDB lists no releases for the mod")

@@ -29,6 +29,8 @@ type fakeRepo struct {
 	mods    []model.Mod
 	created []model.Mod
 	saved   []model.Mod
+	synced  []model.Mod
+	removed []string
 	order   [][]string
 }
 
@@ -124,6 +126,42 @@ func (r *fakeRepo) Reorder(_ context.Context, ids []string) error {
 	return nil
 }
 
+// Sync applies the server-sourced list the way the mongo repository does: the
+// named ids go, the named mods are stored by id, and a new one is appended.
+func (r *fakeRepo) Sync(_ context.Context, mods []model.Mod, removeIds []string) error {
+	r.synced = append(r.synced, mods...)
+	r.removed = append(r.removed, removeIds...)
+
+	for _, id := range removeIds {
+		for i := range r.mods {
+			if r.mods[i].ModId == id {
+				r.mods = append(r.mods[:i], r.mods[i+1:]...)
+
+				break
+			}
+		}
+	}
+
+	for _, mod := range mods {
+		found := false
+		for i := range r.mods {
+			if r.mods[i].ModId == mod.ModId {
+				r.mods[i] = mod
+				found = true
+
+				break
+			}
+		}
+
+		if !found {
+			mod.SetPosition(len(r.mods))
+			r.mods = append(r.mods, mod)
+		}
+	}
+
+	return nil
+}
+
 // fakeModDB stands in for ModDB.
 type fakeModDB struct {
 	mod  *moddb.Mod
@@ -203,6 +241,14 @@ func storedMod(modId string, audience model.Audience, version string) model.Mod 
 	return mod
 }
 
+// adminMod is one mod the staff added by hand.
+func adminMod(modId string, audience model.Audience, version string) model.Mod {
+	mod := storedMod(modId, audience, version)
+	mod.SetSource(model.SourceAdmin)
+
+	return mod
+}
+
 func TestLookupModOffersTheNewestVersion(t *testing.T) {
 	svc := newService(t, &fakeRepo{}, &fakeModDB{mod: modDBFixture()})
 
@@ -251,7 +297,7 @@ func TestAddModGoesFirstAndKeepsTheChosenVersion(t *testing.T) {
 	got, err := svc.AddMod(context.Background(), &modv1.AddModRequest{
 		Query:    "https://mods.vintagestory.at/carryon",
 		Version:  "1.0.0",
-		Audience: modv1.ModAudience_MOD_AUDIENCE_REQUIRED,
+		Audience: modv1.ModAudience_MOD_AUDIENCE_OPTIONAL,
 		Note:     "  нужен всем  ",
 	})
 	if err != nil {
@@ -274,6 +320,9 @@ func TestAddModGoesFirstAndKeepsTheChosenVersion(t *testing.T) {
 	}
 	if added.Release == nil || added.Release.Version != "1.0.0" {
 		t.Fatalf("release = %v, want the chosen version", added.Release)
+	}
+	if added.Source != model.SourceAdmin {
+		t.Errorf("source = %v, want the mod marked as the staff's", added.Source)
 	}
 	if added.Release.FileSize != 659496 {
 		t.Errorf("file_size = %d, want the HEAD answer", added.Release.FileSize)
@@ -326,7 +375,7 @@ func TestAddModRefusesWhatTheApiDocuments(t *testing.T) {
 			name: "a version ModDB does not list",
 			req: &modv1.AddModRequest{
 				Query: "carryon", Version: "9.9.9",
-				Audience: modv1.ModAudience_MOD_AUDIENCE_REQUIRED,
+				Audience: modv1.ModAudience_MOD_AUDIENCE_OPTIONAL,
 			},
 			want: ierror.ErrUnknownVersion,
 		},
@@ -334,7 +383,7 @@ func TestAddModRefusesWhatTheApiDocuments(t *testing.T) {
 			name: "a note over the limit",
 			req: &modv1.AddModRequest{
 				Query: "carryon", Version: "1.0.0",
-				Audience: modv1.ModAudience_MOD_AUDIENCE_REQUIRED,
+				Audience: modv1.ModAudience_MOD_AUDIENCE_OPTIONAL,
 				Note:     strings.Repeat("я", model.MaxNoteRunes+1),
 			},
 			want: ierror.ErrNote,
@@ -343,9 +392,25 @@ func TestAddModRefusesWhatTheApiDocuments(t *testing.T) {
 			name: "a query that is not ModDB",
 			req: &modv1.AddModRequest{
 				Query: "https://example.com/carryon", Version: "1.0.0",
-				Audience: modv1.ModAudience_MOD_AUDIENCE_REQUIRED,
+				Audience: modv1.ModAudience_MOD_AUDIENCE_OPTIONAL,
 			},
 			want: ierror.ErrBadQuery,
+		},
+		{
+			name: "a required audience",
+			req: &modv1.AddModRequest{
+				Query: "carryon", Version: "1.0.0",
+				Audience: modv1.ModAudience_MOD_AUDIENCE_REQUIRED,
+			},
+			want: ierror.ErrServerMod,
+		},
+		{
+			name: "a hidden audience",
+			req: &modv1.AddModRequest{
+				Query: "carryon", Version: "1.0.0",
+				Audience: modv1.ModAudience_MOD_AUDIENCE_HIDDEN,
+			},
+			want: ierror.ErrServerMod,
 		},
 	}
 
@@ -373,7 +438,7 @@ func TestAddModReportsModDBNotAnswering(t *testing.T) {
 
 	_, err := svc.AddMod(context.Background(), &modv1.AddModRequest{
 		Query: "carryon", Version: "1.0.0",
-		Audience: modv1.ModAudience_MOD_AUDIENCE_REQUIRED,
+		Audience: modv1.ModAudience_MOD_AUDIENCE_OPTIONAL,
 	})
 
 	if !errors.Is(err, ierror.ErrUnavailable) {
@@ -382,7 +447,7 @@ func TestAddModReportsModDBNotAnswering(t *testing.T) {
 }
 
 func TestUpdateModChangesOnlyWhatWasAsked(t *testing.T) {
-	repo := &fakeRepo{mods: []model.Mod{storedMod("carryon", model.AudienceRequired, "1.0.0")}}
+	repo := &fakeRepo{mods: []model.Mod{adminMod("carryon", model.AudienceOptional, "1.0.0")}}
 	svc := newService(t, repo, &fakeModDB{mod: modDBFixture(), size: 42})
 
 	note := "только клиент"
@@ -406,7 +471,7 @@ func TestUpdateModChangesOnlyWhatWasAsked(t *testing.T) {
 }
 
 func TestUpdateModMovesToAKnownVersionAndRefusesAnUnknownOne(t *testing.T) {
-	repo := &fakeRepo{mods: []model.Mod{storedMod("carryon", model.AudienceRequired, "1.0.0")}}
+	repo := &fakeRepo{mods: []model.Mod{adminMod("carryon", model.AudienceOptional, "1.0.0")}}
 	svc := newService(t, repo, &fakeModDB{mod: modDBFixture(), size: 77})
 
 	version := "2.0.0"
@@ -433,6 +498,85 @@ func TestDeleteModRefusesAnUnknownMod(t *testing.T) {
 
 	if _, err := svc.DeleteMod(context.Background(), &modv1.DeleteModRequest{Id: "nothing"}); !errors.Is(err, ierror.ErrNotInList) {
 		t.Fatalf("err = %v, want ErrNotInList", err)
+	}
+}
+
+// TestUpdateModOnServerModChangesOnlyTheNote pins the sync's ownership: the
+// manifest rewrites the version and the audience every interval, so an edit of
+// either must be refused rather than silently undone, while the note - which the
+// sync never writes - stays editable.
+func TestUpdateModOnServerModChangesOnlyTheNote(t *testing.T) {
+	repo := &fakeRepo{mods: []model.Mod{storedMod("carryon", model.AudienceRequired, "1.0.0")}}
+	client := &fakeModDB{mod: modDBFixture(), size: 42}
+	svc := newService(t, repo, client)
+
+	note := "нужен всем"
+	got, err := svc.UpdateMod(context.Background(), &modv1.UpdateModRequest{Id: "carryon", Note: &note})
+	if err != nil {
+		t.Fatalf("UpdateMod note: %v", err)
+	}
+
+	if got.GetNote() != note {
+		t.Errorf("note = %q, want it stored", got.GetNote())
+	}
+	if got.GetRelease().GetVersion() != "1.0.0" {
+		t.Errorf("version = %q, want it kept", got.GetRelease().GetVersion())
+	}
+
+	version := "2.0.0"
+	if _, err := svc.UpdateMod(context.Background(), &modv1.UpdateModRequest{Id: "carryon", Version: &version}); !errors.Is(err, ierror.ErrServerMod) {
+		t.Fatalf("version err = %v, want ErrServerMod", err)
+	}
+
+	audience := modv1.ModAudience_MOD_AUDIENCE_OPTIONAL
+	if _, err := svc.UpdateMod(context.Background(), &modv1.UpdateModRequest{Id: "carryon", Audience: &audience}); !errors.Is(err, ierror.ErrServerMod) {
+		t.Fatalf("audience err = %v, want ErrServerMod", err)
+	}
+
+	if len(client.refs) != 0 {
+		t.Errorf("a refused edit reached ModDB: %v", client.refs)
+	}
+	if repo.mods[0].Note != note || repo.mods[0].Version() != "1.0.0" {
+		t.Errorf("stored mod = %q / %q, want the note and the version", repo.mods[0].Note, repo.mods[0].Version())
+	}
+}
+
+// TestDeleteModRefusesAServerMod pins that a hand-deleted server mod would come
+// back at the next sync, so the call refuses instead of lying until then.
+func TestDeleteModRefusesAServerMod(t *testing.T) {
+	repo := &fakeRepo{mods: []model.Mod{storedMod("carryon", model.AudienceRequired, "1.0.0")}}
+	svc := newService(t, repo, &fakeModDB{mod: modDBFixture()})
+
+	if _, err := svc.DeleteMod(context.Background(), &modv1.DeleteModRequest{Id: "carryon"}); !errors.Is(err, ierror.ErrServerMod) {
+		t.Fatalf("err = %v, want ErrServerMod", err)
+	}
+	if len(repo.mods) != 1 {
+		t.Errorf("the server mod was deleted from the stored list")
+	}
+
+	// A legacy OPTIONAL document carries no source and is the staff's, so it can
+	// still be removed.
+	legacy := &fakeRepo{mods: []model.Mod{storedMod("extra", model.AudienceOptional, "1.0.0")}}
+	legacyService := newService(t, legacy, &fakeModDB{mod: modDBFixture()})
+
+	if _, err := legacyService.DeleteMod(context.Background(), &modv1.DeleteModRequest{Id: "extra"}); err != nil {
+		t.Fatalf("DeleteMod of a legacy optional mod: %v", err)
+	}
+}
+
+// TestRefreshSkipsServerMods pins that a refresh reads only the staff's mods:
+// the manifest owns the server ones, and ModDB's answer would fight it.
+func TestRefreshSkipsServerMods(t *testing.T) {
+	repo := &fakeRepo{mods: []model.Mod{storedMod("carryon", model.AudienceRequired, "1.0.0")}}
+	client := &fakeModDB{mod: modDBFixture(), size: 7}
+	svc := newService(t, repo, client)
+
+	if _, err := svc.RefreshMods(context.Background(), &modv1.RefreshModsRequest{}); err != nil {
+		t.Fatalf("RefreshMods: %v", err)
+	}
+
+	if len(client.refs) != 0 {
+		t.Errorf("a server mod was read from ModDB: %v", client.refs)
 	}
 }
 
@@ -483,7 +627,7 @@ func TestReorderModsTakesOnlyAPermutation(t *testing.T) {
 }
 
 func TestRefreshKeepsWhatIsStoredWhenModDBFails(t *testing.T) {
-	stored := storedMod("carryon", model.AudienceRequired, "1.0.0")
+	stored := adminMod("carryon", model.AudienceOptional, "1.0.0")
 	stored.SetNote("старая заметка")
 	repo := &fakeRepo{mods: []model.Mod{stored}}
 
@@ -506,7 +650,7 @@ func TestRefreshKeepsWhatIsStoredWhenModDBFails(t *testing.T) {
 }
 
 func TestRefreshUpdatesTheSnapshotAndKeepsTheChosenVersion(t *testing.T) {
-	repo := &fakeRepo{mods: []model.Mod{storedMod("carryon", model.AudienceRequired, "1.0.0")}}
+	repo := &fakeRepo{mods: []model.Mod{adminMod("carryon", model.AudienceOptional, "1.0.0")}}
 	svc := newService(t, repo, &fakeModDB{mod: modDBFixture(), size: 5})
 
 	got, err := svc.RefreshMods(context.Background(), &modv1.RefreshModsRequest{})

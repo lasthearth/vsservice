@@ -21,6 +21,7 @@ func (c *MapperImpl) FromModel(source model.Mod) mongo.Mod {
 	dtoMod.ModDBURL = source.ModDBURL
 	dtoMod.Side = repository.SideToString(source.Side)
 	dtoMod.Audience = repository.AudienceToString(source.Audience)
+	dtoMod.Source = repository.SourceToString(source.Source)
 	dtoMod.Note = source.Note
 	dtoMod.Summary = source.Summary
 	dtoMod.Release = c.pModelReleaseToPDtoRelease(source.Release)
@@ -43,6 +44,7 @@ func (c *MapperImpl) ToModel(source mongo.Mod) model.Mod {
 	modelMod.ModDBURL = source.ModDBURL
 	modelMod.Side = repository.SideFromString(source.Side)
 	modelMod.Audience = repository.AudienceFromString(source.Audience)
+	modelMod.Source = repository.SourceFromString(source.Source)
 	modelMod.Note = source.Note
 	modelMod.Summary = source.Summary
 	modelMod.Release = c.pDtoReleaseToPModelRelease(source.Release)
@@ -69,6 +71,8 @@ func (c *MapperImpl) dtoReleaseToModelRelease(source mongo.Release) model.Releas
 	modelRelease.FileURL = source.FileURL
 	modelRelease.FileName = source.FileName
 	modelRelease.FileSize = source.FileSize
+	modelRelease.SHA256 = source.SHA256
+	modelRelease.FileKey = source.FileKey
 	modelRelease.ReleasedAt = goverter.TimeToTime(source.ReleasedAt)
 	return modelRelease
 }
@@ -84,6 +88,8 @@ func (c *MapperImpl) modelReleaseToDtoRelease(source model.Release) mongo.Releas
 	dtoRelease.FileURL = source.FileURL
 	dtoRelease.FileName = source.FileName
 	dtoRelease.FileSize = source.FileSize
+	dtoRelease.SHA256 = source.SHA256
+	dtoRelease.FileKey = source.FileKey
 	dtoRelease.ReleasedAt = goverter.TimeToTime(source.ReleasedAt)
 	return dtoRelease
 }
@@ -101,6 +107,8 @@ func (c *MapperImpl) pDtoReleaseToPModelRelease(source *mongo.Release) *model.Re
 		modelRelease.FileURL = (*source).FileURL
 		modelRelease.FileName = (*source).FileName
 		modelRelease.FileSize = (*source).FileSize
+		modelRelease.SHA256 = (*source).SHA256
+		modelRelease.FileKey = (*source).FileKey
 		modelRelease.ReleasedAt = goverter.TimeToTime((*source).ReleasedAt)
 		pModelRelease = &modelRelease
 	}
@@ -120,6 +128,8 @@ func (c *MapperImpl) pModelReleaseToPDtoRelease(source *model.Release) *mongo.Re
 		dtoRelease.FileURL = (*source).FileURL
 		dtoRelease.FileName = (*source).FileName
 		dtoRelease.FileSize = (*source).FileSize
+		dtoRelease.SHA256 = (*source).SHA256
+		dtoRelease.FileKey = (*source).FileKey
 		dtoRelease.ReleasedAt = goverter.TimeToTime((*source).ReleasedAt)
 		pDtoRelease = &dtoRelease
 	}

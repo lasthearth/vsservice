@@ -36,6 +36,33 @@ func AudienceFromString(audience string) model.Audience {
 	}
 }
 
+// SourceToString stores where the record comes from. An unspecified source is
+// stored as an empty string, which is what a document written before the sync
+// existed carries and what the model reads back as unspecified.
+func SourceToString(source model.Source) string {
+	switch source {
+	case model.SourceServer:
+		return "server"
+	case model.SourceAdmin:
+		return "admin"
+	default:
+		return ""
+	}
+}
+
+// SourceFromString reads where the record comes from; an unknown word is
+// unspecified, which makes the model classify the document by its audience.
+func SourceFromString(source string) model.Source {
+	switch source {
+	case "server":
+		return model.SourceServer
+	case "admin":
+		return model.SourceAdmin
+	default:
+		return model.SourceUnspecified
+	}
+}
+
 // SideToString stores where the mod runs.
 func SideToString(side model.Side) string {
 	switch side {

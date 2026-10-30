@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -53,6 +54,31 @@ func (s *Storage) PresignedPutURL(
 		return "", err
 	}
 	return u.String(), nil
+}
+
+// GetObject opens one stored object for reading. The caller closes it.
+//
+// The object is stat-ed before it is returned, because minio's GetObject is
+// lazy: without the stat a missing object would surface only on the first read
+// as a less clear error.
+func (s *Storage) GetObject(
+	ctx context.Context,
+	bucketName, objectName string,
+) (io.ReadCloser, error) {
+	object, err := s.client.GetObject(ctx, bucketName, objectName, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := object.Stat(); err != nil {
+		if closeErr := object.Close(); closeErr != nil {
+			return nil, errors.Join(err, closeErr)
+		}
+
+		return nil, err
+	}
+
+	return object, nil
 }
 
 func (s *Storage) UploadObject(

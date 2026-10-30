@@ -34,6 +34,12 @@ const refreshTimeout = 60 * time.Second
 // The public list is what a player installs: the required mods and the optional
 // ones, in the order the staff arranged, with the archive of the required ones.
 func (s *Service) ListMods(ctx context.Context, _ *modv1.ListModsRequest) (*modv1.ListModsResponse, error) {
+	// The public route is where a stale manifest is noticed first: a player
+	// opening /mods after the game server updated its mods should see the new
+	// list without waiting for the ticker. A failure is logged and the stored
+	// list is served, so MinIO being down never answers 500 here.
+	s.refreshIfStale(ctx)
+
 	mods, err := s.repo.List(ctx)
 	if err != nil {
 		return nil, err
@@ -98,11 +104,29 @@ func (s *Service) LookupMod(
 	}, nil
 }
 
+// refreshIfStale lets the public list pick up a manifest change before the next
+// tick. A test-built service has no syncer and skips this.
+func (s *Service) refreshIfStale(ctx context.Context) {
+	if s.syncer == nil {
+		return
+	}
+
+	s.syncer.Refresh(ctx)
+}
+
 // AddMod implements modv1.ModServiceServer.
+//
+// Staff add only the optional client-side extras by hand. The mods a client
+// must install are the game server's: they arrive in the manifest and the sync
+// rewrites them, so storing one manually would be undone at the next sync.
 func (s *Service) AddMod(ctx context.Context, req *modv1.AddModRequest) (*modv1.Mod, error) {
 	audience := audienceOf(req.GetAudience())
-	if audience == model.AudienceUnspecified {
+	switch audience {
+	case model.AudienceOptional:
+	case model.AudienceUnspecified:
 		return nil, ierror.ErrAudience
+	default:
+		return nil, ierror.ErrServerMod
 	}
 
 	note, err := normalizeNote(req.GetNote())
@@ -123,6 +147,7 @@ func (s *Service) AddMod(ctx context.Context, req *modv1.AddModRequest) (*modv1.
 	}
 
 	added := model.Build(modID(found.Releases), snapshot, audience, note, &chosen, s.now().UTC())
+	added.SetSource(model.SourceAdmin)
 
 	if err := s.repo.Create(ctx, &added); err != nil {
 		return nil, err
@@ -148,6 +173,20 @@ func (s *Service) UpdateMod(ctx context.Context, req *modv1.UpdateModRequest) (*
 		return nil, ierror.ErrNotInList
 	}
 
+	// The stored document is read before anything else: it says whether the sync
+	// owns the mod, and what version the update starts from.
+	stored, err := s.repo.Get(ctx, modId)
+	if err != nil {
+		return nil, err
+	}
+
+	// A server-sourced mod is rewritten from the manifest every interval, so a
+	// version or audience the staff set here would vanish at the next sync. Only
+	// the note, which the sync never writes, is the staff's to change.
+	if stored.IsServer() && (req.Version != nil || req.Audience != nil) {
+		return nil, ierror.ErrServerMod
+	}
+
 	// The new version is read before the write: a version ModDB does not list
 	// is refused without touching the stored mod, and the file size is measured
 	// once here rather than inside the retried update. The snapshot travels with
@@ -157,11 +196,6 @@ func (s *Service) UpdateMod(ctx context.Context, req *modv1.UpdateModRequest) (*
 		snapshot *model.Snapshot
 	)
 	if req.Version != nil {
-		stored, err := s.repo.Get(ctx, modId)
-		if err != nil {
-			return nil, err
-		}
-
 		found, err := s.fetch(ctx, stored.ModId)
 		if err != nil {
 			return nil, err
@@ -223,8 +257,22 @@ func (s *Service) UpdateMod(ctx context.Context, req *modv1.UpdateModRequest) (*
 }
 
 // DeleteMod implements modv1.ModServiceServer.
+//
+// A server-sourced mod cannot be removed by hand: the next sync would add it
+// back, so the call refuses instead of pretending the mod is gone until then.
 func (s *Service) DeleteMod(ctx context.Context, req *modv1.DeleteModRequest) (*emptypb.Empty, error) {
-	if err := s.repo.Delete(ctx, strings.TrimSpace(req.GetId())); err != nil {
+	modId := strings.TrimSpace(req.GetId())
+
+	stored, err := s.repo.Get(ctx, modId)
+	if err != nil {
+		return nil, err
+	}
+
+	if stored.IsServer() {
+		return nil, ierror.ErrServerMod
+	}
+
+	if err := s.repo.Delete(ctx, modId); err != nil {
 		return nil, err
 	}
 
@@ -258,9 +306,10 @@ func (s *Service) ReorderMods(
 
 // RefreshMods implements modv1.ModServiceServer.
 //
-// Every mod is read from ModDB again, but the versions the server runs are
-// never changed: a refresh updates what ModDB says, not what the staff decided.
-// A mod ModDB cannot answer for keeps its old data and the call still succeeds.
+// Every admin-sourced mod is read from ModDB again, but the versions the server
+// runs are never changed: a refresh updates what ModDB says, not what the staff
+// decided. Server-sourced mods are left alone - the manifest sync owns them. A
+// mod ModDB cannot answer for keeps its old data and the call still succeeds.
 func (s *Service) RefreshMods(
 	ctx context.Context,
 	_ *modv1.RefreshModsRequest,
@@ -274,6 +323,12 @@ func (s *Service) RefreshMods(
 	defer cancel()
 
 	for _, stored := range mods {
+		// Server-sourced mods are the manifest's: their version, size and URL
+		// come from the game server, and ModDB's answer would fight the sync.
+		if stored.IsServer() {
+			continue
+		}
+
 		found, err := s.fetch(refreshCtx, stored.ModId)
 		if err != nil {
 			s.log.Warn("failed to read a mod from ModDB, keeping what is stored",
