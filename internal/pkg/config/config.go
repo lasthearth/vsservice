@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
@@ -114,6 +115,15 @@ type Config struct {
 	// ModsArchiveMaxBytes caps that archive (1 GiB by default); a larger set of
 	// required mods is not packed and the site hides the button. 0 — no cap.
 	ModsArchiveMaxBytes int64 `envconfig:"MODS_ARCHIVE_MAX_BYTES" default:"1073741824"`
+	// ModsBucket is where the game server uploads the mod files and the
+	// manifest. It is created public-read at startup, because the CDN serves
+	// those files straight to players.
+	ModsBucket string `envconfig:"MODS_BUCKET" default:"server-mods"`
+	// ModsManifestKey is the object the game server writes the mod list to.
+	ModsManifestKey string `envconfig:"MODS_MANIFEST_KEY" default:"manifest.json"`
+	// ModsSyncInterval is how often the manifest is read again, and how old the
+	// lazy refresh in ListMods lets the cached list get.
+	ModsSyncInterval time.Duration `envconfig:"MODS_SYNC_INTERVAL" default:"1m"`
 }
 
 // New initializes from .env and returns a new Config instance.

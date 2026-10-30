@@ -14,13 +14,17 @@ type Mod struct {
 
 	// ModId is ModDB's modidstr. It is stored as the plain id field, which is
 	// what the unique index and every lookup use.
-	ModId         string   `bson:"id"`
-	Name          string   `bson:"name"`
-	Author        string   `bson:"author"`
-	LogoURL       string   `bson:"logo_url,omitempty"`
-	ModDBURL      string   `bson:"moddb_url,omitempty"`
-	Side          string   `bson:"side"`
-	Audience      string   `bson:"audience"`
+	ModId    string `bson:"id"`
+	Name     string `bson:"name"`
+	Author   string `bson:"author"`
+	LogoURL  string `bson:"logo_url,omitempty"`
+	ModDBURL string `bson:"moddb_url,omitempty"`
+	Side     string `bson:"side"`
+	Audience string `bson:"audience"`
+	// Source is where the record comes from: "server" or "admin". It is
+	// omitted on documents written before the sync existed, which the model
+	// classifies by audience.
+	Source        string   `bson:"source,omitempty"`
 	Note          string   `bson:"note,omitempty"`
 	Summary       string   `bson:"summary,omitempty"`
 	Release       *Release `bson:"release,omitempty"`
@@ -37,5 +41,7 @@ type Release struct {
 	FileURL      string    `bson:"file_url"`
 	FileName     string    `bson:"file_name"`
 	FileSize     int64     `bson:"file_size"`
+	SHA256       string    `bson:"sha256,omitempty"`
+	FileKey      string    `bson:"file_key,omitempty"`
 	ReleasedAt   time.Time `bson:"released_at"`
 }

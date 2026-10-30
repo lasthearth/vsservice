@@ -4,6 +4,8 @@ package repository
 import (
 	"context"
 	"errors"
+	"reflect"
+	"time"
 
 	dto "github.com/lasthearth/vsservice/internal/mod/internal/dto/mongo"
 	"github.com/lasthearth/vsservice/internal/mod/internal/ierror"
@@ -21,6 +23,8 @@ import (
 // goverter:extend github.com/lasthearth/vsservice/internal/pkg/goverter:TimeToTime
 // goverter:extend AudienceToString
 // goverter:extend AudienceFromString
+// goverter:extend SourceToString
+// goverter:extend SourceFromString
 // goverter:extend SideToString
 // goverter:extend SideFromString
 type Mapper interface {
@@ -198,6 +202,118 @@ func (r *Repository) Reorder(ctx context.Context, ids []string) error {
 	}
 
 	return nil
+}
+
+// Sync stores the server-sourced part of the list in one pass: every mod in
+// mods is written by id, a new one after the last position, and removeIds are
+// deleted. A document whose id is neither written nor removed stays exactly as
+// it is, which is what keeps the staff's OPTIONAL mods out of the sync's reach.
+//
+// The models arrive with the stored note and position already carried over, so
+// the write never changes them. The envelope is taken from the document that is
+// there: the sync must not reset the write time or the version guard a
+// concurrent Save reads.
+func (r *Repository) Sync(ctx context.Context, mods []model.Mod, removeIds []string) error {
+	existing, err := r.storedByID(ctx)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
+
+	nextPosition := 0
+	for _, doc := range existing {
+		if doc.Position >= nextPosition {
+			nextPosition = doc.Position + 1
+		}
+	}
+
+	writes := make([]mongo.WriteModel, 0, len(mods)+1)
+
+	for _, mod := range mods {
+		doc := r.mapper.FromModel(mod)
+
+		if old, ok := existing[mod.ModId]; ok {
+			// An unchanged mod is not written again: the sync runs every
+			// interval, and rewriting the same document would bump updated_at
+			// (which the archive's timestamp reports) and the version guard a
+			// concurrent Save reads, for no new data.
+			if sameDocument(old, doc) {
+				continue
+			}
+
+			doc.Model = mongox.Model{
+				Id:        old.Id,
+				CreatedAt: old.CreatedAt,
+				UpdatedAt: now,
+				Version:   old.Version + 1,
+			}
+		} else {
+			doc.Model = mongox.NewModel()
+			doc.Position = nextPosition
+			nextPosition++
+		}
+
+		// Filtered by id alone rather than by a version the sync read: the sync
+		// rewrites the same manifest every minute, so an upsert that loses a
+		// race is retried on the next tick with the same result.
+		writes = append(writes, mongo.NewReplaceOneModel().
+			SetFilter(bson.M{"id": mod.ModId}).
+			SetReplacement(doc).
+			SetUpsert(true))
+	}
+
+	if len(removeIds) > 0 {
+		writes = append(writes, mongo.NewDeleteManyModel().
+			SetFilter(bson.M{"id": bson.M{"$in": removeIds}}))
+	}
+
+	if len(writes) == 0 {
+		return nil
+	}
+
+	// Ordered: a write that stops leaves the list a prefix of the manifest, and
+	// the next tick writes the rest, rather than a scattered subset.
+	if _, err := r.coll.BulkWrite(ctx, writes, options.BulkWrite().SetOrdered(true)); err != nil {
+		r.logger.WithMethod("Sync").Error("failed to sync server mods", zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
+// sameDocument reports whether two documents carry the same mod. The envelope
+// (_id, timestamps, version) is not part of the comparison: the sync must skip
+// the write when only those would change.
+func sameDocument(a, b dto.Mod) bool {
+	a.Model = mongox.Model{}
+	b.Model = mongox.Model{}
+
+	return reflect.DeepEqual(a, b)
+}
+
+// storedByID reads every stored document by its mod id. The sync needs the
+// envelope as well as the fields, so it reads the documents rather than the
+// domain models List returns.
+func (r *Repository) storedByID(ctx context.Context) (map[string]dto.Mod, error) {
+	cursor, err := r.coll.Find(ctx, bson.M{})
+	if err != nil {
+		r.logger.WithMethod("Sync").Error("failed to list stored mods", zap.Error(err))
+		return nil, err
+	}
+
+	var docs []dto.Mod
+	if err := cursor.All(ctx, &docs); err != nil {
+		r.logger.WithMethod("Sync").Error("failed to decode stored mods", zap.Error(err))
+		return nil, err
+	}
+
+	byID := make(map[string]dto.Mod, len(docs))
+	for _, doc := range docs {
+		byID[doc.ModId] = doc
+	}
+
+	return byID, nil
 }
 
 // toModel maps a document into the domain model. The mapper carries the write

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -38,6 +39,10 @@ const (
 	// the first player to ask starts a build every other waiting player shares,
 	// so one player closing the tab must not cancel it for the rest.
 	archiveBuildTimeout = 5 * time.Minute
+	// archiveDownloadTimeout bounds one file. It is a client timeout on top of
+	// the build's context: a host that accepts the connection and then stalls
+	// must not hold the shared build until the whole budget runs out.
+	archiveDownloadTimeout = 3 * time.Minute
 
 	// archivePrefix, archiveSuffix and archivePartSuffix name the files in the
 	// archive folder: archive-<key>.zip, and archive-<key>.zip.part while it is
@@ -54,6 +59,9 @@ var (
 	errArchiveNoSpace = errors.New("not enough free disk space for the archive")
 	// errArchiveUnbounded is a build that nothing would cap.
 	errArchiveUnbounded = errors.New("the archive has no size bound")
+	// errArchiveNoFile is a release with neither a download URL nor an object
+	// key: nothing says where the bytes are.
+	errArchiveNoFile = errors.New("release names no file")
 
 	// maxEntryNameBytes caps one entry's name. A longer one makes CreateHeader
 	// fail the whole build, and no extractor or filesystem would have used it.
@@ -75,8 +83,17 @@ var (
 // MODS_ARCHIVE_DIR at a shared folder cannot cost anyone else's files.
 type Archive struct {
 	mods  RequiredMods
-	moddb *moddb.Client
-	log   logger.Logger
+	files *http.Client
+	// objects reads a mod file straight from the bucket when no CDN URL can
+	// serve it; nil in a test that serves everything over HTTP.
+	objects ObjectStorage
+	bucket  string
+	// cdnHost and cdnScheme bound every HTTP download: a release URL may only
+	// be fetched from the configured CDN or from ModDB's own file hosts, so a
+	// future writer of file_url cannot turn the archive into an SSRF primitive.
+	cdnHost   string
+	cdnScheme string
+	log       logger.Logger
 
 	// dir holds the archive files.
 	dir string
@@ -90,7 +107,12 @@ type Archive struct {
 }
 
 // NewArchive prepares the archive folder and sweeps what an earlier run left.
-func NewArchive(mods RequiredMods, client *moddb.Client, log logger.Logger, cfg config.Config) (*Archive, error) {
+func NewArchive(
+	mods RequiredMods,
+	objects ObjectStorage,
+	log logger.Logger,
+	cfg config.Config,
+) (*Archive, error) {
 	if cfg.ModsArchiveMaxBytes < 0 {
 		// Every consumer reads the cap as "no cap" when it is not positive, and
 		// a negative one also skips the free-space check. Refusing to start is
@@ -110,12 +132,39 @@ func NewArchive(mods RequiredMods, client *moddb.Client, log logger.Logger, cfg 
 		return nil, fmt.Errorf("create the archive directory: %w", err)
 	}
 
+	bucket := cfg.ModsBucket
+	if bucket == "" {
+		bucket = defaultModsBucket
+	}
+
 	archive := &Archive{
 		mods:     mods,
-		moddb:    client,
+		objects:  objects,
+		bucket:   bucket,
 		log:      log.WithComponent("archive"),
 		dir:      dir,
 		maxBytes: cfg.ModsArchiveMaxBytes,
+	}
+
+	if cdn, err := url.Parse(strings.TrimSpace(cfg.CdnUrl)); err == nil && cdn.Host != "" {
+		archive.cdnHost = strings.ToLower(cdn.Host)
+		archive.cdnScheme = strings.ToLower(cdn.Scheme)
+	}
+
+	archive.files = &http.Client{
+		Timeout: archiveDownloadTimeout,
+		// Every hop is checked, not only the first URL: a redirect to another
+		// host would otherwise fetch bytes the allow-list exists to refuse.
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return errors.New("too many redirects")
+			}
+			if !archive.allowedURL(req.URL.String()) {
+				return errors.New("redirect to a host the archive may not fetch")
+			}
+
+			return nil
+		},
 	}
 
 	// A previous run may have stopped mid-build or kept an archive for a list
@@ -435,7 +484,7 @@ func (a *Archive) pack(ctx context.Context, writer *zip.Writer, mods []model.Mod
 			return err
 		}
 
-		body, err := a.moddb.Download(ctx, mod.Release.FileURL)
+		body, err := a.open(ctx, mod.Release)
 		if err != nil {
 			return fmt.Errorf("download %s: %w", mod.ModId, err)
 		}
@@ -452,6 +501,80 @@ func (a *Archive) pack(ctx context.Context, writer *zip.Writer, mods []model.Mod
 	}
 
 	return nil
+}
+
+// open opens one release's file for the build.
+//
+// A release with a URL is fetched over plain HTTP. A CDN failure falls back to
+// the bucket when the release still names its object key: the CDN may not serve
+// the bucket yet, while MinIO already has the bytes. A server mod with no CDN
+// configured carries only the key and is read from MinIO directly.
+func (a *Archive) open(ctx context.Context, release *model.Release) (io.ReadCloser, error) {
+	if release.FileURL != "" {
+		body, err := a.download(ctx, release.FileURL)
+		if err == nil {
+			return body, nil
+		}
+		if a.objects == nil || release.FileKey == "" {
+			return nil, err
+		}
+
+		a.log.Warn("HTTP download failed, reading the object from the bucket instead",
+			zap.Error(err))
+
+		return a.objects.GetObject(ctx, a.bucket, release.FileKey)
+	}
+
+	if a.objects != nil && release.FileKey != "" {
+		return a.objects.GetObject(ctx, a.bucket, release.FileKey)
+	}
+
+	return nil, errArchiveNoFile
+}
+
+// allowedURL reports whether the archive may fetch raw. ModDB's own file hosts
+// are always allowed, because a staff-added optional mod points there; the CDN
+// is allowed by its configured scheme and host. Every other host is refused.
+func (a *Archive) allowedURL(raw string) bool {
+	if moddb.AllowedURL(raw) {
+		return true
+	}
+
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || a.cdnHost == "" {
+		return false
+	}
+
+	return strings.EqualFold(parsed.Host, a.cdnHost) &&
+		strings.EqualFold(parsed.Scheme, a.cdnScheme)
+}
+
+// download reads one file over HTTP. A non-200 answer is an error: a redirect
+// page or an error body would be packed into the archive as if it were the mod.
+func (a *Archive) download(ctx context.Context, fileURL string) (io.ReadCloser, error) {
+	if !a.allowedURL(fileURL) {
+		return nil, errors.New("refusing a file URL from a host the archive may not fetch")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := a.files.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			a.log.Warn("failed to close a refused download", zap.Error(closeErr))
+		}
+
+		return nil, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	return resp.Body, nil
 }
 
 // entryName is the name one mod's file carries inside the archive.

@@ -7,6 +7,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/mod"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/minio/minio-go/v7"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -25,6 +26,9 @@ func TestWiring(t *testing.T) {
 	err = fx.ValidateApp(
 		fx.Supply(fx.Annotate(l, fx.As(new(logger.Logger)))),
 		fx.Supply(&mongo.Database{}),
+		// The storage constructor needs a MinIO client in the graph. ValidateApp
+		// never calls it, so the zero client is enough.
+		fx.Supply(&minio.Client{}),
 		fx.Supply(config.Config{ModsArchiveDir: t.TempDir()}),
 		mod.App,
 		fx.Invoke(func(modv1.ModServiceServer) {}),

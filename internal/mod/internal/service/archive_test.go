@@ -3,6 +3,8 @@ package service
 import (
 	"archive/zip"
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,7 +16,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/mod/internal/model"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
-	"github.com/lasthearth/vsservice/internal/pkg/moddb"
 	"go.uber.org/zap"
 )
 
@@ -54,8 +55,9 @@ func servedMod(server *httptest.Server, modId, version string, size int64) model
 		model.AudienceRequired, "", &release, fixedNow)
 }
 
-// newTestArchive builds an Archive over dir with the given cap.
-func newTestArchive(t *testing.T, mods *fixedMods, dir string, maxBytes int64) *Archive {
+// newTestArchive builds an Archive over dir with the given cap. cdn is the
+// configured CDN base; a test that serves files from httptest passes its URL.
+func newTestArchive(t *testing.T, mods *fixedMods, dir string, maxBytes int64, cdn string) *Archive {
 	t.Helper()
 
 	zc := zap.NewDevelopmentConfig()
@@ -64,7 +66,11 @@ func newTestArchive(t *testing.T, mods *fixedMods, dir string, maxBytes int64) *
 		t.Fatal(err)
 	}
 
-	archive, err := NewArchive(mods, moddb.New(), l, config.Config{ModsArchiveDir: dir, ModsArchiveMaxBytes: maxBytes})
+	archive, err := NewArchive(mods, nil, l, config.Config{
+		ModsArchiveDir:      dir,
+		ModsArchiveMaxBytes: maxBytes,
+		CdnUrl:              cdn,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +112,7 @@ func TestArchiveSweepsOwnFilesOnStartAndLeavesOthers(t *testing.T) {
 		}
 	}
 
-	newTestArchive(t, &fixedMods{}, dir, 0)
+	newTestArchive(t, &fixedMods{}, dir, 0, "")
 
 	got := strings.Join(files(t, dir), ",")
 	if got != "notes.txt,someone-else.zip" {
@@ -118,7 +124,7 @@ func TestArchiveKeepsOneFileAcrossListChanges(t *testing.T) {
 	server := fileServer(t, map[string]string{"/a-1.zip": "aaaa", "/a-2.zip": "bbbb", "/b-1.zip": "cc"})
 	dir := t.TempDir()
 	mods := &fixedMods{mods: []model.Mod{servedMod(server, "a", "1", 4)}}
-	archive := newTestArchive(t, mods, dir, 0)
+	archive := newTestArchive(t, mods, dir, 0, server.URL)
 
 	for _, list := range [][]model.Mod{
 		{servedMod(server, "a", "1", 4)},
@@ -149,7 +155,7 @@ func TestArchiveFailedBuildLeavesNothing(t *testing.T) {
 	server := fileServer(t, map[string]string{"/a-1.zip": "aaaa"})
 	dir := t.TempDir()
 	mods := &fixedMods{mods: []model.Mod{servedMod(server, "a", "1", 4), servedMod(server, "missing", "1", 4)}}
-	archive := newTestArchive(t, mods, dir, 0)
+	archive := newTestArchive(t, mods, dir, 0, server.URL)
 
 	if code := get(archive).Code; code != http.StatusBadGateway {
 		t.Errorf("status = %d, want 502", code)
@@ -162,7 +168,7 @@ func TestArchiveFailedBuildLeavesNothing(t *testing.T) {
 func TestArchiveOverTheCapIsRefusedBeforeDownloading(t *testing.T) {
 	server := fileServer(t, map[string]string{"/a-1.zip": "aaaa"})
 	dir := t.TempDir()
-	archive := newTestArchive(t, &fixedMods{mods: []model.Mod{servedMod(server, "a", "1", 2048)}}, dir, 1024)
+	archive := newTestArchive(t, &fixedMods{mods: []model.Mod{servedMod(server, "a", "1", 2048)}}, dir, 1024, server.URL)
 
 	if code := get(archive).Code; code != http.StatusRequestEntityTooLarge {
 		t.Errorf("status = %d, want 413", code)
@@ -175,7 +181,7 @@ func TestArchiveOverTheCapIsRefusedBeforeDownloading(t *testing.T) {
 func TestArchiveUnknownSizeIsCutAtTheCap(t *testing.T) {
 	server := fileServer(t, map[string]string{"/a-1.zip": strings.Repeat("x", 4096)})
 	dir := t.TempDir()
-	archive := newTestArchive(t, &fixedMods{mods: []model.Mod{servedMod(server, "a", "1", 0)}}, dir, 1024)
+	archive := newTestArchive(t, &fixedMods{mods: []model.Mod{servedMod(server, "a", "1", 0)}}, dir, 1024, server.URL)
 
 	if code := get(archive).Code; code != http.StatusRequestEntityTooLarge {
 		t.Errorf("status = %d, want 413", code)
@@ -193,5 +199,119 @@ func TestArchiveIsNotOfferedOverTheCap(t *testing.T) {
 	}
 	if got := archiveProto(mods, 0); got == nil {
 		t.Error("archive is unset without a cap")
+	}
+}
+
+// keyedObjects is the bucket side of the archive: one body per object key.
+type keyedObjects struct {
+	bodies map[string]string
+	calls  int
+}
+
+func (f *keyedObjects) GetObject(_ context.Context, _, key string) (io.ReadCloser, error) {
+	f.calls++
+
+	body, ok := f.bodies[key]
+	if !ok {
+		return nil, errors.New("no such object")
+	}
+
+	return io.NopCloser(strings.NewReader(body)), nil
+}
+
+// newTestArchiveWithObjects builds an Archive that can read from the bucket.
+func newTestArchiveWithObjects(
+	t *testing.T, mods *fixedMods, objects ObjectStorage, dir, cdn string,
+) *Archive {
+	t.Helper()
+
+	zc := zap.NewDevelopmentConfig()
+	l, err := logger.New(&zc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	archive, err := NewArchive(mods, objects, l, config.Config{ModsArchiveDir: dir, CdnUrl: cdn})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return archive
+}
+
+// objectMod is a required mod that names its bucket object and no HTTP file.
+func objectMod(modId, version, key string, size int64) model.Mod {
+	release := model.Release{
+		Version:  version,
+		FileName: modId + "-" + version + ".zip",
+		FileSize: size,
+		FileKey:  key,
+	}
+
+	return model.Build(modId, model.Snapshot{Name: modId, Releases: []model.Release{release}},
+		model.AudienceRequired, "", &release, fixedNow)
+}
+
+// TestArchiveReadsTheBucketWhenNoCDNIsConfigured pins the fallback the site
+// depends on when CDN_URL is empty: the manifest still names the object key.
+func TestArchiveReadsTheBucketWhenNoCDNIsConfigured(t *testing.T) {
+	objects := &keyedObjects{bodies: map[string]string{"a/a-1.zip": "aaaa"}}
+	dir := t.TempDir()
+	archive := newTestArchiveWithObjects(t, &fixedMods{mods: []model.Mod{objectMod("a", "1", "a/a-1.zip", 4)}}, objects, dir, "")
+
+	if code := get(archive).Code; code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", code)
+	}
+	if objects.calls != 1 {
+		t.Errorf("bucket reads = %d, want 1", objects.calls)
+	}
+}
+
+// TestArchiveFallsBackToTheBucketWhenHTTPFails: a CDN that does not serve the
+// bucket yet must not make the archive unbuildable while MinIO has the bytes.
+func TestArchiveFallsBackToTheBucketWhenHTTPFails(t *testing.T) {
+	server := fileServer(t, nil)
+	objects := &keyedObjects{bodies: map[string]string{"a/a-1.zip": "aaaa"}}
+
+	release := model.Release{
+		Version:  "1",
+		FileURL:  server.URL + "/a-1.zip",
+		FileName: "a-1.zip",
+		FileSize: 4,
+		FileKey:  "a/a-1.zip",
+	}
+	mod := model.Build("a", model.Snapshot{Name: "a", Releases: []model.Release{release}},
+		model.AudienceRequired, "", &release, fixedNow)
+
+	dir := t.TempDir()
+	archive := newTestArchiveWithObjects(t, &fixedMods{mods: []model.Mod{mod}}, objects, dir, server.URL)
+
+	if code := get(archive).Code; code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 after the bucket fallback", code)
+	}
+	if objects.calls != 1 {
+		t.Errorf("bucket reads = %d, want 1", objects.calls)
+	}
+}
+
+// TestArchiveRefusesAFileFromAnotherHost pins the allow-list: a release URL
+// that is neither the CDN nor ModDB's own file host is not fetched, so a future
+// writer of file_url cannot turn the archive into an SSRF primitive.
+func TestArchiveRefusesAFileFromAnotherHost(t *testing.T) {
+	server := fileServer(t, map[string]string{"/a-1.zip": "aaaa"})
+	release := model.Release{
+		Version:  "1",
+		FileURL:  "https://evil.example/a-1.zip",
+		FileName: "a-1.zip",
+		FileSize: 4,
+	}
+	mod := model.Build("a", model.Snapshot{Name: "a", Releases: []model.Release{release}},
+		model.AudienceRequired, "", &release, fixedNow)
+
+	dir := t.TempDir()
+	archive := newTestArchive(t, &fixedMods{mods: []model.Mod{mod}}, dir, 0, server.URL)
+
+	if code := get(archive).Code; code != http.StatusBadGateway {
+		t.Errorf("status = %d, want 502 for a foreign host", code)
 	}
 }
