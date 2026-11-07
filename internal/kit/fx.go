@@ -31,8 +31,6 @@ var App = fx.Options(
 				},
 				fx.As(new(service.Mapper)),
 			),
-
-			service.NewEventManager,
 		),
 
 		fx.Provide(
@@ -44,17 +42,6 @@ var App = fx.Options(
 				fx.As(new(interceptor.Scoper)),
 				fx.ResultTags(`group:"scopers"`),
 			),
-		),
-
-		fx.Invoke(
-			func(
-				lc fx.Lifecycle,
-				bus *service.Bus,
-			) {
-				lc.Append(
-					fx.StartStopHook(bus.Subscribe, bus.Unsubscribe),
-				)
-			},
 		),
 	),
 )

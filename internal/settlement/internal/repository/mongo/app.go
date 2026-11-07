@@ -136,7 +136,7 @@ func New(opts Opts) (*Repository, error) {
 	snColl := opts.Database.Collection(settlementNotifierCollName)
 	unColl := opts.Database.Collection(unboundNotifierCollName)
 	// The component names the layer, not the module: the plan's enum is
-	// grpc|gateway|repo|mongo|nats|http|job|webhook, and the module already
+	// grpc|gateway|repo|mongo|http|job|webhook, and the module already
 	// rides along in scope, which fx sets per domain.
 	logger := opts.Log.WithComponent("repo")
 	if err := setupIndexes(logger, sColl, srColl, siColl, sjrColl, flColl, ilColl, snColl, unColl); err != nil {

@@ -41,8 +41,7 @@ internal/<domain>/
 │   ├── dto/                 # request/response types
 │   ├── model/               # DB models
 │   ├── service/             # business logic (interfaces + impls)
-│   ├── repository/          # MongoDB access (interface-backed)
-│   └── event/               # NATS event handlers/publishers
+│   └── repository/          # MongoDB access (interface-backed)
 ```
 
 Domains: `player`, `settlement`, `settlement-tag`, `leaderboard`, `kit`, `rules`, `news`, `notification`, `serverinfo`, `webhook`.
@@ -52,7 +51,6 @@ Domains: `player`, `settlement`, `settlement-tag`, `leaderboard`, `kit`, `rules`
 **Request path:**
 ```
 Client → gRPC interceptor (JWT validation) → gRPC handler → Service → Repository → MongoDB
-                                                                    ↘ NATS publisher
 ```
 
 **Auth:** JWT validated via JWKS from Logto SSO. Scoper pattern — services register themselves via `group:"scopers"` fx tag to declare which JWT claims/scopes they require.
@@ -63,11 +61,9 @@ Client → gRPC interceptor (JWT validation) → gRPC handler → Service → Re
 
 **Models mutate only through their own methods** — external code must not set model fields directly. All state changes go through methods on the model struct. This enforces invariants and keeps business rules inside the domain model.
 
-**Messaging:** NATS/JetStream for async events. Typed generics: `Publisher[T]`, `Subscriber[T]`, `RpcRequester[Req,Resp]`. Lives in `internal/pkg/mnats` and `internal/pkg/mjetstream`.
-
 **Type conversion:** `goverter`-generated mappers convert between protobuf messages, domain models, and DB models. Mapper interfaces have `//go:generate` directives above them.
 
-**Shared packages** (`internal/pkg/`): config (envconfig+godotenv), logger (zap), MongoDB client, MinIO storage, NATS connection, JWT utilities, HTTP client (retryablehttp).
+**Shared packages** (`internal/pkg/`): config (envconfig+godotenv), logger (zap), MongoDB client, MinIO storage, JWT utilities, HTTP client (retryablehttp).
 
 ## Config
 
@@ -77,7 +73,6 @@ Environment variables loaded from `.env` (godotenv). Key vars:
 - `MONGO_URL_FILE` — path to file containing MongoDB connection string
 - `JWT_JWKS_URL`, `JWT_ISSUER`, `JWT_AUDIENCE` — Logto SSO
 - `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY_FILE`, `MINIO_SECRET_KEY_FILE`
-- `NATS_URL`
 
 ## Adding a New Domain Module
 

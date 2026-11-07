@@ -15,7 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	"go.uber.org/zap"
 )
 
 // goverter:converter
@@ -170,20 +169,6 @@ func (r *Repository) UpdateById(ctx context.Context, uid string, p model.PlayerU
 	return err
 }
 
-func (r *Repository) UpdateByUserGameName(ctx context.Context, userGameName string, p model.PlayerUpdate) error {
-	update := r.buildUpdateSet(p)
-	if len(update) == 0 {
-		return nil
-	}
-
-	_, err := r.coll.UpdateOne(
-		ctx,
-		bson.M{"user_game_name": userGameName},
-		update,
-	)
-	return err
-}
-
 // buildUpdateSet turns an update into the operator document the write applies.
 // Fields the caller did not set are left alone; an empty About is an unset
 // rather than an empty string, so a hidden description leaves no trace in the
@@ -259,31 +244,6 @@ func (r *Repository) buildUpdateSet(p model.PlayerUpdate) bson.M {
 	}
 
 	return doc
-}
-
-// GetByUserGameName implements event.PlayerRepository.
-func (r *Repository) GetByUserGameName(ctx context.Context, userGameName string) (*model.Player, error) {
-	l := r.log.WithMethod("get_by_user_game_name").With(zap.String("user_game_name", userGameName))
-
-	l.Info("get player by user_game_name")
-
-	var dto dto.Player
-	finded := r.coll.FindOne(ctx, bson.M{"user_game_name": userGameName})
-	err := finded.Err()
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, ierror.ErrNotFound
-		}
-		return nil, err
-	}
-
-	err = finded.Decode(&dto)
-	if err != nil {
-		return nil, err
-	}
-
-	res := r.mapper.ToPlayer(dto, r.getAvatarPrefix())
-	return &res, nil
 }
 
 func (r *Repository) getAvatarPrefix() string {

@@ -32,7 +32,7 @@ linters:
     - nilerr              # returns nil after checking err != nil
     - nilnesserr          # checks err != nil but returns a different nil err
     - nilnil              # simultaneous nil error + invalid value
-    - fatcontext          # nested contexts in loops (gRPC/NATS handlers)
+    - fatcontext          # nested contexts in loops (gRPC handlers)
     - durationcheck       # two durations multiplied together
     - makezero            # non-zero-length slice declared then appended
     - recvcheck           # receiver type consistency (ptr vs value)

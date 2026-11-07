@@ -2,6 +2,10 @@ package model
 
 import "time"
 
+// ServerInfo is the singleton document the game server writes and this service
+// only reads. It carries no setters: nothing in this domain is allowed to change
+// the world time or the online count, and the sweeper's zeroing of a stale
+// total_online is a filtered bulk write, not a model transition.
 type ServerInfo struct {
 	Id          string
 	WorldTime   string
@@ -10,9 +14,3 @@ type ServerInfo struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
-
-// SetWorldTime sets the in-game world time.
-func (s *ServerInfo) SetWorldTime(t string) { s.WorldTime = t }
-
-// SetTotalOnline sets the current online player count.
-func (s *ServerInfo) SetTotalOnline(n int) { s.TotalOnline = n }

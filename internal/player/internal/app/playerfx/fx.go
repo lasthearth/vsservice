@@ -1,6 +1,8 @@
 package playerfx
 
 import (
+	"context"
+
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/storage"
@@ -9,6 +11,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/player/internal/repository/player/sso"
 	service "github.com/lasthearth/vsservice/internal/player/internal/service/player"
 	"github.com/lasthearth/vsservice/internal/player/internal/service/player/sermapper"
+	"github.com/lasthearth/vsservice/internal/player/internal/service/presence"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
 )
@@ -38,9 +41,13 @@ var App = fx.Options(
 				},
 				fx.As(new(repository.Mapper)),
 			),
+			// One repository instance behind both interfaces: they read and
+			// write the same collection, and a second construction would run
+			// setupIndexes twice inside the same fx start budget.
 			fx.Annotate(
 				repository.New,
 				fx.As(new(service.DbRepository)),
+				fx.As(new(presence.Repository)),
 			),
 
 			fx.Annotate(
@@ -54,6 +61,8 @@ var App = fx.Options(
 				},
 				fx.As(new(service.Mapper)),
 			),
+
+			presence.New,
 		),
 
 		fx.Provide(
@@ -65,5 +74,28 @@ var App = fx.Options(
 				fx.ResultTags(`group:"scopers"`),
 			),
 		),
+
+		// Takes is_online off players whose game server stopped heartbeating.
+		fx.Invoke(func(lc fx.Lifecycle, s *presence.Sweeper) {
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan struct{})
+			lc.Append(fx.Hook{
+				OnStart: func(context.Context) error {
+					go func() {
+						defer close(done)
+						s.Run(ctx)
+					}()
+					return nil
+				},
+				OnStop: func(stopCtx context.Context) error {
+					cancel()
+					select {
+					case <-done:
+					case <-stopCtx.Done():
+					}
+					return nil
+				},
+			})
+		}),
 	),
 )
