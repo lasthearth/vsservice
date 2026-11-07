@@ -15,7 +15,7 @@ import (
 
 const (
 	// componentMongo tags every driver record, so a log query separates
-	// storage calls from gRPC, NATS and HTTP ones.
+	// storage calls from gRPC and HTTP ones.
 	componentMongo = "mongo"
 
 	// eventCommandFailed and eventCommandSlow are the stable machine keys

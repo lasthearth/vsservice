@@ -1,11 +1,13 @@
 package serverinfo
 
 import (
+	"context"
+
 	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
-	"github.com/lasthearth/vsservice/internal/serverinfo/internal/event"
 	repofx "github.com/lasthearth/vsservice/internal/serverinfo/internal/repository/app"
 	servicefx "github.com/lasthearth/vsservice/internal/serverinfo/internal/service/app"
+	"github.com/lasthearth/vsservice/internal/serverinfo/internal/service/serverinfo"
 	"go.uber.org/fx"
 )
 
@@ -23,7 +25,7 @@ var App = fx.Options(
 
 		fx.Provide(
 			fx.Private,
-			event.NewEventManagerFx,
+			servicefx.NewSweeperFx,
 		),
 
 		fx.Provide(
@@ -32,15 +34,28 @@ var App = fx.Options(
 			),
 		),
 
-		fx.Invoke(
-			func(
-				lc fx.Lifecycle,
-				bus *event.Bus,
-			) {
-				lc.Append(
-					fx.StartStopHook(bus.Subscribe, bus.Unsubscribe),
-				)
-			},
-		),
+		// Zeroes a total_online whose heartbeat went stale: the game server owns
+		// the document and stops writing when it dies.
+		fx.Invoke(func(lc fx.Lifecycle, s *serverinfo.Sweeper) {
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan struct{})
+			lc.Append(fx.Hook{
+				OnStart: func(context.Context) error {
+					go func() {
+						defer close(done)
+						s.Run(ctx)
+					}()
+					return nil
+				},
+				OnStop: func(stopCtx context.Context) error {
+					cancel()
+					select {
+					case <-done:
+					case <-stopCtx.Done():
+					}
+					return nil
+				},
+			})
+		}),
 	),
 )

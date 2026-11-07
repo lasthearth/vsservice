@@ -26,7 +26,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/httpclient"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
-	"github.com/lasthearth/vsservice/internal/pkg/messaging"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
 	"github.com/lasthearth/vsservice/internal/player"
@@ -84,7 +83,6 @@ func main() {
 					Scopes:       c.Scopes,
 				})
 			},
-			messaging.SetupConn,
 			setupLogger,
 			setupStorage,
 			mongox.New,

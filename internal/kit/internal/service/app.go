@@ -3,12 +3,7 @@ package service
 import (
 	kitv1 "github.com/lasthearth/vsservice/gen/kit/v1"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
-	"github.com/lasthearth/vsservice/internal/pkg/messaging"
-	"github.com/lasthearth/vsservice/internal/pkg/messaging/mjetstream"
-	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/jetstream"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 var _ kitv1.KitServiceServer = (*Service)(nil)
@@ -18,14 +13,6 @@ type Service struct {
 	assignmentRepo AssignmentRepository
 	log            logger.Logger
 	mapper         Mapper
-	bus            *Bus
-}
-
-type Bus struct {
-	kitGrantedPub  messaging.Publisher[KitGrantedEvent]
-	kitClaimedSub  messaging.Subscriber[KitClaimedEvent]
-	assignmentRepo AssignmentRepository
-	log            logger.Logger
 }
 
 type Opts struct {
@@ -33,7 +20,6 @@ type Opts struct {
 	Log            logger.Logger
 	AssignmentRepo AssignmentRepository
 	Mapper         Mapper
-	Bus            *Bus
 }
 
 func NewFx(opts Opts) *Service {
@@ -41,7 +27,6 @@ func NewFx(opts Opts) *Service {
 		nil,
 		opts.AssignmentRepo,
 		opts.Log,
-		opts.Bus,
 		opts.Mapper,
 	)
 }
@@ -50,7 +35,6 @@ func New(
 	kitRepo KitRepository,
 	assignmentRepo AssignmentRepository,
 	log logger.Logger,
-	bus *Bus,
 	mapper Mapper,
 ) *Service {
 	return &Service{
@@ -58,51 +42,5 @@ func New(
 		assignmentRepo: assignmentRepo,
 		log:            log,
 		mapper:         mapper,
-		bus:            bus,
-	}
-}
-
-func NewEventManager(
-	nc *nats.Conn,
-	l logger.Logger,
-	assignmentRepo AssignmentRepository,
-) *Bus {
-	js, err := jetstream.New(nc)
-	if err != nil {
-		l.Error("failed to create jetstream", zap.Error(err))
-		panic(err)
-	}
-
-	kgrt, err := mjetstream.NewPublisher[KitGrantedEvent](
-		js,
-		StreamName,
-		KitGrantedEventSubject,
-		l,
-	)
-	if err != nil {
-		l.Error("failed to create publisher", zap.Error(err))
-		panic(err)
-	}
-
-	consumerName := "kit-claimed-consumer"
-	groupName := "kit-claimed-group"
-	kclm, err := mjetstream.NewSubscriber[KitClaimedEvent](
-		js,
-		StreamName,
-		KitClaimedEventSubject,
-		consumerName,
-		groupName,
-		l,
-	)
-	if err != nil {
-		l.Error("failed to create subscriber", zap.Error(err))
-		panic(err)
-	}
-
-	return &Bus{
-		kitGrantedPub:  kgrt,
-		kitClaimedSub:  kclm,
-		assignmentRepo: assignmentRepo,
-		log:            l,
 	}
 }

@@ -24,8 +24,7 @@ Every log record answers a replay question: what did the user experience, what h
 | `mongo.command.failed` | Error | mongox monitor | always |
 | `mongo.command.slow` | Warn | mongox monitor | only above `MONGO_SLOW_MS` |
 | `http.out` / `http.out.response` / `http.out.failed` | Debug / Error | httpclient hooks | attempts, statuses, final failure after retries |
-| `nats.publish.ok` / `nats.publish.failed` | Debug / Error | messaging publisher | correlation travels in the `X-Request-Id` NATS header |
-| `nats.consume.*`, `nats.decode.failed`, `nats.ack.failed`, `nats.nak.failed` | Debug / Error / Warn | messaging subscriber | redeliveries at or above `NATS_MAX_DELIVER_LOG` are Warn |
+| `presence.sweep.ok` / `serverinfo.sweep.ok` | Debug idle, Info when it cleared something | presence and serverinfo sweepers via `logger.WithJob` | one `job_id` per pass, `n` documents cleared; `.failed` on a failed pass, retried next tick |
 | `donate.*`, `settlement.*` | Info / Warn | service layer via `logger.OpFrom` | state transitions: who did what to which entity |
 | `job.run.finished` | Debug idle, Info when it did work | scheduler via `logger.WithJob` | one `job_id` per pass, counts and duration |
 
@@ -35,7 +34,7 @@ Client mistakes (InvalidArgument, NotFound, PermissionDenied, Unauthenticated, A
 
 ## What never reaches the log
 
-The redaction core (`internal/pkg/logger/redact.go`) masks any field whose KEY contains token/secret/password/authorization/credential and similar. It cannot look inside `zap.Any`/`zap.Reflect`, so a test gate (`redaction_gate_test.go`) fails the build when an opaque value goes under a payload/body/claims-like key. URLs are masked by the httpclient hooks (Telegram bot tokens live in the path). Never log a document body, a filter, an update payload or a NATS payload — ids, amounts, kinds, counts and states instead.
+The redaction core (`internal/pkg/logger/redact.go`) masks any field whose KEY contains token/secret/password/authorization/credential and similar. It cannot look inside `zap.Any`/`zap.Reflect`, so a test gate (`redaction_gate_test.go`) fails the build when an opaque value goes under a payload/body/claims-like key. URLs are masked by the httpclient hooks (Telegram bot tokens live in the path). Never log a document body, a filter or an update payload — ids, amounts, kinds, counts and states instead.
 
 ## Domain operations
 
@@ -59,7 +58,6 @@ LOG_LEVEL=info            # debug, info, warn, error
 LOG_FORMAT=json           # or console; empty derives from APP_ENV
 LOG_SAMPLE_READS=10       # 1 in N successful reads; writes and errors keep 100%
 MONGO_SLOW_MS=250
-NATS_MAX_DELIVER_LOG=3
 HTTP_CLIENT_LOG=true
 ```
 
@@ -83,8 +81,8 @@ The observability stack lives on the Dokploy host (`play.lasthearth.ru`, 45.157.
 * **Promtail** discovers the vsservice container through the Docker API (`docker_sd_configs`, filter on the swarm label `com.docker.swarm.service.name`), labels the stream `job=service=vsservice` with `level`/`component`, and pushes to Loki. A redeploy that renames the container keeps the stream alive; positions are persisted in the `promtail_positions` volume. The game node logs arrive through the Docker `loki` logging driver instead — promtail does not tail it twice.
 * **Loki** (3.5.x, filesystem store, 120 day retention) holds both. Query the service with `{service="vsservice"}` and parse with `| json`; `request_id`, `method`, `event`, `duration_ms` are fields, not labels.
 * **Prometheus** scrapes itself, node-exporter, and `lasthearth-api-o4nrti:6970`. It joins the attachable `dokploy-network` overlay, so the metrics port is never published on a host interface. The deployment sets `METRICS_BIND_ADDR=0.0.0.0`, because a listener on a container's own loopback is unreachable from outside it; the default stays `127.0.0.1` for local runs. The target stays DOWN until an image with `/metrics` ships.
-* **Grafana** on host port 4000 provisions the Loki and Prometheus datasources plus the dashboard **vsservice — replay and health** (`uid=vsservice-replay`): p50/p90/p99 by method, RPS, error rate by code, panics, internal errors, auth denials, slow Mongo, NATS/HTTP client errors, domain events, and the error log tail.
+* **Grafana** on host port 4000 provisions the Loki and Prometheus datasources plus the dashboard **vsservice — replay and health** (`uid=vsservice-replay`): p50/p90/p99 by method, RPS, error rate by code, panics, internal errors, auth denials, slow Mongo, HTTP client errors, domain events, and the error log tail.
 
 Replay a user action in Grafana Explore: `{service="vsservice"} |= "<request_id>"` ordered by time.
 
-⚠️ Known exposure: Loki now listens on `127.0.0.1:3100` only (it was `0.0.0.0:3100` with `auth_enabled: false`, readable and writable from the internet); the game node's logging driver pushes from the daemon, so loopback keeps it working. Still open: Grafana on port 4000 over plain HTTP, and the Dokploy-managed publishes of MongoDB 27017, NATS 4222/8222, MinIO 9000, Logto 33980/33981, the Dokploy UI 3000 and docs 8888. Closing those means editing each Dokploy service's ports, which can break remote admin access, so it needs an owner decision.
+⚠️ Known exposure: Loki now listens on `127.0.0.1:3100` only (it was `0.0.0.0:3100` with `auth_enabled: false`, readable and writable from the internet); the game node's logging driver pushes from the daemon, so loopback keeps it working. Still open: Grafana on port 4000 over plain HTTP, and the Dokploy-managed publishes of MongoDB 27017, MinIO 9000, Logto 33980/33981, the Dokploy UI 3000 and docs 8888. Closing those means editing each Dokploy service's ports, which can break remote admin access, so it needs an owner decision.

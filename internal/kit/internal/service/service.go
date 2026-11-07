@@ -89,21 +89,12 @@ func (s *Service) AssignKitToUser(ctx context.Context, req *kitv1.AssignKitToUse
 
 	l.Info("saving assignment to database")
 
-	created, err := s.assignmentRepo.CreateAssignment(ctx, newAssignment)
-	if err != nil {
+	// Nothing is published for the created assignment. kit.granted went to a
+	// stream no one read: delivery is by mail (ADR-0021) and the game takes the
+	// kit contents from Mongo, so the bus this used to publish through is gone.
+	if _, err := s.assignmentRepo.CreateAssignment(ctx, newAssignment); err != nil {
 		l.Error("failed to create assignment", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to create assignment")
-	}
-
-	l.Info("publishing assignment notification event")
-
-	if err := s.bus.kitGrantedPub.Publish(ctx, KitGrantedEvent{
-		AssignmentID: created.Id,
-		KitName:      req.GetKitName(),
-		UserGameName: created.UserGameName,
-		UserID:       req.GetUserId(),
-	}); err != nil {
-		l.Error("failed to publish kit granted event", zap.Error(err))
 	}
 
 	l.Info("kit assignment completed successfully")

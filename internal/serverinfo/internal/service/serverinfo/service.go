@@ -9,13 +9,10 @@ import (
 
 type Repository interface {
 	GetServerInfo(ctx context.Context) (*model.ServerInfo, error)
-	Update(
-		ctx context.Context,
-		updateFn func(
-			context.Context,
-			*model.ServerInfo,
-		) (*model.ServerInfo, error),
-	) error
+	// ClearStaleOnline zeroes total_online on the singleton document whose
+	// heartbeat is older than cutoffUnixMilli, and returns how many documents it
+	// changed. The game server owns every other field.
+	ClearStaleOnline(ctx context.Context, cutoffUnixMilli int64) (int64, error)
 }
 
 // TotalOnline implements serverinfov1.ServerInfoServiceServer.

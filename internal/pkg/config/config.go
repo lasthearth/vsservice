@@ -82,11 +82,6 @@ type Config struct {
 	MinioSecretKey string `envconfig:"MINIO_SECRET_KEY"`
 	MinioUseSSL    bool   `envconfig:"MINIO_USE_SSL"`
 
-	NatsUrl string `envconfig:"NATS_URL"`
-	// NatsMaxDeliverLog is the delivery attempt above which a redelivery is
-	// logged at Warn instead of Error.
-	NatsMaxDeliverLog uint64 `envconfig:"NATS_MAX_DELIVER_LOG" default:"3"`
-
 	// HTTPClientLog enables the outbound HTTP client hooks (request, response,
 	// final failure after retries).
 	HTTPClientLog bool `envconfig:"HTTP_CLIENT_LOG" default:"true"`
@@ -124,6 +119,20 @@ type Config struct {
 	// ModsSyncInterval is how often the manifest is read again, and how old the
 	// lazy refresh in ListMods lets the cached list get.
 	ModsSyncInterval time.Duration `envconfig:"MODS_SYNC_INTERVAL" default:"1m"`
+
+	// PresenceSweepInterval is how often the player sweeper looks for online
+	// flags whose heartbeat went stale. The game server writes is_online and
+	// last_heartbeat itself and stops writing when it dies, so this loop is the
+	// only thing that ever takes a player back offline.
+	PresenceSweepInterval time.Duration `envconfig:"PRESENCE_SWEEP_INTERVAL" default:"1m"`
+	// PresenceStaleAfter is how old last_heartbeat may get before the sweeper
+	// clears is_online. It must stay above the game's 15 s heartbeat period, or
+	// a live player flickers offline between two beats.
+	PresenceStaleAfter time.Duration `envconfig:"PRESENCE_STALE_AFTER" default:"1m"`
+	// ServerInfoStaleAfter is how old serverinfo.heartbeat_at may get before the
+	// sweeper zeroes total_online. It also drives that sweeper's tick: there is
+	// no point checking more often than the window is wide.
+	ServerInfoStaleAfter time.Duration `envconfig:"SERVERINFO_STALE_AFTER" default:"30s"`
 }
 
 // New initializes from .env and returns a new Config instance.
