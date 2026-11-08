@@ -14,6 +14,8 @@ var _ Repository = (*repository.Repository)(nil)
 type Repository interface {
 	Create(ctx context.Context, t *model.Ticket) (*model.Ticket, error)
 	Get(ctx context.Context, id string) (*model.Ticket, error)
+	// MarkRead clears one side's unread flag without rewriting the thread.
+	MarkRead(ctx context.Context, id string, staff bool) error
 	Update(
 		ctx context.Context,
 		id string,

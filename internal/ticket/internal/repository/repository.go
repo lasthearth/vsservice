@@ -40,6 +40,14 @@ type Mapper interface {
 // withoutThread leaves the messages out of list reads.
 var withoutThread = bson.M{"messages": 0}
 
+const (
+	// defaultListLimit is the page size a Query with no limit gets.
+	defaultListLimit = 20
+	// tokenSep separates the sort field from the cursor position in a page
+	// token. It cannot appear in a Mongo field name.
+	tokenSep = "|"
+)
+
 func (r *Repository) toModel(doc dto.Ticket) *model.Ticket {
 	if doc.Messages == nil {
 		doc.Messages = []dto.Message{}
@@ -99,6 +107,37 @@ func (r *Repository) Update(
 		r.logger.WithMethod("Update").Error("failed to update ticket", zap.String("id", id), zap.Error(err))
 	}
 	return updated, err
+}
+
+// MarkRead clears one side's unread flag with a narrow update. A full document
+// replace would rewrite the whole thread and bump the version, so a concurrent
+// writer would lose the guard over a single boolean.
+func (r *Repository) MarkRead(ctx context.Context, id string, staff bool) error {
+	oid, err := mongox.ParseObjectID(id)
+	if err != nil {
+		return ierror.ErrNotFound
+	}
+
+	field := "author_unread"
+	if staff {
+		field = "staff_unread"
+	}
+
+	// The flag predicate makes an already-read ticket a no-op; the version
+	// still moves so concurrent writers keep a monotonic guard.
+	res, err := r.tickets.UpdateOne(ctx,
+		bson.M{"_id": oid, field: true},
+		bson.M{"$set": bson.M{field: false}, "$inc": bson.M{"version": 1}},
+	)
+	if err != nil {
+		r.logger.WithMethod("MarkRead").Error("failed to mark ticket read",
+			zap.String("id", id), zap.Error(err))
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return ierror.ErrNotFound
+	}
+	return nil
 }
 
 // CountActiveByAuthor counts the author's tickets that are not closed.
@@ -177,13 +216,28 @@ func (r *Repository) StaffCounters(ctx context.Context, staffId string) (model.S
 // List returns one page of tickets without their threads and the token of the
 // next page, empty on the last one.
 func (r *Repository) List(ctx context.Context, q model.Query) ([]model.Ticket, string, error) {
+	// A Query with no limit gets the default one. Kept in a local: the model
+	// is the caller's and is not mutated here.
+	limit := q.Limit
+	if limit <= 0 {
+		limit = defaultListLimit
+	}
+
 	sortField := "last_message_at"
 	filter := bson.M{}
-	if q.Viewer == model.ViewerAuthor {
+	switch q.Viewer {
+	case model.ViewerAuthor:
 		sortField = "last_public_at"
-	}
-	if q.AuthorId != "" {
+		// The author's id is the access rule, not a filter the caller may
+		// leave out: without it this list is every player's tickets.
+		if q.AuthorId == "" {
+			return nil, "", ierror.ErrAuthorRequired
+		}
 		filter["author_id"] = q.AuthorId
+	case model.ViewerStaff:
+		if q.AuthorId != "" {
+			filter["author_id"] = q.AuthorId
+		}
 	}
 	if q.Status != "" {
 		filter["status"] = string(q.Status)
@@ -200,7 +254,7 @@ func (r *Repository) List(ctx context.Context, q model.Query) ([]model.Ticket, s
 	}
 
 	if q.PageToken != "" {
-		at, oid, err := parsePageToken(q.PageToken)
+		at, oid, err := parsePageToken(q.PageToken, sortField)
 		if err != nil {
 			return nil, "", ierror.ErrBadPageToken
 		}
@@ -212,7 +266,7 @@ func (r *Repository) List(ctx context.Context, q model.Query) ([]model.Ticket, s
 
 	opts := options.Find().
 		SetSort(bson.D{{Key: sortField, Value: -1}, {Key: "_id", Value: -1}}).
-		SetLimit(int64(q.Limit + 1)).
+		SetLimit(int64(limit + 1)).
 		SetProjection(withoutThread)
 
 	cursor, err := r.tickets.Find(ctx, filter, opts)
@@ -227,14 +281,14 @@ func (r *Repository) List(ctx context.Context, q model.Query) ([]model.Ticket, s
 	}
 
 	next := ""
-	if len(docs) > q.Limit {
-		docs = docs[:q.Limit]
+	if len(docs) > limit {
+		docs = docs[:limit]
 		last := docs[len(docs)-1]
 		at := last.LastMessageAt
 		if q.Viewer == model.ViewerAuthor {
 			at = last.LastPublicAt
 		}
-		next = pageToken(at, last.Id)
+		next = pageToken(sortField, at, last.Id)
 	}
 
 	out := make([]model.Ticket, 0, len(docs))
@@ -244,9 +298,14 @@ func (r *Repository) List(ctx context.Context, q model.Query) ([]model.Ticket, s
 	return out, next, nil
 }
 
-// ListAutoCloseDue returns the ids of ANSWERED tickets answered before cutoff.
+// ListAutoCloseDue returns the ids of ANSWERED tickets answered before cutoff,
+// oldest answer first: a batch that does not drain everything leaves the
+// longest-waiting tickets for the next pass, not an arbitrary subset.
 func (r *Repository) ListAutoCloseDue(ctx context.Context, cutoff time.Time, limit int) ([]string, error) {
-	opts := options.Find().SetProjection(bson.M{"_id": 1}).SetLimit(int64(limit))
+	opts := options.Find().
+		SetProjection(bson.M{"_id": 1}).
+		SetSort(bson.D{{Key: "answered_at", Value: 1}}).
+		SetLimit(int64(limit))
 	cursor, err := r.tickets.Find(ctx, bson.M{
 		"status":      string(model.StatusAnswered),
 		"answered_at": bson.M{"$lte": cutoff},
@@ -268,13 +327,19 @@ func (r *Repository) ListAutoCloseDue(ctx context.Context, cutoff time.Time, lim
 	return ids, nil
 }
 
-// pageToken encodes the sort position of the last ticket on a page.
-func pageToken(at time.Time, id bson.ObjectID) string {
-	return strconv.FormatInt(at.UnixMilli(), 10) + "_" + id.Hex()
+// pageToken encodes the sort position of the last ticket on a page. The sort
+// field is part of it: the player list and the staff inbox sort by different
+// fields, and a token from one must not page the other from a wrong position.
+func pageToken(sortField string, at time.Time, id bson.ObjectID) string {
+	return sortField + tokenSep + strconv.FormatInt(at.UnixMilli(), 10) + "_" + id.Hex()
 }
 
-func parsePageToken(token string) (time.Time, bson.ObjectID, error) {
-	ms, hex, ok := strings.Cut(token, "_")
+func parsePageToken(token, sortField string) (time.Time, bson.ObjectID, error) {
+	field, rest, ok := strings.Cut(token, tokenSep)
+	if !ok || field != sortField {
+		return time.Time{}, bson.ObjectID{}, errors.New("token is for another list")
+	}
+	ms, hex, ok := strings.Cut(rest, "_")
 	if !ok {
 		return time.Time{}, bson.ObjectID{}, errors.New("no separator")
 	}

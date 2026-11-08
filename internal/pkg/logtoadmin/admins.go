@@ -28,9 +28,17 @@ const RoleName = "admin"
 // every ticket message would otherwise cost two Logto calls.
 const cacheTTL = 5 * time.Minute
 
-// pageSize is the Logto page size asked for; the server has far fewer roles
-// and admins than that.
-const pageSize = 100
+// retryBackoff is how long a failed refresh is trusted before the next attempt.
+// Without it a Logto outage makes every caller repeat a two-request fetch that
+// holds the mutex for its whole duration.
+const retryBackoff = 30 * time.Second
+
+// pageSize is the Logto page size asked for, and maxPages bounds how many of
+// them one refresh walks.
+const (
+	pageSize = 100
+	maxPages = 20
+)
 
 // ErrRoleNotFound reports that Logto has no role named RoleName.
 var ErrRoleNotFound = errors.New("logto role " + RoleName + " not found")
@@ -52,6 +60,7 @@ type Directory struct {
 	mu        sync.Mutex
 	ids       []string
 	fetchedAt time.Time
+	failedAt  time.Time
 }
 
 func New(opts Opts) *Directory {
@@ -69,12 +78,21 @@ func (d *Directory) UserIDs(ctx context.Context) ([]string, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if d.ids != nil && d.now().Sub(d.fetchedAt) < cacheTTL {
-		return append([]string(nil), d.ids...), nil
+	now := d.now()
+	if d.ids != nil {
+		if now.Sub(d.fetchedAt) < cacheTTL {
+			return append([]string(nil), d.ids...), nil
+		}
+		// Stale, but a refresh just failed. Serving the old list beats making
+		// every caller wait for Logto again.
+		if now.Sub(d.failedAt) < retryBackoff {
+			return append([]string(nil), d.ids...), nil
+		}
 	}
 
 	ids, err := d.fetch(ctx)
 	if err != nil {
+		d.failedAt = now
 		if d.ids != nil {
 			d.log.Warn("failed to refresh admins, using the cached list", zap.Error(err))
 			return append([]string(nil), d.ids...), nil
@@ -84,6 +102,7 @@ func (d *Directory) UserIDs(ctx context.Context) ([]string, error) {
 
 	d.ids = ids
 	d.fetchedAt = d.now()
+	d.failedAt = time.Time{}
 	return append([]string(nil), ids...), nil
 }
 
@@ -92,7 +111,7 @@ func (d *Directory) fetch(ctx context.Context) ([]string, error) {
 		Id   string `json:"id"`
 		Name string `json:"name"`
 	}
-	if err := d.get(ctx, "/api/roles", &roles); err != nil {
+	if err := getAll(ctx, d, "/api/roles", &roles); err != nil {
 		return nil, fmt.Errorf("list roles: %w", err)
 	}
 
@@ -110,7 +129,7 @@ func (d *Directory) fetch(ctx context.Context) ([]string, error) {
 	var users []struct {
 		Id string `json:"id"`
 	}
-	if err := d.get(ctx, "/api/roles/"+url.PathEscape(roleID)+"/users", &users); err != nil {
+	if err := getAll(ctx, d, "/api/roles/"+url.PathEscape(roleID)+"/users", &users); err != nil {
 		return nil, fmt.Errorf("list role users: %w", err)
 	}
 
@@ -121,11 +140,33 @@ func (d *Directory) fetch(ctx context.Context) ([]string, error) {
 	return ids, nil
 }
 
-func (d *Directory) get(ctx context.Context, path string, out any) error {
+// getAll walks every page of a Logto list endpoint into dst. A short page ends
+// the walk; hitting maxPages is logged, because the rest is then invisible.
+// A plain function: Go methods take no type parameters.
+func getAll[T any](ctx context.Context, d *Directory, path string, dst *[]T) error {
+	for page := 1; page <= maxPages; page++ {
+		var batch []T
+		u := fmt.Sprintf("%s?page_size=%d&page=%d", path, pageSize, page)
+		if err := d.get(ctx, u, &batch); err != nil {
+			return err
+		}
+		*dst = append(*dst, batch...)
+		if len(batch) < pageSize {
+			return nil
+		}
+		if page == maxPages {
+			d.log.Warn("logto list truncated",
+				zap.String("path", path), zap.Int("pages", maxPages))
+		}
+	}
+	return nil
+}
+
+func (d *Directory) get(ctx context.Context, pathAndQuery string, out any) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	u := fmt.Sprintf("%s%s?page_size=%d", d.baseURL, path, pageSize)
+	u := d.baseURL + pathAndQuery
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return err

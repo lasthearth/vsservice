@@ -27,10 +27,15 @@ service NotificationService {
 
   // Mark a notification as read.
   //
+  // Only the caller's own notification is marked: the update is bound to the
+  // authenticated user, so another user's id changes nothing and answers the
+  // same empty success. A broadcast notification belongs to everybody and is
+  // never marked here; the site keeps its read state in the browser.
+  //
   // Errors:
   //   - INVALID_ARGUMENT (400): invalid notification ID format
   //   - UNAUTHENTICATED (401): missing or invalid auth token
-  //   - INTERNAL (500): database failure
+  //   - INTERNAL (500): database failure, or no user id in the token
   rpc MarkAsRead(MarkAsReadRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {post: "/v1/notifications/{id}:markAsRead"};
   }

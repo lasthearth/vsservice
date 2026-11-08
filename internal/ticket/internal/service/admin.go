@@ -6,6 +6,7 @@ import (
 	ticketv1 "github.com/lasthearth/vsservice/gen/ticket/v1"
 	"github.com/lasthearth/vsservice/internal/ticket/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/ticket/internal/model"
+	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -50,14 +51,12 @@ func (s *Service) AdminGetTicket(ctx context.Context, req *ticketv1.AdminGetTick
 	}
 
 	if t.StaffUnread {
-		read, err := s.repo.Update(ctx, t.Id, func(_ context.Context, t *model.Ticket) (*model.Ticket, error) {
-			t.MarkReadByStaff()
-			return t, nil
-		})
-		if err == nil {
-			t = read
+		// Failing to clear the mark is not worth failing the read.
+		if err := s.repo.MarkRead(ctx, t.Id, true); err != nil {
+			s.logger.WithMethod("AdminGetTicket").Warn("failed to mark ticket read",
+				zap.String("ticket_id", t.Id), zap.Error(err))
 		} else {
-			s.logger.WithMethod("AdminGetTicket").Warn("failed to mark ticket read")
+			t.MarkReadByStaff()
 		}
 	}
 

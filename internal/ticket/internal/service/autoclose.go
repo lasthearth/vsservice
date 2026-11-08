@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/ticket/internal/model"
 	"go.uber.org/zap"
@@ -16,6 +18,11 @@ const (
 	autoCloseTimeout  = 2 * time.Minute
 )
 
+// errNotDue tells Update to leave the document alone: the ticket stopped
+// qualifying between the list read and the update. It is a DomainError, so the
+// repository does not log it as a failure.
+var errNotDue = ierror.FailedPrecondition("ticket is not due for auto-close")
+
 // CloseStale closes the ANSWERED tickets the players left quiet for
 // model.AutoCloseAfter.
 func (s *Service) CloseStale(ctx context.Context, now time.Time) {
@@ -27,6 +34,10 @@ func (s *Service) CloseStale(ctx context.Context, now time.Time) {
 
 	ids, err := s.repo.ListAutoCloseDue(ctx, now.Add(-model.AutoCloseAfter), autoCloseBatch)
 	if err != nil {
+		// Shutdown cancels the job context mid-pass; that is not a failure.
+		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+			return
+		}
 		log.Error("failed to list stale tickets", zap.Error(err))
 		return
 	}
@@ -36,10 +47,15 @@ func (s *Service) CloseStale(ctx context.Context, now time.Time) {
 		_, err := s.repo.Update(ctx, id, func(_ context.Context, t *model.Ticket) (*model.Ticket, error) {
 			// Re-checked on the fresh document: the player may have answered
 			// since the list was read.
-			t.AutoClose(now)
+			if !t.AutoClose(now) {
+				return nil, errNotDue
+			}
 			return t, nil
 		})
-		if err != nil {
+		switch {
+		case errors.Is(err, errNotDue):
+			continue
+		case err != nil:
 			log.Warn("failed to close stale ticket", zap.String("ticket_id", id), zap.Error(err))
 			continue
 		}

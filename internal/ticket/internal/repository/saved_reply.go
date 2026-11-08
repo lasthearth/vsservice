@@ -42,7 +42,11 @@ func (r *Repository) ListReplies(ctx context.Context) ([]model.SavedReply, error
 
 // CountReplies counts the saved replies.
 func (r *Repository) CountReplies(ctx context.Context) (int64, error) {
-	return r.replies.CountDocuments(ctx, bson.M{})
+	n, err := r.replies.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		r.logger.WithMethod("CountReplies").Error("failed to count saved replies", zap.Error(err))
+	}
+	return n, err
 }
 
 // CreateReply stores a new saved reply.

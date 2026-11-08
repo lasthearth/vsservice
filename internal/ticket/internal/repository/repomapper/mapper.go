@@ -4,11 +4,10 @@
 package repomapper
 
 import (
-	"time"
-
 	goverter "github.com/lasthearth/vsservice/internal/pkg/goverter"
 	dto "github.com/lasthearth/vsservice/internal/ticket/internal/dto"
 	model "github.com/lasthearth/vsservice/internal/ticket/internal/model"
+	"time"
 )
 
 type MapperImpl struct{}

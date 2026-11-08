@@ -8,6 +8,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/lasthearth/vsservice/internal/ticket/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/ticket/internal/model"
+	"go.uber.org/zap"
 )
 
 const (
@@ -42,6 +43,9 @@ func (s *Service) CreateTicket(ctx context.Context, req *ticketv1.CreateTicketRe
 		return nil, mapModelErr(err)
 	}
 
+	// A soft cap: the count and the insert are two round trips, so N parallel
+	// creates can all pass it. Holding it exactly would need a transaction
+	// around the pair, which the abuse it stops does not justify.
 	active, err := s.repo.CountActiveByAuthor(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -98,15 +102,12 @@ func (s *Service) GetTicket(ctx context.Context, req *ticketv1.GetTicketRequest)
 	}
 
 	if t.AuthorUnread {
-		read, err := s.repo.Update(ctx, t.Id, func(_ context.Context, t *model.Ticket) (*model.Ticket, error) {
-			t.MarkReadByAuthor()
-			return t, nil
-		})
 		// Failing to clear the mark is not worth failing the read.
-		if err == nil {
-			t = read
+		if err := s.repo.MarkRead(ctx, t.Id, false); err != nil {
+			s.logger.WithMethod("GetTicket").Warn("failed to mark ticket read",
+				zap.String("ticket_id", t.Id), zap.Error(err))
 		} else {
-			s.logger.WithMethod("GetTicket").Warn("failed to mark ticket read")
+			t.MarkReadByAuthor()
 		}
 	}
 
@@ -133,8 +134,17 @@ func (s *Service) PostTicketMessage(ctx context.Context, req *ticketv1.PostTicke
 		return nil, err
 	}
 
-	s.notifier.AuthorWrote(ctx, updated, req.GetText())
+	// The stored text, not the request's: the model trimmed and validated it.
+	s.notifier.AuthorWrote(ctx, updated, lastText(updated))
 	return toProto(updated, model.ViewerAuthor), nil
+}
+
+// lastText is the newest message of a thread, empty when it has none.
+func lastText(t *model.Ticket) string {
+	if len(t.Messages) == 0 {
+		return ""
+	}
+	return t.Messages[len(t.Messages)-1].Text
 }
 
 // CloseTicket implements ticketv1.TicketServiceServer.
@@ -165,18 +175,19 @@ func (s *Service) ReopenTicket(ctx context.Context, req *ticketv1.ReopenTicketRe
 		return nil, err
 	}
 
-	active, err := s.repo.CountActiveByAuthor(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	if active >= model.MaxActivePerAuthor {
-		return nil, ierror.ErrActiveTicketLimit
-	}
-
 	now := s.now()
-	updated, err := s.repo.Update(ctx, req.GetId(), func(_ context.Context, t *model.Ticket) (*model.Ticket, error) {
+	updated, err := s.repo.Update(ctx, req.GetId(), func(ctx context.Context, t *model.Ticket) (*model.Ticket, error) {
+		// Ownership and state first: a stranger's id or an already-open ticket
+		// must not be answered with the caller's own limit.
 		if err := t.ReopenByAuthor(userID, now); err != nil {
 			return nil, mapModelErr(err)
+		}
+		active, err := s.repo.CountActiveByAuthor(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if active >= model.MaxActivePerAuthor {
+			return nil, ierror.ErrActiveTicketLimit
 		}
 		return t, nil
 	})

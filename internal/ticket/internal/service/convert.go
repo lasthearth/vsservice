@@ -58,14 +58,13 @@ func tsPtr(t *time.Time) *timestamppb.Timestamp {
 // and each side gets its own unread mark and last activity.
 func toProto(t *model.Ticket, viewer model.Viewer) *ticketv1.Ticket {
 	out := &ticketv1.Ticket{
-		Id:         t.Id,
-		AuthorId:   t.AuthorId,
-		Subject:    t.Subject,
-		Category:   categories[t.Category],
-		Status:     statuses[t.Status],
-		AssigneeId: t.AssigneeId,
-		CreatedAt:  ts(t.CreatedAt),
-		ClosedAt:   tsPtr(t.ClosedAt),
+		Id:        t.Id,
+		AuthorId:  t.AuthorId,
+		Subject:   t.Subject,
+		Category:  categories[t.Category],
+		Status:    statuses[t.Status],
+		CreatedAt: ts(t.CreatedAt),
+		ClosedAt:  tsPtr(t.ClosedAt),
 	}
 
 	messages := t.Messages
@@ -74,7 +73,10 @@ func toProto(t *model.Ticket, viewer model.Viewer) *ticketv1.Ticket {
 		out.Unread = t.AuthorUnread
 		out.MessageCount = t.PublicCount
 		out.LastMessageAt = ts(t.LastPublicAt)
+		// Which admin took the ticket is the staff's business: the author only
+		// needs to know someone did. AssigneeId stays empty on this view.
 	} else {
+		out.AssigneeId = t.AssigneeId
 		out.Unread = t.StaffUnread
 		out.MessageCount = t.MessageCount
 		out.LastMessageAt = ts(t.LastMessageAt)

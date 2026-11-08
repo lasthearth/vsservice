@@ -13,6 +13,10 @@ services:
       DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
       DISCORD_BASE_URL: ${DISCORD_BASE_URL:-https://discord.com/api/v10}
       DISCORD_NEWS_WEBHOOK_URL: ${DISCORD_NEWS_WEBHOOK_URL}
+      # Empty leaves the Discord side of ticket alerts off; the role id is the
+      # role pinged about a new ticket, empty sends without a ping.
+      DISCORD_TICKETS_WEBHOOK_URL: ${DISCORD_TICKETS_WEBHOOK_URL}
+      DISCORD_TICKETS_ROLE_ID: ${DISCORD_TICKETS_ROLE_ID}
       DISCORD_ALLOWED_CHANNELS: ${DISCORD_ALLOWED_CHANNELS}
       METRICS_PORT: ${METRICS_PORT:-6970}
       # The scrape endpoint carries no auth, so it binds loopback by default.

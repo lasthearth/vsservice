@@ -11,11 +11,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
 	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
+	"github.com/lasthearth/vsservice/internal/pkg/httpclient"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/pkg/logtoadmin"
 	"github.com/lasthearth/vsservice/internal/ticket/internal/model"
@@ -56,6 +58,7 @@ type AdminDirectory interface {
 
 type Opts struct {
 	fx.In
+	Lc     fx.Lifecycle
 	Logger logger.Logger
 	Cfg    config.Config
 	Site   *notificationuc.Create
@@ -73,10 +76,17 @@ type Notifier struct {
 	roleID  string
 	// async runs a delivery; a goroutine in production, inline in tests.
 	async func(func())
+	// stateMu guards draining and keeps inflight.Add away from inflight.Wait,
+	// which the WaitGroup does not allow to overlap.
+	stateMu  sync.Mutex
+	draining bool
+	// inflight counts the deliveries async started, so shutdown waits for
+	// them instead of cutting them off mid-write.
+	inflight sync.WaitGroup
 }
 
 func New(opts Opts) *Notifier {
-	return &Notifier{
+	n := &Notifier{
 		log:     opts.Logger.WithComponent("notify"),
 		site:    opts.Site,
 		admins:  opts.Admins,
@@ -85,6 +95,39 @@ func New(opts Opts) *Notifier {
 		roleID:  strings.TrimSpace(opts.Cfg.DiscordTicketsRoleID),
 		async:   func(f func()) { go f() },
 	}
+	opts.Lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			n.stateMu.Lock()
+			n.draining = true
+			n.stateMu.Unlock()
+
+			waited := make(chan struct{})
+			go func() {
+				defer close(waited)
+				n.inflight.Wait()
+			}()
+			select {
+			case <-waited:
+			case <-ctx.Done():
+				n.log.Warn("ticket alerts still in flight at shutdown")
+			}
+			return nil
+		},
+	})
+	return n
+}
+
+// start reports whether a delivery may still begin, and counts it when it may.
+// After shutdown starts, alerts are dropped: the process is going away and the
+// database it writes to is closing too.
+func (n *Notifier) start() bool {
+	n.stateMu.Lock()
+	defer n.stateMu.Unlock()
+	if n.draining {
+		return false
+	}
+	n.inflight.Add(1)
+	return true
 }
 
 // StaffLink is the ticket in the admin inbox.
@@ -141,11 +184,23 @@ func (n *Notifier) StaffReplied(ctx context.Context, t *model.Ticket) {
 // run detaches a delivery from the request: the response does not wait for
 // it, and the request's cancellation does not cut it short.
 func (n *Notifier) run(ctx context.Context, job string, f func(ctx context.Context)) {
+	if !n.start() {
+		return
+	}
 	base := context.WithoutCancel(ctx)
 	n.async(func() {
+		defer n.inflight.Done()
 		ctx, _ := logger.WithJob(base, job)
 		ctx, cancel := context.WithTimeout(ctx, deliverTimeout)
 		defer cancel()
+		// A delivery runs on its own goroutine, where a panic would take the
+		// whole service down. Nothing a delivery touches is worth that.
+		defer func() {
+			if r := recover(); r != nil {
+				logger.From(ctx, n.log).Error("ticket alert panicked",
+					zap.String("job", job), zap.Any("panic", r))
+			}
+		}()
 		f(ctx)
 	})
 }
@@ -184,12 +239,15 @@ func (n *Notifier) toDiscord(ctx context.Context, t *model.Ticket, title, text s
 	}
 	payload, err := json.Marshal(discordPayload(t, title, text, n.roleID, ping))
 	if err != nil {
+		logger.From(ctx, n.log).Warn("failed to encode discord payload",
+			zap.String("ticket_id", t.Id), zap.Error(err))
 		return
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, n.webhook, bytes.NewReader(payload))
 	if err != nil {
-		logger.From(ctx, n.log).Warn("failed to build discord request", zap.Error(err))
+		logger.From(ctx, n.log).Warn("failed to build discord request",
+			httpclient.MaskedError(err))
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -197,7 +255,9 @@ func (n *Notifier) toDiscord(ctx context.Context, t *model.Ticket, title, text s
 
 	resp, err := n.http.Do(req)
 	if err != nil {
-		logger.From(ctx, n.log).Warn("discord ticket alert failed", zap.String("ticket_id", t.Id), zap.Error(err))
+		// The error text carries the webhook URL, and the token is part of it.
+		logger.From(ctx, n.log).Warn("discord ticket alert failed",
+			zap.String("ticket_id", t.Id), httpclient.MaskedError(err))
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -205,7 +265,10 @@ func (n *Notifier) toDiscord(ctx context.Context, t *model.Ticket, title, text s
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 		logger.From(ctx, n.log).Warn("discord ticket alert rejected",
 			zap.String("ticket_id", t.Id), zap.Int("status", resp.StatusCode), zap.ByteString("body", body))
+		return
 	}
+	// Drain so the client can reuse the connection.
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 2048))
 }
 
 type discordEmbedField struct {

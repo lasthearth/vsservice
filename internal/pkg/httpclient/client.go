@@ -29,13 +29,23 @@ var secretInWebhook = regexp.MustCompile(`(webhooks/\d+/)[A-Za-z0-9_\-]+`)
 // secretInQuery matches a credential carried in a query value.
 var secretInQuery = regexp.MustCompile(`([?&](?:token|key|api_key|apikey|secret|signature|password|auth)=)([^&\s]+)`)
 
-// maskSecrets removes credentials from a URL-derived string before it reaches
+// MaskSecrets removes credentials from a URL-derived string before it reaches
 // a log record. The query is never logged by the hooks, but the library's own
-// messages embed whole URLs.
-func maskSecrets(s string) string {
+// messages embed whole URLs, and a transport error carries the full URL in its
+// text: *url.Error prints `Post "https://…/webhooks/<id>/<token>": …`.
+func MaskSecrets(s string) string {
 	s = secretInPath.ReplaceAllString(s, "bot[redacted]")
 	s = secretInWebhook.ReplaceAllString(s, "${1}[redacted]")
 	return secretInQuery.ReplaceAllString(s, "${1}[redacted]")
+}
+
+// MaskedError is zap.Error with the credential-bearing URL text removed. Every
+// error that can come back from this client must be logged through it.
+func MaskedError(err error) zap.Field {
+	if err == nil {
+		return zap.Skip()
+	}
+	return zap.String("error", MaskSecrets(err.Error()))
 }
 
 // New builds the shared outbound client. With HTTP_CLIENT_LOG on, every
@@ -67,10 +77,10 @@ type leveledAdapter struct {
 	log logger.Logger
 }
 
-func (a leveledAdapter) Error(msg string, kv ...any) { a.log.Error(maskSecrets(msg), kvFields(kv)...) }
-func (a leveledAdapter) Warn(msg string, kv ...any)  { a.log.Warn(maskSecrets(msg), kvFields(kv)...) }
-func (a leveledAdapter) Info(msg string, kv ...any)  { a.log.Info(maskSecrets(msg), kvFields(kv)...) }
-func (a leveledAdapter) Debug(msg string, kv ...any) { a.log.Debug(maskSecrets(msg), kvFields(kv)...) }
+func (a leveledAdapter) Error(msg string, kv ...any) { a.log.Error(MaskSecrets(msg), kvFields(kv)...) }
+func (a leveledAdapter) Warn(msg string, kv ...any)  { a.log.Warn(MaskSecrets(msg), kvFields(kv)...) }
+func (a leveledAdapter) Info(msg string, kv ...any)  { a.log.Info(MaskSecrets(msg), kvFields(kv)...) }
+func (a leveledAdapter) Debug(msg string, kv ...any) { a.log.Debug(MaskSecrets(msg), kvFields(kv)...) }
 
 func kvFields(kv []any) []zap.Field {
 	out := make([]zap.Field, 0, len(kv)/2)
@@ -87,9 +97,9 @@ func kvFields(kv []any) []zap.Field {
 func kvField(key string, v any) zap.Field {
 	switch val := v.(type) {
 	case string:
-		return zap.String(key, maskSecrets(val))
+		return zap.String(key, MaskSecrets(val))
 	case error:
-		return zap.NamedError(key, val)
+		return zap.String(key, MaskSecrets(val.Error()))
 	case int:
 		return zap.Int(key, val)
 	case int64:
@@ -109,7 +119,7 @@ func requestHook(log logger.Logger) retryablehttp.RequestLogHook {
 			zap.Int("attempt", attempt+1),
 			zap.String("http_method", req.Method),
 			zap.String("host", req.URL.Host),
-			zap.String("path", maskSecrets(req.URL.Path)),
+			zap.String("path", MaskSecrets(req.URL.Path)),
 		)
 	}
 }
@@ -128,7 +138,7 @@ func responseHook(log logger.Logger) retryablehttp.ResponseLogHook {
 			if req.URL != nil {
 				fields = append(fields,
 					zap.String("host", req.URL.Host),
-					zap.String("path", maskSecrets(req.URL.Path)),
+					zap.String("path", MaskSecrets(req.URL.Path)),
 				)
 			}
 		}
@@ -143,12 +153,12 @@ func errorHook(log logger.Logger) retryablehttp.ErrorHandler {
 			zap.String("event", "http.out.failed"),
 			zap.String("component", "http"),
 			zap.Int("tries", numTries),
-			zap.Error(err),
+			MaskedError(err),
 		}
 		if resp != nil && resp.Request != nil && resp.Request.URL != nil {
 			fields = append(fields,
 				zap.String("host", resp.Request.URL.Host),
-				zap.String("path", maskSecrets(resp.Request.URL.Path)),
+				zap.String("path", MaskSecrets(resp.Request.URL.Path)),
 			)
 		}
 

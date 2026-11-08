@@ -26,17 +26,16 @@ const (
 
 // Errors returned by the model. The service maps them to typed domain errors.
 var (
-	ErrAuthorRequired   = errors.New("author is required")
-	ErrCategoryInvalid  = errors.New("unknown category")
-	ErrStatusInvalid    = errors.New("unknown status")
-	ErrSubjectInvalid   = errors.New("subject must be 3 to 120 characters")
-	ErrTextInvalid      = errors.New("text must be 1 to 4000 characters")
-	ErrClosed           = errors.New("the ticket is closed")
-	ErrNotClosed        = errors.New("the ticket is not closed")
-	ErrThreadFull       = errors.New("the ticket holds too many messages")
-	ErrCloseWithNote    = errors.New("an internal note cannot close the ticket")
-	ErrNotAuthor        = errors.New("not the author of the ticket")
-	ErrAssigneeRequired = errors.New("assignee is required")
+	ErrAuthorRequired  = errors.New("author is required")
+	ErrCategoryInvalid = errors.New("unknown category")
+	ErrStatusInvalid   = errors.New("unknown status")
+	ErrSubjectInvalid  = errors.New("subject must be 3 to 120 characters")
+	ErrTextInvalid     = errors.New("text must be 1 to 4000 characters")
+	ErrClosed          = errors.New("the ticket is closed")
+	ErrNotClosed       = errors.New("the ticket is not closed")
+	ErrThreadFull      = errors.New("the ticket holds too many messages")
+	ErrCloseWithNote   = errors.New("an internal note cannot close the ticket")
+	ErrNotAuthor       = errors.New("not the author of the ticket")
 )
 
 // Category is what a ticket is about.
@@ -246,7 +245,8 @@ func (t *Ticket) CloseByAuthor(userId string, now time.Time) error {
 	return nil
 }
 
-// ReopenByAuthor hands a closed ticket back to the staff.
+// ReopenByAuthor hands a closed ticket back to the staff. The author acted on
+// the thread, so their unread mark goes the same way a message clears it.
 func (t *Ticket) ReopenByAuthor(userId string, now time.Time) error {
 	if !t.IsAuthor(userId) {
 		return ErrNotAuthor
@@ -257,6 +257,7 @@ func (t *Ticket) ReopenByAuthor(userId string, now time.Time) error {
 	t.Status = StatusOpen
 	t.ClosedAt = nil
 	t.AnsweredAt = nil
+	t.AuthorUnread = false
 	t.StaffUnread = true
 	t.LastPublicAt = now
 	t.LastMessageAt = now

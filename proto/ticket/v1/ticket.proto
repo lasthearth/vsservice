@@ -27,7 +27,8 @@ service TicketService {
   option (google.api.default_host) = "api.lasthearth.ru";
 
   // Open a ticket with its first message. A player may keep at most 3 tickets
-  // that are not closed.
+  // that are not closed. The limit is counted before the insert, so two
+  // parallel writes can both pass it; it is a soft cap, not a hard one.
   //
   // Errors:
   //   - INVALID_ARGUMENT (400): category unset; subject not 3..120 characters;
@@ -263,7 +264,8 @@ message Ticket {
   string subject = 3;
   TicketCategory category = 4;
   TicketStatus status = 5;
-  // The admin who took the ticket; empty while nobody did.
+  // The admin who took the ticket; empty while nobody did. Only the staff
+  // methods fill it: the author's view leaves it empty.
   string assignee_id = 6;
   // Whether the viewer has not read the last message meant for them: a staff
   // reply for the author, a player message for the staff.
@@ -319,6 +321,8 @@ message CreateTicketRequest {
 message ListMyTicketsRequest {
   // At most 50; 20 when unset.
   int32 page_size = 1;
+  // From a previous ListMyTickets response. A token from AdminListTickets is
+  // rejected: the two lists sort by different fields.
   string page_token = 2;
 }
 
@@ -378,6 +382,8 @@ message AdminListTicketsRequest {
   string author_id = 4;
   // At most 50; 20 when unset.
   int32 page_size = 5;
+  // From a previous AdminListTickets response. A token from ListMyTickets is
+  // rejected: the two lists sort by different fields.
   string page_token = 6;
 }
 

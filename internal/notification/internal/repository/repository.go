@@ -132,10 +132,18 @@ func (r *Repository) MarkNotificationRead(ctx context.Context, id, userId string
 		return err
 	}
 
-	if _, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid, "user_id": userId}, update); err != nil {
+	if _, err := r.coll.UpdateOne(ctx, markReadFilter(oid, userId), update); err != nil {
 		l.Error("update error", zap.Error(err))
 		return err
 	}
 
 	return nil
+}
+
+// markReadFilter binds the update to its recipient. Without the user_id leg any
+// caller who knows an id can mark anyone's notification read; a broadcast
+// (user_id "broadcast") then matches nobody, which is what keeps its shared
+// state out of one player's hands.
+func markReadFilter(oid bson.ObjectID, userId string) bson.M {
+	return bson.M{"_id": oid, "user_id": userId}
 }
