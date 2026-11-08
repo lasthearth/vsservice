@@ -52,6 +52,9 @@ message Notification {
   }
   State state = 5;
   google.protobuf.Timestamp created_at = 6;
+  // Where the notification leads on the site (a path such as /support/123),
+  // empty when it leads nowhere in particular.
+  string link = 7;
 }
 
 message ListNotificationsRequest {

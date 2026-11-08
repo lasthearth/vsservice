@@ -1,0 +1,476 @@
+syntax = "proto3";
+
+package ticket.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// TicketService is the support desk: a player opens a ticket, the server
+// administration answers in the same thread. A player sees only their own
+// tickets and never the staff's internal notes; the staff methods (Admin*,
+// saved replies) need the tickets:manage scope.
+//
+// A ticket is OPEN while it waits for the staff, ANSWERED while it waits for
+// the player, CLOSED when either side closed it. A player's message moves it
+// to OPEN, a staff reply to ANSWERED; an ANSWERED ticket nobody touched for 7
+// days closes itself.
+//
+// New tickets and player replies notify the staff (site notification to the
+// assignee or, while nobody took the ticket, to every admin; plus the
+// DISCORD_TICKETS_WEBHOOK_URL channel when configured). A staff reply notifies
+// the author.
+service TicketService {
+  option (google.api.default_host) = "api.lasthearth.ru";
+
+  // Open a ticket with its first message. A player may keep at most 3 tickets
+  // that are not closed.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): category unset; subject not 3..120 characters;
+  //     text empty or over 4000 characters
+  //   - RESOURCE_EXHAUSTED (429): the caller already has 3 tickets not closed
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc CreateTicket(CreateTicketRequest) returns (Ticket) {
+    option (google.api.http) = {
+      post: "/v1/tickets"
+      body: "*"
+    };
+  }
+
+  // The caller's tickets, most recent activity first, without messages.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): malformed page_token
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ListMyTickets(ListMyTicketsRequest) returns (ListTicketsResponse) {
+    option (google.api.http) = {get: "/v1/tickets"};
+  }
+
+  // One of the caller's tickets with its messages (internal notes left out).
+  // Reading it clears the caller's unread mark.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such ticket, or it is not the caller's
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc GetTicket(GetTicketRequest) returns (Ticket) {
+    option (google.api.http) = {get: "/v1/tickets/{id}"};
+    option (google.api.method_signature) = "id";
+  }
+
+  // Add a message to one of the caller's tickets. Moves it to OPEN.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): text empty or over 4000 characters
+  //   - NOT_FOUND (404): no such ticket, or it is not the caller's
+  //   - FAILED_PRECONDITION (412): the ticket is closed (reopen it first), it
+  //     holds 200 messages already, or it kept changing under concurrent writes
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc PostTicketMessage(PostTicketMessageRequest) returns (Ticket) {
+    option (google.api.http) = {
+      post: "/v1/tickets/{id}/messages"
+      body: "*"
+    };
+  }
+
+  // Close one of the caller's tickets. Closing a closed ticket is a no-op.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such ticket, or it is not the caller's
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc CloseTicket(CloseTicketRequest) returns (Ticket) {
+    option (google.api.http) = {post: "/v1/tickets/{id}:close"};
+  }
+
+  // Reopen one of the caller's closed tickets. Moves it to OPEN.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such ticket, or it is not the caller's
+  //   - FAILED_PRECONDITION (412): the ticket is not closed
+  //   - RESOURCE_EXHAUSTED (429): the caller already has 3 tickets not closed
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc ReopenTicket(ReopenTicketRequest) returns (Ticket) {
+    option (google.api.http) = {post: "/v1/tickets/{id}:reopen"};
+  }
+
+  // How many of the caller's tickets carry a staff reply they have not read.
+  //
+  // Errors:
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - INTERNAL (500): database failure
+  rpc GetMyTicketCounters(GetMyTicketCountersRequest) returns (MyTicketCounters) {
+    option (google.api.http) = {get: "/v1/tickets:counters"};
+  }
+
+  // Every ticket, most recent activity first, without messages. Staff only.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): malformed page_token
+  //   - PERMISSION_DENIED (403): no tickets:manage scope
+  //   - INTERNAL (500): database failure
+  rpc AdminListTickets(AdminListTicketsRequest) returns (ListTicketsResponse) {
+    option (google.api.http) = {get: "/v1/admin/tickets"};
+  }
+
+  // One ticket with all its messages, internal notes included. Reading it
+  // clears the staff unread mark. Staff only.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such ticket
+  //   - PERMISSION_DENIED (403): no tickets:manage scope
+  //   - INTERNAL (500): database failure
+  rpc AdminGetTicket(AdminGetTicketRequest) returns (Ticket) {
+    option (google.api.http) = {get: "/v1/admin/tickets/{id}"};
+  }
+
+  // Answer a ticket or leave an internal note. A reply moves the ticket to
+  // ANSWERED (CLOSED with close = true) and notifies the author; a note
+  // changes nothing but the thread. A reply to a closed ticket reopens it. The
+  // replying admin takes a ticket nobody took. Staff only.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): text empty or over 4000 characters; close with
+  //     an internal note
+  //   - NOT_FOUND (404): no such ticket
+  //   - FAILED_PRECONDITION (412): the ticket holds 200 messages already, or it
+  //     kept changing under concurrent writes
+  //   - PERMISSION_DENIED (403): no tickets:manage scope
+  //   - INTERNAL (500): database failure
+  rpc AdminReplyTicket(AdminReplyTicketRequest) returns (Ticket) {
+    option (google.api.http) = {
+      post: "/v1/admin/tickets/{id}/messages"
+      body: "*"
+    };
+  }
+
+  // Change a ticket's category, status or assignee. Unset fields stay as they
+  // are; an empty assignee_id releases the ticket. Staff only.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): unknown category or status
+  //   - NOT_FOUND (404): no such ticket
+  //   - FAILED_PRECONDITION (412): the ticket kept changing under concurrent
+  //     writes
+  //   - PERMISSION_DENIED (403): no tickets:manage scope
+  //   - INTERNAL (500): database failure
+  rpc AdminUpdateTicket(AdminUpdateTicketRequest) returns (Ticket) {
+    option (google.api.http) = {
+      patch: "/v1/admin/tickets/{id}"
+      body: "*"
+    };
+  }
+
+  // Badge counters for the staff inbox. Staff only.
+  //
+  // Errors:
+  //   - PERMISSION_DENIED (403): no tickets:manage scope
+  //   - INTERNAL (500): database failure
+  rpc AdminGetTicketCounters(AdminGetTicketCountersRequest) returns (AdminTicketCounters) {
+    option (google.api.http) = {get: "/v1/admin/tickets:counters"};
+  }
+
+  // The staff's saved replies, by title. Staff only.
+  //
+  // Errors:
+  //   - PERMISSION_DENIED (403): no tickets:manage scope
+  //   - INTERNAL (500): database failure
+  rpc ListSavedReplies(ListSavedRepliesRequest) returns (ListSavedRepliesResponse) {
+    option (google.api.http) = {get: "/v1/admin/ticket-replies"};
+  }
+
+  // Save a reply template. The text may hold {nickname}, which the site fills
+  // in when the template is used. Staff only.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): title not 1..80 characters, text empty or over
+  //     4000 characters
+  //   - RESOURCE_EXHAUSTED (429): 100 saved replies already
+  //   - PERMISSION_DENIED (403): no tickets:manage scope
+  //   - INTERNAL (500): database failure
+  rpc CreateSavedReply(CreateSavedReplyRequest) returns (SavedReply) {
+    option (google.api.http) = {
+      post: "/v1/admin/ticket-replies"
+      body: "*"
+    };
+  }
+
+  // Replace a saved reply's title and text. Staff only.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): as in CreateSavedReply
+  //   - NOT_FOUND (404): no such saved reply
+  //   - PERMISSION_DENIED (403): no tickets:manage scope
+  //   - INTERNAL (500): database failure
+  rpc UpdateSavedReply(UpdateSavedReplyRequest) returns (SavedReply) {
+    option (google.api.http) = {
+      patch: "/v1/admin/ticket-replies/{id}"
+      body: "*"
+    };
+  }
+
+  // Delete a saved reply. Staff only.
+  //
+  // Errors:
+  //   - NOT_FOUND (404): no such saved reply
+  //   - PERMISSION_DENIED (403): no tickets:manage scope
+  //   - INTERNAL (500): database failure
+  rpc DeleteSavedReply(DeleteSavedReplyRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/v1/admin/ticket-replies/{id}"};
+  }
+}
+
+// What a ticket is about.
+enum TicketCategory {
+  TICKET_CATEGORY_UNSPECIFIED = 0;
+  // Something in the game or on the site does not work.
+  TICKET_CATEGORY_BUG = 1;
+  // A complaint about another player.
+  TICKET_CATEGORY_COMPLAINT = 2;
+  // A donation or a shop purchase.
+  TICKET_CATEGORY_DONATE = 3;
+  // A settlement: claims, borders, residents.
+  TICKET_CATEGORY_SETTLEMENT = 4;
+  // A question.
+  TICKET_CATEGORY_QUESTION = 5;
+  // Anything else.
+  TICKET_CATEGORY_OTHER = 6;
+}
+
+// Who the ticket waits for.
+enum TicketStatus {
+  TICKET_STATUS_UNSPECIFIED = 0;
+  // Waits for the staff.
+  TICKET_STATUS_OPEN = 1;
+  // Waits for the player.
+  TICKET_STATUS_ANSWERED = 2;
+  // Closed by either side, or by itself after 7 quiet days in ANSWERED.
+  TICKET_STATUS_CLOSED = 3;
+}
+
+message Ticket {
+  string id = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // The player who opened the ticket (Logto user id).
+  string author_id = 2 [(google.api.field_behavior) = OUTPUT_ONLY];
+  string subject = 3;
+  TicketCategory category = 4;
+  TicketStatus status = 5;
+  // The admin who took the ticket; empty while nobody did.
+  string assignee_id = 6;
+  // Whether the viewer has not read the last message meant for them: a staff
+  // reply for the author, a player message for the staff.
+  bool unread = 7 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // How many messages the viewer can see.
+  int32 message_count = 8 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // The thread, oldest first. Filled by the Get and write methods only, not by
+  // the lists.
+  repeated TicketMessage messages = 9 [(google.api.field_behavior) = OUTPUT_ONLY];
+  google.protobuf.Timestamp created_at = 10 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // The last message visible to the viewer.
+  google.protobuf.Timestamp last_message_at = 11 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // Set while the ticket is closed.
+  google.protobuf.Timestamp closed_at = 12 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+message TicketMessage {
+  string id = 1;
+  // Logto user id of the writer.
+  string author_id = 2;
+  // Whether the writer answered for the staff.
+  bool staff = 3;
+  string text = 4;
+  // A note only the staff can see.
+  bool internal = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message CreateTicketRequest {
+  string subject = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 3
+      max_len: 120
+    }
+  ];
+  TicketCategory category = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [0]
+    }
+  ];
+  string text = 3 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 4000
+    }
+  ];
+}
+
+message ListMyTicketsRequest {
+  // At most 50; 20 when unset.
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListTicketsResponse {
+  repeated Ticket tickets = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
+}
+
+message GetTicketRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostTicketMessageRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string text = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 4000
+    }
+  ];
+}
+
+message CloseTicketRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ReopenTicketRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetMyTicketCountersRequest {}
+
+message MyTicketCounters {
+  // Tickets with a staff reply the caller has not read.
+  int32 unread = 1;
+}
+
+// Which tickets the staff inbox shows by assignee.
+enum AssigneeFilter {
+  // All tickets.
+  ASSIGNEE_FILTER_UNSPECIFIED = 0;
+  // Taken by the caller.
+  ASSIGNEE_FILTER_MINE = 1;
+  // Taken by nobody.
+  ASSIGNEE_FILTER_NOBODY = 2;
+}
+
+message AdminListTicketsRequest {
+  // Unset: every status.
+  TicketStatus status = 1;
+  // Unset: every category.
+  TicketCategory category = 2;
+  AssigneeFilter assignee = 3;
+  // Only the tickets of this player.
+  string author_id = 4;
+  // At most 50; 20 when unset.
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message AdminGetTicketRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message AdminReplyTicketRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string text = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 4000
+    }
+  ];
+  // A note for the staff only; the author neither sees it nor gets notified.
+  bool internal = 3;
+  // Close the ticket with this reply.
+  bool close = 4;
+}
+
+message AdminUpdateTicketRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  optional TicketCategory category = 2;
+  optional TicketStatus status = 3;
+  // Empty releases the ticket.
+  optional string assignee_id = 4;
+}
+
+message AdminGetTicketCountersRequest {}
+
+message AdminTicketCounters {
+  // Tickets waiting for the staff.
+  int32 open = 1;
+  // Of those, taken by nobody.
+  int32 open_unassigned = 2;
+  // Of those, taken by the caller.
+  int32 open_mine = 3;
+  // Tickets with a player message the staff has not read.
+  int32 unread = 4;
+}
+
+message SavedReply {
+  string id = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
+  string title = 2;
+  string text = 3;
+  // Logto user id of the admin who last saved it.
+  string updated_by = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+  google.protobuf.Timestamp updated_at = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+message ListSavedRepliesRequest {}
+
+message ListSavedRepliesResponse {
+  repeated SavedReply replies = 1;
+}
+
+message CreateSavedReplyRequest {
+  string title = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 80
+    }
+  ];
+  string text = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 4000
+    }
+  ];
+}
+
+message UpdateSavedReplyRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string title = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 80
+    }
+  ];
+  string text = 3 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 4000
+    }
+  ];
+}
+
+message DeleteSavedReplyRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}

@@ -28,7 +28,7 @@ type NotificationMapper interface {
 
 type Repository interface {
 	ListNotifications(ctx context.Context, limit int, userId, pageToken, orderBy string) ([]model.Notification, string, error)
-	MarkNotificationRead(ctx context.Context, id string) error
+	MarkNotificationRead(ctx context.Context, id, userId string) error
 }
 
 // ListNotifications implements notificationv1.NotificationServiceServer.
@@ -77,7 +77,15 @@ func (s *Service) MarkAsRead(ctx context.Context, req *notificationv1.MarkAsRead
 		return nil, status.Error(codes.InvalidArgument, "invalid notification id")
 	}
 
-	if err := s.repo.MarkNotificationRead(ctx, req.GetId()); err != nil {
+	uid, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		l.Error("failed to get user id", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to get user id")
+	}
+
+	// Only the recipient's own notification is marked. Broadcasts are shared by
+	// everyone and the site keeps their read state in the browser.
+	if err := s.repo.MarkNotificationRead(ctx, req.GetId(), uid); err != nil {
 		return nil, status.Error(codes.Internal, "failed to mark notification as read")
 	}
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/logtoadmin"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
 	service "github.com/lasthearth/vsservice/internal/player/internal/service/player"
 	"go.uber.org/fx"
@@ -18,12 +19,14 @@ type Opts struct {
 	Manager *tokenmanager.Manager
 	Logger  logger.Logger
 	Cfg     config.Config
+	Admins  *logtoadmin.Directory
 }
 
 type Repository struct {
 	client *http.Client
 	cfg    config.Config
 	logger logger.Logger
+	admins *logtoadmin.Directory
 }
 
 func New(opts Opts) *Repository {
@@ -33,5 +36,6 @@ func New(opts Opts) *Repository {
 		client: opts.Manager.Client(context.Background()),
 		cfg:    opts.Cfg,
 		logger: logger,
+		admins: opts.Admins,
 	}
 }

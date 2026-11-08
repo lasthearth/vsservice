@@ -25,6 +25,7 @@ type NotificationMapper interface {
 
 	ToModels(dto []dto.Notification) []model.Notification
 	// goverter:autoMap Model
+	// goverter:map Model.Id Id
 	ToModel(dto dto.Notification) model.Notification
 }
 
@@ -109,7 +110,7 @@ func (r *Repository) ListNotifications(ctx context.Context, limit int, userID, n
 	return notifications, next, nil
 }
 
-func (r *Repository) MarkNotificationRead(ctx context.Context, id string) error {
+func (r *Repository) MarkNotificationRead(ctx context.Context, id, userId string) error {
 	l := r.log.
 		WithMethod("mark_notification_read").
 		With(zap.String("id", id))
@@ -131,7 +132,7 @@ func (r *Repository) MarkNotificationRead(ctx context.Context, id string) error 
 		return err
 	}
 
-	if _, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid}, update); err != nil {
+	if _, err := r.coll.UpdateOne(ctx, bson.M{"_id": oid, "user_id": userId}, update); err != nil {
 		l.Error("update error", zap.Error(err))
 		return err
 	}

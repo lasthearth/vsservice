@@ -23,6 +23,7 @@ import (
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
+	ticketv1 "github.com/lasthearth/vsservice/gen/ticket/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
@@ -70,6 +71,7 @@ type Opts struct {
 	AppearanceV1    appearancev1.AppearanceServiceServer
 	WikiV1          wikiv1.WikiServiceServer
 	ModV1           modv1.ModServiceServer
+	TicketV1        ticketv1.TicketServiceServer
 	// ModArchive is the plain-HTTP route the gRPC services cannot serve.
 	ModArchive mod.ArchiveHandler
 	// Add the webhook service
@@ -107,6 +109,7 @@ type Server struct {
 	appearanceV1        appearancev1.AppearanceServiceServer
 	wikiV1              wikiv1.WikiServiceServer
 	modV1               modv1.ModServiceServer
+	ticketV1            ticketv1.TicketServiceServer
 	modArchive          mod.ArchiveHandler
 	logtoWebhookService *webhook.LogtoWebhookService
 
@@ -148,6 +151,7 @@ func New(opts Opts) *Server {
 		appearanceV1:        opts.AppearanceV1,
 		wikiV1:              opts.WikiV1,
 		modV1:               opts.ModV1,
+		ticketV1:            opts.TicketV1,
 		modArchive:          opts.ModArchive,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,

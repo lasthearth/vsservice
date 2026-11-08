@@ -20,6 +20,7 @@ func (c *NotificationMapperImpl) ToProto(source model.Notification) *v1.Notifica
 	notificationv1Notification.Message = source.Message
 	notificationv1Notification.State = service.StateToProto(source.State)
 	notificationv1Notification.CreatedAt = goverter.TimeToTimestamp(source.CreatedAt)
+	notificationv1Notification.Link = source.Link
 	return &notificationv1Notification
 }
 func (c *NotificationMapperImpl) ToProtos(source []model.Notification) []*v1.Notification {

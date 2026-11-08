@@ -37,6 +37,11 @@ func TestMaskSecrets(t *testing.T) {
 			want: "/v1/send?api_key=[redacted]&chat_id=42",
 		},
 		{
+			name: "discord webhook token in path",
+			in:   "https://discord.com/api/webhooks/1234567890/AbC-def_GHI123",
+			want: "https://discord.com/api/webhooks/1234567890/[redacted]",
+		},
+		{
 			name: "ordinary path untouched",
 			in:   "/api/v10/users/@me",
 			want: "/api/v10/users/@me",

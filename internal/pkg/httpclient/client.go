@@ -22,6 +22,10 @@ const (
 // rather than in a header: api.telegram.org/bot<id>:<secret>/sendMessage.
 var secretInPath = regexp.MustCompile(`bot\d+:[A-Za-z0-9_\-]{8,}`)
 
+// secretInWebhook matches the token of a Discord webhook URL, which also lives
+// in the path: discord.com/api/webhooks/<id>/<token>.
+var secretInWebhook = regexp.MustCompile(`(webhooks/\d+/)[A-Za-z0-9_\-]+`)
+
 // secretInQuery matches a credential carried in a query value.
 var secretInQuery = regexp.MustCompile(`([?&](?:token|key|api_key|apikey|secret|signature|password|auth)=)([^&\s]+)`)
 
@@ -30,6 +34,7 @@ var secretInQuery = regexp.MustCompile(`([?&](?:token|key|api_key|apikey|secret|
 // messages embed whole URLs.
 func maskSecrets(s string) string {
 	s = secretInPath.ReplaceAllString(s, "bot[redacted]")
+	s = secretInWebhook.ReplaceAllString(s, "${1}[redacted]")
 	return secretInQuery.ReplaceAllString(s, "${1}[redacted]")
 }
 

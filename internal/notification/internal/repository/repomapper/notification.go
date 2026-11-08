@@ -16,6 +16,7 @@ func (c *NotificationMapperImpl) FromModel(source model.Notification) dto.Notifi
 	dtoNotification.UserId = source.UserId
 	dtoNotification.Title = source.Title
 	dtoNotification.Message = source.Message
+	dtoNotification.Link = source.Link
 	dtoNotification.State = string(source.State)
 	return dtoNotification
 }
@@ -35,6 +36,7 @@ func (c *NotificationMapperImpl) ToModel(source dto.Notification) model.Notifica
 	modelNotification.UserId = source.UserId
 	modelNotification.Title = source.Title
 	modelNotification.Message = source.Message
+	modelNotification.Link = source.Link
 	modelNotification.State = model.NotificationState(source.State)
 	modelNotification.CreatedAt = goverter.TimeToTime(source.Model.CreatedAt)
 	modelNotification.UpdatedAt = goverter.TimeToTime(source.Model.UpdatedAt)
