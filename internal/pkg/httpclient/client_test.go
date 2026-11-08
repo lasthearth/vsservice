@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -37,6 +38,11 @@ func TestMaskSecrets(t *testing.T) {
 			want: "/v1/send?api_key=[redacted]&chat_id=42",
 		},
 		{
+			name: "discord webhook token in path",
+			in:   "https://discord.com/api/webhooks/1234567890/AbC-def_GHI123",
+			want: "https://discord.com/api/webhooks/1234567890/[redacted]",
+		},
+		{
 			name: "ordinary path untouched",
 			in:   "/api/v10/users/@me",
 			want: "/api/v10/users/@me",
@@ -45,7 +51,7 @@ func TestMaskSecrets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := maskSecrets(tt.in); got != tt.want {
+			if got := MaskSecrets(tt.in); got != tt.want {
 				t.Errorf("want %q, got %q", tt.want, got)
 			}
 		})
@@ -60,12 +66,31 @@ func TestKVFieldMasksStrings(t *testing.T) {
 	if strings.Contains(f.String, "AAHdqTcvCH1vGJHFsiiretUqLbP3XyZZ9") {
 		t.Errorf("the token reached the field: %q", f.String)
 	}
+}
 
-	// Errors keep their text: they are the debugging signal, and a driver or
-	// transport error does not embed the credential.
-	cause := errors.New("dial tcp: connection refused")
-	if got := kvField("error", cause); got.Type != zapcore.ErrorType {
-		t.Errorf("want an error field, got %+v", got)
+// A transport error carries the whole URL in its text, and retryablehttp hands
+// that error to the logger as a kv value. Masking only string values would
+// leave the Discord webhook token in the log.
+func TestKVFieldMasksErrorText(t *testing.T) {
+	const token = "SUPERSECRET_TOKEN"
+	cause := &url.Error{
+		Op:  http.MethodPost,
+		URL: "https://discord.com/api/webhooks/1234567890/" + token,
+		Err: errors.New("dial tcp: lookup discord.com: no such host"),
+	}
+
+	f := kvField("error", cause)
+	if f.Type != zapcore.StringType {
+		t.Fatalf("an error field must be masked into a string, got %+v", f)
+	}
+	if strings.Contains(f.String, token) {
+		t.Errorf("the webhook token reached the log: %q", f.String)
+	}
+	if !strings.Contains(f.String, "webhooks/1234567890/[redacted]") {
+		t.Errorf("the url must survive masked: %q", f.String)
+	}
+	if !strings.Contains(f.String, "no such host") {
+		t.Errorf("masking must keep the cause: %q", f.String)
 	}
 }
 
@@ -125,7 +150,16 @@ func TestErrorHookRecordsTheFailureAndClosesTheBody(t *testing.T) {
 		Body:       &closeTracker{onClose: func() { closed = true }},
 	}
 
-	gotResp, gotErr := errorHook(log)(resp, errors.New("giving up after 5 attempts"), 5)
+	// The error a real webhook failure produces: the URL, token included, is
+	// part of its text.
+	const token = "SUPERSECRET_TOKEN"
+	hookErr := &url.Error{
+		Op:  http.MethodPost,
+		URL: "https://discord.com/api/webhooks/1234567890/" + token,
+		Err: errors.New("giving up after 5 attempts"),
+	}
+
+	gotResp, gotErr := errorHook(log)(resp, hookErr, 5)
 
 	if gotResp != resp || gotErr == nil {
 		t.Errorf("want the response and error passed through, got (%v, %v)", gotResp, gotErr)
@@ -140,6 +174,17 @@ func TestErrorHookRecordsTheFailureAndClosesTheBody(t *testing.T) {
 	}
 	assertString(t, entries[0], "event", "http.out.failed")
 	assertInt(t, entries[0], "tries", 5)
+	if strings.Contains(entries[0].Message, token) {
+		t.Errorf("the token reached the message: %q", entries[0].Message)
+	}
+	for _, f := range entries[0].Context {
+		if s, ok := f.Interface.(string); ok && strings.Contains(s, token) {
+			t.Errorf("the token reached field %q: %q", f.Key, s)
+		}
+		if strings.Contains(f.String, token) {
+			t.Errorf("the token reached field %q: %q", f.Key, f.String)
+		}
+	}
 }
 
 // With logging off the library's own stderr logger must stay silent, or retry

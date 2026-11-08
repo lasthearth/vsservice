@@ -402,6 +402,341 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/settlement.v1.SetRolesEnabledResponse'
+  /v1/admin/ticket-replies:
+    get:
+      tags:
+        - TicketService
+      summary: The staff's saved replies, by title. Staff only.
+      description: |-
+        Errors:
+           - PERMISSION_DENIED (403): no tickets:manage scope
+           - INTERNAL (500): database failure
+      operationId: TicketService_ListSavedReplies
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.ListSavedRepliesResponse'
+    post:
+      tags:
+        - TicketService
+      summary: |-
+        Save a reply template. The text may hold {nickname}, which the site fills
+         in when the template is used. Staff only.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): title not 1..80 characters, text empty or over
+             4000 characters
+           - RESOURCE_EXHAUSTED (429): 100 saved replies already
+           - PERMISSION_DENIED (403): no tickets:manage scope
+           - INTERNAL (500): database failure
+      operationId: TicketService_CreateSavedReply
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ticket.v1.CreateSavedReplyRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.SavedReply'
+  /v1/admin/ticket-replies/{id}:
+    delete:
+      tags:
+        - TicketService
+      summary: Delete a saved reply. Staff only.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such saved reply
+           - PERMISSION_DENIED (403): no tickets:manage scope
+           - INTERNAL (500): database failure
+      operationId: TicketService_DeleteSavedReply
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.Empty'
+    patch:
+      tags:
+        - TicketService
+      summary: Replace a saved reply's title and text. Staff only.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): as in CreateSavedReply
+           - NOT_FOUND (404): no such saved reply
+           - PERMISSION_DENIED (403): no tickets:manage scope
+           - INTERNAL (500): database failure
+      operationId: TicketService_UpdateSavedReply
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  title: title
+                  maxLength: 80
+                  minLength: 1
+                text:
+                  type: string
+                  title: text
+                  maxLength: 4000
+                  minLength: 1
+              title: UpdateSavedReplyRequest
+              required:
+                - title
+                - text
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.SavedReply'
+  /v1/admin/tickets:
+    get:
+      tags:
+        - TicketService
+      summary: Every ticket, most recent activity first, without messages. Staff only.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): malformed page_token
+           - PERMISSION_DENIED (403): no tickets:manage scope
+           - INTERNAL (500): database failure
+      operationId: TicketService_AdminListTickets
+      parameters:
+        - name: status
+          in: query
+          description: 'Unset: every status.'
+          schema:
+            title: status
+            description: 'Unset: every status.'
+            $ref: '#/components/schemas/ticket.v1.TicketStatus'
+        - name: category
+          in: query
+          description: 'Unset: every category.'
+          schema:
+            title: category
+            description: 'Unset: every category.'
+            $ref: '#/components/schemas/ticket.v1.TicketCategory'
+        - name: assignee
+          in: query
+          schema:
+            title: assignee
+            $ref: '#/components/schemas/ticket.v1.AssigneeFilter'
+        - name: author_id
+          in: query
+          description: Only the tickets of this player.
+          schema:
+            type: string
+            title: author_id
+            description: Only the tickets of this player.
+        - name: page_size
+          in: query
+          description: At most 50; 20 when unset.
+          schema:
+            type: integer
+            title: page_size
+            format: int32
+            description: At most 50; 20 when unset.
+        - name: page_token
+          in: query
+          description: |-
+            From a previous AdminListTickets response. A token from ListMyTickets is
+             rejected: the two lists sort by different fields.
+          schema:
+            type: string
+            title: page_token
+            description: |-
+              From a previous AdminListTickets response. A token from ListMyTickets is
+               rejected: the two lists sort by different fields.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.ListTicketsResponse'
+  /v1/admin/tickets/{id}:
+    get:
+      tags:
+        - TicketService
+      summary: |-
+        One ticket with all its messages, internal notes included. Reading it
+         clears the staff unread mark. Staff only.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such ticket
+           - PERMISSION_DENIED (403): no tickets:manage scope
+           - INTERNAL (500): database failure
+      operationId: TicketService_AdminGetTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.Ticket'
+    patch:
+      tags:
+        - TicketService
+      summary: |-
+        Change a ticket's category, status or assignee. Unset fields stay as they
+         are; an empty assignee_id releases the ticket. Staff only.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): unknown category or status
+           - NOT_FOUND (404): no such ticket
+           - FAILED_PRECONDITION (412): the ticket kept changing under concurrent
+             writes
+           - PERMISSION_DENIED (403): no tickets:manage scope
+           - INTERNAL (500): database failure
+      operationId: TicketService_AdminUpdateTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category:
+                  oneOf:
+                    - $ref: '#/components/schemas/ticket.v1.TicketCategory'
+                    - type: "null"
+                  title: category
+                status:
+                  oneOf:
+                    - $ref: '#/components/schemas/ticket.v1.TicketStatus'
+                    - type: "null"
+                  title: status
+                assignee_id:
+                  type:
+                    - string
+                    - "null"
+                  title: assignee_id
+                  description: Empty releases the ticket.
+              title: AdminUpdateTicketRequest
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.Ticket'
+  /v1/admin/tickets/{id}/messages:
+    post:
+      tags:
+        - TicketService
+      summary: |-
+        Answer a ticket or leave an internal note. A reply moves the ticket to
+         ANSWERED (CLOSED with close = true) and notifies the author; a note
+         changes nothing but the thread. A reply to a closed ticket reopens it. The
+         replying admin takes a ticket nobody took. Staff only.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): text empty or over 4000 characters; close with
+             an internal note
+           - NOT_FOUND (404): no such ticket
+           - FAILED_PRECONDITION (412): the ticket holds 200 messages already, or it
+             kept changing under concurrent writes
+           - PERMISSION_DENIED (403): no tickets:manage scope
+           - INTERNAL (500): database failure
+      operationId: TicketService_AdminReplyTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  title: text
+                  maxLength: 4000
+                  minLength: 1
+                internal:
+                  type: boolean
+                  title: internal
+                  description: A note for the staff only; the author neither sees it nor gets notified.
+                close:
+                  type: boolean
+                  title: close
+                  description: Close the ticket with this reply.
+              title: AdminReplyTicketRequest
+              required:
+                - text
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.Ticket'
+  /v1/admin/tickets:counters:
+    get:
+      tags:
+        - TicketService
+      summary: Badge counters for the staff inbox. Staff only.
+      description: |-
+        Errors:
+           - PERMISSION_DENIED (403): no tickets:manage scope
+           - INTERNAL (500): database failure
+      operationId: TicketService_AdminGetTicketCounters
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.AdminTicketCounters'
   /v1/admin/users/{user_id}/nickname:
     put:
       tags:
@@ -3303,10 +3638,15 @@ paths:
         - NotificationService
       summary: Mark a notification as read.
       description: |-
-        Errors:
+        Only the caller's own notification is marked: the update is bound to the
+         authenticated user, so another user's id changes nothing and answers the
+         same empty success. A broadcast notification belongs to everybody and is
+         never marked here; the site keeps its read state in the browser.
+
+         Errors:
            - INVALID_ARGUMENT (400): invalid notification ID format
            - UNAUTHENTICATED (401): missing or invalid auth token
-           - INTERNAL (500): database failure
+           - INTERNAL (500): database failure, or no user id in the token
       operationId: NotificationService_MarkAsRead
       parameters:
         - name: id
@@ -5515,6 +5855,212 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/stats.v1.OnlineStatsResponse'
+  /v1/tickets:
+    get:
+      tags:
+        - TicketService
+      summary: The caller's tickets, most recent activity first, without messages.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): malformed page_token
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: TicketService_ListMyTickets
+      parameters:
+        - name: page_size
+          in: query
+          description: At most 50; 20 when unset.
+          schema:
+            type: integer
+            title: page_size
+            format: int32
+            description: At most 50; 20 when unset.
+        - name: page_token
+          in: query
+          description: |-
+            From a previous ListMyTickets response. A token from AdminListTickets is
+             rejected: the two lists sort by different fields.
+          schema:
+            type: string
+            title: page_token
+            description: |-
+              From a previous ListMyTickets response. A token from AdminListTickets is
+               rejected: the two lists sort by different fields.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.ListTicketsResponse'
+    post:
+      tags:
+        - TicketService
+      summary: |-
+        Open a ticket with its first message. A player may keep at most 3 tickets
+         that are not closed. The limit is counted before the insert, so two
+         parallel writes can both pass it; it is a soft cap, not a hard one.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): category unset; subject not 3..120 characters;
+             text empty or over 4000 characters
+           - RESOURCE_EXHAUSTED (429): the caller already has 3 tickets not closed
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: TicketService_CreateTicket
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ticket.v1.CreateTicketRequest'
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.Ticket'
+  /v1/tickets/{id}:
+    get:
+      tags:
+        - TicketService
+      summary: |-
+        One of the caller's tickets with its messages (internal notes left out).
+         Reading it clears the caller's unread mark.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such ticket, or it is not the caller's
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: TicketService_GetTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.Ticket'
+  /v1/tickets/{id}/messages:
+    post:
+      tags:
+        - TicketService
+      summary: Add a message to one of the caller's tickets. Moves it to OPEN.
+      description: |-
+        Errors:
+           - INVALID_ARGUMENT (400): text empty or over 4000 characters
+           - NOT_FOUND (404): no such ticket, or it is not the caller's
+           - FAILED_PRECONDITION (412): the ticket is closed (reopen it first), it
+             holds 200 messages already, or it kept changing under concurrent writes
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: TicketService_PostTicketMessage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  title: text
+                  maxLength: 4000
+                  minLength: 1
+              title: PostTicketMessageRequest
+              required:
+                - text
+              additionalProperties: false
+        required: true
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.Ticket'
+  /v1/tickets/{id}:close:
+    post:
+      tags:
+        - TicketService
+      summary: Close one of the caller's tickets. Closing a closed ticket is a no-op.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such ticket, or it is not the caller's
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: TicketService_CloseTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.Ticket'
+  /v1/tickets/{id}:reopen:
+    post:
+      tags:
+        - TicketService
+      summary: Reopen one of the caller's closed tickets. Moves it to OPEN.
+      description: |-
+        Errors:
+           - NOT_FOUND (404): no such ticket, or it is not the caller's
+           - FAILED_PRECONDITION (412): the ticket is not closed
+           - RESOURCE_EXHAUSTED (429): the caller already has 3 tickets not closed
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: TicketService_ReopenTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: id
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.Ticket'
+  /v1/tickets:counters:
+    get:
+      tags:
+        - TicketService
+      summary: How many of the caller's tickets carry a staff reply they have not read.
+      description: |-
+        Errors:
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - INTERNAL (500): database failure
+      operationId: TicketService_GetMyTicketCounters
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ticket.v1.MyTicketCounters'
   /v1/user/verify/{user_game_name}/status:
     get:
       tags:
@@ -7930,6 +8476,9 @@ components:
         Wrapper message for `float`.
 
          The JSON representation for `FloatValue` is JSON number.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       examples:
@@ -10056,6 +10605,12 @@ components:
         created_at:
           title: created_at
           $ref: '#/components/schemas/google.protobuf.Timestamp'
+        link:
+          type: string
+          title: link
+          description: |-
+            Where the notification leads on the site (a path such as /support/123),
+             empty when it leads nowhere in particular.
       title: Notification
       required:
         - user_id
@@ -12301,6 +12856,449 @@ components:
           format: int32
       title: PlayerStatsResponse
       additionalProperties: false
+    ticket.v1.AdminGetTicketCountersRequest:
+      type: object
+      title: AdminGetTicketCountersRequest
+      additionalProperties: false
+    ticket.v1.AdminGetTicketRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: AdminGetTicketRequest
+      required:
+        - id
+      additionalProperties: false
+    ticket.v1.AdminListTicketsRequest:
+      type: object
+      properties:
+        status:
+          title: status
+          description: 'Unset: every status.'
+          $ref: '#/components/schemas/ticket.v1.TicketStatus'
+        category:
+          title: category
+          description: 'Unset: every category.'
+          $ref: '#/components/schemas/ticket.v1.TicketCategory'
+        assignee:
+          title: assignee
+          $ref: '#/components/schemas/ticket.v1.AssigneeFilter'
+        author_id:
+          type: string
+          title: author_id
+          description: Only the tickets of this player.
+        page_size:
+          type: integer
+          title: page_size
+          format: int32
+          description: At most 50; 20 when unset.
+        page_token:
+          type: string
+          title: page_token
+          description: |-
+            From a previous AdminListTickets response. A token from ListMyTickets is
+             rejected: the two lists sort by different fields.
+      title: AdminListTicketsRequest
+      additionalProperties: false
+    ticket.v1.AdminReplyTicketRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        text:
+          type: string
+          title: text
+          maxLength: 4000
+          minLength: 1
+        internal:
+          type: boolean
+          title: internal
+          description: A note for the staff only; the author neither sees it nor gets notified.
+        close:
+          type: boolean
+          title: close
+          description: Close the ticket with this reply.
+      title: AdminReplyTicketRequest
+      required:
+        - id
+        - text
+      additionalProperties: false
+    ticket.v1.AdminTicketCounters:
+      type: object
+      properties:
+        open:
+          type: integer
+          title: open
+          format: int32
+          description: Tickets waiting for the staff.
+        open_unassigned:
+          type: integer
+          title: open_unassigned
+          format: int32
+          description: Of those, taken by nobody.
+        open_mine:
+          type: integer
+          title: open_mine
+          format: int32
+          description: Of those, taken by the caller.
+        unread:
+          type: integer
+          title: unread
+          format: int32
+          description: Tickets with a player message the staff has not read.
+      title: AdminTicketCounters
+      additionalProperties: false
+    ticket.v1.AdminUpdateTicketRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        category:
+          oneOf:
+            - $ref: '#/components/schemas/ticket.v1.TicketCategory'
+            - type: "null"
+          title: category
+        status:
+          oneOf:
+            - $ref: '#/components/schemas/ticket.v1.TicketStatus'
+            - type: "null"
+          title: status
+        assignee_id:
+          type:
+            - string
+            - "null"
+          title: assignee_id
+          description: Empty releases the ticket.
+      title: AdminUpdateTicketRequest
+      required:
+        - id
+      additionalProperties: false
+    ticket.v1.AssigneeFilter:
+      type: string
+      title: AssigneeFilter
+      enum:
+        - ASSIGNEE_FILTER_UNSPECIFIED
+        - ASSIGNEE_FILTER_MINE
+        - ASSIGNEE_FILTER_NOBODY
+      description: Which tickets the staff inbox shows by assignee.
+    ticket.v1.CloseTicketRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: CloseTicketRequest
+      required:
+        - id
+      additionalProperties: false
+    ticket.v1.CreateSavedReplyRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          title: title
+          maxLength: 80
+          minLength: 1
+        text:
+          type: string
+          title: text
+          maxLength: 4000
+          minLength: 1
+      title: CreateSavedReplyRequest
+      required:
+        - title
+        - text
+      additionalProperties: false
+    ticket.v1.CreateTicketRequest:
+      type: object
+      properties:
+        subject:
+          type: string
+          title: subject
+          maxLength: 120
+          minLength: 3
+        category:
+          not:
+            enum:
+              - TICKET_CATEGORY_UNSPECIFIED
+          title: category
+          $ref: '#/components/schemas/ticket.v1.TicketCategory'
+        text:
+          type: string
+          title: text
+          maxLength: 4000
+          minLength: 1
+      title: CreateTicketRequest
+      required:
+        - subject
+        - category
+        - text
+      additionalProperties: false
+    ticket.v1.DeleteSavedReplyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: DeleteSavedReplyRequest
+      required:
+        - id
+      additionalProperties: false
+    ticket.v1.GetMyTicketCountersRequest:
+      type: object
+      title: GetMyTicketCountersRequest
+      additionalProperties: false
+    ticket.v1.GetTicketRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: GetTicketRequest
+      required:
+        - id
+      additionalProperties: false
+    ticket.v1.ListMyTicketsRequest:
+      type: object
+      properties:
+        page_size:
+          type: integer
+          title: page_size
+          format: int32
+          description: At most 50; 20 when unset.
+        page_token:
+          type: string
+          title: page_token
+          description: |-
+            From a previous ListMyTickets response. A token from AdminListTickets is
+             rejected: the two lists sort by different fields.
+      title: ListMyTicketsRequest
+      additionalProperties: false
+    ticket.v1.ListSavedRepliesRequest:
+      type: object
+      title: ListSavedRepliesRequest
+      additionalProperties: false
+    ticket.v1.ListSavedRepliesResponse:
+      type: object
+      properties:
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/ticket.v1.SavedReply'
+          title: replies
+      title: ListSavedRepliesResponse
+      additionalProperties: false
+    ticket.v1.ListTicketsResponse:
+      type: object
+      properties:
+        tickets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ticket.v1.Ticket'
+          title: tickets
+        next_page_token:
+          type: string
+          title: next_page_token
+          description: Empty on the last page.
+      title: ListTicketsResponse
+      additionalProperties: false
+    ticket.v1.MyTicketCounters:
+      type: object
+      properties:
+        unread:
+          type: integer
+          title: unread
+          format: int32
+          description: Tickets with a staff reply the caller has not read.
+      title: MyTicketCounters
+      additionalProperties: false
+    ticket.v1.PostTicketMessageRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        text:
+          type: string
+          title: text
+          maxLength: 4000
+          minLength: 1
+      title: PostTicketMessageRequest
+      required:
+        - id
+        - text
+      additionalProperties: false
+    ticket.v1.ReopenTicketRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+      title: ReopenTicketRequest
+      required:
+        - id
+      additionalProperties: false
+    ticket.v1.SavedReply:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          readOnly: true
+        title:
+          type: string
+          title: title
+        text:
+          type: string
+          title: text
+        updated_by:
+          type: string
+          title: updated_by
+          description: Logto user id of the admin who last saved it.
+          readOnly: true
+        updated_at:
+          title: updated_at
+          readOnly: true
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: SavedReply
+      additionalProperties: false
+    ticket.v1.Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          readOnly: true
+        author_id:
+          type: string
+          title: author_id
+          description: The player who opened the ticket (Logto user id).
+          readOnly: true
+        subject:
+          type: string
+          title: subject
+        category:
+          title: category
+          $ref: '#/components/schemas/ticket.v1.TicketCategory'
+        status:
+          title: status
+          $ref: '#/components/schemas/ticket.v1.TicketStatus'
+        assignee_id:
+          type: string
+          title: assignee_id
+          description: |-
+            The admin who took the ticket; empty while nobody did. Only the staff
+             methods fill it: the author's view leaves it empty.
+        unread:
+          type: boolean
+          title: unread
+          description: |-
+            Whether the viewer has not read the last message meant for them: a staff
+             reply for the author, a player message for the staff.
+          readOnly: true
+        message_count:
+          type: integer
+          title: message_count
+          format: int32
+          description: How many messages the viewer can see.
+          readOnly: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ticket.v1.TicketMessage'
+          title: messages
+          description: |-
+            The thread, oldest first. Filled by the Get and write methods only, not by
+             the lists.
+          readOnly: true
+        created_at:
+          title: created_at
+          readOnly: true
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        last_message_at:
+          title: last_message_at
+          description: The last message visible to the viewer.
+          readOnly: true
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        closed_at:
+          title: closed_at
+          description: Set while the ticket is closed.
+          readOnly: true
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: Ticket
+      additionalProperties: false
+    ticket.v1.TicketCategory:
+      type: string
+      title: TicketCategory
+      enum:
+        - TICKET_CATEGORY_UNSPECIFIED
+        - TICKET_CATEGORY_BUG
+        - TICKET_CATEGORY_COMPLAINT
+        - TICKET_CATEGORY_DONATE
+        - TICKET_CATEGORY_SETTLEMENT
+        - TICKET_CATEGORY_QUESTION
+        - TICKET_CATEGORY_OTHER
+      description: What a ticket is about.
+    ticket.v1.TicketMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        author_id:
+          type: string
+          title: author_id
+          description: Logto user id of the writer.
+        staff:
+          type: boolean
+          title: staff
+          description: Whether the writer answered for the staff.
+        text:
+          type: string
+          title: text
+        internal:
+          type: boolean
+          title: internal
+          description: A note only the staff can see.
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+      title: TicketMessage
+      additionalProperties: false
+    ticket.v1.TicketStatus:
+      type: string
+      title: TicketStatus
+      enum:
+        - TICKET_STATUS_UNSPECIFIED
+        - TICKET_STATUS_OPEN
+        - TICKET_STATUS_ANSWERED
+        - TICKET_STATUS_CLOSED
+      description: Who the ticket waits for.
+    ticket.v1.UpdateSavedReplyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        title:
+          type: string
+          title: title
+          maxLength: 80
+          minLength: 1
+        text:
+          type: string
+          title: text
+          maxLength: 4000
+          minLength: 1
+      title: UpdateSavedReplyRequest
+      required:
+        - id
+        - title
+        - text
+      additionalProperties: false
     trademarket.v1.CreateRequest:
       type: object
       properties:
@@ -13394,6 +14392,22 @@ tags:
     description: Administrative service for tag management
   - name: StatsService
     description: Represents various stats
+  - name: TicketService
+    description: |-
+      TicketService is the support desk: a player opens a ticket, the server
+       administration answers in the same thread. A player sees only their own
+       tickets and never the staff's internal notes; the staff methods (Admin*,
+       saved replies) need the tickets:manage scope.
+
+       A ticket is OPEN while it waits for the staff, ANSWERED while it waits for
+       the player, CLOSED when either side closed it. A player's message moves it
+       to OPEN, a staff reply to ANSWERED; an ANSWERED ticket nobody touched for 7
+       days closes itself.
+
+       New tickets and player replies notify the staff (site notification to the
+       assignee or, while nobody took the ticket, to every admin; plus the
+       DISCORD_TICKETS_WEBHOOK_URL channel when configured). A staff reply notifies
+       the author.
   - name: TrademarketService
     description: Represent trademarket
   - name: UserService

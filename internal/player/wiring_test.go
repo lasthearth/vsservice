@@ -10,6 +10,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/notification/notificationuc"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/logtoadmin"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
 	"github.com/lasthearth/vsservice/internal/player"
 	"github.com/minio/minio-go/v7"
@@ -40,6 +41,7 @@ func TestWiring(t *testing.T) {
 		fx.Supply(&http.Client{}),
 		fx.Supply(&retrier.Retrier{}),
 		fx.Supply(&tokenmanager.Manager{}),
+		fx.Supply(&logtoadmin.Directory{}),
 		fx.Supply(&notificationuc.Create{}),
 		fx.Supply(config.Config{}),
 		player.App,

@@ -13,10 +13,9 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 	return map[interceptor.Method]interceptor.Scope{
 		interceptor.Method(srvName + "ListNotifications"): interceptor.ScopeAuthenticated,
 
-		// MarkAsRead currently filters on _id alone, so a caller who knows
-		// another player's notification id can mark it read. Left
-		// authenticated-only to keep this change behaviour-preserving; the
-		// missing ownership predicate is tracked separately.
+		// MarkAsRead filters on _id plus the JWT subject at the database
+		// layer, so another player's id is a silent no-op: nothing is written
+		// and the answer does not tell the caller whether the id exists.
 		interceptor.Method(srvName + "MarkAsRead"): interceptor.ScopeAuthenticated,
 	}
 }

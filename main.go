@@ -25,6 +25,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/httpclient"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
+	"github.com/lasthearth/vsservice/internal/pkg/logtoadmin"
 	"github.com/lasthearth/vsservice/internal/pkg/mediaurl"
 	"github.com/lasthearth/vsservice/internal/pkg/mongox"
 	"github.com/lasthearth/vsservice/internal/pkg/tokenmanager"
@@ -37,6 +38,7 @@ import (
 	serverinfo "github.com/lasthearth/vsservice/internal/serverinfo"
 	"github.com/lasthearth/vsservice/internal/settlement"
 	settlementtag "github.com/lasthearth/vsservice/internal/settlement-tag"
+	"github.com/lasthearth/vsservice/internal/ticket"
 	"github.com/lasthearth/vsservice/internal/webhook"
 	"github.com/lasthearth/vsservice/internal/wiki"
 	"github.com/minio/minio-go/v7"
@@ -83,6 +85,7 @@ func main() {
 					Scopes:       c.Scopes,
 				})
 			},
+			logtoadmin.New,
 			setupLogger,
 			setupStorage,
 			mongox.New,
@@ -114,6 +117,7 @@ func main() {
 		lfg.App,
 		appearance.App,
 		mod.App,
+		ticket.App,
 
 		fx.Invoke(registerLoggerSync),
 	)

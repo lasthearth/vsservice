@@ -71,6 +71,13 @@ func WithUserId(userId string) NotificationOpts {
 	}
 }
 
+// WithLink makes the notification lead to a site path such as /support/123.
+func WithLink(link string) NotificationOpts {
+	return func(n *model.Notification) {
+		n.SetLink(link)
+	}
+}
+
 func WithBroadcast() NotificationOpts {
 	return func(n *model.Notification) {
 		n.SetUserId(model.BroadcastUserId)

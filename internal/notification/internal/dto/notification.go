@@ -10,6 +10,7 @@ type Notification struct {
 	UserId       string `bson:"user_id"`
 	Title        string `bson:"title"`
 	Message      string `bson:"message"`
+	Link         string `bson:"link,omitempty"`
 	State        string `bson:"state"`
 }
 

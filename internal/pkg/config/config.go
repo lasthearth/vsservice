@@ -86,9 +86,15 @@ type Config struct {
 	// final failure after retries).
 	HTTPClientLog bool `envconfig:"HTTP_CLIENT_LOG" default:"true"`
 
-	DiscordBotToken        string   `envconfig:"DISCORD_BOT_TOKEN" required:"true"`
-	DiscordBaseURL         string   `envconfig:"DISCORD_BASE_URL" default:"https://discord.com/api/v10"`
-	DiscordNewsWebhook     string   `envconfig:"DISCORD_NEWS_WEBHOOK_URL"`
+	DiscordBotToken    string `envconfig:"DISCORD_BOT_TOKEN" required:"true"`
+	DiscordBaseURL     string `envconfig:"DISCORD_BASE_URL" default:"https://discord.com/api/v10"`
+	DiscordNewsWebhook string `envconfig:"DISCORD_NEWS_WEBHOOK_URL"`
+	// DiscordTicketsWebhook is the staff channel that hears about new tickets
+	// and player replies; empty turns the Discord side of ticket alerts off.
+	DiscordTicketsWebhook string `envconfig:"DISCORD_TICKETS_WEBHOOK_URL"`
+	// DiscordTicketsRoleID is the Discord role pinged about a new ticket;
+	// empty sends without a ping.
+	DiscordTicketsRoleID   string   `envconfig:"DISCORD_TICKETS_ROLE_ID"`
 	DiscordAllowedChannels []string `envconfig:"DISCORD_ALLOWED_CHANNELS" required:"true"`
 
 	LogtoWebhookSecret string `envconfig:"LOGTO_WEBHOOK_SECRET"`

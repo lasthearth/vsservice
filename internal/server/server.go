@@ -37,6 +37,7 @@ import (
 	rulesv1 "github.com/lasthearth/vsservice/gen/rules/v1"
 	serverinfov1 "github.com/lasthearth/vsservice/gen/serverinfo/v1"
 	settlementv1 "github.com/lasthearth/vsservice/gen/settlement/v1"
+	ticketv1 "github.com/lasthearth/vsservice/gen/ticket/v1"
 	userv1 "github.com/lasthearth/vsservice/gen/user/v1"
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
 	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
@@ -136,6 +137,7 @@ func (s *Server) Build() error {
 	lfgv1.RegisterLfgServiceServer(srv, s.lfgV1)
 	appearancev1.RegisterAppearanceServiceServer(srv, s.appearanceV1)
 	modv1.RegisterModServiceServer(srv, s.modV1)
+	ticketv1.RegisterTicketServiceServer(srv, s.ticketV1)
 	reflection.Register(srv)
 
 	// After registration so GetServiceInfo() sees every service. Fails startup
@@ -281,6 +283,10 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 
 	if err := modv1.RegisterModServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
 		return errors.Wrap(err, "register mod service handler")
+	}
+
+	if err := ticketv1.RegisterTicketServiceHandlerFromEndpoint(ctx, mux, grpcaddr, dopts); err != nil {
+		return errors.Wrap(err, "register ticket service handler")
 	}
 
 	handler := cors.New(cors.Options{
