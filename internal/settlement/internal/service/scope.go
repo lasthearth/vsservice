@@ -77,7 +77,7 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "RejectInvitation"):   interceptor.ScopeAuthenticated,
 		interceptor.Method(srvName + "GetUserInvitations"): interceptor.ScopeAuthenticated,
 
-		// Look up by a user_id from the request, no subject comparison.
+		// Look up by a user_id from the request.
 		//
 		// GetByUserId returns a Settlement, which Get and List already serve
 		// publicly (see matcher.go), so it discloses nothing those do not.
@@ -86,10 +86,8 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		//
 		// VerificationStatus returns the status and rejection_reason of that
 		// user's settlement request, which has no public equivalent —
-		// ListPending is manage-gated. Any authenticated caller can therefore
-		// read whether a given player applied and why they were rejected. Left
-		// authenticated-only to keep this change behaviour-preserving; the
-		// missing ownership check is tracked separately.
+		// ListPending is manage-gated. The handler binds the request user_id to
+		// the JWT subject and admits a moderator holding manageScope instead.
 		interceptor.Method(srvName + "GetByUserId"):        interceptor.ScopeAuthenticated,
 		interceptor.Method(srvName + "GetUserMemberships"): interceptor.ScopeAuthenticated,
 		interceptor.Method(srvName + "VerificationStatus"): interceptor.ScopeAuthenticated,

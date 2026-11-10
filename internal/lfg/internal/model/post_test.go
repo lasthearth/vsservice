@@ -81,19 +81,19 @@ func TestNewPostTrimsAndOpens(t *testing.T) {
 func TestRespondTogglesAndFills(t *testing.T) {
 	p := newTestPost(t)
 
-	if joined, err := p.Respond("a", postNow); err != nil || !joined {
+	if joined, _, err := p.Respond("a", postNow); err != nil || !joined {
 		t.Fatalf("a joins: %v %v", joined, err)
 	}
-	if joined, err := p.Respond("b", postNow); err != nil || !joined {
+	if joined, _, err := p.Respond("b", postNow); err != nil || !joined {
 		t.Fatalf("b joins: %v %v", joined, err)
 	}
-	if _, err := p.Respond("c", postNow); !errors.Is(err, ErrPostFull) {
+	if _, _, err := p.Respond("c", postNow); !errors.Is(err, ErrPostFull) {
 		t.Fatalf("c on a full post: want ErrPostFull, got %v", err)
 	}
-	if joined, err := p.Respond("a", postNow); err != nil || joined {
+	if joined, _, err := p.Respond("a", postNow); err != nil || joined {
 		t.Fatalf("a leaves: %v %v", joined, err)
 	}
-	if joined, err := p.Respond("c", postNow); err != nil || !joined {
+	if joined, _, err := p.Respond("c", postNow); err != nil || !joined {
 		t.Fatalf("c takes the freed slot: %v %v", joined, err)
 	}
 	if got := p.Responders; len(got) != 2 || got[0] != "b" || got[1] != "c" {
@@ -103,17 +103,151 @@ func TestRespondTogglesAndFills(t *testing.T) {
 
 func TestRespondRules(t *testing.T) {
 	p := newTestPost(t)
-	if _, err := p.Respond("author", postNow); !errors.Is(err, ErrOwnPost) {
+	if _, _, err := p.Respond("author", postNow); !errors.Is(err, ErrOwnPost) {
 		t.Fatalf("own post: want ErrOwnPost, got %v", err)
 	}
-	if _, err := p.Respond("a", p.ExpiresAt); !errors.Is(err, ErrPostClosed) {
+	if _, _, err := p.Respond("a", p.ExpiresAt); !errors.Is(err, ErrPostClosed) {
 		t.Fatalf("after expiry: want ErrPostClosed, got %v", err)
 	}
 
 	_ = p.Close("author", postNow)
-	if _, err := p.Respond("a", postNow); !errors.Is(err, ErrPostClosed) {
+	if _, _, err := p.Respond("a", postNow); !errors.Is(err, ErrPostClosed) {
 		t.Fatalf("closed: want ErrPostClosed, got %v", err)
 	}
+}
+
+// TestRespondNotifiesOncePerResponder is the regression for the unbounded
+// notification write. Respond is a toggle and both directions are free, so
+// gating the author notification on joined let one responder produce one
+// notification per withdraw/rejoin cycle for as long as the post stayed up —
+// 1000 documents from 2000 calls, none of them removable by the victim.
+//
+// joined stays true on every rejoin: it answers "are you in now" per the proto
+// contract, and only notify is deduped.
+func TestRespondNotifiesOncePerResponder(t *testing.T) {
+	p := newTestPost(t)
+
+	notifies := 0
+	joins := 0
+	for cycle := range 5 {
+		at := postNow.Add(time.Duration(cycle) * time.Minute)
+
+		joined, notify, err := p.Respond("a", at)
+		if err != nil || !joined {
+			t.Fatalf("cycle %d join: joined=%v err=%v", cycle, joined, err)
+		}
+		joins += b2i(joined)
+		notifies += b2i(notify)
+
+		joined, notify, err = p.Respond("a", at)
+		if err != nil || joined || notify {
+			t.Fatalf("cycle %d withdraw: joined=%v notify=%v err=%v", cycle, joined, notify, err)
+		}
+		notifies += b2i(notify)
+	}
+
+	// The fifth cycle ends on a withdraw, so join once more: the sixth join of an
+	// already-notified responder must keep joined=true and notify=false.
+	joined, notify, err := p.Respond("a", postNow.Add(5*time.Minute))
+	if err != nil || !joined || notify {
+		t.Fatalf("rejoin after five cycles: joined=%v notify=%v err=%v", joined, notify, err)
+	}
+	joins += b2i(joined)
+	notifies += b2i(notify)
+
+	if joins != 6 {
+		t.Fatalf("a joined %d times, want 6: joined must stay true on every rejoin", joins)
+	}
+	if notifies != 1 {
+		t.Fatalf("a notified the author %d times, want exactly 1", notifies)
+	}
+	if !p.HasResponder("a") {
+		t.Fatalf("a is in the post but not a responder: %v", p.Responders)
+	}
+	if got := p.Notified; len(got) != 1 || got[0] != "a" {
+		t.Fatalf("Notified must hold a once: %v", got)
+	}
+}
+
+// A second responder is a second notification: the dedupe is per responder, not
+// per post, or the author would never hear about anyone after the first.
+func TestRespondNotifiesEachResponderOnce(t *testing.T) {
+	p := newTestPost(t)
+	p.Slots = 3
+
+	notifies := 0
+	for _, id := range []string{"a", "b", "c"} {
+		if _, notify, err := p.Respond(id, postNow); err != nil || !notify {
+			t.Fatalf("%s first join: notify=%v err=%v", id, notify, err)
+		}
+		notifies++
+	}
+	if notifies != 3 {
+		t.Fatalf("first joins notified %d times, want 3", notifies)
+	}
+
+	for _, id := range []string{"a", "b", "c"} {
+		if _, _, err := p.Respond(id, postNow); err != nil {
+			t.Fatalf("%s withdraw: %v", id, err)
+		}
+		if joined, notify, err := p.Respond(id, postNow); err != nil || !joined || notify {
+			t.Fatalf("%s rejoin: joined=%v notify=%v err=%v", id, joined, notify, err)
+		}
+	}
+	if got := p.Notified; len(got) != 3 {
+		t.Fatalf("Notified grew past its responders: %v", got)
+	}
+}
+
+// Posts stored before Notified existed decode it as empty while Responders
+// survives, so one already-seen responder notifies once more after a
+// withdraw/rejoin — and then never again. That one-shot cost is the migration
+// boundary; without this test it is invisible.
+func TestRespondLegacyPostNotifiesOnceMore(t *testing.T) {
+	p := newTestPost(t)
+	p.Responders = []string{"a"} // a document written before Notified existed
+	p.Notified = nil
+
+	if joined, _, err := p.Respond("a", postNow); err != nil || joined {
+		t.Fatalf("legacy withdraw: joined=%v err=%v", joined, err)
+	}
+	if joined, notify, err := p.Respond("a", postNow); err != nil || !joined || !notify {
+		t.Fatalf("legacy rejoin: joined=%v notify=%v err=%v", joined, notify, err)
+	}
+	if _, notify, err := p.Respond("a", postNow); err != nil || notify {
+		t.Fatalf("second legacy withdraw: notify=%v err=%v", notify, err)
+	}
+	if joined, notify, err := p.Respond("a", postNow); err != nil || !joined || notify {
+		t.Fatalf("second legacy rejoin: joined=%v notify=%v err=%v", joined, notify, err)
+	}
+}
+
+// A teammate post marks interest instead of filling slots, and its lifetime is
+// 14 days renewable, so it is the longer window for the same toggle.
+func TestTeammateRespondNotifiesOnce(t *testing.T) {
+	p := newTeammatePost(t)
+
+	if _, notify, err := p.Respond("a", postNow); err != nil || !notify {
+		t.Fatalf("first interest: notify=%v err=%v", notify, err)
+	}
+	for range 3 {
+		if _, _, err := p.Respond("a", postNow); err != nil {
+			t.Fatal(err)
+		}
+		if joined, notify, err := p.Respond("a", postNow); err != nil || !joined || notify {
+			t.Fatalf("re-interest: joined=%v notify=%v err=%v", joined, notify, err)
+		}
+	}
+	if got := p.Notified; len(got) != 1 || got[0] != "a" {
+		t.Fatalf("Notified: %v", got)
+	}
+}
+
+func b2i(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func TestCloseAuthorOnly(t *testing.T) {
@@ -204,13 +338,13 @@ func TestTeammateInterestIgnoresSlots(t *testing.T) {
 	p := newTeammatePost(t)
 
 	for _, id := range []string{"a", "b", "c"} {
-		if in, err := p.Respond(id, postNow); err != nil || !in {
+		if in, _, err := p.Respond(id, postNow); err != nil || !in {
 			t.Fatalf("%s interested: %v %v", id, in, err)
 		}
 	}
 
 	p.Responders = make([]string, MaxInterested)
-	if _, err := p.Respond("late", postNow); !errors.Is(err, ErrPostFull) {
+	if _, _, err := p.Respond("late", postNow); !errors.Is(err, ErrPostFull) {
 		t.Fatalf("over the cap: want ErrPostFull, got %v", err)
 	}
 }

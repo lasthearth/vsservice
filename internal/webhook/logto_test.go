@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -139,7 +140,8 @@ func assertFieldSet(t *testing.T, e observer.LoggedEntry, keys ...string) {
 // on with a zero payload and answered "unsupported event", which tells the
 // caller its event type is wrong when the real problem is the body.
 func TestHandleWebhookMalformedBodyIsBadRequest(t *testing.T) {
-	rec, logs := post(t, config.Config{}, "{not json", nil)
+	body := "{not json"
+	rec, logs := post(t, config.Config{LogtoWebhookSecret: webhookSecret}, body, sign(body))
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("want status %d, got %d", http.StatusBadRequest, rec.Code)
@@ -155,7 +157,8 @@ func TestHandleWebhookMalformedBodyIsBadRequest(t *testing.T) {
 // A body without an event takes the second unmarshal branch and must stop the
 // handler the same way.
 func TestHandleWebhookMissingEventIsBadRequest(t *testing.T) {
-	rec, logs := post(t, config.Config{}, `{"userId":"u1"}`, nil)
+	body := `{"userId":"u1"}`
+	rec, logs := post(t, config.Config{LogtoWebhookSecret: webhookSecret}, body, sign(body))
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("want status %d, got %d", http.StatusBadRequest, rec.Code)
@@ -202,7 +205,8 @@ func TestHandleWebhookValidSignatureReachesTheEvent(t *testing.T) {
 // The two records that used to carry the payload keep the method, the path, the
 // Logto event name and the Logto user id, and nothing else.
 func TestHandleWebhookRecordFieldSets(t *testing.T) {
-	rec, logs := post(t, config.Config{}, `{"event":"PostRegister"}`, nil)
+	body := `{"event":"PostRegister"}`
+	rec, logs := post(t, config.Config{LogtoWebhookSecret: webhookSecret}, body, sign(body))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("want status %d, got %d", http.StatusOK, rec.Code)
@@ -247,7 +251,7 @@ func TestHandleWebhookPostSignInKeepsProfileOutOfTheLog(t *testing.T) {
 	body := `{"event":"PostSignIn","user":{"id":"u1","name":"Ann Example","avatar":"` +
 		avatar + `","username":"annexample"}}`
 
-	rec, logs := post(t, config.Config{}, body, nil)
+	rec, logs := post(t, config.Config{LogtoWebhookSecret: webhookSecret}, body, sign(body))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("want status %d, got %d", http.StatusOK, rec.Code)
@@ -272,5 +276,73 @@ func TestHandleWebhookPostSignInKeepsProfileOutOfTheLog(t *testing.T) {
 				t.Errorf("record %q leaks %q: %s", e.Message, b, blob)
 			}
 		}
+	}
+}
+
+// An unconfigured secret must refuse the request, not process it without a
+// signature: fail-open here made the deployed default an unauthenticated event
+// producer.
+func TestHandleWebhookEmptySecretRefusesRequest(t *testing.T) {
+	rec, logs := post(t, config.Config{}, `{"event":"PostSignIn","user":{"id":"u1"}}`, nil)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want status %d, got %d", http.StatusServiceUnavailable, rec.Code)
+	}
+	missing := entriesOf(logs, webhookEventSecretMissing)
+	if len(missing) != 1 {
+		t.Fatalf("want 1 secret-missing record, got %d", len(missing))
+	}
+	if missing[0].Level != zapcore.WarnLevel {
+		t.Errorf("want Warn, got %s", missing[0].Level)
+	}
+	if got := len(entriesOf(logs, webhookEventProcessed)); got != 0 {
+		t.Errorf("want no processed record, got %d", got)
+	}
+	if got := len(entriesOf(logs, webhookEventUnsupported)); got != 0 {
+		t.Errorf("want no unsupported-event record, got %d", got)
+	}
+}
+
+// countingReader counts the bytes the handler actually consumed, so the test
+// fails when the bound is removed and the whole body is buffered.
+type countingReader struct {
+	r io.Reader
+	n int
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += n
+	return n, err
+}
+
+// An oversized body is refused with 413, and the handler consumes at most
+// cap+1 bytes of it: the LimitReader stops the read at the detection byte.
+func TestHandleWebhookOversizedBodyIsRefusedWith413(t *testing.T) {
+	body := strings.Repeat("a", maxWebhookBodyBytes+4096)
+
+	log, logs := newObsLogger()
+	s := NewLogtoWebhookService(log, config.Config{LogtoWebhookSecret: webhookSecret})
+
+	cr := &countingReader{r: strings.NewReader(body)}
+	req := httptest.NewRequest(http.MethodPost, "/logtohook", nil)
+	req.Body = io.NopCloser(cr)
+	req.ContentLength = int64(len(body))
+	req.Header = sign(body)
+
+	rec := httptest.NewRecorder()
+	s.HandleWebhook(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("want status %d, got %d", http.StatusRequestEntityTooLarge, rec.Code)
+	}
+	if cr.n > maxWebhookBodyBytes+1 {
+		t.Errorf("want at most %d bytes consumed, got %d", maxWebhookBodyBytes+1, cr.n)
+	}
+	if got := len(entriesOf(logs, webhookEventParseFailed)); got != 1 {
+		t.Errorf("want 1 parse-failed record for the refused body, got %d", got)
+	}
+	if got := len(entriesOf(logs, webhookEventProcessed)); got != 0 {
+		t.Errorf("want no processed record, got %d", got)
 	}
 }

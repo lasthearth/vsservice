@@ -489,3 +489,110 @@ func findByID(t *testing.T, mods []model.Mod, modId string) model.Mod {
 
 	panic("mod " + modId + " is not in the list")
 }
+
+// hostileEntry is one manifest mod whose name fields carry a path. The archive
+// builds its entry names from modid, version and file name, so each of the three
+// is a separate way to put a traversal into the zip every player downloads.
+func hostileEntry(modId, version, fileName, fileKey string) manifestMod {
+	entry := manifestEntry(modId, version, fileKey)
+	entry.Filename = fileName
+
+	return entry
+}
+
+// hostileNameEntries is the manifest the zip-slip check must stop: three mods,
+// one hostile field each.
+func hostileNameEntries() []manifestMod {
+	return []manifestMod{
+		hostileEntry("x", "../../../../evil", "..", "x/x.zip"),
+		hostileEntry("b", "../../../escaped-mod", ".", "b/b.zip"),
+		hostileEntry("../../etc/launcher", "1.0.0", "/", "c/c.zip"),
+	}
+}
+
+// TestSyncRefusesAManifestOfHostileNames pins that a manifest carrying nothing
+// but traversal names stores nothing: the pass fails like any other unusable
+// document and the stored list stays as it was.
+func TestSyncRefusesAManifestOfHostileNames(t *testing.T) {
+	repo := &syncRepo{mods: []model.Mod{serverStored("stored", "1.0.0", 0)}}
+	syncer := newTestSyncer(t, repo, &fakeObjects{
+		body: validManifest(t, hostileNameEntries()...),
+	}, config.Config{})
+
+	if err := syncer.Sync(context.Background()); err == nil {
+		t.Fatal("Sync accepted a manifest of traversal names")
+	}
+
+	if len(repo.synced) != 0 || len(repo.removed) != 0 {
+		t.Errorf("a refused manifest wrote to the list: %v / %v", repo.synced, repo.removed)
+	}
+	if len(repo.mods) != 1 || repo.mods[0].ModId != "stored" {
+		t.Errorf("stored mods = %v, want the list untouched", repo.mods)
+	}
+}
+
+// TestSyncSkipsOnlyTheHostileNameEntry pins the other half: one hostile entry is
+// dropped and counted while the benign one in the same manifest is stored.
+func TestSyncSkipsOnlyTheHostileNameEntry(t *testing.T) {
+	mods := append(hostileNameEntries(), manifestEntry("carryon", "1.2.3", "carryon/carryon.zip"))
+
+	repo := &syncRepo{}
+	syncer := newTestSyncer(t, repo, &fakeObjects{body: validManifest(t, mods...)}, config.Config{})
+
+	if err := syncer.Sync(context.Background()); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+
+	if len(repo.synced) != 1 || repo.synced[0].ModId != "carryon" {
+		t.Fatalf("synced = %v, want the one benign entry", repo.synced)
+	}
+	if got := repo.synced[0].Release.FileName; got != "carryon-1.2.3.zip" {
+		t.Errorf("file name = %q, want the benign one stored unchanged", got)
+	}
+}
+
+// TestEntryOfCountsAHostileNameField pins the gate itself: each hostile field is
+// refused with the counted reason, and a benign entry passes.
+func TestEntryOfCountsAHostileNameField(t *testing.T) {
+	doc := &manifest{Version: manifestVersion, GeneratedAt: fixedNow, GameVersion: "1.22.7"}
+	syncer := newTestSyncer(t, &syncRepo{}, &fakeObjects{}, config.Config{})
+
+	cases := map[string]struct {
+		modId    string
+		version  string
+		fileName string
+		wantOK   bool
+	}{
+		"a traversal version":     {"carryon", "../../x", "carryon.zip", false},
+		"a windows separator":     {"carryon", "1.0.0", `..\evil.zip`, false},
+		"a dot version":           {"carryon", "..", "carryon.zip", false},
+		"a dot file name":         {"carryon", "1.0.0", "..", false},
+		"a lone separator name":   {"carryon", "1.0.0", "/", false},
+		"a traversal modid":       {"../../etc/launcher", "1.0.0", "launcher.zip", false},
+		"a dot modid":             {".", "1.0.0", "launcher.zip", false},
+		"a benign entry":          {"carryon", "1.2.3", "carryon-1.2.3.zip", true},
+		"a benign name with dots": {"carry.on", "1.2.3-rc.1", "Carry On.zip", true},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			mod := hostileEntry(tc.modId, tc.version, tc.fileName, "mods/file.zip")
+
+			entry, reason, ok := syncer.entryOf(doc, strings.TrimSpace(tc.modId), mod)
+			if ok != tc.wantOK {
+				t.Fatalf("ok = %v (reason %q), want %v", ok, reason, tc.wantOK)
+			}
+			if !tc.wantOK {
+				if reason != reasonBadName {
+					t.Errorf("reason = %q, want %q", reason, reasonBadName)
+				}
+
+				return
+			}
+			if !validNameField(entry.release.FileName) || !validNameField(entry.release.Version) {
+				t.Errorf("a stored entry carries an unsafe name: %q / %q",
+					entry.release.FileName, entry.release.Version)
+			}
+		})
+	}
+}

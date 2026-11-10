@@ -176,6 +176,36 @@ func (r *Repository) GetVerificationRequests(ctx context.Context) ([]verificatio
 	return result, nil
 }
 
+// updateSetDocument builds the $set document for Update: the mapped fields of
+// the application, plus a fresh updated_at stamp, and nothing else.
+//
+// The envelope belongs to the stored document, not to this write. The Mapper
+// interface declares 'goverter:ignore Model' (see Mapper.FromVerification), so
+// the mapped dto carries a zero mongox.Model: _id, created_at, updated_at and
+// version are all zero values. Sending the dto itself would reset created_at
+// and version on every approval, rejection and resubmission, which collapses
+// the derived Days count to 0 and locks the day-gated appearance items. Only
+// Id is tagged omitempty, so the other three keys survive marshalling and must
+// be deleted here.
+func updateSetDocument(mapper Mapper, v verification.Verification) (bson.M, error) {
+	dto := mapper.FromVerification(v)
+
+	dtoBytes, err := bson.Marshal(dto)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal dto: %w", err)
+	}
+	var dtoMap bson.M
+	if err := bson.Unmarshal(dtoBytes, &dtoMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal dto: %w", err)
+	}
+	delete(dtoMap, "_id")
+	delete(dtoMap, "created_at")
+	delete(dtoMap, "version")
+	dtoMap["updated_at"] = time.Now()
+
+	return dtoMap, nil
+}
+
 // Update implements service.VerificationDbRepository.
 func (r *Repository) Update(ctx context.Context, userId string, v verification.Verification) error {
 	l := r.log.
@@ -187,24 +217,17 @@ func (r *Repository) Update(ctx context.Context, userId string, v verification.V
 
 	l.Info("updating verification request in database")
 
-	dto := r.mapper.FromVerification(v)
-
-	// compute fields needed for update
-	dtoBytes, _ := bson.Marshal(dto)
-	var dtoMap bson.M
-	if err := bson.Unmarshal(dtoBytes, &dtoMap); err != nil {
-		l.Error("failed to unmarshal dto", zap.Error(err))
+	dtoMap, err := updateSetDocument(r.mapper, v)
+	if err != nil {
+		l.Error("failed to prepare update document", zap.Error(err))
 		return err
 	}
-	delete(dtoMap, "_id")
-	delete(dtoMap, "created_at")
-	dtoMap["updated_at"] = time.Now()
 
 	result, err := r.coll.UpdateOne(
 		ctx,
 		bson.M{"user_id": userId},
 		bson.D{
-			{Key: "$set", Value: dto},
+			{Key: "$set", Value: dtoMap},
 		},
 	)
 	if err != nil {

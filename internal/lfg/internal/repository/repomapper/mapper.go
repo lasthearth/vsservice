@@ -32,16 +32,22 @@ func (c *MapperImpl) FromModel(source model.Post) dto.Post {
 			dtoPost.Responders[j] = source.Responders[j]
 		}
 	}
+	if source.Notified != nil {
+		dtoPost.Notified = make([]string, len(source.Notified))
+		for k := 0; k < len(source.Notified); k++ {
+			dtoPost.Notified[k] = source.Notified[k]
+		}
+	}
 	if source.PlayDays != nil {
 		dtoPost.PlayDays = make([]int32, len(source.PlayDays))
-		for k := 0; k < len(source.PlayDays); k++ {
-			dtoPost.PlayDays[k] = source.PlayDays[k]
+		for l := 0; l < len(source.PlayDays); l++ {
+			dtoPost.PlayDays[l] = source.PlayDays[l]
 		}
 	}
 	if source.PlayTimes != nil {
 		dtoPost.PlayTimes = make([]string, len(source.PlayTimes))
-		for l := 0; l < len(source.PlayTimes); l++ {
-			dtoPost.PlayTimes[l] = string(source.PlayTimes[l])
+		for m := 0; m < len(source.PlayTimes); m++ {
+			dtoPost.PlayTimes[m] = string(source.PlayTimes[m])
 		}
 	}
 	dtoPost.Experience = string(source.Experience)
@@ -73,16 +79,22 @@ func (c *MapperImpl) ToModel(source dto.Post) model.Post {
 			modelPost.Responders[j] = source.Responders[j]
 		}
 	}
+	if source.Notified != nil {
+		modelPost.Notified = make([]string, len(source.Notified))
+		for k := 0; k < len(source.Notified); k++ {
+			modelPost.Notified[k] = source.Notified[k]
+		}
+	}
 	if source.PlayDays != nil {
 		modelPost.PlayDays = make([]int32, len(source.PlayDays))
-		for k := 0; k < len(source.PlayDays); k++ {
-			modelPost.PlayDays[k] = source.PlayDays[k]
+		for l := 0; l < len(source.PlayDays); l++ {
+			modelPost.PlayDays[l] = source.PlayDays[l]
 		}
 	}
 	if source.PlayTimes != nil {
 		modelPost.PlayTimes = make([]model.PlayTime, len(source.PlayTimes))
-		for l := 0; l < len(source.PlayTimes); l++ {
-			modelPost.PlayTimes[l] = model.PlayTime(source.PlayTimes[l])
+		for m := 0; m < len(source.PlayTimes); m++ {
+			modelPost.PlayTimes[m] = model.PlayTime(source.PlayTimes[m])
 		}
 	}
 	modelPost.Experience = model.Experience(source.Experience)

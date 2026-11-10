@@ -454,12 +454,13 @@ func TestVerificationStatusReadsTheKindOfRequest(t *testing.T) {
 	}}
 	svc, _, _ := newNotifierService(t, repo)
 
-	_, err := svc.VerificationStatus(context.Background(), &settlementv1.VerificationStatusRequest{UserId: "owner1"})
+	// The applicant asks about their own request, which is what the handler binds the read to.
+	_, err := svc.VerificationStatus(asUser("owner1"), &settlementv1.VerificationStatusRequest{UserId: "owner1"})
 	if !errors.Is(err, ierror.ErrNotFound) {
 		t.Fatalf("unspecified kind: err = %v, want ErrNotFound while only a guild request exists", err)
 	}
 
-	res, err := svc.VerificationStatus(context.Background(), &settlementv1.VerificationStatusRequest{
+	res, err := svc.VerificationStatus(asUser("owner1"), &settlementv1.VerificationStatusRequest{
 		UserId: "owner1",
 		Kind:   settlementv1.GroupKind_GROUP_KIND_GUILD,
 	})

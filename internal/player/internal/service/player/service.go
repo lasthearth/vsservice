@@ -195,10 +195,12 @@ func (s *Service) GetUser(ctx context.Context, req *userv1.GetUserRequest) (*use
 	u, err := s.dbRepo.GetUserById(ctx, req.GetUserId())
 	if err != nil {
 		if errors.Is(err, ierror.ErrNotFound) {
-			return nil, status.Error(codes.NotFound, err.Error())
+			return nil, status.Error(codes.NotFound, "user not found")
 		}
 
-		return nil, status.Error(codes.Internal, err.Error())
+		// Unwrapped: the interceptor logs the driver detail under the request
+		// id and answers the generic message.
+		return nil, err
 	}
 
 	resp := s.mapper.ToUserProto(*u)
@@ -215,7 +217,9 @@ func (s *Service) BatchGetUsers(
 ) (*userv1.BatchGetUsersResponse, error) {
 	users, err := s.dbRepo.GetUsersByIds(ctx, req.GetUserIds())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		// Unwrapped: the interceptor logs the driver detail and answers the
+		// generic message.
+		return nil, err
 	}
 
 	return &userv1.BatchGetUsersResponse{
@@ -258,7 +262,10 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 
 	player, err := s.dbRepo.GetUserById(ctx, req.GetUserId())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		// Unwrapped: the interceptor logs the driver detail and answers the
+		// generic message. A not-found player stays a DomainError, so it maps
+		// to NotFound.
+		return nil, err
 	}
 
 	if err := player.CheckNicknameChange(req.GetNewNickname()); err != nil {
@@ -291,7 +298,9 @@ func (s *Service) ChangeNickname(ctx context.Context, req *userv1.ChangeNickname
 		now,
 	)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		// Unwrapped: the interceptor logs the driver detail and answers the
+		// generic message.
+		return nil, err
 	}
 
 	go func() { //nolint:gosec // G118: deliberate — the notification must outlive the request scope

@@ -329,12 +329,23 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 		return errors.Wrap(err, "register mod archive handler")
 	}
 
-	wshandler := wsproxy.WebsocketProxy(handler)
+	// Bound the whole request, not only its headers: without ReadTimeout a
+	// client that dribbles a body keeps the connection and its buffer for as
+	// long as it likes. IdleTimeout reclaims a kept-alive connection that is
+	// doing nothing, and MaxHeaderBytes replaces the 1 MiB default. WriteTimeout
+	// stays unset on purpose: this listener also carries server-streaming
+	// websocket routes, and a write deadline would cut a legitimate stream.
+	// WithPingControl exists in the pinned wsproxy and arms conn.SetReadDeadline,
+	// which the hijacked websocket connection needs once ReadTimeout is set.
+	wshandler := wsproxy.WebsocketProxy(handler, wsproxy.WithPingControl(30*time.Second))
 
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           wshandler,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    64 << 10,
 	}
 
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {

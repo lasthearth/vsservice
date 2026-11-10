@@ -635,10 +635,21 @@ func (s *Service) BuyItem(ctx context.Context, req *donatev1.BuyItemRequest) (*d
 				Warn("purchase refused: the item is not on sale")
 			return nil, status.Error(codes.NotFound, "item not found or unavailable")
 		}
+		if isDomainError(err, codes.InvalidArgument) {
+			// A sale the service refuses on rule grounds — today the item-type
+			// check, which Buy runs before the first write. The wallet is
+			// untouched, so the reason is the answer, not a 500.
+			s.opFor(ctx).Event(opPurchaseRefused).
+				Entity("shop_item", req.GetItemId()).
+				Reason(err.Error()).
+				Warn("purchase refused by the item rules")
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
 		if isDomainError(err, codes.FailedPrecondition) {
-			// Insufficient funds and the closed item-type path both land here:
-			// the wallet is untouched, so the record is a Warn with the reason
-			// the rules gave.
+			// Insufficient funds lands here, and so does a refusal from the
+			// mail seam (an uncaptured or empty kit). Only the wallet rule
+			// leaves the balance untouched: the seam refusal arrives after the
+			// debit, which is the open gap the TODO(donate-buy) in buy.go names.
 			s.opFor(ctx).Event(opPurchaseRefused).
 				Entity("shop_item", req.GetItemId()).
 				Reason(err.Error()).

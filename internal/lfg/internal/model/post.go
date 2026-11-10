@@ -180,6 +180,11 @@ type Post struct {
 	// Responders are the players who joined a session, or who are interested in
 	// a teammate post, in the order they responded.
 	Responders []string
+	// Notified is the set of responders whose join already produced an author
+	// notification. Respond is a toggle, so without it a withdraw/rejoin cycle is
+	// an unbounded notification generator aimed at the author. It is persisted
+	// (dto.Post.Notified); a model-only field is dropped on every write.
+	Notified   []string
 	PlayDays   []int32
 	PlayTimes  []PlayTime
 	Experience Experience
@@ -282,29 +287,43 @@ func (p *Post) HasResponder(userId string) bool {
 }
 
 // Respond toggles userId's response: joins the session (or marks interest in a
-// teammate post) if they have not responded, withdraws otherwise. Reports
-// whether they are in afterwards.
+// teammate post) if they have not responded, withdraws otherwise.
+//
+// joined reports whether userId is in afterwards and is true on every join, a
+// rejoin included: RespondToPostResponse.joined answers "are you in now", and a
+// rejoin that reported false would tell the player they lost a slot they hold.
+//
+// notify reports whether the author still has to be told about userId, i.e.
+// whether this is their first join of this post. Gating the notification on it
+// instead of on joined is what stops a withdraw/rejoin cycle from writing one
+// notification per cycle into the author's inbox. Posts stored before Notified
+// existed decode it as empty, so one already-seen responder can notify once more.
 //
 // Withdrawing is allowed only while the post is open, like responding: a
 // closed post is history and stays as it was.
-func (p *Post) Respond(userId string, now time.Time) (bool, error) {
+func (p *Post) Respond(userId string, now time.Time) (joined bool, notify bool, err error) {
 	if !p.IsOpen(now) {
-		return false, ErrPostClosed
+		return false, false, ErrPostClosed
 	}
 	if userId == p.AuthorId {
-		return false, ErrOwnPost
+		return false, false, ErrOwnPost
 	}
 
 	if p.HasResponder(userId) {
 		p.Responders = slices.DeleteFunc(p.Responders, func(id string) bool { return id == userId })
-		return false, nil
+		return false, false, nil
 	}
 
 	if p.IsFull() {
-		return false, ErrPostFull
+		return false, false, ErrPostFull
 	}
 	p.Responders = append(p.Responders, userId)
-	return true, nil
+
+	if slices.Contains(p.Notified, userId) {
+		return true, false, nil
+	}
+	p.Notified = append(p.Notified, userId)
+	return true, true, nil
 }
 
 // Close takes the post off the board. Author only; closing twice keeps the

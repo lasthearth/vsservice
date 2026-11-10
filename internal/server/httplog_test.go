@@ -136,6 +136,9 @@ func TestWithRequestLogPassesWebsocketUpgradeThrough(t *testing.T) {
 	s := &Server{log: logger.NewWithCore(core)}
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/notifications/stream", nil)
+	// Both headers: this is what the proxy outside this middleware requires,
+	// and the predicate here delegates to the same gorilla check.
+	req.Header.Set("Connection", "Upgrade")
 	req.Header.Set("Upgrade", "websocket")
 
 	var wrapped bool
@@ -156,6 +159,32 @@ func TestWithRequestLogPassesWebsocketUpgradeThrough(t *testing.T) {
 	}
 	if n := logs.Len(); n != 0 {
 		t.Errorf("want no http record for an upgrade, got %d", n)
+	}
+}
+
+// An Upgrade header the proxy does not accept is a plain HTTP request and must
+// be recorded: the old header-only predicate dropped the access record for it.
+func TestWithRequestLogRecordsUpgradeHeaderWithoutConnection(t *testing.T) {
+	core, logs := observer.New(zapcore.DebugLevel)
+	s := &Server{log: logger.NewWithCore(core)}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/tickets/abc", nil)
+	req.Header.Set("Upgrade", "websocket")
+
+	rec := httptest.NewRecorder()
+	s.withRequestLog(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	})).ServeHTTP(rec, req)
+
+	entries := logs.All()
+	if len(entries) != 1 {
+		t.Fatalf("want 1 record for a request the proxy did not take over, got %d", len(entries))
+	}
+	assertField(t, entries[0], "event", "http.call.finish")
+	assertField(t, entries[0], "path", "/v1/tickets/abc")
+	status, ok := intField(entries[0], "status")
+	if !ok || status != http.StatusCreated {
+		t.Errorf("want status 201, got %+v", entries[0].Context)
 	}
 }
 

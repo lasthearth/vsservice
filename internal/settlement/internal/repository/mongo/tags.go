@@ -48,6 +48,9 @@ func (r *Repository) AddTag(ctx context.Context, settlementId, tagId string) err
 	update := bson.M{
 		"$addToSet": bson.M{"tag_ids": tagId},
 		"$set":      bson.M{"updated_at": time.Now()},
+		// Bump version so a concurrent whole-document UpdateSettlement cannot
+		// write back a snapshot without this tag.
+		"$inc": bson.M{"version": 1},
 	}
 
 	result, err := r.setColl.UpdateOne(ctx, filter, update)
@@ -73,6 +76,9 @@ func (r *Repository) RemoveTag(ctx context.Context, settlementId, tagId string) 
 	update := bson.M{
 		"$pull": bson.M{"tag_ids": tagId},
 		"$set":  bson.M{"updated_at": time.Now()},
+		// Same reason as AddTag: the tag change must be visible to the
+		// {version: N} guard a concurrent UpdateSettlement answers to.
+		"$inc": bson.M{"version": 1},
 	}
 
 	result, err := r.setColl.UpdateOne(ctx, filter, update)

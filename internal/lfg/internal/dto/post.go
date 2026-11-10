@@ -20,14 +20,20 @@ type Post struct {
 	StartsAt    *time.Time `bson:"starts_at,omitempty"`
 	Slots       int32      `bson:"slots"`
 	Responders  []string   `bson:"responders"`
-	PlayDays    []int32    `bson:"play_days,omitempty"`
-	PlayTimes   []string   `bson:"play_times,omitempty"`
-	Experience  string     `bson:"experience,omitempty"`
-	Voice       bool       `bson:"voice,omitempty"`
-	Contact     string     `bson:"contact,omitempty"`
-	ClosedAt    *time.Time `bson:"closed_at,omitempty"`
-	ExpiresAt   time.Time  `bson:"expires_at"`
-	BumpedAt    time.Time  `bson:"bumped_at"`
+	// Notified persists which responders already produced an author notification.
+	// Without this field the model's dedupe set is dropped on every write and
+	// Respond notifies the author again after each withdraw/rejoin. goverter maps
+	// it by name in both directions, so no mapper directive changes — but the
+	// generated repomapper must be regenerated or the mapping stays absent.
+	Notified   []string   `bson:"notified,omitempty"`
+	PlayDays   []int32    `bson:"play_days,omitempty"`
+	PlayTimes  []string   `bson:"play_times,omitempty"`
+	Experience string     `bson:"experience,omitempty"`
+	Voice      bool       `bson:"voice,omitempty"`
+	Contact    string     `bson:"contact,omitempty"`
+	ClosedAt   *time.Time `bson:"closed_at,omitempty"`
+	ExpiresAt  time.Time  `bson:"expires_at"`
+	BumpedAt   time.Time  `bson:"bumped_at"`
 	// DeleteAt drives the TTL index: a post is kept a day after it leaves the
 	// board, so shared links still show what it was and a teammate post can
 	// still be renewed.

@@ -26,6 +26,17 @@ func (s *Service) SubmitSuggestion(
 		return nil, err
 	}
 
+	// The queue limit is counted before the target is read: an author who is
+	// already at the limit gets TOO_MANY_REQUESTS for every id, so the answer
+	// says nothing about whether the id names an article.
+	pending, err := s.repo.CountPendingSuggestions(ctx, author)
+	if err != nil {
+		return nil, err
+	}
+	if pending >= model.MaxPendingSuggestions {
+		return nil, model.ErrTooManySuggestions
+	}
+
 	input := req.GetSuggestion()
 	articleId := input.GetArticleId()
 
@@ -41,15 +52,16 @@ func (s *Service) SubmitSuggestion(
 			return nil, err
 		}
 
-		base = stored
-	}
+		// A proposal may only target a page its author may read. Without this the
+		// stored article is returned to the caller as Suggestion.base, which hands
+		// an editor-only draft to any signed-in player, while GetArticle,
+		// GetArticleBySlug and ListArticles answer NOT_FOUND for the same document.
+		// NOT_FOUND, not a permission error, so the draft stays unnameable.
+		if !stored.VisibleTo(s.canSeeDrafts(ctx)) {
+			return nil, model.ErrNotFound
+		}
 
-	pending, err := s.repo.CountPendingSuggestions(ctx, author)
-	if err != nil {
-		return nil, err
-	}
-	if pending >= model.MaxPendingSuggestions {
-		return nil, model.ErrTooManySuggestions
+		base = stored
 	}
 
 	suggestion, err := model.NewSuggestion(model.SuggestionInput{
@@ -68,7 +80,7 @@ func (s *Service) SubmitSuggestion(
 		return nil, err
 	}
 
-	return s.toSuggestionProto(created), nil
+	return s.toSuggestionProto(ctx, created), nil
 }
 
 // ListSuggestions implements wikiv1.WikiServiceServer.
@@ -101,7 +113,7 @@ func (s *Service) ListSuggestions(
 
 	suggestions := make([]*wikiv1.Suggestion, 0, len(page.Suggestions))
 	for _, suggestion := range page.Suggestions {
-		suggestions = append(suggestions, s.toSuggestionProto(suggestion))
+		suggestions = append(suggestions, s.toSuggestionProto(ctx, suggestion))
 	}
 
 	return &wikiv1.ListSuggestionsResponse{
@@ -170,7 +182,7 @@ func (s *Service) ApproveSuggestion(
 		return nil, err
 	}
 
-	return s.toSuggestionProto(saved), nil
+	return s.toSuggestionProto(ctx, saved), nil
 }
 
 // RejectSuggestion implements wikiv1.WikiServiceServer.
@@ -206,7 +218,7 @@ func (s *Service) RejectSuggestion(
 	title, message := rejectedText(saved)
 	s.notifyDecision(ctx, saved, title, message)
 
-	return s.toSuggestionProto(saved), nil
+	return s.toSuggestionProto(ctx, saved), nil
 }
 
 // applySuggestion turns an approved proposal into an article.
@@ -284,9 +296,18 @@ func (s *Service) applySuggestion(
 // toSuggestionProto converts a proposal for the wire and attaches the article
 // its author wrote against. The converter leaves that field alone — see the
 // Mapper interface — so it is filled in here.
-func (s *Service) toSuggestionProto(suggestion *model.Suggestion) *wikiv1.Suggestion {
+//
+// The base goes out only to a caller who may read it, which is the same rule
+// SubmitSuggestion applies before it stores one. A proposal written before that
+// check existed still carries its copy of the target, so the read back has to
+// be gated as well: a draft base stays editor-only, while a published one is
+// public data and remains the article its author saw.
+func (s *Service) toSuggestionProto(ctx context.Context, suggestion *model.Suggestion) *wikiv1.Suggestion {
 	proto := s.mapper.ToSuggestionProto(*suggestion)
-	proto.Base = s.toProto(suggestion.Base)
+
+	if base := suggestion.Base; base != nil && base.VisibleTo(s.canSeeDrafts(ctx)) {
+		proto.Base = s.toProto(base)
+	}
 
 	return proto
 }
@@ -306,10 +327,30 @@ func (s *Service) canReview(ctx context.Context) bool {
 	return slices.Contains(strings.Fields(claims.Scope), scopeWikiReview)
 }
 
+// canSeeDrafts reports whether the caller holds a wiki editor scope. It reads
+// the scopes the interceptor already verified, the same way canReview does. A
+// bare "is there a user id" test is not enough here: SubmitSuggestion is an
+// authenticated method, so every signed-in player carries a user id.
+func (s *Service) canSeeDrafts(ctx context.Context) bool {
+	claims, err := interceptor.GetClaims(ctx)
+	if err != nil {
+		return false
+	}
+
+	fields := strings.Fields(claims.Scope)
+
+	return slices.Contains(fields, scopeWikiReview) || slices.Contains(fields, scopeWikiWrite)
+}
+
 // scopeWikiReview is the scope an editor needs to decide a proposal. It is
 // declared here because the review paths read it from the token as well as
 // declare it in Scope().
 const scopeWikiReview = "wiki:review"
+
+// scopeWikiWrite is the scope an editor needs to write a page directly. It is
+// declared next to scopeWikiReview for the same reason: the visibility paths
+// read it from the token as well as declare it in Scope().
+const scopeWikiWrite = "wiki:write"
 
 // protoToSuggestionStatus converts a protobuf review state to its domain value.
 func ProtoToSuggestionStatus(status wikiv1.SuggestionStatus) string {

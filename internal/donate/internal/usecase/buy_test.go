@@ -97,7 +97,7 @@ func TestBuyOutsideDiscountWindowPaysFullPrice(t *testing.T) {
 
 func TestBuyWithInsufficientBalanceWritesNothing(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 10)
-	repo.withItem("i1", "Sword", 30)
+	repo.withKitItem("i1", "Sword", "code-i1", 30)
 
 	_, err := newPurchases(repo).Buy(context.Background(), "p1", "i1")
 	if !errors.Is(err, ierror.ErrInsufficientFunds) {
@@ -113,7 +113,9 @@ func TestBuyWithInsufficientBalanceWritesNothing(t *testing.T) {
 
 func TestBuyUnavailableItemRejected(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
-	item := repo.withItem("i1", "Sword", 30)
+	// A kit, so this test stays about availability: an item-typed entry would
+	// also be refused, by the deliverability check that runs next to it.
+	item := repo.withKitItem("i1", "Sword", "code-i1", 30)
 	item.Apply(model.ShopItemUpdate{
 		Code: item.Code, Name: item.Name, Price: item.Price, Type: item.Type, IsAvailable: false,
 	})
@@ -139,7 +141,7 @@ func TestBuyMissingItemRejected(t *testing.T) {
 // record exists, so a failed CreatePurchase must give the coins back.
 func TestBuyReturnsCoinsWhenThePurchaseRecordFails(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
-	repo.withItem("i1", "Sword", 30)
+	repo.withKitItem("i1", "Sword", "code-i1", 30)
 	repo.createPurErr = errors.New("insert failed")
 
 	_, err := newPurchases(repo).Buy(context.Background(), "p1", "i1")
@@ -158,7 +160,7 @@ func TestBuyReturnsCoinsWhenThePurchaseRecordFails(t *testing.T) {
 // must name both failures rather than hide one.
 func TestBuyReportsBothFailuresWhenCompensationFails(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
-	repo.withItem("i1", "Sword", 30)
+	repo.withKitItem("i1", "Sword", "code-i1", 30)
 	repo.createPurErr = errors.New("insert failed")
 	repo.addCoinsErr = errors.New("upsert failed")
 
@@ -179,7 +181,7 @@ func TestBuyReportsBothFailuresWhenCompensationFails(t *testing.T) {
 // purchase in place. The player keeps what they bought; only the report is short.
 func TestBuyKeepsThePurchaseWhenTheLedgerFails(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
-	repo.withItem("i1", "Sword", 30)
+	repo.withKitItem("i1", "Sword", "code-i1", 30)
 	repo.createTxErr = errors.New("insert failed")
 
 	_, err := newPurchases(repo).Buy(context.Background(), "p1", "i1")
@@ -200,7 +202,8 @@ func TestBuyKeepsThePurchaseWhenTheLedgerFails(t *testing.T) {
 // A legacy item-typed entry can no longer be bought: donate sells captured
 // kits only, and the compose step is kit-only. An item entry that slipped
 // past create/update is refused instead of composing a mail from a hand-typed
-// game code — nothing is composed and the purchase is not stamped issued.
+// game code — and the refusal is decided before the first write, so no coin
+// moves, nothing is composed and no purchase exists to stamp.
 func TestBuyLegacyItemEntryIsRefused(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
 	repo.withItem("i1", "Sword", 30)
@@ -213,10 +216,15 @@ func TestBuyLegacyItemEntryIsRefused(t *testing.T) {
 	if len(mail.itemCalls) != 0 || len(mail.kitCalls) != 0 {
 		t.Fatalf("composed item=%d kit=%d mails, want none", len(mail.itemCalls), len(mail.kitCalls))
 	}
-	for _, p := range repo.purchases {
-		if p.IsIssued() {
-			t.Fatal("purchase was stamped issued despite the refusal")
-		}
+	// A refused purchase must not move money: assert the wallet, not only the mail.
+	if got := repo.wallets["p1"].Coins; got != 100 {
+		t.Fatalf("coins = %d, want 100 - a refused purchase must not debit", got)
+	}
+	if len(repo.purchases) != 0 || len(repo.txs) != 0 {
+		t.Fatalf("wrote purchases=%d txs=%d, want none", len(repo.purchases), len(repo.txs))
+	}
+	if repo.walletCalls != 0 {
+		t.Fatalf("wallet touched %d times, want 0 — deliverability is decided before the first write", repo.walletCalls)
 	}
 }
 
@@ -248,7 +256,7 @@ func TestBuyKitComposesKitMailAndStampsIssued(t *testing.T) {
 }
 
 // A compose failure fails the Buy sequence: the purchase exists (record of
-// truth) but is not stamped issued.
+// truth) but is not stamped issued — and, today, the coins stay withdrawn.
 func TestBuyLeavesPurchaseUnstampedWhenComposeFails(t *testing.T) {
 	repo := newFakeRepo().withWallet("p1", "Bob", 100)
 	repo.withKitItem("i1", "Sword", "code-i1", 30)
@@ -265,5 +273,17 @@ func TestBuyLeavesPurchaseUnstampedWhenComposeFails(t *testing.T) {
 		if p.IsIssued() {
 			t.Fatal("purchase was stamped issued despite the compose failure")
 		}
+	}
+	// Pins the open gap, not the wanted behaviour: step 4 runs after the debit
+	// and compensates nothing, so the coins stay gone and the ledger keeps the
+	// debit while the purchase waits unstamped for an operator to find it in
+	// AdminListPendingPurchases (see TODO(donate-buy) in buy.go). When the
+	// compensation or the reconcile lands, these two numbers must flip to 100
+	// coins and no debit.
+	if got := repo.wallets["p1"].Coins; got != 70 {
+		t.Fatalf("coins = %d, want 70 — a compose failure is not compensated today", got)
+	}
+	if len(repo.txs) != 1 {
+		t.Fatalf("transactions = %d, want the debit the sequence already wrote", len(repo.txs))
 	}
 }

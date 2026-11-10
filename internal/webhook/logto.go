@@ -43,6 +43,11 @@ const (
 	webhookEventResponseFailed  = "webhook.logto.response_write_failed"
 )
 
+// maxWebhookBodyBytes bounds an anonymous body before anything reads it. A Logto
+// sign-in event is a few hundred bytes; the cap only has to leave room for the
+// profile object.
+const maxWebhookBodyBytes = 1 << 20
+
 type LogtoWebhookService struct {
 	log    logger.Logger
 	config config.Config
@@ -78,7 +83,11 @@ func (s *LogtoWebhookService) HandleWebhook(w http.ResponseWriter, r *http.Reque
 		zap.String("path", r.URL.Path),
 	)
 
-	body, err := io.ReadAll(r.Body)
+	// Read the bounded body first: the signature check needs these bytes, and an
+	// unbounded read here is an unauthenticated memory sink. Reading one byte past
+	// the cap is what makes an oversized body detectable instead of silently
+	// truncated, so it fails the signature or the JSON parse.
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxWebhookBodyBytes+1))
 	if err != nil {
 		log.Error("failed to read request body",
 			zap.String("event", webhookEventParseFailed),
@@ -88,22 +97,34 @@ func (s *LogtoWebhookService) HandleWebhook(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "failed to read request body", http.StatusBadRequest)
 		return
 	}
+	if len(body) > maxWebhookBodyBytes {
+		log.Warn("webhook body exceeds the declared maximum",
+			zap.String("event", webhookEventParseFailed),
+			zap.String("component", "webhook"),
+			zap.Int("max_bytes", maxWebhookBodyBytes),
+		)
+		http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
+		return
+	}
 
-	if s.config.LogtoWebhookSecret != "" {
-		if err := s.ValidateSignature(r, body, s.config.LogtoWebhookSecret); err != nil {
-			log.Error("webhook signature validation failed",
-				zap.String("event", webhookEventSignatureFailed),
-				zap.String("component", "webhook"),
-				zap.Error(err),
-			)
-			http.Error(w, "unauthorized: Invalid signature", http.StatusUnauthorized)
-			return
-		}
-	} else {
-		log.Warn("Logto webhook secret is not configured, signature validation skipped",
+	if s.config.LogtoWebhookSecret == "" {
+		// Fail closed: an unconfigured secret must not turn the route into an
+		// unauthenticated event producer.
+		log.Warn("Logto webhook secret is not configured, refusing the request",
 			zap.String("event", webhookEventSecretMissing),
 			zap.String("component", "webhook"),
 		)
+		http.Error(w, "webhook signature verification is not configured", http.StatusServiceUnavailable)
+		return
+	}
+	if err := s.ValidateSignature(r, body, s.config.LogtoWebhookSecret); err != nil {
+		log.Error("webhook signature validation failed",
+			zap.String("event", webhookEventSignatureFailed),
+			zap.String("component", "webhook"),
+			zap.Error(err),
+		)
+		http.Error(w, "unauthorized: Invalid signature", http.StatusUnauthorized)
+		return
 	}
 
 	var rawMap map[string]json.RawMessage

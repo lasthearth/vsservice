@@ -54,6 +54,12 @@ type fakeRepo struct {
 	page       *model.PlayerListPage
 	listErr    error
 
+	// Injected failures, one per call a handler makes. A test sets the field to
+	// stand in for a driver error the repository would surface.
+	getByIDErr    error
+	batchErr      error
+	nickUpdateErr error
+
 	gotFilter model.PlayerListFilter
 	gotPage   int
 	gotSize   int
@@ -61,6 +67,10 @@ type fakeRepo struct {
 }
 
 func (r *fakeRepo) GetUserById(_ context.Context, id string) (*model.Player, error) {
+	if r.getByIDErr != nil {
+		return nil, r.getByIDErr
+	}
+
 	p, ok := r.players[id]
 	if !ok {
 		return nil, domainerr.ErrNotFound
@@ -79,6 +89,10 @@ func (r *fakeRepo) GetUserById(_ context.Context, id string) (*model.Player, err
 }
 
 func (r *fakeRepo) GetUsersByIds(context.Context, []string) ([]model.Player, error) {
+	if r.batchErr != nil {
+		return nil, r.batchErr
+	}
+
 	return nil, nil
 }
 
@@ -93,6 +107,10 @@ func (r *fakeRepo) UpdatePlayerNickname(
 	uid, newNickname, previousNickname string,
 	lastChangedAt time.Time,
 ) error {
+	if r.nickUpdateErr != nil {
+		return r.nickUpdateErr
+	}
+
 	r.nickWrites = append(r.nickWrites, nickWrite{
 		userId: uid, old: previousNickname, new: newNickname, lastSeen: lastChangedAt,
 	})

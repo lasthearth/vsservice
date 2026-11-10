@@ -241,6 +241,12 @@ func (r *Repository) RemoveMember(ctx context.Context, settlementID, userID stri
 					{Key: "updated_at", Value: time.Now()},
 				},
 			},
+			// Bump the version, the way pushMember does: UpdateSettlement
+			// replaces the whole document under a {version: N} guard, so a
+			// $pull that leaves version alone is invisible to it and a
+			// concurrent edit writes back a pre-kick snapshot that silently
+			// restores the removed member, role_ids included.
+			{Key: "$inc", Value: bson.D{{Key: "version", Value: 1}}},
 		},
 	)
 	if err != nil {

@@ -5,7 +5,9 @@ import (
 	"context"
 	"errors"
 	"time"
+	"unicode/utf8"
 
+	pkgierror "github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/pkg/regexsafe"
 	dto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo"
 	verificationdto "github.com/lasthearth/vsservice/internal/player/internal/dto/mongo/verification"
@@ -88,15 +90,48 @@ func (r *Repository) GetUsersByIds(ctx context.Context, ids []string) ([]model.P
 	return users, nil
 }
 
+// maxSearchQueryRunes mirrors the roster's maxRosterQueryRunes: SearchUsers is a
+// name-fragment lookup, and the query is escaped into a $regex, which expands
+// every metacharacter into two runes.
+const maxSearchQueryRunes = 32
+
+// errQueryTooLong is the answer to a query over maxSearchQueryRunes.
+var errQueryTooLong = pkgierror.InvalidArgument("query is longer than 32 characters")
+
+// boundedSearchQuery refuses an oversized query.
+//
+// The byte length goes first, so a body over the limit is answered before the
+// rune count is computed over it. The rune count is the bound itself, because
+// that is what the escaped pattern grows from.
+func boundedSearchQuery(query string) error {
+	if len(query) > maxSearchQueryRunes*utf8.UTFMax {
+		return errQueryTooLong
+	}
+
+	if utf8.RuneCountInString(query) > maxSearchQueryRunes {
+		return errQueryTooLong
+	}
+
+	return nil
+}
+
 // SearchUsers searches for players based on a query string, looking for matches
 // in the user_game_name and user_name fields. The query reaches a $regex
 // escaped: an unescaped one lets a caller build a pattern, and a pattern such as
 // (a*)*b makes MongoDB's regex engine backtrack until the worker threads are
 // gone.
+//
+// The query is bounded before it is escaped, so the expansion is bounded too: a
+// caller may send a body up to the gRPC receive limit, and nothing between that
+// limit and the escape stops it.
 func (r *Repository) SearchUsers(
 	ctx context.Context,
 	query string,
 ) ([]model.Player, error) {
+	if err := boundedSearchQuery(query); err != nil {
+		return nil, err
+	}
+
 	escaped := regexsafe.Escape(query)
 	filter := bson.M{
 		"$or": []bson.M{

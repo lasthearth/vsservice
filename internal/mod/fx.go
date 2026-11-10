@@ -111,21 +111,39 @@ var App = fx.Options(
 			cfg config.Config,
 			log logger.Logger,
 		) {
+			// The loop's lifetime is the app's, not the start hook's: the fx hook
+			// context carries the StartTimeout and is cancelled ~15s after start
+			// (fx v1.24.0 app.go:606), which used to kill the sync loop silently
+			// before its first MODS_SYNC_INTERVAL tick.
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan struct{})
+
 			lc.Append(fx.Hook{
-				OnStart: func(ctx context.Context) error {
+				OnStart: func(startCtx context.Context) error {
 					// Both steps are best effort and never fail the start: MinIO
 					// or the game server may be down, and /mods must still serve
 					// what Mongo holds. The bootstrap gets its own short bound.
-					bootCtx, cancel := context.WithTimeout(ctx, bootstrapTimeout)
-					defer cancel()
+					bootCtx, cancelBoot := context.WithTimeout(startCtx, bootstrapTimeout)
+					defer cancelBoot()
 
 					if err := bootstrapModsBucket(bootCtx, buckets, cfg); err != nil {
 						log.Warn("failed to bootstrap the server-mods bucket, serving the stored list",
 							zap.Error(err))
 					}
 
-					go syncer.Run(ctx)
+					go func() {
+						defer close(done)
+						syncer.Run(ctx)
+					}()
 
+					return nil
+				},
+				OnStop: func(stopCtx context.Context) error {
+					cancel()
+					select {
+					case <-done:
+					case <-stopCtx.Done():
+					}
 					return nil
 				},
 			})

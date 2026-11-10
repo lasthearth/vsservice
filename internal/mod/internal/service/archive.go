@@ -585,11 +585,18 @@ func (a *Archive) download(ctx context.Context, fileURL string) (io.ReadCloser, 
 // produces an archive Windows refuses to open. Two mods that share a file name
 // get the second one numbered, because an extractor keeps only one of two
 // entries with the same name and the player would silently miss a required mod.
+//
+// The fallback is reduced the same way, because it is built from a modid and a
+// version this service did not author either: a traversal in the fallback would
+// be a traversal in the archive. When both sources reduce to nothing, a
+// constant name keeps the entry writable.
 func entryName(fileName, fallback string, taken map[string]struct{}) string {
-	name := path.Base(strings.ReplaceAll(strings.TrimSpace(fileName), "\\", "/"))
-	switch name {
-	case "", ".", "/", "..":
-		name = fallback
+	name := safeBase(fileName)
+	if name == "" {
+		name = safeBase(fallback)
+	}
+	if name == "" {
+		name = "mod.zip"
 	}
 
 	// Keep the extension: the game's loader and the player's extractor both go
@@ -621,6 +628,20 @@ func entryName(fileName, fallback string, taken map[string]struct{}) string {
 	taken[unique] = struct{}{}
 
 	return unique
+}
+
+// safeBase reduces s to one path component that is not a dot name. It returns
+// "" for an empty s and for a name whose base is ".", "/" or "..", so neither
+// the release file name nor the modid/version fallback can smuggle a path
+// component into an archive entry.
+func safeBase(s string) string {
+	name := path.Base(strings.ReplaceAll(strings.TrimSpace(s), "\\", "/"))
+	switch name {
+	case "", ".", "/", "..":
+		return ""
+	}
+
+	return name
 }
 
 // archiveKey names one set of required mods: their ids and the versions the

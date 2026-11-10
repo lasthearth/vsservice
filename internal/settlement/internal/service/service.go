@@ -700,8 +700,23 @@ func (s *Service) GetUserMemberships(ctx context.Context, req *settlementv1.GetU
 	return out, nil
 }
 
-// VerificationStatus implements settlementv1.SettlementServiceServer.
+// VerificationStatus implements settlementv1.SettlementServiceServer. The moderation state belongs
+// to the applicant: a caller who is not the named user must hold the moderation scope, the same
+// gate ListPending answers to. Without that binding any signed-in player reads the status and the
+// moderator's rejection text of any other player's request, and the user ids are enumerable from
+// the public Get and List rpcs.
 func (s *Service) VerificationStatus(ctx context.Context, req *settlementv1.VerificationStatusRequest) (*settlementv1.VerificationStatusResponse, error) {
+	uid, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		s.log.Error("failed to get user id", zap.Error(err))
+		return nil, err
+	}
+	if uid != req.GetUserId() {
+		if serr := s.requireScope(ctx, manageScope); serr != nil {
+			return nil, serr
+		}
+	}
+
 	// Each kind keeps its own request; an unspecified kind answers the settlement one, which is
 	// what this rpc answered before a guild could be submitted.
 	kind := KindFromProto(req.GetKind(), model.KindSettlement)

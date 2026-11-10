@@ -34,13 +34,36 @@ var (
 // playerIndexes are the indexes the verification_requests collection needs.
 var playerIndexes = []mongo.IndexModel{
 	// The dominant lookup: by the SSO user id (this repository's FindOne and
-	// the cross-domain readers, e.g. appearance standings). Not unique on
-	// purpose: the check-then-create Submit flow can already have left two
-	// documents for one user, and a unique index would then fail to build.
+	// the cross-domain readers, e.g. appearance standings). Still not unique:
+	// the check-then-create Submit flow can already have left two documents for
+	// one user, and a unique index would then fail to build. Making it unique is
+	// a separate change that needs its own de-duplication pass.
 	{Keys: bson.D{{Key: "user_id", Value: 1}}},
-	// The roster joins this collection on the game name, and so does the
-	// leaderboard. Without an index the $lookup scans stats once per player.
-	{Keys: bson.D{{Key: "user_game_name", Value: 1}}},
+	// One player per in-game name. The roster joins this collection on the game
+	// name, and so does the leaderboard, the game mod's presence write and the
+	// appearance standing: all four attribute stats by name, and this index is
+	// what makes the repository's ErrNickAlreadyExists reachable. Without it a
+	// second player can claim a name that is already taken and read the stats
+	// attributed to it.
+	//
+	// Partial, because documents with no name exist (the roster filters them
+	// with $nin ["", nil]) and two nameless documents must not collide: the
+	// filter keeps only a non-empty string, so a missing, null or empty name
+	// stays out of the index.
+	//
+	// TODO(owner): this index cannot build yet. It needs, in this order,
+	//   1. a de-duplication pass over the existing rows, which already hold
+	//      repeated names, and
+	//   2. a drop of the plain index the previous revision created over the same
+	//      key (user_game_name_1), because MongoDB refuses a second index on an
+	//      existing key pattern with different options (IndexOptionsConflict).
+	// Until then setupIndexes logs the failed build and the service starts
+	// without the uniqueness; no migration is written here on purpose.
+	{
+		Keys: bson.D{{Key: "user_game_name", Value: 1}},
+		Options: options.Index().SetUnique(true).SetName("uniq_user_game_name").
+			SetPartialFilterExpression(bson.M{"user_game_name": bson.M{"$type": "string", "$gt": ""}}),
+	},
 	// The presence sweeper's filter: an equality on is_online and a range on
 	// last_heartbeat. Partial on is_online: true because the collection is large
 	// and the documents claiming to be online are dozens. A partial index is
@@ -97,9 +120,17 @@ func New(opts Opts) *Repository {
 	}
 }
 
+// setupIndexes creates the verification_requests indexes one at a time, the way
+// internal/lfg and internal/ticket do. CreateMany is all-or-nothing: a spec that
+// cannot build — the unique user_game_name index before its de-duplication pass
+// — would take the whole batch with it, including the presence index the
+// sweeper needs. One failure must cost one index, logged, and the service must
+// still start.
 func setupIndexes(ctx context.Context, log logger.Logger, coll *mongo.Collection) {
-	if _, err := coll.Indexes().CreateMany(ctx, playerIndexes); err != nil {
-		log.Error("failed to create indexes", zap.String("collection", collName), zap.Error(err))
+	for _, model := range playerIndexes {
+		if _, err := coll.Indexes().CreateOne(ctx, model); err != nil {
+			log.Error("failed to create index", zap.String("collection", collName), zap.Error(err))
+		}
 	}
 }
 

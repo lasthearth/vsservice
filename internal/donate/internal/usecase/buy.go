@@ -14,6 +14,10 @@ import (
 // produced it are captured on the purchase, so a later price change does not
 // rewrite history.
 //
+// Every rule that can refuse the sale runs before the first write: the item
+// must exist, be on sale, and be deliverable (a kit — donate sells captured
+// kits only). A refusal there costs the player nothing.
+//
 // Write order: wallet withdrawal, then purchase record, then ledger entry.
 // Nothing here is atomic (see Sequence) — what a mid-sequence failure leaves:
 //
@@ -30,6 +34,9 @@ import (
 //     ledger is a report. It does not self-heal; ListTransactions will be short
 //     one debit for this player. The call still reports failure, as it did
 //     before this rule moved out of the repository.
+//   - delivery fails (the compose or the issued stamp): the wallet is debited,
+//     the purchase exists and stays active and unstamped. Not compensated and
+//     not reconciled — see the TODO on step 4.
 func (uc *Purchases) Buy(ctx context.Context, playerID, itemID string) (*model.Purchase, error) {
 	item, err := uc.repo.GetShopItem(ctx, itemID)
 	if err != nil {
@@ -37,6 +44,12 @@ func (uc *Purchases) Buy(ctx context.Context, playerID, itemID string) (*model.P
 	}
 	if !item.IsAvailable {
 		return nil, ierror.ErrNotFound
+	}
+	// Decide deliverability before any coin moves: a refusal here must leave the
+	// wallet, the purchase collection and the ledger untouched, and the sequence
+	// has no compensation for a step 4 failure.
+	if item.Type != model.ItemTypeKit {
+		return nil, ierror.ErrItemTypeDisabled
 	}
 
 	// Resolve the player name from the wallet (set by admin via AddCoins);
@@ -91,10 +104,24 @@ func (uc *Purchases) Buy(ctx context.Context, playerID, itemID string) (*model.P
 		// not stamped issued (reconcile is fog — not built here). Mirrors the
 		// ledger step's "purchase is the record of truth" semantics.
 		//
+		// TODO(donate-buy; the fog named at 4cf6638 buy.go:90-91): this step
+		// runs after the debit, so a failure here — a mail-store error, or
+		// ErrKitNotFound / ErrKitEmpty from the seam (mail/internal/service/
+		// compose.go:51 and :56) — leaves the coins withdrawn against an
+		// active, unstamped purchase with no compensation and no reconcile.
+		// Only AdminListPendingPurchases shows it, and an operator has to
+		// refund it by hand. Close it either way: credit the coins back the way
+		// step 2 does, or build the reconcile that refunds or delivers an
+		// unstamped active purchase on its own. Left open on purpose — a
+		// partial refund written here would be a half-transaction.
+		//
 		// There is no item branch any more: donate sells captured kits only
 		// (create/update refuse anything else), so an item-typed entry here is
 		// a legacy document that slipped past — refuse it instead of composing
-		// a mail from a hand-typed game code.
+		// a mail from a hand-typed game code. The check is a defensive
+		// assertion now: Buy refuses the same entry before the first write, so
+		// reaching it means the entry changed type mid-sequence. Keep it — it
+		// is the last gate in front of the mail.
 		func(ctx context.Context) error {
 			if item.Type != model.ItemTypeKit {
 				return ierror.ErrItemTypeDisabled

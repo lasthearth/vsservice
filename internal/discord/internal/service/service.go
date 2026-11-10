@@ -11,6 +11,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/discord/internal/lib"
 	"github.com/lasthearth/vsservice/internal/discord/internal/model"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
+	"github.com/lasthearth/vsservice/internal/pkg/httpclient"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"go.uber.org/fx"
@@ -132,12 +133,15 @@ func (s *Service) SendNews(ctx context.Context, req *discordv1.SendNewsRequest) 
 
 	payload, err := s.buildNewsPayload(req)
 	if err != nil {
+		// A json.Marshal error names a Go type or a request value; the webhook
+		// URL is not part of the payload, so no masking is needed here.
 		l.Error("failed to build news payload", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to build news payload")
 	}
 
 	if err := s.client.SendWebhook(ctx, s.cfg.DiscordNewsWebhook, payload); err != nil {
-		l.Error("failed to send discord webhook", zap.Error(err))
+		// The error text carries the webhook URL, and the token is part of it.
+		l.Error("failed to send discord webhook", httpclient.MaskedError(err))
 		return nil, status.Error(codes.Internal, "discord webhook request failed")
 	}
 

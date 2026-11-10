@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
@@ -20,6 +21,13 @@ const requestIDHeader = "X-Request-Id"
 // maxRequestIDHeader rejects an absurd client-supplied id before it reaches a
 // log line or a response header.
 const maxRequestIDHeader = 64
+
+// maxRequestBodyBytes is the inbound body maximum every gateway route inherits.
+// It must stay above the largest legitimate request: UpdateAvatarRequest carries
+// a 3 MiB avatar (internal/player/internal/service/player/service.go:108) that
+// REST encodes as about 4 MiB of base64 plus the JSON envelope. Routes that need
+// far less, such as /logtohook, carry their own smaller cap.
+const maxRequestBodyBytes = 8 << 20
 
 // forwardRequestIDHeader lets a caller-supplied X-Request-Id reach the gRPC
 // metadata, where the identity interceptor adopts it. Every other header keeps
@@ -39,6 +47,12 @@ func (s *Server) withRequestLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rid := adoptRequestID(r.Header.Get(requestIDHeader))
 		w.Header().Set(requestIDHeader, rid)
+
+		// Applied before the websocket branch so the body that wsproxy feeds the
+		// inner handler carries the same cap as a plain request body.
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
+		}
 
 		ctx := logging.InjectFields(r.Context(), logging.Fields{"request_id", rid})
 
@@ -90,8 +104,14 @@ func adoptRequestID(incoming string) string {
 	return rid.String()
 }
 
+// isWebsocketUpgrade must agree with the proxy that sits outside this
+// middleware (server.go:332): gorilla requires both Connection: Upgrade and
+// Upgrade: websocket, and a request the proxy does not take over is served as
+// plain HTTP and must be recorded as such. The branch in withRequestLog stays
+// above the statusRecorder wrap, because gorilla v1.5.3 asserts http.Hijacker
+// on the writer directly and a wrapped writer does not satisfy it.
 func isWebsocketUpgrade(r *http.Request) bool {
-	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+	return websocket.IsWebSocketUpgrade(r)
 }
 
 // statusRecorder captures the status code a handler wrote. Unwrap keeps

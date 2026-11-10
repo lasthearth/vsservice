@@ -382,6 +382,7 @@ const (
 	reasonBadFileKey   skipReason = "unusable file key"
 	reasonBadIconKey   skipReason = "unusable icon key"
 	reasonBadSHA256    skipReason = "malformed sha256"
+	reasonBadName      skipReason = "unsafe characters in a name field"
 )
 
 // entriesOf validates the manifest and turns it into the mods the sync stores.
@@ -485,6 +486,12 @@ func (s *Syncer) entryOf(doc *manifest, modId string, mod manifestMod) (serverEn
 	fileName := strings.TrimSpace(mod.Filename)
 	if fileName == "" {
 		return serverEntry{}, reasonNoFileName, false
+	}
+
+	// The archive names its entries from these three fields, so a separator or a
+	// dot segment in any of them is a path in the zip every player downloads.
+	if !validNameField(modId) || !validNameField(version) || !validNameField(fileName) {
+		return serverEntry{}, reasonBadName, false
 	}
 
 	if !validObjectKey(mod.FileKey) {
@@ -600,4 +607,19 @@ func validSHA256(digest string) bool {
 	}
 
 	return true
+}
+
+// validNameField reports whether s is safe to embed in an archive entry name:
+// non-empty after trim, not a dot name, and free of path separators. The
+// archive builds its entry-name fallback from modid and version, so a
+// separator or a dot segment here is a path component in the zip every player
+// downloads. Rejecting the entry also covers the modid/version a staff-promoted
+// mod carries from ModDB, which reaches the same fallback.
+func validNameField(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "." || s == ".." {
+		return false
+	}
+
+	return !strings.ContainsAny(s, `/\`)
 }

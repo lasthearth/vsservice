@@ -313,6 +313,16 @@ func createRequest(title string) *wikiv1.CreateArticleRequest {
 	}
 }
 
+// publishedRequest is createRequest with the status an editor publishes. A
+// player may only propose an edit to a page they may read, so the fixtures a
+// player proposes against are published ones.
+func publishedRequest(title string) *wikiv1.CreateArticleRequest {
+	req := createRequest(title)
+	req.GetArticle().Status = wikiv1.ArticleStatus_ARTICLE_STATUS_PUBLISHED
+
+	return req
+}
+
 func TestCreateArticleRequiresAuthentication(t *testing.T) {
 	svc, _ := newService(t)
 
@@ -777,6 +787,17 @@ func legacyEditProposal(suggestion *model.Suggestion) *model.Suggestion {
 	return &legacy
 }
 
+// authoredByPlayer re-stamps a stored proposal as a player's, which is what a
+// document written before the visibility check looked like.
+func authoredByPlayer(suggestion *model.Suggestion) *model.Suggestion {
+	raw := rawSuggestion(*suggestion)
+	raw.AuthorName = "author-1"
+
+	stored := model.Suggestion(raw)
+
+	return &stored
+}
+
 func suggestionRequest(title string, articleId ...string) *wikiv1.SubmitSuggestionRequest {
 	target := ""
 	if len(articleId) > 0 {
@@ -855,6 +876,127 @@ func TestSubmitSuggestionForAnEditNeedsTheArticle(t *testing.T) {
 	}
 }
 
+// Regression: a player may not read a draft through the proposal queue.
+func TestSubmitSuggestionDoesNotDiscloseADraftBase(t *testing.T) {
+	svc, repo := newService(t)
+
+	draft, err := svc.CreateArticle(reviewer(), createRequest("Черновик"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	got, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Правка", draft.GetId(), draft.GetVersion()))
+	if !errors.Is(err, model.ErrNotFound) {
+		t.Fatalf("SubmitSuggestion err = %v, want not found", err)
+	}
+	if got != nil {
+		t.Errorf("response = %+v, want none", got)
+	}
+	if len(repo.suggestions) != 0 {
+		t.Errorf("%d proposals were stored for an unreadable target", len(repo.suggestions))
+	}
+}
+
+// An editor keeps proposing against a draft, and a player keeps proposing
+// against a published page: the gate is the visibility rule, not the method.
+func TestSubmitSuggestionKeepsTheBaseForACallerThatMayReadIt(t *testing.T) {
+	svc, _ := newService(t)
+
+	draft, err := svc.CreateArticle(reviewer(), createRequest("Черновик"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	editorProposal, err := svc.SubmitSuggestion(reviewer(),
+		editRequest("Правка редактора", draft.GetId(), draft.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion(reviewer): %v", err)
+	}
+	if editorProposal.GetBase().GetTitle() != "Черновик" {
+		t.Errorf("base title = %q, want the draft an editor may read", editorProposal.GetBase().GetTitle())
+	}
+
+	published, err := svc.CreateArticle(reviewer(), publishedRequest("Опубликованная"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	playerProposal, err := svc.SubmitSuggestion(authenticated(),
+		editRequest("Правка игрока", published.GetId(), published.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion(authenticated): %v", err)
+	}
+	if playerProposal.GetBase().GetTitle() != "Опубликованная" {
+		t.Errorf("base title = %q, want the published page", playerProposal.GetBase().GetTitle())
+	}
+}
+
+// TestSubmitSuggestionCountsTheLimitBeforeItReadsTheTarget covers the order of
+// the two checks. An author at the limit is answered about the limit, whatever
+// id they name, so the answer is not an existence probe over ids they may not
+// read.
+func TestSubmitSuggestionCountsTheLimitBeforeItReadsTheTarget(t *testing.T) {
+	svc, _ := newService(t)
+
+	for i := range model.MaxPendingSuggestions {
+		if _, err := svc.SubmitSuggestion(authenticated(),
+			suggestionRequest("Засады "+string(rune('a'+i)))); err != nil {
+			t.Fatalf("submit %d: %v", i, err)
+		}
+	}
+
+	_, err := svc.SubmitSuggestion(authenticated(), suggestionRequest("Правка", "no-such-article"))
+	if !errors.Is(err, model.ErrTooManySuggestions) {
+		t.Fatalf("err = %v, want the limit reported before the target is read", err)
+	}
+}
+
+// TestListSuggestionsKeepsAStoredDraftBaseFromItsAuthor covers the read back of
+// a base that was stored before SubmitSuggestion checked visibility: the same
+// rule that guards the write guards the answer, so the draft copy leaves the
+// queue only for a caller who may read it.
+func TestListSuggestionsKeepsAStoredDraftBaseFromItsAuthor(t *testing.T) {
+	svc, repo := newService(t)
+
+	draft, err := svc.CreateArticle(reviewer(), createRequest("Черновик"))
+	if err != nil {
+		t.Fatalf("CreateArticle: %v", err)
+	}
+
+	submitted, err := svc.SubmitSuggestion(reviewer(),
+		editRequest("Правка редактора", draft.GetId(), draft.GetVersion()))
+	if err != nil {
+		t.Fatalf("SubmitSuggestion: %v", err)
+	}
+
+	// The stored document is what the queue held before the check existed: a
+	// player's proposal carrying an editor's draft as its base.
+	repo.suggestions[submitted.GetId()] = authoredByPlayer(repo.suggestions[submitted.GetId()])
+
+	own, err := svc.ListSuggestions(authenticated(), &wikiv1.ListSuggestionsRequest{})
+	if err != nil {
+		t.Fatalf("ListSuggestions as the author: %v", err)
+	}
+	if len(own.GetSuggestions()) != 1 {
+		t.Fatalf("author sees %d proposals, want 1", len(own.GetSuggestions()))
+	}
+	if base := own.GetSuggestions()[0].GetBase(); base != nil {
+		t.Errorf("base = %+v, want none for an author who may not read the draft", base)
+	}
+
+	queue, err := svc.ListSuggestions(reviewer(), &wikiv1.ListSuggestionsRequest{})
+	if err != nil {
+		t.Fatalf("ListSuggestions as a reviewer: %v", err)
+	}
+	if len(queue.GetSuggestions()) != 1 {
+		t.Fatalf("reviewer sees %d proposals, want 1", len(queue.GetSuggestions()))
+	}
+	if title := queue.GetSuggestions()[0].GetBase().GetTitle(); title != "Черновик" {
+		t.Errorf("base title = %q, want the draft a reviewer may read", title)
+	}
+}
+
 func TestApproveSuggestionPublishesANewArticle(t *testing.T) {
 	svc, _ := newService(t)
 
@@ -889,7 +1031,7 @@ func TestApproveSuggestionPublishesANewArticle(t *testing.T) {
 func TestApproveSuggestionAppliesAnEditAsARevision(t *testing.T) {
 	svc, repo := newService(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}
@@ -952,7 +1094,7 @@ func TestApproveSuggestionOfANewArticleCreditsItsAuthor(t *testing.T) {
 func TestApproveSuggestionOfAnEditCreditsTheProposalWithTheLastEditor(t *testing.T) {
 	svc, _ := newService(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}
@@ -987,7 +1129,7 @@ func TestApproveSuggestionOfAnEditCreditsTheProposalWithTheLastEditor(t *testing
 func TestSubmitSuggestionKeepsTheArticleItWasWrittenAgainst(t *testing.T) {
 	svc, repo := newService(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}
@@ -1023,7 +1165,7 @@ func TestSubmitSuggestionKeepsTheArticleItWasWrittenAgainst(t *testing.T) {
 func TestSubmitSuggestionRefusesABaseVersionTheArticleHasLeft(t *testing.T) {
 	svc, repo := newService(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}
@@ -1054,7 +1196,7 @@ func TestSubmitSuggestionRefusesABaseVersionTheArticleHasLeft(t *testing.T) {
 func TestSubmitSuggestionTakesTheCurrentVersionWhenNoneIsGiven(t *testing.T) {
 	svc, _ := newService(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}
@@ -1073,7 +1215,7 @@ func TestSubmitSuggestionTakesTheCurrentVersionWhenNoneIsGiven(t *testing.T) {
 func TestApproveSuggestionAppliesAnEditWrittenAgainstTheCurrentVersion(t *testing.T) {
 	svc, repo := newService(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}
@@ -1101,7 +1243,7 @@ func TestApproveSuggestionAppliesAnEditWrittenAgainstTheCurrentVersion(t *testin
 func TestApproveSuggestionRefusesAnEditTheArticleMovedPast(t *testing.T) {
 	svc, repo := newService(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}
@@ -1158,7 +1300,7 @@ func TestApproveSuggestionRefusesAnEditTheArticleMovedPast(t *testing.T) {
 func TestApproveSuggestionAppliesAStaleEditWhenTheReviewerConfirms(t *testing.T) {
 	svc, repo := newService(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}
@@ -1206,7 +1348,7 @@ func TestApproveSuggestionAppliesAStaleEditWhenTheReviewerConfirms(t *testing.T)
 func TestApproveSuggestionOfAProposalWithoutABaseVersion(t *testing.T) {
 	svc, repo := newService(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}
@@ -1308,7 +1450,7 @@ func TestApproveSuggestionNotifiesTheAuthorOfANewArticle(t *testing.T) {
 func TestApproveSuggestionNotifiesTheAuthorOfAnEdit(t *testing.T) {
 	svc, repo, notifier := newServiceWithNotifier(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}
@@ -1380,7 +1522,7 @@ func TestRejectSuggestionNotifiesTheAuthorOfTheReason(t *testing.T) {
 func TestNoNotificationWhenTheDecisionIsNotStored(t *testing.T) {
 	svc, _, notifier := newServiceWithNotifier(t)
 
-	article, err := svc.CreateArticle(reviewer(), createRequest("Поселения"))
+	article, err := svc.CreateArticle(reviewer(), publishedRequest("Поселения"))
 	if err != nil {
 		t.Fatalf("CreateArticle: %v", err)
 	}

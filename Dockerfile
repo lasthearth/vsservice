@@ -1,4 +1,12 @@
 # syntax=docker/dockerfile:1
+# TODO(supply-chain): pin the BuildKit frontend by digest. `docker/dockerfile:1` is a mutable
+# tag, so the frontend that parses this file is not bound to reviewed content.
+# Owner command (index digest):
+#   docker buildx imagetools inspect --format '{{.Manifest.Digest}}' docker/dockerfile:1
+# Owner command (per-platform digests):
+#   docker manifest inspect -v docker/dockerfile:1 | jq -r '.[].Descriptor.digest'
+# Then replace line 1 with: # syntax=docker/dockerfile:1@sha256:<that-digest>
+# Keep the `# syntax=` directive on the first line of this file or Docker reads it as a comment.
 
 # Comments are provided throughout this file to help you get started.
 # If you need more help, visit the Dockerfile reference guide at
@@ -9,10 +17,25 @@
 ################################################################################
 # Create a stage for building the application.
 ARG GO_VERSION=1.26
+# TODO(supply-chain): pin the build base image by digest. golang:${GO_VERSION} is a mutable tag.
+# Owner command (index digest):
+#   docker buildx imagetools inspect --format '{{.Manifest.Digest}}' golang:1.26
+# Owner command (per-platform digests):
+#   docker manifest inspect -v golang:1.26 | jq -r '.[].Descriptor.digest'
+# Then use: FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}@sha256:<that-digest> AS build
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} AS build
 WORKDIR /src
 
 ARG LIBVIPS_VERSION=8.15.5
+# SHA-256 of the reviewed libvips release asset vips-${LIBVIPS_VERSION}.tar.xz. Change this value
+# only together with LIBVIPS_VERSION, and treat both as reviewed inputs.
+# The value below is a placeholder, not a checksum: sha256sum -c rejects it and stops the build,
+# so the image cannot be built until the owner records a real reviewed digest (fail closed).
+# TODO(owner): record the reviewed digest before the next image build —
+#   curl -fsSL https://github.com/libvips/libvips/releases/download/v8.15.5/vips-8.15.5.tar.xz | sha256sum
+#   then cross-check that value against the checksum libvips publishes for the same release asset,
+#   and replace the placeholder below with it.
+ARG LIBVIPS_SHA256=REPLACE_WITH_REVIEWED_SHA256_OF_vips-8.15.5.tar.xz
 ARG PROJECT_PATH=./
 
 LABEL org.opencontainers.image.source="https://github.com/lasthearth/vsservice"
@@ -41,14 +64,17 @@ RUN DEBIAN_FRONTEND=noninteractive \
     libexpat1-dev && \
     rm -rf /var/lib/apt/lists/*
 
-RUN wget https://github.com/libvips/libvips/releases/download/v${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION}.tar.xz && \
-    tar -xf vips-${LIBVIPS_VERSION}.tar.xz && \
+# Download, verify, then unpack — in that order and in one RUN step, so a checksum mismatch (or the
+# fail-closed placeholder above) stops the build before any libvips code is compiled or installed.
+RUN wget -O vips.tar.xz https://github.com/libvips/libvips/releases/download/v${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION}.tar.xz && \
+    echo "${LIBVIPS_SHA256}  vips.tar.xz" | sha256sum -c - && \
+    tar -xf vips.tar.xz && \
     cd vips-${LIBVIPS_VERSION} && \
     meson setup build --prefix /usr/local --buildtype=release && \
     meson compile -C build && \
     meson install -C build && \
     ldconfig && \
-    cd .. && rm -rf vips-${LIBVIPS_VERSION}*
+    cd .. && rm -rf vips-${LIBVIPS_VERSION}* vips.tar.xz
 
 ARG TARGETARCH
 
@@ -81,6 +107,13 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
 # most recent version of that image when you build your Dockerfile. If
 # reproducability is important, consider using a versioned tag
 # (e.g., alpine:3.17.2) or SHA (e.g., alpine@sha256:c41ab5c992deb4fe7e5da09f67a8804a46bd0592bfdf0b1847dde0e0889d2bff).
+# TODO(supply-chain): pin the runtime base image by digest. debian:trixie-slim is a mutable tag,
+# and this stage is what CI publishes to ghcr.io.
+# Owner command (index digest):
+#   docker buildx imagetools inspect --format '{{.Manifest.Digest}}' debian:trixie-slim
+# Owner command (per-platform digests):
+#   docker manifest inspect -v debian:trixie-slim | jq -r '.[].Descriptor.digest'
+# Then use: FROM debian:trixie-slim@sha256:<that-digest> AS final
 FROM debian:trixie-slim AS final
 
 COPY --from=build /usr/local/lib /usr/local/lib

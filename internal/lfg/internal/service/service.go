@@ -91,20 +91,24 @@ func (s *Service) RespondToPost(ctx context.Context, req *lfgv1.RespondToPostReq
 	}
 
 	now := s.now()
-	var joined bool
+	var joined, notify bool
 	updated, err := s.repo.UpdatePost(ctx, req.GetId(), func(_ context.Context, p *model.Post) (*model.Post, error) {
-		in, err := p.Respond(userID, now)
+		in, tell, err := p.Respond(userID, now)
 		if err != nil {
 			return nil, mapModelErr(err)
 		}
-		joined = in
+		joined, notify = in, tell
 		return p, nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if joined {
+	// notify, not joined: joined answers the caller's "am I in" and stays true on
+	// a rejoin, while notify is true only for a responder the author has not been
+	// told about yet. Gating on joined made Respond's withdraw/rejoin toggle an
+	// unbounded write into the author's inbox.
+	if notify {
 		s.notifyAuthor(ctx, updated)
 	}
 

@@ -1,12 +1,27 @@
 package interceptor
 
 import (
+	"fmt"
 	"strings"
 
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+// maxLoggedString bounds one caller-controlled string inside a log record. A
+// request may be up to grpc.MaxRecvMsgSize (60 MiB); a log field must not scale
+// with it, and the JSON encoder expands control bytes sixfold.
+const maxLoggedString = 256
+
+// truncateForLog keeps a prefix for correlation and states the real size, so a
+// record still says that the caller sent something oversized.
+func truncateForLog(s string) string {
+	if len(s) <= maxLoggedString {
+		return s
+	}
+	return fmt.Sprintf("%s...(truncated, %d bytes total)", s[:maxLoggedString], len(s))
+}
 
 // summaryRequestFields are the scalar request fields safe to record: paging
 // and filters, never content. Identity fields are matched separately.
@@ -107,7 +122,9 @@ func scalarField(m protoreflect.Message, fd protoreflect.FieldDescriptor) (zap.F
 
 	switch fd.Kind() {
 	case protoreflect.StringKind:
-		return zap.String(key, v.String()), true
+		// A request or response id is caller-supplied text: bound it, or one
+		// call writes a record several times the size of the request.
+		return zap.String(key, truncateForLog(v.String())), true
 	case protoreflect.BoolKind:
 		return zap.Bool(key, v.Bool()), true
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:

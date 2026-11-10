@@ -2,9 +2,12 @@ package service
 
 import (
 	"context"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	wikiv1 "github.com/lasthearth/vsservice/gen/wiki/v1"
+	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
 	"github.com/lasthearth/vsservice/internal/wiki/internal/model"
 	"google.golang.org/grpc/codes"
@@ -17,6 +20,16 @@ const defaultPageSize = 20
 
 // maxPageSize bounds a page so one request cannot ask for the whole wiki.
 const maxPageSize = 50
+
+// maxSearchRunes bounds a substring filter, the way maxRosterQueryRunes bounds a
+// roster query. A search term is a fragment of a title, not a document, and the
+// repository escapes it into a $regex, where every metacharacter becomes two
+// runes: an unbounded term turns into megabytes of heap on the way to a query
+// MongoDB refuses for being over its command limit anyway.
+const maxSearchRunes = 64
+
+// errSearchTooLong is the answer to a term over maxSearchRunes.
+var errSearchTooLong = ierror.InvalidArgument("search is longer than 64 characters")
 
 // CreateArticle implements wikiv1.WikiServiceServer.
 func (s *Service) CreateArticle(ctx context.Context, req *wikiv1.CreateArticleRequest) (*wikiv1.Article, error) {
@@ -134,10 +147,15 @@ func (s *Service) GetArticleBySlug(ctx context.Context, req *wikiv1.GetArticleBy
 
 // ListArticles implements wikiv1.WikiServiceServer.
 func (s *Service) ListArticles(ctx context.Context, req *wikiv1.ListArticlesRequest) (*wikiv1.ListArticlesResponse, error) {
+	search, err := boundedSearch(req.GetSearch())
+	if err != nil {
+		return nil, err
+	}
+
 	filter := model.Filter{
 		Section: req.GetSection(),
 		Status:  ProtoToStatus(req.GetStatus()),
-		Search:  req.GetSearch(),
+		Search:  search,
 		Tag:     req.GetTag(),
 	}
 
@@ -166,6 +184,26 @@ func (s *Service) ListArticles(ctx context.Context, req *wikiv1.ListArticlesRequ
 		NextPageToken: page.Next,
 		TotalSize:     int32(page.Total),
 	}, nil
+}
+
+// boundedSearch trims a search term and refuses an oversized one.
+//
+// The byte length goes first, so an oversized body is answered before the rune
+// count is computed over it: a caller may send up to the gRPC receive limit, and
+// counting runes over that is work spent on a request the answer is already
+// known for. The rune count is the bound itself, because that is what the
+// escaped pattern grows from.
+func boundedSearch(raw string) (string, error) {
+	if len(raw) > maxSearchRunes*utf8.UTFMax {
+		return "", errSearchTooLong
+	}
+
+	search := strings.TrimSpace(raw)
+	if utf8.RuneCountInString(search) > maxSearchRunes {
+		return "", errSearchTooLong
+	}
+
+	return search, nil
 }
 
 // ListRevisions implements wikiv1.WikiServiceServer.
@@ -229,11 +267,13 @@ func (s *Service) slugTaken(ctx context.Context, slug string, exceptId string) (
 // canEdit reports whether the caller may see unpublished pages.
 //
 // The token is optional on a public read, so a missing one is not an error: it
-// only means the caller is a reader.
+// only means the caller is a reader. The test is the scope test, not the
+// presence of a user id: the three read methods are public, so the auth
+// interceptor never runs for them and they stay reader-only, while an
+// authenticated path that reuses this predicate would otherwise open drafts to
+// every signed-in player.
 func (s *Service) canEdit(ctx context.Context) bool {
-	_, err := interceptor.GetUserID(ctx)
-
-	return err == nil
+	return s.canSeeDrafts(ctx)
 }
 
 // toProto converts an article, keeping the logger out of the call sites.

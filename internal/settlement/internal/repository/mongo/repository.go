@@ -106,6 +106,10 @@ func (r *Repository) Update(ctx context.Context, opts service.UpdateSettlementOp
 					{Key: "updated_at", Value: time.Now()},
 				},
 			},
+			// An approval upgrade must be visible to UpdateSettlement's
+			// {version: N} guard, or a concurrent guarded edit writes back
+			// the pre-approval tier fields, kind included.
+			{Key: "$inc", Value: bson.D{{Key: "version", Value: 1}}},
 		},
 	)
 	if err != nil {

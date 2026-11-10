@@ -10,9 +10,11 @@ import (
 	"slices"
 
 	verificationv1 "github.com/lasthearth/vsservice/gen/verification/v1"
+	"github.com/lasthearth/vsservice/internal/pkg/httpclient"
 	"github.com/lasthearth/vsservice/internal/pkg/ierror"
 	httpdto "github.com/lasthearth/vsservice/internal/player/internal/dto/http"
 	playerierror "github.com/lasthearth/vsservice/internal/player/internal/ierror"
+	playermodel "github.com/lasthearth/vsservice/internal/player/internal/model"
 	"github.com/lasthearth/vsservice/internal/player/internal/model/verification"
 	"github.com/lasthearth/vsservice/internal/player/internal/repository/verification/repository/repoerr"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
@@ -37,11 +39,6 @@ type SsoRepository interface {
 
 // Approve implements verificationv1.VerificationServiceServer.
 func (s *Service) Approve(ctx context.Context, req *verificationv1.ApproveRequest) (*verificationv1.ApproveResponse, error) {
-	err := s.checkUserRoles(ctx, req.GetUserId())
-	if err != nil {
-		return nil, err
-	}
-
 	roles, err := s.ssoRepo.GetRoles(ctx)
 	if err != nil {
 		return nil, err
@@ -51,10 +48,32 @@ func (s *Service) Approve(ctx context.Context, req *verificationv1.ApproveReques
 	for i := range roles {
 		if roles[i].Name == "player" {
 			playerRoleId = roles[i].Id
+			break
 		}
+	}
+	// Fail before any write: without a role id the grant cannot succeed, and
+	// committing the transition first would strand the application.
+	if playerRoleId == "" {
+		return nil, ierror.FailedPrecondition("the sso tenant has no 'player' role")
 	}
 
 	v, err := s.dbRepo.GetVerification(ctx, req.GetUserId())
+	if err != nil {
+		return nil, err
+	}
+
+	// Idempotent re-entry: an already-approved document means an earlier call
+	// committed the transition and lost the grant. Retry only the grant. The
+	// PUT replaces the whole role set, so re-sending it is harmless, and
+	// checkUserRoles must not run here because the role may be missing.
+	if v.Status == verification.VerificationStatusApproved {
+		if err := s.ssoRepo.UpdateUserRoles(ctx, req.GetUserId(), []string{playerRoleId}); err != nil {
+			return nil, ierror.Unavailable("the sso role grant failed: approve again to retry it")
+		}
+		return &verificationv1.ApproveResponse{}, nil
+	}
+
+	err = s.checkUserRoles(ctx, req.GetUserId())
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +89,7 @@ func (s *Service) Approve(ctx context.Context, req *verificationv1.ApproveReques
 
 	err = s.ssoRepo.UpdateUserRoles(ctx, req.GetUserId(), []string{playerRoleId})
 	if err != nil {
-		return nil, err
+		return nil, ierror.Unavailable("the role grant failed, the application is approved: approve again to retry the grant")
 	}
 
 	return &verificationv1.ApproveResponse{}, nil
@@ -97,6 +116,20 @@ func (s *Service) Reject(ctx context.Context, req *verificationv1.RejectRequest)
 
 // Submit implements verificationv1.VerificationServiceServer.
 func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest) (*verificationv1.SubmitResponse, error) {
+	userId, err := interceptor.GetUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// The in-game name is the key the roster, the leaderboard, the game mod's
+	// presence write and the appearance standing attribute stats by, so it obeys
+	// the same shape rule player.ChangeNickname enforces on the same stored
+	// field. The rule lives in internal/player/internal/model, which this package
+	// may import; model/verification may not, because model imports it.
+	if !playermodel.ValidNickname(req.GetUserGameName()) {
+		return nil, playermodel.ErrNicknameInvalid
+	}
+
 	// TODO: переделать на маппер
 	answers := lo.Map(req.GetAnswers(), func(v *verificationv1.Answer, _ int) verification.Answer {
 		return verification.Answer{
@@ -104,15 +137,6 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 			Answer:   v.GetAnswer(),
 		}
 	})
-
-	userId, err := interceptor.GetUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.ssoRepo.UpdateUserProfileNick(ctx, userId, req.GetUserGameName()); err != nil {
-		return nil, err
-	}
 
 	v := verification.New(
 		userId,
@@ -123,33 +147,41 @@ func (s *Service) Submit(ctx context.Context, req *verificationv1.SubmitRequest)
 	)
 
 	tgText := fmt.Sprintf("У игрока %s появилась новая анкета.", req.GetUserGameName())
+
+	// State first: a refused submission leaves nothing behind, neither in
+	// MongoDB nor in the identity provider.
 	existVerification, err := s.dbRepo.GetVerification(ctx, userId)
-	if err != nil {
-		if errors.Is(err, repoerr.ErrNotFound) {
-			if err := s.dbRepo.Create(ctx, userId, *v); err != nil {
-				if errors.Is(err, repoerr.ErrNickAlreadyExists) {
-					return nil, playerierror.ErrNickAlreadyExists
-				}
-				return nil, err
+	switch {
+	case errors.Is(err, repoerr.ErrNotFound):
+		if err := s.dbRepo.Create(ctx, userId, *v); err != nil {
+			if errors.Is(err, repoerr.ErrNickAlreadyExists) {
+				return nil, playerierror.ErrNickAlreadyExists
 			}
-
-			_ = s.SendToTelegram(ctx, tgText)
-			return &verificationv1.SubmitResponse{}, nil
+			return nil, err
 		}
-
+	case err != nil:
 		return nil, err
-	}
-
-	if err := existVerification.CanSubmit(); err != nil {
-		return nil, ierror.FailedPrecondition(err.Error())
-	}
-
-	if err := s.dbRepo.Update(ctx, userId, *v); err != nil {
-		if errors.Is(err, repoerr.ErrNickAlreadyExists) {
-			return nil, playerierror.ErrNickAlreadyExists
+	default:
+		if err := existVerification.CanSubmit(); err != nil {
+			return nil, ierror.FailedPrecondition(err.Error())
 		}
-		return nil, err
+		if err := s.dbRepo.Update(ctx, userId, *v); err != nil {
+			if errors.Is(err, repoerr.ErrNickAlreadyExists) {
+				return nil, playerierror.ErrNickAlreadyExists
+			}
+			return nil, err
+		}
 	}
+
+	// The unique index on user_game_name claimed the name, so reaching this line
+	// means the name is this user's. Only now mirror it to Logto; a failure here
+	// is reported, and the stored name stays the authoritative one.
+	if err := s.ssoRepo.UpdateUserProfileNick(ctx, userId, req.GetUserGameName()); err != nil {
+		s.log.Error("logto nickname is out of sync with the stored one",
+			zap.String("user_id", userId),
+			zap.Error(err))
+	}
+
 	_ = s.SendToTelegram(ctx, tgText)
 	return &verificationv1.SubmitResponse{}, nil
 }
@@ -171,13 +203,17 @@ func (s *Service) SendToTelegram(ctx context.Context, text string) error {
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", s.cfg.TelegramToken)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(encoded))
 	if err != nil {
-		s.log.Error("failed to create telegram request", zap.Error(err))
+		// The error text carries the request URL, and the bot token is part of
+		// its path: never log it raw.
+		s.log.Error("failed to create telegram request", httpclient.MaskedError(err))
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := s.client.Do(req)
 	if err != nil {
-		s.log.Error("failed to send telegram message", zap.Error(err))
+		// net/http wraps every transport failure into a *url.Error whose text
+		// repeats the full URL, token included.
+		s.log.Error("failed to send telegram message", httpclient.MaskedError(err))
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()

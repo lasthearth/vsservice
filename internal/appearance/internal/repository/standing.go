@@ -22,6 +22,17 @@ const ownerRoleID = "owner"
 // are the other kind, and a player may belong to one of each.
 const kindSettlement = "settlement"
 
+// The status window whose application carries an approved game identity. The
+// constants are declared here because internal/player/internal/model/verification
+// is internal to the player domain: importing it from internal/appearance fails
+// the Go internal-package rule (measured: "use of internal package ... not
+// allowed"). The window mirrors the roster's
+// (internal/player/internal/repository/player/repository/list.go:163-167).
+const (
+	statusVerified = "verified"
+	statusApproved = "approved"
+)
+
 // totals is one player's summed stats, grouped like the leaderboard does.
 type totals struct {
 	Name   string  `bson:"_id"`
@@ -76,14 +87,15 @@ func (s *Standings) Standing(ctx context.Context, userID string) (model.Standing
 		days = int(s.now().Sub(who.CreatedAt).Hours() / 24)
 	}
 
-	mine, hoursRank, killsRank := totals{}, 0, 0
+	// A caller with no approved game identity has no name to attribute by, so the
+	// unbounded stats group is skipped too.
+	var all []totals
 	if who.Name != "" {
-		all, err := s.allTotals(ctx)
-		if err != nil {
+		if all, err = s.allTotals(ctx); err != nil {
 			return fail("stats", err)
 		}
-		mine, hoursRank, killsRank = place(all, who.Name)
 	}
+	mine, hoursRank, killsRank := attribution(who, all)
 
 	return model.Standing{
 		Hours:           mine.Hours,
@@ -103,7 +115,16 @@ func (s *Standings) Standing(ctx context.Context, userID string) (model.Standing
 // place finds the player's totals and places. A place is one more than the
 // number of players strictly ahead, so ties share a place — the way the site
 // counts it. A player outside the table gets zero totals and no places.
+//
+// An empty name is refused outright: the stats group also holds a row for the
+// documents that carry no user_game_name at all, and that row belongs to no
+// player. The roster excludes those names for the same reason
+// (internal/player/internal/repository/player/repository/list.go:162).
 func place(all []totals, name string) (mine totals, hoursRank, killsRank int) {
+	if name == "" {
+		return totals{}, 0, 0
+	}
+
 	found := false
 	for _, t := range all {
 		if t.Name == name {
@@ -127,13 +148,40 @@ func place(all []totals, name string) (mine totals, hoursRank, killsRank int) {
 	return mine, hoursRank, killsRank
 }
 
-// player returns the player's in-game name and application date, or zero
-// values if the player is unknown.
+// attribution is what the name-keyed stats give the caller. Only an approved
+// game identity attributes: player() returns no name for a pending or rejected
+// application, so those totals and those places stay at zero even when the name
+// the applicant typed has rows in the stats collection.
+func attribution(who player, all []totals) (mine totals, hoursRank, killsRank int) {
+	return place(all, who.Name)
+}
+
+// playerStandingFilter is the read condition for the caller's game identity: the
+// caller's own application, and only while its status is inside the approved
+// window. It is a function of the user id alone so the window can be read and
+// tested apart from the database.
+func playerStandingFilter(userID string) bson.M {
+	return bson.M{
+		"user_id": userID,
+		"status":  bson.M{"$in": bson.A{statusVerified, statusApproved}},
+	}
+}
+
+// player returns the game name and application date of an approved player only.
+// A pending or rejected application carries no approved game identity, so its
+// self-declared name must not attribute the game-written stats to the caller:
+// nothing on the write path binds user_game_name to the user who typed it.
+//
+// Note: created_at comes from the same document, so this filter also leaves
+// Standing.Days at zero until the application is approved. That is the roster's
+// window, but it changes three catalog items that gate on days
+// (unicorn-tapestry 30, starfall 60, monk-lion 90); the owner must confirm that
+// an unapproved caller loses them.
 func (s *Standings) player(ctx context.Context, userID string) (player, error) {
 	var doc player
 	err := s.players.FindOne(
 		ctx,
-		bson.M{"user_id": userID},
+		playerStandingFilter(userID),
 		options.FindOne().SetProjection(bson.M{"user_game_name": 1, "created_at": 1}),
 	).Decode(&doc)
 	if errors.Is(err, mongo.ErrNoDocuments) {

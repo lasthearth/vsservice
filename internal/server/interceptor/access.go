@@ -197,6 +197,8 @@ func methodName(method string) string {
 }
 
 // clientFields records who called, from the metadata the gateway forwards.
+// Every value here is caller-authored text, so each one is bounded before it
+// becomes a field.
 func clientFields(ctx context.Context) []zap.Field {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -205,10 +207,14 @@ func clientFields(ctx context.Context) []zap.Field {
 
 	var fields []zap.Field
 	if ua := firstValue(md, "user-agent", "grpcgateway-user-agent"); ua != "" {
-		fields = append(fields, zap.String("user_agent", ua))
+		fields = append(fields, zap.String("user_agent", truncateForLog(ua)))
 	}
 	if xff := firstValue(md, "x-forwarded-for", "grpcgateway-x-forwarded-for"); xff != "" {
-		fields = append(fields, zap.String("client_ip", xff))
+		// Caller-supplied and unverified: there is no trusted proxy in front of
+		// this listener, so this is an attribution hint, never an identity. The
+		// address the caller cannot forge is the transport peer, recorded as
+		// "peer" in record.
+		fields = append(fields, zap.String("client_ip", truncateForLog(xff)))
 	}
 	return fields
 }

@@ -315,3 +315,148 @@ func TestArchiveRefusesAFileFromAnotherHost(t *testing.T) {
 		t.Errorf("status = %d, want 502 for a foreign host", code)
 	}
 }
+
+// hostileMod is a required mod whose release fields carry a path, the shape a
+// manifest or ModDB can hand the archive: the file name, the version and the
+// modid all reach the entry name.
+func hostileMod(server *httptest.Server, modId, version, fileName string) model.Mod {
+	release := model.Release{
+		Version:  version,
+		FileURL:  server.URL + "/a-1.zip",
+		FileName: fileName,
+		FileSize: 4,
+	}
+
+	return model.Build(modId, model.Snapshot{Name: modId, Releases: []model.Release{release}},
+		model.AudienceRequired, "", &release, fixedNow)
+}
+
+// extractAll writes every entry the way a plain extractor does: it joins the
+// entry name to the folder the player chose and creates the parents the name
+// asks for. It returns the paths it wrote.
+func extractAll(t *testing.T, zipPath, root string) []string {
+	t.Helper()
+
+	reader, err := zip.OpenReader(zipPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() { _ = reader.Close() }()
+
+	written := make([]string, 0, len(reader.File))
+
+	for _, entry := range reader.File {
+		target := filepath.Join(root, entry.Name)
+
+		body, err := entry.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		data, err := io.ReadAll(body)
+		closeErr := body.Close()
+
+		if err != nil {
+			t.Fatal(err)
+		}
+		if closeErr != nil {
+			t.Fatal(closeErr)
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(target, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+
+		written = append(written, target)
+	}
+
+	return written
+}
+
+// TestEntryNameReducesEverySourceToOneComponent pins the entry-name contract:
+// both the release file name and the modid/version fallback are hostile, so
+// neither may put a path component into the archive. The benign name is the
+// control: it must survive unchanged.
+func TestEntryNameReducesEverySourceToOneComponent(t *testing.T) {
+	cases := map[string]struct {
+		fileName string
+		fallback string
+		want     string
+	}{
+		"a traversal in the fallback":     {"..", "x-../../../../evil.zip", "evil.zip"},
+		"a dot file name":                 {".", "b-../../../escaped-mod.zip", "escaped-mod.zip"},
+		"a lone separator file name":      {"/", "../../etc/launcher-1.0.0.zip", "launcher-1.0.0.zip"},
+		"a traversal in the file name":    {"../../evil.zip", "ignored", "evil.zip"},
+		"a windows separator":             {`..\..\evil.zip`, "ignored", "evil.zip"},
+		"nothing usable in either source": {"", "..", "mod.zip"},
+		"a benign file name":              {"carryon-1.2.3.zip", "ignored", "carryon-1.2.3.zip"},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			got := entryName(tc.fileName, tc.fallback, map[string]struct{}{})
+			if got != tc.want {
+				t.Errorf("entryName(%q, %q) = %q, want %q", tc.fileName, tc.fallback, got, tc.want)
+			}
+			if strings.ContainsAny(got, `/\`) {
+				t.Errorf("entryName(%q, %q) = %q, which carries a path separator", tc.fileName, tc.fallback, got)
+			}
+		})
+	}
+}
+
+// TestArchivePacksNoPathFromAHostileName pins the zip-slip rule end to end: a
+// list whose names all carry a traversal still produces an archive a plain
+// extractor unpacks inside the folder the player chose, and the benign mod in
+// the same list keeps its own name.
+func TestArchivePacksNoPathFromAHostileName(t *testing.T) {
+	server := fileServer(t, map[string]string{"/a-1.zip": "aaaa"})
+	dir := t.TempDir()
+
+	mods := []model.Mod{
+		hostileMod(server, "x", "../../../../evil", ".."),
+		hostileMod(server, "b", "../../../escaped-mod", "."),
+		hostileMod(server, "../../etc/launcher", "1.0.0", "/"),
+		hostileMod(server, "carryon", "1.2.3", "carryon-1.2.3.zip"),
+	}
+
+	archive := newTestArchive(t, &fixedMods{mods: mods}, dir, 0, server.URL)
+	if code := get(archive).Code; code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", code)
+	}
+
+	built := files(t, dir)
+	if len(built) != 1 {
+		t.Fatalf("folder = %v, want exactly one finished archive", built)
+	}
+
+	root := filepath.Join(t.TempDir(), "Mods")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	written := extractAll(t, filepath.Join(dir, built[0]), root)
+	if len(written) != len(mods) {
+		t.Fatalf("extracted %d files, want one per mod", len(written))
+	}
+
+	names := make([]string, 0, len(written))
+
+	for _, target := range written {
+		if !strings.HasPrefix(target, root+string(filepath.Separator)) {
+			t.Errorf("entry escaped the chosen folder: %s is outside %s", target, root)
+		}
+
+		names = append(names, filepath.Base(target))
+	}
+
+	sort.Strings(names)
+
+	want := "carryon-1.2.3.zip,escaped-mod.zip,evil.zip,launcher-1.0.0.zip"
+	if got := strings.Join(names, ","); got != want {
+		t.Errorf("entry names = %s, want %s", got, want)
+	}
+}

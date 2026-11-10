@@ -169,5 +169,12 @@ func New() (Config, error) {
 		return cfg, errors.New("AUDIENCE must be a non-empty value: an empty audience disables JWT audience validation")
 	}
 
+	// The Logto webhook skips its HMAC signature check when the secret is
+	// empty, so a "present and empty" value turns the fail-open branch into
+	// the deployed default. Fail closed at startup, like the guards above.
+	if cfg.LogtoWebhookSecret == "" {
+		return cfg, errors.New("LOGTO_WEBHOOK_SECRET must be a non-empty value: an empty secret disables webhook signature validation")
+	}
+
 	return cfg, nil
 }
