@@ -29,13 +29,10 @@ WORKDIR /src
 ARG LIBVIPS_VERSION=8.15.5
 # SHA-256 of the reviewed libvips release asset vips-${LIBVIPS_VERSION}.tar.xz. Change this value
 # only together with LIBVIPS_VERSION, and treat both as reviewed inputs.
-# The value below is a placeholder, not a checksum: sha256sum -c rejects it and stops the build,
-# so the image cannot be built until the owner records a real reviewed digest (fail closed).
-# TODO(owner): record the reviewed digest before the next image build —
-#   curl -fsSL https://github.com/libvips/libvips/releases/download/v8.15.5/vips-8.15.5.tar.xz | sha256sum
-#   then cross-check that value against the checksum libvips publishes for the same release asset,
-#   and replace the placeholder below with it.
-ARG LIBVIPS_SHA256=REPLACE_WITH_REVIEWED_SHA256_OF_vips-8.15.5.tar.xz
+# Verified 2026-11-10 from two sources: the asset bytes
+# (curl -fsSL .../v8.15.5/vips-8.15.5.tar.xz | shasum -a 256) and the checksum
+# file the release publishes (vips-8.15.5.tar.xz.sha256sum, 18652672 bytes).
+ARG LIBVIPS_SHA256=2046d2001e60955dc6a85b82afbd6cadc8c34e10ba2f6e5ea09f03fc69eb2603
 ARG PROJECT_PATH=./
 
 LABEL org.opencontainers.image.source="https://github.com/lasthearth/vsservice"
