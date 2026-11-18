@@ -309,7 +309,7 @@ func TestCommandMonitorCapsPendingEntries(t *testing.T) {
 
 	// None of these commands finishes, which is the leak the cap bounds.
 	total := int64(maxPendingCommands + 10)
-	for id := int64(0); id < total; id++ {
+	for id := range total {
 		m.started(ctx, startedEvent(id, "ping", rawCommand(t, bson.D{{Key: "ping", Value: 1}})))
 	}
 
@@ -346,11 +346,11 @@ func TestCommandMonitorConcurrentCommands(t *testing.T) {
 	const perWorker = 50
 
 	var wg sync.WaitGroup
-	for w := 0; w < workers; w++ {
+	for w := range workers {
 		wg.Add(1)
 		go func(worker int) {
 			defer wg.Done()
-			for i := 0; i < perWorker; i++ {
+			for i := range perWorker {
 				id := int64(worker*perWorker + i)
 				m.started(ctx, startedEvent(id, "find", cmd))
 				m.succeeded(ctx, succeededEvent(id, "find", 2*time.Millisecond))

@@ -200,7 +200,7 @@ func repoRoot(t *testing.T) string {
 	}
 
 	dir := filepath.Dir(thisFile)
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir
 		}

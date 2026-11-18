@@ -58,7 +58,7 @@ func (c redactingCore) With(fields []zap.Field) zapcore.Core {
 // counted or dropped one. Restores the measured behaviour of 300 identical
 // records dropping to 102 with key-based masking intact.
 func (c redactingCore) Check(ent zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
-	if !c.Core.Enabled(ent.Level) {
+	if !c.Enabled(ent.Level) {
 		return ce
 	}
 	// The probe entry exists only to read the decision; its cores are discarded

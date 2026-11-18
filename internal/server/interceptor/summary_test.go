@@ -1,7 +1,6 @@
 package interceptor
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -54,7 +53,7 @@ func TestAccessLogBoundsAOneMiBRequestID(t *testing.T) {
 	req := &eventv1.GetEventRequest{Id: strings.Repeat("a", idLen)}
 	if _, err := a.Unary()(ctxWithIDs("rid-trunc", "uid-trunc"), req,
 		&grpc.UnaryServerInfo{FullMethod: "/event.v1.EventService/GetEvent"},
-		func(context.Context, any) (any, error) { return nil, nil }); err != nil {
+		stubUnary); err != nil {
 		t.Fatalf("unary: %v", err)
 	}
 

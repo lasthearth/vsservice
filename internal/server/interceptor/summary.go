@@ -70,7 +70,7 @@ func responseSummary(resp any) []zap.Field {
 
 	fields := m.Descriptor().Fields()
 	out := make([]zap.Field, 0, 3)
-	for i := 0; i < fields.Len(); i++ {
+	for i := range fields.Len() {
 		fd := fields.Get(i)
 		if !fd.IsList() {
 			continue

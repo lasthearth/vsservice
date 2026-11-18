@@ -184,8 +184,8 @@ func Run(lc fx.Lifecycle, m *Metrics, log logger.Logger) {
 	}
 
 	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			ln, err := net.Listen("tcp", addr)
+		OnStart: func(ctx context.Context) error {
+			ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", addr)
 			if err != nil {
 				return fmt.Errorf("metrics listener on %s: %w", addr, err)
 			}

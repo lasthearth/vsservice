@@ -29,13 +29,18 @@ const (
 
 // One record per call, carrying the ids from ctx: this is what makes a user
 // action replayable.
+// stubUnary is the handler behind the interceptor in these tests: it answers
+// with an empty message and no error. Each test asserts on the record the
+// interceptor writes, not on the response, so (nil, nil) is the point.
+func stubUnary(context.Context, any) (any, error) { return nil, nil } //nolint:nilnil // the empty answer is the stub's contract
+
 func TestAccessLogCarriesCorrelationIDs(t *testing.T) {
 	log, logs := newObsLogger()
 	a := NewAccessLog(log, config.Config{}, nil)
 
 	_, err := a.Unary()(ctxWithIDs("rid-1", "uid-1"), nil,
 		&grpc.UnaryServerInfo{FullMethod: writeMethod},
-		func(context.Context, any) (any, error) { return nil, nil })
+		stubUnary)
 	if err != nil {
 		t.Fatalf("unary: %v", err)
 	}
@@ -121,10 +126,10 @@ func TestAccessLogSamplesOnlySuccessfulReads(t *testing.T) {
 	log, logs := newObsLogger()
 	a := NewAccessLog(log, config.Config{LogSampleReads: 3}, nil)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		if _, err := a.Unary()(ctxWithIDs("rid-3", ""), nil,
 			&grpc.UnaryServerInfo{FullMethod: method},
-			func(context.Context, any) (any, error) { return nil, nil }); err != nil {
+			stubUnary); err != nil { //nolint:nilnil // a stub handler answers with an empty message: the test asserts on the record
 			t.Fatalf("unary: %v", err)
 		}
 	}
@@ -133,7 +138,7 @@ func TestAccessLogSamplesOnlySuccessfulReads(t *testing.T) {
 	}
 
 	logs.TakeAll()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		if _, err := a.Unary()(ctxWithIDs("rid-4", ""), nil,
 			&grpc.UnaryServerInfo{FullMethod: method},
 			func(context.Context, any) (any, error) {
@@ -147,10 +152,10 @@ func TestAccessLogSamplesOnlySuccessfulReads(t *testing.T) {
 	}
 
 	logs.TakeAll()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		if _, err := a.Unary()(ctxWithIDs("rid-5", ""), nil,
 			&grpc.UnaryServerInfo{FullMethod: writeMethod},
-			func(context.Context, any) (any, error) { return nil, nil }); err != nil {
+			stubUnary); err != nil { //nolint:nilnil // a stub handler answers with an empty message: the test asserts on the record
 			t.Fatalf("unary: %v", err)
 		}
 	}
@@ -166,7 +171,7 @@ func TestAccessLogSkipsInfraMethods(t *testing.T) {
 
 	_, err := a.Unary()(context.Background(), nil,
 		&grpc.UnaryServerInfo{FullMethod: "/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo"},
-		func(context.Context, any) (any, error) { return nil, nil })
+		stubUnary)
 	if err != nil {
 		t.Fatalf("unary: %v", err)
 	}
@@ -216,7 +221,7 @@ func TestAccessLogStreamCountsSentMessages(t *testing.T) {
 	err := a.Stream()(nil, stream,
 		&grpc.StreamServerInfo{FullMethod: "/notification.v1.NotificationService/Watch", IsServerStream: true},
 		func(_ any, ss grpc.ServerStream) error {
-			for i := 0; i < 3; i++ {
+			for range 3 {
 				if sendErr := ss.SendMsg("msg"); sendErr != nil {
 					return sendErr
 				}
@@ -245,7 +250,7 @@ func TestAccessLogRecordsGRPCMetrics(t *testing.T) {
 
 	if _, err := a.Unary()(ctxWithIDs("rid-8", "uid-8"), nil,
 		&grpc.UnaryServerInfo{FullMethod: writeMethod},
-		func(context.Context, any) (any, error) { return nil, nil }); err != nil {
+		stubUnary); err != nil {
 		t.Fatalf("unary: %v", err)
 	}
 
@@ -273,10 +278,10 @@ func TestAccessLogMetricsAreNotSampled(t *testing.T) {
 	m := metrics.New(config.Config{})
 	a := NewAccessLog(log, config.Config{LogSampleReads: 3}, m)
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		if _, err := a.Unary()(ctxWithIDs("rid-9", ""), nil,
 			&grpc.UnaryServerInfo{FullMethod: method},
-			func(context.Context, any) (any, error) { return nil, nil }); err != nil {
+			stubUnary); err != nil {
 			t.Fatalf("unary: %v", err)
 		}
 	}
@@ -326,7 +331,7 @@ func TestAccessLogSkipsInfraMetrics(t *testing.T) {
 
 	if _, err := a.Unary()(context.Background(), nil,
 		&grpc.UnaryServerInfo{FullMethod: "/grpc.health.v1.Health/Check"},
-		func(context.Context, any) (any, error) { return nil, nil }); err != nil {
+		stubUnary); err != nil {
 		t.Fatalf("unary: %v", err)
 	}
 
@@ -374,7 +379,7 @@ func TestAccessLogNilMetricsDoesNotPanic(t *testing.T) {
 
 	if _, err := a.Unary()(ctxWithIDs("rid-12", ""), nil,
 		&grpc.UnaryServerInfo{FullMethod: writeMethod},
-		func(context.Context, any) (any, error) { return nil, nil }); err != nil {
+		stubUnary); err != nil {
 		t.Fatalf("unary: %v", err)
 	}
 

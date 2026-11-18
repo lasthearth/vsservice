@@ -39,7 +39,7 @@ const (
 	webhookEventUnsupported     = "webhook.logto.unsupported_event"
 	webhookEventSignatureFailed = "webhook.logto.signature_failed"
 	webhookEventParseFailed     = "webhook.logto.parse_failed"
-	webhookEventSecretMissing   = "webhook.logto.secret_missing"
+	webhookEventSecretMissing   = "webhook.logto.secret_missing" //nolint:gosec // G101: an event key, not a credential
 	webhookEventResponseFailed  = "webhook.logto.response_write_failed"
 )
 

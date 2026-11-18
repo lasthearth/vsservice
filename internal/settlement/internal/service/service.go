@@ -536,7 +536,6 @@ func (s *Service) RevokeInvitation(ctx context.Context, req *settlementv1.Revoke
 		l.Error("failed to get user id", zap.Error(err))
 		return nil, err
 	}
-	l = l.With(zap.String("user_id", uid))
 
 	if err := s.requirePermission(ctx, req.GetSettlementId(), uid, model.PermInviteMember); err != nil {
 		return nil, err
