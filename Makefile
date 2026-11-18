@@ -26,7 +26,7 @@ run:
 # Lint — modelguard plugin, bundled into a custom golangci-lint binary
 # ---------------------------------------------------------------------------
 
-## lint: run modelguard over the whole module
+## lint: run modelguard over the whole module (host GOOS, as CI does for linux files)
 lint: $(GOLANGCI)
 	$(GOLANGCI) run ./...
 
