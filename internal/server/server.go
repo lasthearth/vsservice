@@ -329,6 +329,16 @@ func (s *Server) RunInProcessGateway(ctx context.Context, grpcaddr, addr string,
 		return errors.Wrap(err, "register mod archive handler")
 	}
 
+	// The serverinfo feed is a connection, not a message: grpc-gateway v2 cannot
+	// frame a text/event-stream response, so the hub behind it is mounted as a
+	// plain GET route next to /logtohook. It is public, like the two serverinfo
+	// RPCs the landing site already reads.
+	if err := mux.HandlePath("GET", "/v1/serverinfo/stream", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+		s.serverInfoStream.ServeHTTP(w, r)
+	}); err != nil {
+		return errors.Wrap(err, "register server info stream handler")
+	}
+
 	// Bound the whole request, not only its headers: without ReadTimeout a
 	// client that dribbles a body keeps the connection and its buffer for as
 	// long as it likes. IdleTimeout reclaims a kept-alive connection that is

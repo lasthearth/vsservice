@@ -40,9 +40,11 @@ func forwardRequestIDHeader(key string) (string, bool) {
 }
 
 // withRequestLog mints or adopts the correlation id for every plain HTTP route
-// (gateway RPCs, /logtohook, /v1/mods/archive.zip), echoes it to the client and
-// records the visible outcome. One REST call therefore produces an
-// http.call.finish record and a grpc.call.finish record under the same id.
+// (gateway RPCs, /logtohook, /v1/mods/archive.zip, /v1/serverinfo/stream), echoes
+// it to the client and records the visible outcome. One REST call therefore
+// produces an http.call.finish record and a grpc.call.finish record under the
+// same id; a streaming route produces http.call.stream.finish instead, because
+// its duration is the lifetime of the connection.
 func (s *Server) withRequestLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rid := adoptRequestID(r.Header.Get(requestIDHeader))
@@ -72,7 +74,31 @@ func (s *Server) withRequestLog(next http.Handler) http.Handler {
 			status = http.StatusOK
 		}
 
-		logger.From(ctx, s.log).Info("finished http request",
+		log := logger.From(ctx, s.log)
+
+		// An event stream answers once and then holds the response open for the
+		// life of the subscription, so its wall time is the connection, not the
+		// time it took to answer. Reporting it as duration_ms would put hours
+		// into the field every other route reports milliseconds in and flatten
+		// every duration dashboard, so a stream gets its own record and its own
+		// key. The media type is what tells the two apart: an SSE handler sets
+		// it before WriteHeader, and a refusal (503) replaces it with text/plain
+		// and is recorded as the ordinary short call it is.
+		if isEventStream(w) {
+			log.Info("finished http stream",
+				zap.String("event", "http.call.stream.finish"),
+				zap.String("component", "gateway"),
+				zap.String("http_method", r.Method),
+				zap.String("path", r.URL.Path),
+				zap.Int("status", status),
+				zap.Int64("connection_ms", time.Since(start).Milliseconds()),
+				zap.String("remote_addr", r.RemoteAddr),
+				zap.String("user_agent", r.UserAgent()),
+			)
+			return
+		}
+
+		log.Info("finished http request",
 			zap.String("event", "http.call.finish"),
 			zap.String("component", "gateway"),
 			zap.String("http_method", r.Method),
@@ -83,6 +109,13 @@ func (s *Server) withRequestLog(next http.Handler) http.Handler {
 			zap.String("user_agent", r.UserAgent()),
 		)
 	})
+}
+
+// isEventStream reports whether the handler answered with server-sent events.
+// It reads the header map after the handler returned, which still holds what the
+// handler set before WriteHeader.
+func isEventStream(w http.ResponseWriter) bool {
+	return strings.HasPrefix(strings.ToLower(w.Header().Get("Content-Type")), "text/event-stream")
 }
 
 // adoptRequestID keeps a valid client id so a proxy or browser session can

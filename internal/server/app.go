@@ -31,6 +31,7 @@ import (
 	"github.com/lasthearth/vsservice/internal/pkg/config"
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
+	"github.com/lasthearth/vsservice/internal/serverinfo"
 	"github.com/lasthearth/vsservice/internal/webhook"
 	"go.uber.org/fx"
 	"google.golang.org/grpc"
@@ -74,6 +75,9 @@ type Opts struct {
 	TicketV1        ticketv1.TicketServiceServer
 	// ModArchive is the plain-HTTP route the gRPC services cannot serve.
 	ModArchive mod.ArchiveHandler
+	// ServerInfoStream is the same kind of route: an SSE feed is a connection,
+	// not a message.
+	ServerInfoStream serverinfo.StreamHandler
 	// Add the webhook service
 	LogtoWebhookService *webhook.LogtoWebhookService
 }
@@ -111,6 +115,7 @@ type Server struct {
 	modV1               modv1.ModServiceServer
 	ticketV1            ticketv1.TicketServiceServer
 	modArchive          mod.ArchiveHandler
+	serverInfoStream    serverinfo.StreamHandler
 	logtoWebhookService *webhook.LogtoWebhookService
 
 	log logger.Logger
@@ -153,6 +158,7 @@ func New(opts Opts) *Server {
 		modV1:               opts.ModV1,
 		ticketV1:            opts.TicketV1,
 		modArchive:          opts.ModArchive,
+		serverInfoStream:    opts.ServerInfoStream,
 		logtoWebhookService: opts.LogtoWebhookService,
 		log:                 opts.Log,
 	}
