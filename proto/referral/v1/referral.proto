@@ -16,6 +16,10 @@ service ReferralService {
 
   // Get referral stats for the current player (how many people they referred, coins earned).
   //
+  // total_referrals counts every recorded referral. total_coins_earned counts only
+  // what those referrals have actually paid so far: it grows in shares, 25% on the
+  // invited player's verification and the rest on their first join of the server.
+  //
   // Errors:
   //   - UNAUTHENTICATED (401): missing or invalid auth token
   //   - INTERNAL (500): database failure
@@ -26,6 +30,12 @@ service ReferralService {
   // Apply a referral code to the current player.
   //
   // Called once after first login; the frontend extracts the code from a ?ref= URL parameter.
+  //
+  // This call pays nobody. The referrer earns their reward in two parts: 25% when
+  // this player passes verification, and the remaining 75% when this player first
+  // joins the game server. This player earns their own reward in full on that same
+  // first join. The parts are paid by a background loop as each moment is reached,
+  // so nothing arrives at the moment the code is applied.
   //
   // Errors:
   //   - UNAUTHENTICATED (401): missing or invalid auth token
