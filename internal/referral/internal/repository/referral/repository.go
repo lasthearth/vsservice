@@ -30,6 +30,9 @@ type Repository struct {
 	log        logger.Logger
 	codesColl  *mgo.Collection
 	eventsColl *mgo.Collection
+	// playersColl belongs to internal/player. This domain only reads the two
+	// fields that say how far a referee has got; see progress.go.
+	playersColl *mgo.Collection
 }
 
 type Opts struct {
@@ -46,9 +49,10 @@ func New(opts Opts) *Repository {
 	eventsColl := opts.Database.Collection(referralEventsCollName)
 	setupIndexes(log, codesColl, eventsColl)
 	return &Repository{
-		log:        log,
-		codesColl:  codesColl,
-		eventsColl: eventsColl,
+		log:         log,
+		codesColl:   codesColl,
+		eventsColl:  eventsColl,
+		playersColl: opts.Database.Collection(playersCollName),
 	}
 }
 
@@ -79,10 +83,57 @@ func setupIndexes(log logger.Logger, codesColl, eventsColl *mgo.Collection) {
 	createIndex(eventsColl, mgo.IndexModel{
 		Keys: bson.D{{Key: "referrer_player_id", Value: 1}},
 	})
+	// The payout loop's working set, kept small on purpose: an event leaves the
+	// index as soon as its last stage is paid, so the index holds the referrals
+	// still owed a reward and nothing else. The $or is a top-level field, which
+	// is what a partial filter expression allows.
+	createIndex(eventsColl, mgo.IndexModel{
+		Keys: bson.D{{Key: "next_check_at", Value: 1}},
+		Options: options.Index().SetPartialFilterExpression(bson.M{
+			"$or": bson.A{
+				bson.M{"verification_paid": false},
+				bson.M{"join_paid": false},
+				bson.M{"referee_paid": false},
+			},
+		}),
+	})
+}
+
+// stageField is the persisted flag of a reward stage. A stage with no field is
+// one this repository does not know, and the caller gets an error instead of a
+// silent no-op.
+func stageField(stage model.RewardStage) (string, error) {
+	switch stage {
+	case model.StageVerification:
+		return "verification_paid", nil
+	case model.StageJoin:
+		return "join_paid", nil
+	case model.StageReferee:
+		return "referee_paid", nil
+	default:
+		return "", errors.Join(model.ErrUnknownStage, errors.New("stage "+string(stage)))
+	}
 }
 
 func codeFromDTO(d dto.ReferralCode) *model.ReferralCode {
 	return model.ReconstituteReferralCode(d.Id.Hex(), d.PlayerID, d.PlayerName, d.Code, d.CreatedAt)
+}
+
+func eventFromDTO(d dto.ReferralEvent) *model.ReferralEvent {
+	return model.ReconstituteReferralEvent(
+		d.Id.Hex(),
+		d.ReferrerPlayerID,
+		d.RefereePlayerID,
+		d.ReferrerReward,
+		d.RefereeReward,
+		d.CoinsAwarded,
+		d.VerificationPaid,
+		d.JoinPaid,
+		d.RefereePaid,
+		d.Checks,
+		d.NextCheckAt,
+		d.CreatedAt,
+	)
 }
 
 // GetCodeByPlayerID returns the referral code owned by playerID, or
@@ -161,6 +212,9 @@ func (r *Repository) UpsertCode(ctx context.Context, code *model.ReferralCode) (
 // if refereePlayerID has already been recorded as a referee in another
 // event (enforced by the unique index on referee_player_id), which can
 // happen if a concurrent call won a race against a prior HasReferee check.
+//
+// The event starts with nothing paid: every reward of it is owed to a later
+// moment, when the referee is verified and then joins the game.
 func (r *Repository) CreateEvent(ctx context.Context, event *model.ReferralEvent) error {
 	l := r.log.With(
 		zap.String("method", "CreateEvent"),
@@ -172,7 +226,14 @@ func (r *Repository) CreateEvent(ctx context.Context, event *model.ReferralEvent
 		Model:            mongox.NewModel(),
 		ReferrerPlayerID: event.ReferrerPlayerID,
 		RefereePlayerID:  event.RefereePlayerID,
+		ReferrerReward:   event.ReferrerReward,
+		RefereeReward:    event.RefereeReward,
 		CoinsAwarded:     event.CoinsAwarded,
+		VerificationPaid: event.VerificationPaid,
+		JoinPaid:         event.JoinPaid,
+		RefereePaid:      event.RefereePaid,
+		Checks:           event.Checks,
+		NextCheckAt:      event.NextCheckAt,
 	}
 
 	if _, err := r.eventsColl.InsertOne(ctx, d); err != nil {
@@ -198,6 +259,176 @@ func (r *Repository) HasReferee(ctx context.Context, refereePlayerID string) (bo
 	}
 
 	return count > 0, nil
+}
+
+// ListUnpaidEvents returns up to limit events that still owe a reward and are due
+// for a look at now, the ones deferred longest ago first. A document written
+// before the two-stage payout carries no referrer_reward and is skipped: its
+// coins were paid in full when the code was applied, so it owes nothing.
+func (r *Repository) ListUnpaidEvents(
+	ctx context.Context,
+	now time.Time,
+	limit int64,
+) ([]*model.ReferralEvent, error) {
+	l := r.log.With(zap.String("method", "ListUnpaidEvents"))
+
+	filter := bson.M{
+		"referrer_reward": bson.M{"$gt": 0},
+		"next_check_at":   bson.M{"$lte": now},
+		"$or": bson.A{
+			bson.M{"verification_paid": false},
+			bson.M{"join_paid": false},
+			bson.M{"referee_paid": false},
+		},
+	}
+	opts := options.Find().
+		SetSort(bson.D{{Key: "next_check_at", Value: 1}}).
+		SetLimit(limit)
+
+	cursor, err := r.eventsColl.Find(ctx, filter, opts)
+	if err != nil {
+		l.Error("failed to find referral events that owe a reward", zap.Error(err))
+		return nil, err
+	}
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			l.Error("cursor close failed", zap.Error(err))
+		}
+	}()
+
+	var dtos []dto.ReferralEvent
+	if err := cursor.All(ctx, &dtos); err != nil {
+		l.Error("failed to decode referral events", zap.Error(err))
+		return nil, err
+	}
+
+	events := make([]*model.ReferralEvent, len(dtos))
+	for i, d := range dtos {
+		events[i] = eventFromDTO(d)
+	}
+
+	return events, nil
+}
+
+// ClaimReward marks one stage as paid before the coins move, so a stage is paid
+// at most once even when several passes overlap. The update is conditional on
+// the flag still being false: the pass that changes the document is the only one
+// that pays.
+func (r *Repository) ClaimReward(
+	ctx context.Context,
+	refereePlayerID string,
+	stage model.RewardStage,
+	coins int64,
+) (bool, error) {
+	l := r.log.With(
+		zap.String("method", "ClaimReward"),
+		zap.String("referee_player_id", refereePlayerID),
+		zap.String("stage", string(stage)),
+	)
+
+	field, err := stageField(stage)
+	if err != nil {
+		l.Error("refusing to claim an unknown reward stage", zap.Error(err))
+		return false, err
+	}
+
+	update := bson.D{
+		{Key: "$set", Value: bson.D{
+			{Key: field, Value: true},
+			{Key: "updated_at", Value: time.Now()},
+		}},
+	}
+	if stage != model.StageReferee {
+		// coins_awarded is what the referrer has received; the referee's own
+		// reward is not part of that total.
+		update = append(update, bson.E{Key: "$inc", Value: bson.D{{Key: "coins_awarded", Value: coins}}})
+	}
+
+	result, err := r.eventsColl.UpdateOne(
+		ctx,
+		bson.M{"referee_player_id": refereePlayerID, field: false},
+		update,
+	)
+	if err != nil {
+		l.Error("failed to claim referral reward", zap.Error(err))
+		return false, err
+	}
+
+	return result.ModifiedCount == 1, nil
+}
+
+// ReleaseReward clears the claim of a stage whose payout failed, so the next
+// pass tries it again.
+func (r *Repository) ReleaseReward(
+	ctx context.Context,
+	refereePlayerID string,
+	stage model.RewardStage,
+	coins int64,
+) error {
+	l := r.log.With(
+		zap.String("method", "ReleaseReward"),
+		zap.String("referee_player_id", refereePlayerID),
+		zap.String("stage", string(stage)),
+	)
+
+	field, err := stageField(stage)
+	if err != nil {
+		l.Error("refusing to release an unknown reward stage", zap.Error(err))
+		return err
+	}
+
+	update := bson.D{
+		{Key: "$set", Value: bson.D{
+			{Key: field, Value: false},
+			{Key: "updated_at", Value: time.Now()},
+		}},
+	}
+	if stage != model.StageReferee {
+		update = append(update, bson.E{Key: "$inc", Value: bson.D{{Key: "coins_awarded", Value: -coins}}})
+	}
+
+	result, err := r.eventsColl.UpdateOne(
+		ctx,
+		bson.M{"referee_player_id": refereePlayerID, field: true},
+		update,
+	)
+	if err != nil {
+		l.Error("failed to release referral reward", zap.Error(err))
+		return err
+	}
+	if result.ModifiedCount != 1 {
+		// Nothing to release: the claim was already gone, which is the state the
+		// caller wanted anyway.
+		l.Warn("released a reward stage that was not claimed")
+	}
+
+	return nil
+}
+
+// DeferEvent records when the loop may look at this event again, and how many
+// fruitless looks it has had. It is the only thing that keeps an event whose
+// player never moves out of every pass.
+func (r *Repository) DeferEvent(ctx context.Context, event *model.ReferralEvent) error {
+	l := r.log.With(
+		zap.String("method", "DeferEvent"),
+		zap.String("referee_player_id", event.RefereePlayerID),
+	)
+
+	_, err := r.eventsColl.UpdateOne(
+		ctx,
+		bson.M{"referee_player_id": event.RefereePlayerID},
+		bson.D{{Key: "$set", Value: bson.D{
+			{Key: "next_check_at", Value: event.NextCheckAt},
+			{Key: "checks", Value: int64(event.Checks)},
+			{Key: "updated_at", Value: time.Now()},
+		}}},
+	)
+	if err != nil {
+		l.Error("failed to defer a referral event", zap.Error(err))
+		return err
+	}
+
+	return nil
 }
 
 // GetStatsByPlayerID returns the total number of referrals made by playerID

@@ -2,34 +2,29 @@ package service
 
 import (
 	referralv1 "github.com/lasthearth/vsservice/gen/referral/v1"
-	"github.com/lasthearth/vsservice/internal/donate/donateuc"
 	"github.com/lasthearth/vsservice/internal/pkg/config"
-	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.uber.org/fx"
 )
 
 var _ referralv1.ReferralServiceServer = (*Service)(nil)
 
+// Opts are the service's dependencies. Neither the donate wallet nor the logger
+// is one of them: the service only records referrals, and PayoutWorker is the
+// one thing that pays them and the one thing that keeps the loop's records.
 type Opts struct {
 	fx.In
-	Log      logger.Logger
-	Cfg      config.Config
-	DbRepo   Repository
-	DonateUC *donateuc.AddCoinsUseCase
+	Cfg    config.Config
+	DbRepo Repository
 }
 
 type Service struct {
-	log      logger.Logger
-	cfg      config.Config
-	dbRepo   Repository
-	donateUC *donateuc.AddCoinsUseCase
+	cfg    config.Config
+	dbRepo Repository
 }
 
 func New(opts Opts) *Service {
 	return &Service{
-		log:      opts.Log,
-		cfg:      opts.Cfg,
-		dbRepo:   opts.DbRepo,
-		donateUC: opts.DonateUC,
+		cfg:    opts.Cfg,
+		dbRepo: opts.DbRepo,
 	}
 }

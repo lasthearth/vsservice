@@ -8,7 +8,6 @@ import (
 	"github.com/lasthearth/vsservice/internal/referral/internal/ierror"
 	"github.com/lasthearth/vsservice/internal/referral/internal/model"
 	"github.com/lasthearth/vsservice/internal/server/interceptor"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -65,6 +64,16 @@ func (s *Service) GetMyReferralStats(ctx context.Context, _ *emptypb.Empty) (*re
 }
 
 // UseReferralCode implements referralv1.ReferralServiceServer
+//
+// The code is only recorded here. Nothing is paid on this call: the referrer is
+// paid in two parts, when the referee passes verification and when the referee
+// first joins the game server, and the referee is paid once they have been in
+// the game. PayoutWorker pays those stages as they are reached, so a referee who
+// never shows up costs the referrer nothing.
+//
+// The event is written before anything else because its unique index on
+// referee_player_id is what stops a double submission from recording a second
+// referral.
 func (s *Service) UseReferralCode(ctx context.Context, req *referralv1.UseReferralCodeRequest) (*emptypb.Empty, error) {
 	refereeID, err := interceptor.GetUserID(ctx)
 	if err != nil {
@@ -88,27 +97,15 @@ func (s *Service) UseReferralCode(ctx context.Context, req *referralv1.UseReferr
 		return nil, ierror.ErrAlreadyReferred
 	}
 
-	event := model.NewReferralEvent(code.PlayerID, refereeID, s.cfg.ReferralCoinsReward)
+	event := model.NewReferralEvent(
+		code.PlayerID,
+		refereeID,
+		s.cfg.ReferralCoinsReward,
+		s.cfg.ReferralRefereeCoinsReward,
+	)
 
-	err = s.dbRepo.CreateEvent(ctx, event)
-	if err != nil {
+	if err = s.dbRepo.CreateEvent(ctx, event); err != nil {
 		return nil, err
-	}
-
-	if err = s.donateUC.AddCoins(ctx, code.PlayerID, code.PlayerName, s.cfg.ReferralCoinsReward); err != nil {
-		s.log.Error(
-			"failed to add coins to referrer wallet after referral event was recorded",
-			zap.String("referrer_player_id", code.PlayerID),
-			zap.Error(err),
-		)
-	}
-
-	if err = s.donateUC.AddCoins(ctx, refereeID, "", s.cfg.ReferralRefereeCoinsReward); err != nil {
-		s.log.Error(
-			"failed to add coins to referee wallet after referral event was recorded",
-			zap.String("referee_player_id", refereeID),
-			zap.Error(err),
-		)
 	}
 
 	return &emptypb.Empty{}, nil

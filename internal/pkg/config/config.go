@@ -102,12 +102,19 @@ type Config struct {
 	TelegramToken string `envconfig:"TELEGRAM_TOKEN"`
 	GroupId       string `envconfig:"GROUP_ID"`
 
-	// ReferralCoinsReward is the number of donate-coins awarded to a referrer
-	// when someone uses their referral code.
+	// ReferralCoinsReward is the full number of donate-coins a referrer earns
+	// per invited player. It is not paid in one go: 25% arrives when the invited
+	// player passes verification and 75% when that player first joins the game
+	// server.
 	ReferralCoinsReward int64 `envconfig:"REFERRAL_COINS_REWARD" default:"100"`
-	// ReferralRefereeCoinsReward is the number of donate-coins awarded to the
-	// player who applied a referral code (the referee).
+	// ReferralRefereeCoinsReward is the number of donate-coins the player who
+	// applied a referral code (the referee) earns. It is paid in full, once, on
+	// that player's first join of the game server.
 	ReferralRefereeCoinsReward int64 `envconfig:"REFERRAL_REFEREE_COINS_REWARD" default:"50"`
+	// ReferralPayoutInterval is how often the referral payout loop looks for
+	// rewards whose moment has come. The rewards hang on states other domains
+	// write, so the loop is the only thing that pays them.
+	ReferralPayoutInterval time.Duration `envconfig:"REFERRAL_PAYOUT_INTERVAL" default:"1m"`
 
 	// ModsArchiveDir is the folder the "download everything" mods archive is
 	// built in; empty means <os temp dir>/vsservice-mods. The service keeps at
