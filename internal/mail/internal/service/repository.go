@@ -31,6 +31,16 @@ type MailRepository interface {
 	// broadcast, newest first.
 	ListMailsForRecipient(ctx context.Context, playerID string) ([]*model.Mail, error)
 
+	// ListMailsAdmin returns one page of mails for the admin list, newest first,
+	// each carrying the number of players who claimed it, plus the token for the
+	// next page (empty when there is none).
+	ListMailsAdmin(
+		ctx context.Context,
+		filter model.AdminMailFilter,
+		pageToken string,
+		pageSize int64,
+	) ([]*model.AdminMailEntry, string, error)
+
 	// Claim rows
 
 	// InsertClaim inserts a claim row. Returns created=false (and no error) when

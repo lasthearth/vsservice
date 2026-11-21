@@ -8,6 +8,7 @@ func (s *Service) Scope() map[interceptor.Method]interceptor.Scope {
 		interceptor.Method(srvName + "ComposeMail"):    interceptor.Scope("mail:compose"),
 		interceptor.Method(srvName + "ComposeKitMail"): interceptor.Scope("mail:compose"),
 		interceptor.Method(srvName + "RevokeMail"):     interceptor.Scope("mail:revoke"),
+		interceptor.Method(srvName + "AdminListMail"):  interceptor.Scope("mail:read"),
 
 		// Self-service: the JWT subject is the recipient, so mail is scoped to
 		// the caller and a scope would add nothing.

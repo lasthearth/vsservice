@@ -10,8 +10,9 @@ import "google/protobuf/timestamp.proto";
 // MailService — player inbox plus admin compose/revoke.
 //
 // One service, split only by JWT scope: ListMail/MarkRead/Claim/ClaimAll are
-// self-service (the caller is the recipient); ComposeMail/RevokeMail require
-// admin scopes (mail:compose / mail:revoke).
+// self-service (the caller is the recipient); ComposeMail/ComposeKitMail/RevokeMail
+// require admin scopes (mail:compose / mail:revoke); AdminListMail requires
+// mail:read.
 //
 // The mail document is immutable content; per-player state (unread/read/claimed)
 // lives in the mail_claims collection and is derived at read. expired/revoked
@@ -132,6 +133,21 @@ service MailService {
       post: "/v1/mail:compose-kit"
       body: "*"
     };
+  }
+
+  // Admin: list sent mails, newest first, with how many players claimed each.
+  //
+  // The delivery counter is derived at read from the mail_claims collection, so
+  // it answers "did this broadcast reach anyone" without reading claims by hand.
+  // A filtered page narrows by recipient or to broadcasts only.
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT (400): bad page token or page_size out of range
+  //   - UNAUTHENTICATED (401): missing or invalid auth token
+  //   - PERMISSION_DENIED (403): insufficient privileges
+  //   - INTERNAL (500): database failure
+  rpc AdminListMail(AdminListMailRequest) returns (AdminListMailResponse) {
+    option (google.api.http) = {get: "/v1/admin/mail"};
   }
 }
 
@@ -295,4 +311,46 @@ message ComposeKitMailRequest {
 
 message ComposeKitMailResponse {
   string mail_id = 1;
+}
+
+message AdminListMailRequest {
+  // Optional. Exact recipient: a user_id or the literal "broadcast".
+  string recipient = 1;
+  // Optional. Restrict the page to mails addressed to everyone. Wins over
+  // recipient when both are set.
+  bool broadcast_only = 2;
+  // Optional. 0 means 20; the page is capped at 100.
+  int32 page_size = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  // Optional. Empty = first page.
+  string page_token = 4;
+}
+
+message AdminListMailResponse {
+  repeated AdminMail mails = 1;
+  // Empty when this is the last page.
+  string next_page_token = 2;
+}
+
+// AdminMail is a sent mail plus its delivery counter. claimed_count is derived
+// at read from mail_claims and never stored on the document.
+message AdminMail {
+  string id = 1;
+  // Either a user_id or the literal "broadcast".
+  string recipient = 2;
+  bool broadcast = 3;
+  // e.g. "admin:{jwt_sub}" or "system:donate".
+  string sender = 4;
+  string title = 5;
+  string body = 6;
+  repeated Attachment attachments = 7;
+  google.protobuf.Timestamp created_at = 8;
+  // nil = never expires.
+  google.protobuf.Timestamp expires_at = 9;
+  bool revoked = 10;
+  // Number of players who claimed the attachments. 0 for a notice, and 0 until
+  // the first claim.
+  int64 claimed_count = 11;
 }

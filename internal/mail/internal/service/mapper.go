@@ -17,4 +17,10 @@ type Mapper interface {
 	// goverter:ignore state sizeCache unknownFields State
 	ToMailProto(*model.Mail) *mailv1.Mail
 	ToMailsProto([]*model.Mail) []*mailv1.Mail
+
+	// AdminMailEntry is already flattened for reading: no per-player state to
+	// ignore, and ClaimedCount maps by name.
+	// goverter:ignore state sizeCache unknownFields
+	ToAdminMailProto(*model.AdminMailEntry) *mailv1.AdminMail
+	ToAdminMailsProto([]*model.AdminMailEntry) []*mailv1.AdminMail
 }

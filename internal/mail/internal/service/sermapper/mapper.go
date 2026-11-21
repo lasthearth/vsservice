@@ -12,6 +12,40 @@ import (
 
 type MapperImpl struct{}
 
+func (c *MapperImpl) ToAdminMailProto(source *model.AdminMailEntry) *v1.AdminMail {
+	var pMailv1AdminMail *v1.AdminMail
+	if source != nil {
+		var mailv1AdminMail v1.AdminMail
+		mailv1AdminMail.Id = (*source).Id
+		mailv1AdminMail.Recipient = (*source).Recipient
+		mailv1AdminMail.Broadcast = (*source).Broadcast
+		mailv1AdminMail.Sender = (*source).Sender
+		mailv1AdminMail.Title = (*source).Title
+		mailv1AdminMail.Body = (*source).Body
+		if (*source).Attachments != nil {
+			mailv1AdminMail.Attachments = make([]*v1.Attachment, len((*source).Attachments))
+			for i := 0; i < len((*source).Attachments); i++ {
+				mailv1AdminMail.Attachments[i] = goverter.AttachmentModelToProto((*source).Attachments[i])
+			}
+		}
+		mailv1AdminMail.CreatedAt = goverter1.TimeToTimestamp((*source).CreatedAt)
+		mailv1AdminMail.ExpiresAt = goverter1.TimePtrToTimestamp((*source).ExpiresAt)
+		mailv1AdminMail.Revoked = (*source).Revoked
+		mailv1AdminMail.ClaimedCount = (*source).ClaimedCount
+		pMailv1AdminMail = &mailv1AdminMail
+	}
+	return pMailv1AdminMail
+}
+func (c *MapperImpl) ToAdminMailsProto(source []*model.AdminMailEntry) []*v1.AdminMail {
+	var pMailv1AdminMailList []*v1.AdminMail
+	if source != nil {
+		pMailv1AdminMailList = make([]*v1.AdminMail, len(source))
+		for i := 0; i < len(source); i++ {
+			pMailv1AdminMailList[i] = c.ToAdminMailProto(source[i])
+		}
+	}
+	return pMailv1AdminMailList
+}
 func (c *MapperImpl) ToMailProto(source *model.Mail) *v1.Mail {
 	var pMailv1Mail *v1.Mail
 	if source != nil {
