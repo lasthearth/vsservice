@@ -6,6 +6,59 @@ info:
     name: lasthearth
   version: "1.0"
 paths:
+  /v1/admin/mail:
+    get:
+      tags:
+        - MailService
+      summary: 'Admin: list sent mails, newest first, with how many players claimed each.'
+      description: |-
+        The delivery counter is derived at read from the mail_claims collection, so
+         it answers "did this broadcast reach anyone" without reading claims by hand.
+         A filtered page narrows by recipient or to broadcasts only.
+
+         Errors:
+           - INVALID_ARGUMENT (400): bad page token or page_size out of range
+           - UNAUTHENTICATED (401): missing or invalid auth token
+           - PERMISSION_DENIED (403): insufficient privileges
+           - INTERNAL (500): database failure
+      operationId: MailService_AdminListMail
+      parameters:
+        - name: recipient
+          in: query
+          description: 'Optional. Exact recipient: a user_id or the literal "broadcast".'
+          schema:
+            type: string
+            title: recipient
+        - name: broadcast_only
+          in: query
+          description: |-
+            Optional. Restrict the page to mails addressed to everyone. Wins over
+             recipient when both are set.
+          schema:
+            type: boolean
+            title: broadcast_only
+        - name: page_size
+          in: query
+          description: Optional. 0 means 20; the page is capped at 100.
+          schema:
+            type: integer
+            title: page_size
+            maximum: 100
+            minimum: 0
+            format: int32
+        - name: page_token
+          in: query
+          description: Optional. Empty = first page.
+          schema:
+            type: string
+            title: page_token
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mail.v1.AdminListMailResponse'
   /v1/admin/settlements/{id}:
     patch:
       tags:
@@ -92,31 +145,27 @@ paths:
             title: settlement_id
         - name: next_token
           in: query
+          description: '(OPTIONAL) '
           required: false
           schema:
             type: string
             title: next_token
-            description: '(OPTIONAL) '
         - name: admin_id
           in: query
-          description: Filter logs by the admin who performed the operation.
+          description: (OPTIONAL) Filter logs by the admin who performed the operation.
           required: false
           schema:
             type: string
             title: admin_id
-            description: (OPTIONAL) Filter logs by the admin who performed the operation.
         - name: order_by
           in: query
           description: |-
-            Sort order. Format: "field [asc|desc]". Default: "created_at desc".
+            (OPTIONAL) Sort order. Format: "field [asc|desc]". Default: "created_at desc".
              Allowed fields: created_at, settlement_id, admin_id.
           required: false
           schema:
             type: string
             title: order_by
-            description: |-
-              (OPTIONAL) Sort order. Format: "field [asc|desc]". Default: "created_at desc".
-               Allowed fields: created_at, settlement_id, admin_id.
       responses:
         "200":
           description: Success
@@ -535,14 +584,12 @@ paths:
           description: 'Unset: every status.'
           schema:
             title: status
-            description: 'Unset: every status.'
             $ref: '#/components/schemas/ticket.v1.TicketStatus'
         - name: category
           in: query
           description: 'Unset: every category.'
           schema:
             title: category
-            description: 'Unset: every category.'
             $ref: '#/components/schemas/ticket.v1.TicketCategory'
         - name: assignee
           in: query
@@ -555,7 +602,6 @@ paths:
           schema:
             type: string
             title: author_id
-            description: Only the tickets of this player.
         - name: page_size
           in: query
           description: At most 50; 20 when unset.
@@ -563,7 +609,6 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: At most 50; 20 when unset.
         - name: page_token
           in: query
           description: |-
@@ -572,9 +617,6 @@ paths:
           schema:
             type: string
             title: page_token
-            description: |-
-              From a previous AdminListTickets response. A token from ListMyTickets is
-               rejected: the two lists sort by different fields.
       responses:
         "200":
           description: Success
@@ -997,7 +1039,6 @@ paths:
           schema:
             type: string
             title: channel_id
-            description: Discord channel ID.
         - name: limit
           in: query
           description: 'Maximum number of images. Allowed range: [1, 100].'
@@ -1005,14 +1046,12 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: 'Maximum number of images. Allowed range: [1, 100].'
         - name: before
           in: query
           description: Message ID to fetch before (for pagination).
           schema:
             type: string
             title: before
-            description: Message ID to fetch before (for pagination).
       responses:
         "200":
           description: Success
@@ -1040,7 +1079,6 @@ paths:
           schema:
             type: string
             title: channel_id
-            description: Discord channel ID.
         - name: limit
           in: query
           description: 'Maximum number of messages. Allowed range: [1, 100].'
@@ -1048,14 +1086,12 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: 'Maximum number of messages. Allowed range: [1, 100].'
         - name: before
           in: query
           description: Message ID to fetch before (for pagination).
           schema:
             type: string
             title: before
-            description: Message ID to fetch before (for pagination).
       responses:
         "200":
           description: Success
@@ -1737,14 +1773,12 @@ paths:
             maximum: 100
             minimum: 0
             format: int32
-            description: At most this many events, 1..100. Zero means 50.
         - name: past
           in: query
           description: List finished events instead of upcoming ones.
           schema:
             type: boolean
             title: past
-            description: List finished events instead of upcoming ones.
       responses:
         "200":
           description: Success
@@ -1964,7 +1998,6 @@ paths:
             maximum: 200
             minimum: 0
             format: int32
-            description: At most this many players, 1..200. Zero means 100.
       responses:
         "200":
           description: Success
@@ -1995,14 +2028,12 @@ paths:
             maximum: 100
             minimum: 0
             format: int32
-            description: At most this many events, 1..100. Zero means 50.
         - name: past
           in: query
           description: List finished events instead of upcoming ones.
           schema:
             type: boolean
             title: past
-            description: List finished events instead of upcoming ones.
       responses:
         "200":
           description: Success
@@ -2027,7 +2058,6 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: Maximum number of entries. Defaults to 25.
       responses:
         "200":
           description: Success
@@ -2130,7 +2160,6 @@ paths:
           schema:
             type: string
             title: next
-            description: Cursor from a previous response for pagination.
         - name: limit
           in: query
           description: Maximum number of seasons. Defaults to 20.
@@ -2138,7 +2167,6 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: Maximum number of seasons. Defaults to 20.
       responses:
         "200":
           description: Success
@@ -2548,7 +2576,6 @@ paths:
             type: string
             title: code
             minLength: 1
-            description: Code of the captured kit to update.
       requestBody:
         content:
           application/json:
@@ -2610,7 +2637,6 @@ paths:
             type: string
             title: code
             minLength: 1
-            description: Code of the captured kit to trim.
         - name: index
           in: path
           description: Position of the item in the kit's items list, as read from ListKits.
@@ -2620,7 +2646,6 @@ paths:
             title: index
             minimum: 0
             format: int32
-            description: Position of the item in the kit's items list, as read from ListKits.
       responses:
         "200":
           description: Success
@@ -2708,7 +2733,6 @@ paths:
           required: true
           schema:
             title: filter
-            description: Leaderboard filter. Service will return entries sorted by provided filter.
             $ref: '#/components/schemas/leaderboard.v1.LeaderboardRequest.LeaderboardFilter'
         - name: limit
           in: query
@@ -2719,9 +2743,6 @@ paths:
             type: integer
             title: limit
             format: int32
-            description: |-
-              The maximum number of entries to return.
-               If unspecified, 25 entry will be returned.
       responses:
         "200":
           description: Success
@@ -2759,13 +2780,11 @@ paths:
             maximum: 100
             minimum: 0
             format: int32
-            description: Defaults to 50.
         - name: activity
           in: query
           description: Only posts listing this activity; unset means all.
           schema:
             title: activity
-            description: Only posts listing this activity; unset means all.
             $ref: '#/components/schemas/lfg.v1.Activity'
       responses:
         "200":
@@ -3442,11 +3461,6 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: |-
-              The maximum number of news to return. The service may return fewer than
-               this value.
-               If unspecified, at most 15 news will be returned.
-               The maximum value is 50; values above 50 will be coerced to 50.
         - name: page_token
           in: query
           description: |-
@@ -3458,12 +3472,6 @@ paths:
           schema:
             type: string
             title: page_token
-            description: |-
-              A page token, received from a previous `ListBooks` call.
-               Provide this to retrieve the subsequent page.
-
-               When paginating, all other parameters provided to `ListBooks` must match
-               the call that provided the page token.
       responses:
         "200":
           description: Success
@@ -3514,7 +3522,6 @@ paths:
           schema:
             type: string
             title: id
-            description: The unique identifier of the news item to retrieve.
       responses:
         "200":
           description: Success
@@ -3541,7 +3548,6 @@ paths:
           schema:
             type: string
             title: id
-            description: The unique identifier of the news item to delete.
       responses:
         "200":
           description: Success
@@ -3570,7 +3576,6 @@ paths:
           schema:
             type: string
             title: id
-            description: The unique identifier of the news item.
       responses:
         "200":
           description: Success
@@ -3603,17 +3608,12 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: |-
-              The maximum number of notifications to return. The service may return fewer
-               than this value. If unspecified, at most 15 notifications will be returned.
-               The maximum value is 15; values above 15 will be coerced to 15.
         - name: page_token
           in: query
           description: A token identifying a page of results the server should return.
           schema:
             type: string
             title: page_token
-            description: A token identifying a page of results the server should return.
         - name: order_by
           in: query
           description: |-
@@ -3622,9 +3622,6 @@ paths:
           schema:
             type: string
             title: order_by
-            description: |-
-              The field to sort by, followed by direction (e.g., "created_at desc" or "state asc").
-               Supported fields: "created_at", "state". If unspecified, defaults to "created_at desc".
       responses:
         "200":
           description: Success
@@ -3658,9 +3655,6 @@ paths:
           schema:
             type: string
             title: id
-            description: |-
-              The identifier of the notification to mark as read.
-               Required.
       responses:
         "200":
           description: Success
@@ -3689,9 +3683,6 @@ paths:
           schema:
             type: string
             title: query
-            description: |-
-              Part of the nickname (current or previous), case-insensitive.
-               Shorter than 2 characters after trimming: ignored.
         - name: last_seen
           in: query
           schema:
@@ -3709,7 +3700,6 @@ paths:
             type: integer
             title: page
             format: int32
-            description: 1-based page number; 0 means 1. A page past the end returns no players.
         - name: page_size
           in: query
           description: Default 24, at most 48.
@@ -3717,7 +3707,6 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: Default 24, at most 48.
       responses:
         "200":
           description: Success
@@ -4373,7 +4362,6 @@ paths:
             type: integer
             title: count
             format: int32
-            description: Count of questions to return, if not specified, returns 5 questions
       responses:
         "200":
           description: Success
@@ -4446,11 +4434,10 @@ paths:
       parameters:
         - name: kind
           in: query
-          description: Which kind to list. Unset lists settlements only, so guilds stay off the public map.
+          description: (OPTIONAL) Which kind to list. Unset lists settlements only, so guilds stay off the public map.
           required: false
           schema:
             title: kind
-            description: (OPTIONAL) Which kind to list. Unset lists settlements only, so guilds stay off the public map.
             $ref: '#/components/schemas/settlement.v1.GroupKind'
       responses:
         "200":
@@ -4742,11 +4729,10 @@ paths:
       parameters:
         - name: kind
           in: query
-          description: Which kind to list. Unset lists both kinds, so the moderation queue never hides a guild.
+          description: (OPTIONAL) Which kind to list. Unset lists both kinds, so the moderation queue never hides a guild.
           required: false
           schema:
             title: kind
-            description: (OPTIONAL) Which kind to list. Unset lists both kinds, so the moderation queue never hides a guild.
             $ref: '#/components/schemas/settlement.v1.GroupKind'
       responses:
         "200":
@@ -5814,17 +5800,13 @@ paths:
         - name: disband
           in: query
           description: |-
-            Confirms that the caller disbands the guild they are the last owner and the only member of.
+            (OPTIONAL) Confirms that the caller disbands the guild they are the last owner and the only member of.
              Ignored for a settlement and for a guild with other members. This rpc takes no request body, so
              REST sends it as the query parameter `disband=true`.
           required: false
           schema:
             type: boolean
             title: disband
-            description: |-
-              (OPTIONAL) Confirms that the caller disbands the guild they are the last owner and the only member of.
-               Ignored for a settlement and for a guild with other members. This rpc takes no request body, so
-               REST sends it as the query parameter `disband=true`.
       responses:
         "200":
           description: Success
@@ -5846,7 +5828,6 @@ paths:
           required: true
           schema:
             title: filter
-            description: Stats filter. Service will return count sorted by provided filter.
             $ref: '#/components/schemas/stats.v1.OnlineStatsRequest.StatsFilter'
         - name: started_at
           in: query
@@ -5857,7 +5838,6 @@ paths:
               - string
             title: started_at
             format: int64
-            description: Start time for filtering
       responses:
         "200":
           description: Success
@@ -5884,7 +5864,6 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: At most 50; 20 when unset.
         - name: page_token
           in: query
           description: |-
@@ -5893,9 +5872,6 @@ paths:
           schema:
             type: string
             title: page_token
-            description: |-
-              From a previous ListMyTickets response. A token from AdminListTickets is
-               rejected: the two lists sort by different fields.
       responses:
         "200":
           description: Success
@@ -6465,11 +6441,10 @@ paths:
             title: user_id
         - name: kind
           in: query
-          description: Which request to answer. Unset means the settlement request.
+          description: (OPTIONAL) Which request to answer. Unset means the settlement request.
           required: false
           schema:
             title: kind
-            description: (OPTIONAL) Which request to answer. Unset means the settlement request.
             $ref: '#/components/schemas/settlement.v1.GroupKind'
       responses:
         "200":
@@ -6526,7 +6501,6 @@ paths:
             title: user_ids
             maxItems: 100
             minItems: 1
-            description: At least 1 and at most 100 user IDs.
       responses:
         "200":
           description: Success
@@ -6687,10 +6661,6 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: |-
-              The maximum number of articles to return. The service may return fewer than
-               this value. If unspecified, at most 20 articles will be returned.
-               The maximum value is 50; values above 50 will be coerced to 50.
         - name: page_token
           in: query
           description: |-
@@ -6699,16 +6669,12 @@ paths:
           schema:
             type: string
             title: page_token
-            description: |-
-              A page token, received from a previous ListArticles call.
-               Provide this to retrieve the subsequent page.
         - name: section
           in: query
           description: Filter by section id; empty returns every section.
           schema:
             type: string
             title: section
-            description: Filter by section id; empty returns every section.
         - name: status
           in: query
           description: |-
@@ -6716,9 +6682,6 @@ paths:
              every article for authorized editors.
           schema:
             title: status
-            description: |-
-              Filter by status; unspecified returns published articles for readers and
-               every article for authorized editors.
             $ref: '#/components/schemas/wiki.v1.ArticleStatus'
         - name: search
           in: query
@@ -6726,14 +6689,12 @@ paths:
           schema:
             type: string
             title: search
-            description: Substring match against title, slug, lead and tags; empty skips the search.
         - name: tag
           in: query
           description: Filter by tag; empty returns every tag.
           schema:
             type: string
             title: tag
-            description: Filter by tag; empty returns every tag.
       responses:
         "200":
           description: Success
@@ -6998,20 +6959,17 @@ paths:
             type: integer
             title: page_size
             format: int32
-            description: The maximum number of proposals to return. Defaults to 20, maximum 50.
         - name: page_token
           in: query
           description: A page token from a previous ListSuggestions call.
           schema:
             type: string
             title: page_token
-            description: A page token from a previous ListSuggestions call.
         - name: status
           in: query
           description: Filter by review state; unspecified returns every state.
           schema:
             title: status
-            description: Filter by review state; unspecified returns every state.
             $ref: '#/components/schemas/wiki.v1.SuggestionStatus'
       responses:
         "200":
@@ -8486,9 +8444,6 @@ components:
         Wrapper message for `float`.
 
          The JSON representation for `FloatValue` is JSON number.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       examples:
@@ -9752,6 +9707,98 @@ components:
           $ref: '#/components/schemas/lfg.v1.Post'
       title: RespondToPostResponse
       additionalProperties: false
+    mail.v1.AdminListMailRequest:
+      type: object
+      properties:
+        recipient:
+          type: string
+          title: recipient
+          description: 'Optional. Exact recipient: a user_id or the literal "broadcast".'
+        broadcast_only:
+          type: boolean
+          title: broadcast_only
+          description: |-
+            Optional. Restrict the page to mails addressed to everyone. Wins over
+             recipient when both are set.
+        page_size:
+          type: integer
+          title: page_size
+          maximum: 100
+          minimum: 0
+          format: int32
+          description: Optional. 0 means 20; the page is capped at 100.
+        page_token:
+          type: string
+          title: page_token
+          description: Optional. Empty = first page.
+      title: AdminListMailRequest
+      additionalProperties: false
+    mail.v1.AdminListMailResponse:
+      type: object
+      properties:
+        mails:
+          type: array
+          items:
+            $ref: '#/components/schemas/mail.v1.AdminMail'
+          title: mails
+        next_page_token:
+          type: string
+          title: next_page_token
+          description: Empty when this is the last page.
+      title: AdminListMailResponse
+      additionalProperties: false
+    mail.v1.AdminMail:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        recipient:
+          type: string
+          title: recipient
+          description: Either a user_id or the literal "broadcast".
+        broadcast:
+          type: boolean
+          title: broadcast
+        sender:
+          type: string
+          title: sender
+          description: e.g. "admin:{jwt_sub}" or "system:donate".
+        title:
+          type: string
+          title: title
+        body:
+          type: string
+          title: body
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/mail.v1.Attachment'
+          title: attachments
+        created_at:
+          title: created_at
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        expires_at:
+          title: expires_at
+          description: nil = never expires.
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        revoked:
+          type: boolean
+          title: revoked
+        claimed_count:
+          type:
+            - integer
+            - string
+          title: claimed_count
+          format: int64
+          description: |-
+            Number of players who claimed the attachments. 0 for a notice, and 0 until
+             the first claim.
+      title: AdminMail
+      additionalProperties: false
+      description: |-
+        AdminMail is a sent mail plus its delivery counter. claimed_count is derived
+         at read from mail_claims and never stored on the document.
     mail.v1.Attachment:
       type: object
       oneOf:
@@ -14356,8 +14403,9 @@ tags:
       MailService — player inbox plus admin compose/revoke.
 
        One service, split only by JWT scope: ListMail/MarkRead/Claim/ClaimAll are
-       self-service (the caller is the recipient); ComposeMail/RevokeMail require
-       admin scopes (mail:compose / mail:revoke).
+       self-service (the caller is the recipient); ComposeMail/ComposeKitMail/RevokeMail
+       require admin scopes (mail:compose / mail:revoke); AdminListMail requires
+       mail:read.
 
        The mail document is immutable content; per-player state (unread/read/claimed)
        lives in the mail_claims collection and is derived at read. expired/revoked
