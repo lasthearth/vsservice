@@ -1,55 +1,73 @@
 package logger_test
 
 import (
-	"bufio"
-	"os"
-	"path/filepath"
+	"bytes"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/lasthearth/vsservice/internal/pkg/logger"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-// buildFileLogger returns a logger on the production config path, so the sampler
-// zap.Config.Build installs sits under the redacting core exactly as it does in
-// the service. Records land in one file the test counts.
-func buildFileLogger(t *testing.T, cfg zap.Config) (logger.Logger, string) {
-	t.Helper()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "log.json")
-	cfg.OutputPaths = []string{path}
-	cfg.ErrorOutputPaths = []string{filepath.Join(dir, "error.json")}
-
-	log, err := logger.New(&cfg)
-	if err != nil {
-		t.Fatalf("new logger: %v", err)
-	}
-	return log, path
+// memSink collects the records a logger writes. A file sink would do the same
+// job, but Windows keeps a file handle locked for the life of the process, so
+// t.TempDir's cleanup failed with "the process cannot access the file" and
+// turned four passing assertions into failures.
+type memSink struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
 }
 
-func readLines(t *testing.T, path string) []string {
-	t.Helper()
+func (s *memSink) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	f, err := os.Open(path)
-	if err != nil {
-		t.Fatalf("open %s: %v", path, err)
-	}
-	defer f.Close()
+	return s.buf.Write(p)
+}
+
+func (s *memSink) Sync() error { return nil }
+
+// lines returns the non-empty records written so far.
+func (s *memSink) lines() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	var out []string
-	scan := bufio.NewScanner(f)
-	scan.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
-	for scan.Scan() {
-		if line := scan.Text(); strings.TrimSpace(line) != "" {
+	for line := range strings.SplitSeq(s.buf.String(), "\n") {
+		if strings.TrimSpace(line) != "" {
 			out = append(out, line)
 		}
 	}
-	if err := scan.Err(); err != nil {
-		t.Fatalf("read %s: %v", path, err)
-	}
+
 	return out
+}
+
+// buildRecordLogger returns a logger that writes into memory but otherwise
+// takes the production configuration as-is: the same encoder, level and
+// sampler, wrapped in the same redacting core logger.New applies. Building the
+// core here rather than through cfg.Build is what keeps the records out of a
+// file; the sampler below is the one cfg.Build would install, from the same
+// cfg.Sampling numbers.
+func buildRecordLogger(t *testing.T, cfg zap.Config) (logger.Logger, *memSink) {
+	t.Helper()
+
+	if cfg.Encoding != "json" {
+		t.Fatalf("these tests read JSON records, got encoding %q", cfg.Encoding)
+	}
+	if cfg.Level == (zap.AtomicLevel{}) {
+		t.Fatal("the config carries no level; the test would prove nothing")
+	}
+
+	sink := &memSink{}
+	core := zapcore.NewCore(zapcore.NewJSONEncoder(cfg.EncoderConfig), sink, cfg.Level)
+	if cfg.Sampling != nil {
+		core = zapcore.NewSamplerWithOptions(core, time.Second, cfg.Sampling.Initial, cfg.Sampling.Thereafter)
+	}
+
+	return logger.NewWithCore(core), sink
 }
 
 // The redacting core used to answer Check from Enabled alone and add itself, so
@@ -65,17 +83,14 @@ func TestRedactingCoreKeepsZapSampling(t *testing.T) {
 		t.Fatalf("want the 100:100 production policy, got %d:%d", cfg.Sampling.Initial, cfg.Sampling.Thereafter)
 	}
 
-	log, path := buildFileLogger(t, cfg)
+	log, sink := buildRecordLogger(t, cfg)
 
 	const total = 300
 	for range total {
 		log.Warn("identical record", zap.String("access_token", "s3cr3t-value"))
 	}
-	if err := log.Sync(); err != nil {
-		t.Fatalf("sync: %v", err)
-	}
 
-	lines := readLines(t, path)
+	lines := sink.lines()
 	got := len(lines)
 	if got >= total {
 		t.Errorf("want the sampler to drop records, got all %d", got)
@@ -91,7 +106,7 @@ func TestRedactingCoreKeepsZapSampling(t *testing.T) {
 // Sampling must not weaken masking: every record that survives still carries
 // [redacted] and never the credential.
 func TestRedactingCoreMasksWhatTheSamplerLetsThrough(t *testing.T) {
-	log, path := buildFileLogger(t, zap.NewProductionConfig())
+	log, sink := buildRecordLogger(t, zap.NewProductionConfig())
 
 	const total = 300
 	for range total {
@@ -101,11 +116,8 @@ func TestRedactingCoreMasksWhatTheSamplerLetsThrough(t *testing.T) {
 			zap.String("user_agent", "grpc-go/1.82.1"),
 		)
 	}
-	if err := log.Sync(); err != nil {
-		t.Fatalf("sync: %v", err)
-	}
 
-	lines := readLines(t, path)
+	lines := sink.lines()
 	if len(lines) == 0 {
 		t.Fatal("want at least one sampled record to inspect")
 	}
@@ -128,14 +140,11 @@ func TestRedactingCoreMasksWhatTheSamplerLetsThrough(t *testing.T) {
 // Fields attached with With are masked before the sampler sees them, so a
 // derived logger keeps the guarantee.
 func TestRedactingCoreMasksFieldsAttachedWithWith(t *testing.T) {
-	log, path := buildFileLogger(t, zap.NewProductionConfig())
+	log, sink := buildRecordLogger(t, zap.NewProductionConfig())
 
 	log.With(zap.String("refresh_token", "rt-secret")).Warn("derived record")
-	if err := log.Sync(); err != nil {
-		t.Fatalf("sync: %v", err)
-	}
 
-	lines := readLines(t, path)
+	lines := sink.lines()
 	if len(lines) != 1 {
 		t.Fatalf("want 1 record, got %d", len(lines))
 	}
@@ -153,21 +162,15 @@ func TestRedactingCoreStillFiltersDisabledLevels(t *testing.T) {
 	cfg := zap.NewProductionConfig()
 	cfg.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
 
-	log, path := buildFileLogger(t, cfg)
+	log, sink := buildRecordLogger(t, cfg)
 
 	log.Debug("must not be written", zap.String("access_token", "s3cr3t-value"))
-	if err := log.Sync(); err != nil {
-		t.Fatalf("sync: %v", err)
-	}
-	if lines := readLines(t, path); len(lines) != 0 {
+	if lines := sink.lines(); len(lines) != 0 {
 		t.Errorf("want no record below the level, got %d: %v", len(lines), lines)
 	}
 
 	log.Info("must be written")
-	if err := log.Sync(); err != nil {
-		t.Fatalf("sync: %v", err)
-	}
-	if lines := readLines(t, path); len(lines) != 1 {
+	if lines := sink.lines(); len(lines) != 1 {
 		t.Errorf("want the Info record, got %d", len(lines))
 	}
 }
